@@ -58,12 +58,12 @@ diagfast(mpdiag), pushf.F90:472-483
 
 import os
 import numpy
-import datablock
+from .datablock import DataBlock
 
 __all__ = ['HistoryBlockV110922']
 
 
-class HistoryBlockV110922(datablock.DataBlock):
+class HistoryBlockV110922(DataBlock):
     '''history data
 
     1) density,entropy,flow,energy,fluxes of particle,momentum,heat

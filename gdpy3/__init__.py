@@ -5,4 +5,4 @@ __version__ = "0.0.1"
 __status__ = "alpha"
 __license__ = "GPL"
 __email__ = "shmilee.zju@gmail.com"
-__all__ = ['']
+__all__ = ['convert']

@@ -13,12 +13,12 @@ skip
 import os
 import re
 import numpy
-import datablock
+from .datablock import DataBlock
 
 __all__ = ['GtcOutV110922']
 
 
-class GtcOutV110922(datablock.DataBlock):
+class GtcOutV110922(DataBlock):
     '''gtc.out data
 
     INPUT_PARAMETERS, PHYSICAL_PARAMETERS, KEY_PARAMETERS, etc.

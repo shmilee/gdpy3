@@ -36,12 +36,12 @@ field quantities: phi, a_para, fluidne.
 
 import os
 import numpy
-import datablock
+from .datablock import DataBlock
 
 __all__ = ['SnapshotBlockV110922']
 
 
-class SnapshotBlockV110922(datablock.DataBlock):
+class SnapshotBlockV110922(DataBlock):
     '''Snapshot data
 
     1) ion, electron, EP radial profiles:
