@@ -102,6 +102,9 @@ class DataBlock(object):
             except (IOError, ValueError):
                 print("Failed to read file %s." % npzfile)
                 raise
+            finally:
+                if 'tempf' in dir():
+                    tempf.close()
 
         additional.append((self.name, self.data))
         try:
@@ -188,7 +191,8 @@ class DataBlock(object):
             print("``additional`` must be a list of (name, data) tuple. "
                   "``data`` must be a dict.")
             raise
-        h5f.close()
+        finally:
+            h5f.close()
 
     def save2mat(self, matfile, additional=[]):
         '''save DataBlock.data to a matlab .mat file
