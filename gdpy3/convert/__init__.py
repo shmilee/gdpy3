@@ -21,7 +21,7 @@ __FileClassMapDict = {
 }
 
 
-def convert(datadir, savepath, **kwargs):
+def convert(datadir, savepath, description=None, **kwargs):
     '''Read all GTC .out files in directory ``datadir``.
     Save the results in ``savepath``.
 
@@ -31,6 +31,8 @@ def convert(datadir, savepath, **kwargs):
         the path of GTC .out files
     savepath: str
         path of file which the data is save
+    description: str
+        description of the simulation case
     kwargs: other parameters
         ``version`` for setting gtc version, default is 110922
         ``additionalpats`` for reading gtc.out
@@ -59,9 +61,10 @@ def convert(datadir, savepath, **kwargs):
         raise IOError("Can't access directory '%s'!" %
                       os.path.dirname(savepath))
     if 'version' in kwargs and str(kwargs['version']) in __FileClassMapDict:
-        FlClsMp = __FileClassMapDict[str(kwargs['version'])]
+        __version = str(kwargs['version'])
     else:
-        FlClsMp = __FileClassMapDict['110922']
+        __version = '110922'
+    FlClsMp = __FileClassMapDict[__version]
 
     # get gtc.out parameters
     if not os.path.isfile(datadir + '/gtc.out'):
@@ -86,6 +89,16 @@ def convert(datadir, savepath, **kwargs):
         except:
             print('Failed to get data from %s.' % datadir + '/' + key)
         otherdatas.append((fcls.name, fcls.data))
+
+    # description for this case
+    desc = ("GTC .out data from directory '%s'.\n"
+            "Created by gdpy3.convert, '%s'.\n" %
+            (datadir, __version))
+    if description:
+        otherdatas.append(('/', {'description': desc + '\n' + description}))
+    else:
+        otherdatas.append(
+            ('/', {'description': desc}))
 
     # save all data
     saveext = os.path.splitext(savepath)[1]

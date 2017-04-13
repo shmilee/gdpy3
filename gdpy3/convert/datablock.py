@@ -110,7 +110,9 @@ class DataBlock(object):
         try:
             for name, data in additional:
                 for key, val in data.items():
-                    tempdict.update({name + '/' + key: val})
+                    if name not in ('/', ''):
+                        key = name + '/' + key
+                    tempdict.update({key: val})
         except ValueError:
             print("``additional`` must be a list of (name, data) tuple")
             raise
@@ -176,9 +178,15 @@ class DataBlock(object):
         additional.append((self.name, self.data))
         try:
             for name, data in additional:
-                if name in h5f:
-                    h5f.__delitem__(name)
-                fgrp = h5f.create_group(name)
+                if name in ('/', ''):
+                    fgrp = h5f
+                    for key in data.keys():
+                        if key in h5f:
+                            h5f.__delitem__(key)
+                else:
+                    if name in h5f:
+                        h5f.__delitem__(name)
+                    fgrp = h5f.create_group(name)
                 for key, val in data.items():
                     if isinstance(val, (list, numpy.ndarray)):
                         fgrp.create_dataset(key, data=val, chunks=True,
