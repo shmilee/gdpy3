@@ -43,3 +43,5 @@ def read(path, **kwargs):
             raise ValueError("Unsupported file type: '%s'!" % path)
     else:
         raise IOError("Can't find path '%s'!" % path)
+
+    return dictobj
