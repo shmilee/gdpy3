@@ -21,7 +21,7 @@ __FileClassMapDict = {
 }
 
 
-def convert(datadir, savepath, description=None, **kwargs):
+def convert(datadir, savepath, **kwargs):
     '''Read all GTC .out files in directory ``datadir``.
     Save the results in ``savepath``.
 
@@ -31,9 +31,8 @@ def convert(datadir, savepath, description=None, **kwargs):
         the path of GTC .out files
     savepath: str
         path of file which the data is save
-    description: str
-        description of the simulation case
     kwargs: other parameters
+        ``description`` description of the simulation case
         ``version`` for setting gtc version, default is 110922
         ``additionalpats`` for reading gtc.out
 
@@ -94,11 +93,9 @@ def convert(datadir, savepath, description=None, **kwargs):
     desc = ("GTC .out data from directory '%s'.\n"
             "Created by gdpy3.convert, '%s'.\n" %
             (datadir, __version))
-    if description:
-        otherdatas.append(('/', {'description': desc + '\n' + description}))
-    else:
-        otherdatas.append(
-            ('/', {'description': desc}))
+    if 'description' in kwargs:
+        desc = desc + '\n' + str(kwargs['description'])
+    otherdatas.append(('/', {'description': desc}))
 
     # save all data
     saveext = os.path.splitext(savepath)[1]
