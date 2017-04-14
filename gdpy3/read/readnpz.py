@@ -71,3 +71,13 @@ class ReadNpz(object):
         return value
 
     get = __getitem__
+
+    def find(self, *keys):
+        '''find the datakeys which contain *keys
+        '''
+        result = self.datakeys
+        for key in keys:
+            key = str(key)
+            result = tuple(
+                filter(lambda k: True if key in k else False, result))
+        return tuple(result)
