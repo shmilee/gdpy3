@@ -128,7 +128,7 @@ class DataBlock(object):
 
         Parameters
         ----------
-        npzfile: str
+        hdf5file: str
             File name of ``.hdf5`` file which the data is saved.
         additional: list
             additional data in a list of (name, data) tuple.
@@ -207,7 +207,7 @@ class DataBlock(object):
 
         Parameters
         ----------
-        npzfile: str
+        matfile: str
             File name of ``.mat`` file which the data is saved.
         additional: list
             additional data in a list of (name, data) tuple.
