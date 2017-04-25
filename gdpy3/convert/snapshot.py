@@ -60,6 +60,7 @@ class SnapshotBlockV110922(DataBlock):
             data keys of physical quantities in ``snap("%05d" % istep).out``
         data: dict of converted data
     '''
+    __slots__ = ['file', 'name', 'datakeys', 'data']
 
     def __init__(self, file=None, name=None):
         if os.path.isfile(file):

@@ -32,6 +32,7 @@ class GtcOutV110922(DataBlock):
             data keys of physical quantities in ``gtc.out``
         data: dict of converted data
     '''
+    __slots__ = ['file', 'name', 'datakeys', 'data']
 
     def __init__(self, file=None, name='gtcout'):
         if os.path.isfile(file):

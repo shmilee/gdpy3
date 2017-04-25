@@ -33,6 +33,7 @@ class DataBlock(object):
             data keys of physical quantities in the .out file
         data: dict of converted data
     '''
+    __slots__ = ['file', 'name', 'datakeys', 'data']
 
     def __init__(self, file=None, name='exampledata'):
         self.file = file

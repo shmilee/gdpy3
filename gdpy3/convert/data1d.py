@@ -84,6 +84,7 @@ class Data1dBlockV110922(DataBlock):
             data keys of physical quantities in ``data1d.out``
         data: dict of converted data
     '''
+    __slots__ = ['file', 'name', 'datakeys', 'data']
 
     def __init__(self, file=None, name='data1d'):
         if os.path.isfile(file):

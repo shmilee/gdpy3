@@ -80,6 +80,7 @@ class HistoryBlockV110922(DataBlock):
             data keys of physical quantities in ``history.out``
         data: dict of converted data
     '''
+    __slots__ = ['file', 'name', 'datakeys', 'data']
 
     def __init__(self, file=None, name='history'):
         if os.path.isfile(file):
