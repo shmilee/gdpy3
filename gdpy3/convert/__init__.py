@@ -9,7 +9,19 @@ r'''
 __all__ = ['convert', 'data1d', 'gtcout', 'history', 'snapshot']
 
 import os
+import sys
+import logging
 from . import data1d, gtcout, history, snapshot
+
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.INFO,
+    # format='[%(asctime)s %(name)s] %(levelname)s - %(message)s',
+    # datefmt='%Y-%m-%d %H:%M:%S',
+    format='[%(name)s]%(levelname)s - %(message)s'
+)
+
+log = logging.getLogger('gdc')
 
 __FileClassMapDict = {
     '110922': {
@@ -20,7 +32,7 @@ __FileClassMapDict = {
     }
 }
 
-
+@profile
 def convert(datadir, savepath, **kwargs):
     '''Read all GTC .out files in directory ``datadir``.
     Save the results in ``savepath``.
@@ -32,6 +44,7 @@ def convert(datadir, savepath, **kwargs):
     savepath: str
         path of file which the data is save
     kwargs: other parameters
+        ``loglevel`` for setting log level
         ``description`` description of the simulation case
         ``version`` for setting gtc version, default is 110922
         ``additionalpats`` for reading gtc.out
@@ -59,35 +72,28 @@ def convert(datadir, savepath, **kwargs):
     if not os.access(os.path.dirname(savepath), os.W_OK):
         raise IOError("Can't access directory '%s'!" %
                       os.path.dirname(savepath))
+    if not os.path.isfile(datadir + '/gtc.out'):
+        raise IOError("Can't find 'gtc.out' in '%s'!" % datadir)
+
+    if 'loglevel' in kwargs:
+        loglevel = getattr(logging, kwargs['loglevel'].upper(), None)
+        if isinstance(loglevel, int):
+            log.setLevel(loglevel)
+
     if 'version' in kwargs and str(kwargs['version']) in __FileClassMapDict:
         __version = str(kwargs['version'])
     else:
         __version = '110922'
+    log.info("Set the GTC data version: '%s'." % __version)
     FlClsMp = __FileClassMapDict[__version]
 
     # get gtc.out parameters
-    if not os.path.isfile(datadir + '/gtc.out'):
-        raise IOError("Can't find 'gtc.out' in '%s'!" % datadir)
     paras = FlClsMp['gtc.out'](file=datadir + '/gtc.out')
     if 'additionalpats' in kwargs and type(kwargs['additionalpats']) is list:
         paras.convert(additionalpats=kwargs['additionalpats'])
     else:
+        log.info('getting data from %s ...' % paras.file)
         paras.convert()
-
-    # convert other .out files
-    otherfiles = {}
-    for f in os.listdir(datadir):
-        if f in ('data1d.out', 'history.out'):
-            otherfiles[f] = FlClsMp[f](file=datadir + '/' + f)
-        elif 'the-snap' in 'the-' + f:
-            otherfiles[f] = FlClsMp['snapshot.out'](file=datadir + '/' + f)
-    otherdatas = []
-    for key, fcls in otherfiles.items():
-        try:
-            fcls.convert()
-        except:
-            print('Failed to get data from %s.' % datadir + '/' + key)
-        otherdatas.append((fcls.name, fcls.data))
 
     # description for this case
     desc = ("GTC .out data from directory '%s'.\n"
@@ -95,21 +101,58 @@ def convert(datadir, savepath, **kwargs):
             (datadir, __version))
     if 'description' in kwargs:
         desc = desc + '\n' + str(kwargs['description'])
-    otherdatas.append(('/', {'description': desc}))
+
+    # prepare savepath
+    saveext = os.path.splitext(savepath)[1]
+    # default filetype is '.npz'
+    if saveext not in ('.npz', '.hdf5', '.mat'):
+        log.warn("Filetype of savepath should be '.npz', '.hdf5' or '.mat'!")
+        log.info("Use '.npz'.")
+        saveext = '.npz'
+        savepath = savepath + '.npz'
+    # paras.save2mat(savepath,additional=otherdatas)
+    # TODO(nobody): '.mat' is not ready. Use '.npz'
+    if saveext == '.mat':
+        log.warn("'.mat' is not ready. Use '.npz'.")
+        saveext = '.npz'
+        savepath = savepath + '.npz'
 
     # save all data
-    saveext = os.path.splitext(savepath)[1]
+    def _get_fcls(f):
+        if f in ('data1d.out', 'history.out'):
+            return FlClsMp[f](file=datadir + '/' + f)
+        elif 'the-snap' in 'the-' + f:
+            return FlClsMp['snapshot.out'](file=datadir + '/' + f)
+        else:
+            return None
+
     if saveext == '.npz':
+        otherdatas = [('/', {'description': desc})]
+        for f in sorted(os.listdir(datadir)):
+            fcls = _get_fcls(f)
+            if not fcls:
+                continue
+            try:
+                log.info('getting data from %s ...' % fcls.file)
+                fcls.convert()
+            except:
+                log.error('Failed to get data from %s.' % fcls.file)
+            otherdatas.append((fcls.name, fcls.data))
+        # all files together
         paras.save2npz(savepath, additional=otherdatas)
     elif saveext == '.hdf5':
-        paras.save2hdf5(savepath, additional=otherdatas)
-    elif saveext == '.mat':
-        # paras.save2mat(savepath,additional=otherdatas)
-        # TODO(nobody): '.mat' is not ready. Use '.npz'
-        savepath = savepath + '.npz'
-        paras.save2npz(savepath, additional=otherdatas)
-    else:
-        savepath = savepath + '.npz'
-        paras.save2npz(savepath, additional=otherdatas)
+        paras.save2hdf5(savepath, additional=[('/', {'description': desc})])
+        for f in sorted(os.listdir(datadir)):
+            fcls = _get_fcls(f)
+            if not fcls:
+                continue
+            try:
+                log.info('getting data from %s ...' % fcls.file)
+                fcls.convert()
+                # file one by one
+                fcls.save2hdf5(savepath)
+            except:
+                log.error('Failed to get data from %s.' % fcls.file)
 
-    print('GTC .out files in %s are converted to %s!' % (datadir, savepath))
+    log.info("GTC '.out' files in %s are converted to %s!" %
+             (datadir, savepath))

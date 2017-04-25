@@ -3,9 +3,12 @@
 # Copyright (c) 2017 shmilee
 
 import os
+import logging
 import numpy
 
 __all__ = ['DataBlock']
+
+log = logging.getLogger('gdc')
 
 
 def _setpathname(pathname, ext):
@@ -97,11 +100,12 @@ class DataBlock(object):
         npzfile = _setpathname(npzfile, '.npz')
         if os.path.isfile(npzfile):
             try:
+                log.debug("Read existent data from file %s." % npzfile)
                 tempf = numpy.load(npzfile)
                 for key in tempf.files:
                     tempdict.update({key: tempf[key]})
             except (IOError, ValueError):
-                print("Failed to read file %s." % npzfile)
+                log.error("Failed to read file %s." % npzfile)
                 raise
             finally:
                 if 'tempf' in dir():
@@ -115,13 +119,13 @@ class DataBlock(object):
                         key = name + '/' + key
                     tempdict.update({key: val})
         except ValueError:
-            print("``additional`` must be a list of (name, data) tuple")
+            log.error("``additional`` must be a list of (name, data) tuple")
             raise
 
         try:
             numpy.savez_compressed(npzfile, **tempdict)
         except IOError:
-            print("Failed to create file %s." % npzfile)
+            log.error("Failed to create file %s." % npzfile)
             raise
 
     def save2hdf5(self, hdf5file, additional=[]):
@@ -158,22 +162,24 @@ class DataBlock(object):
         try:
             import h5py
         except ImportError:
-            print('If you want to save data in a .hdf5 file, '
-                  'please install h5py(python bindings for HDF5).')
+            log.error('If you want to save data in a .hdf5 file, '
+                      'please install h5py(python bindings for HDF5).')
             raise
 
         hdf5file = _setpathname(hdf5file, '.hdf5')
         if os.path.isfile(hdf5file):
             try:
+                log.debug("Open file '%s' to append data." % hdf5file)
                 h5f = h5py.File(hdf5file, 'r+')
             except IOError:
-                print("Failed to read file %s." % hdf5file)
+                log.error("Failed to read file %s." % hdf5file)
                 raise
         else:
             try:
+                log.debug("Create file '%s' to store data." % hdf5file)
                 h5f = h5py.File(hdf5file, 'w-')
             except IOError:
-                print("Failed to create file %s." % hdf5file)
+                log.error("Failed to create file %s." % hdf5file)
                 raise
 
         additional.append((self.name, self.data))
@@ -183,12 +189,17 @@ class DataBlock(object):
                     fgrp = h5f
                     for key in data.keys():
                         if key in h5f:
+                            log.debug("Delete item '%s' in '/'." % key)
                             h5f.__delitem__(key)
                 else:
                     if name in h5f:
+                        log.debug("Delete group '%s' in '/'." % name)
                         h5f.__delitem__(name)
+                    log.debug("Create group '%s' in '/'." % name)
                     fgrp = h5f.create_group(name)
                 for key, val in data.items():
+                    log.debug("Create dataset '%s' in '%s'." %
+                              (key, fgrp.name))
                     if isinstance(val, (list, numpy.ndarray)):
                         fgrp.create_dataset(key, data=val, chunks=True,
                                             compression='gzip',
@@ -197,8 +208,8 @@ class DataBlock(object):
                         fgrp.create_dataset(key, data=val)
                 h5f.flush()
         except ValueError:
-            print("``additional`` must be a list of (name, data) tuple. "
-                  "``data`` must be a dict.")
+            log.error("``additional`` must be a list of (name, data) tuple. "
+                      "``data`` must be a dict.")
             raise
         finally:
             h5f.close()
@@ -217,8 +228,8 @@ class DataBlock(object):
         try:
             import scipy
         except ImportError:
-            print('If you want to save data in a .mat file, '
-                  'please install scipy.')
+            log.error('If you want to save data in a .mat file, '
+                      'please install scipy.')
             raise
 
         matfile = _setpathname(matfile, '.mat')
