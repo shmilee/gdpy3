@@ -32,6 +32,7 @@ __FileClassMapDict = {
     }
 }
 
+
 @profile
 def convert(datadir, savepath, **kwargs):
     '''Read all GTC .out files in directory ``datadir``.
@@ -140,8 +141,16 @@ def convert(datadir, savepath, **kwargs):
             otherdatas.append((fcls.name, fcls.data))
         # all files together
         paras.save2npz(savepath, additional=otherdatas)
+
     elif saveext == '.hdf5':
-        paras.save2hdf5(savepath, additional=[('/', {'description': desc})])
+        try:
+            from . import wraphdf5 as hdf5
+        except ImportError:
+            log.error("Failed to import 'wraphdf5'!")
+            raise
+        h5f = hdf5.open(savepath)
+        hdf5.write(h5f, '/', {'description': desc})
+        hdf5.write(h5f, paras.name, paras.data)
         for f in sorted(os.listdir(datadir)):
             fcls = _get_fcls(f)
             if not fcls:
@@ -149,10 +158,10 @@ def convert(datadir, savepath, **kwargs):
             try:
                 log.info('getting data from %s ...' % fcls.file)
                 fcls.convert()
-                # file one by one
-                fcls.save2hdf5(savepath)
+                hdf5.write(h5f, fcls.name, fcls.data)
             except:
                 log.error('Failed to get data from %s.' % fcls.file)
+        hdf5.close(h5f)
 
     log.info("GTC '.out' files in %s are converted to %s!" %
              (datadir, savepath))

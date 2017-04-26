@@ -51,6 +51,8 @@ class DataBlock(object):
         '''Read GTC .out file to self.data as a dict.
         Define this function in derived class.
         '''
+        log.error('Define this function in derived class.')
+        raise
 
     def save2npz(self, npzfile, additional=[]):
         '''save DataBlock.data to a numpy compressed .npz file
@@ -157,62 +159,26 @@ class DataBlock(object):
         >>> h5f[name + 'mpsi+1'].value
         >>> h5f[name + 'field00-phi'][...]
         '''
-        # http://docs.h5py.org/en/latest/index.html
 
         try:
-            import h5py
+            from . import wraphdf5 as hdf5
         except ImportError:
-            log.error('If you want to save data in a .hdf5 file, '
-                      'please install h5py(python bindings for HDF5).')
+            log.error("Failed to import 'wraphdf5'!")
             raise
 
         hdf5file = _setpathname(hdf5file, '.hdf5')
-        if os.path.isfile(hdf5file):
-            try:
-                log.debug("Open file '%s' to append data." % hdf5file)
-                h5f = h5py.File(hdf5file, 'r+')
-            except IOError:
-                log.error("Failed to read file %s." % hdf5file)
-                raise
-        else:
-            try:
-                log.debug("Create file '%s' to store data." % hdf5file)
-                h5f = h5py.File(hdf5file, 'w-')
-            except IOError:
-                log.error("Failed to create file %s." % hdf5file)
-                raise
+        h5f = hdf5.open(hdf5file)
 
         additional.append((self.name, self.data))
         try:
             for name, data in additional:
-                if name in ('/', ''):
-                    fgrp = h5f
-                    for key in data.keys():
-                        if key in h5f:
-                            log.debug("Delete item '%s' in '/'." % key)
-                            h5f.__delitem__(key)
-                else:
-                    if name in h5f:
-                        log.debug("Delete group '%s' in '/'." % name)
-                        h5f.__delitem__(name)
-                    log.debug("Create group '%s' in '/'." % name)
-                    fgrp = h5f.create_group(name)
-                for key, val in data.items():
-                    log.debug("Create dataset '%s' in '%s'." %
-                              (key, fgrp.name))
-                    if isinstance(val, (list, numpy.ndarray)):
-                        fgrp.create_dataset(key, data=val, chunks=True,
-                                            compression='gzip',
-                                            compression_opts=9)
-                    else:
-                        fgrp.create_dataset(key, data=val)
-                h5f.flush()
+                hdf5.write(h5f, name, data)
         except ValueError:
             log.error("``additional`` must be a list of (name, data) tuple. "
                       "``data`` must be a dict.")
             raise
         finally:
-            h5f.close()
+            hdf5.close(h5f)
 
     def save2mat(self, matfile, additional=[]):
         '''save DataBlock.data to a matlab .mat file
