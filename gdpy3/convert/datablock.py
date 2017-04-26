@@ -96,39 +96,63 @@ class DataBlock(object):
         >>> name = 'name1/'
         >>> npzf[name + 'a']
         '''
-        # https://docs.scipy.org/doc/numpy/reference/generated/numpy.savez_compressed.html
 
-        tempdict = dict()
+        try:
+            from . import wrapnpz as wrapfile
+        except ImportError:
+            log.error("Failed to import 'wrapnpz'!")
+            raise
+
+        # open file
         npzfile = _setpathname(npzfile, '.npz')
         if os.path.isfile(npzfile):
-            try:
-                log.debug("Read existent data from file %s." % npzfile)
-                tempf = numpy.load(npzfile)
-                for key in tempf.files:
-                    tempdict.update({key: tempf[key]})
-            except (IOError, ValueError):
-                log.error("Failed to read file %s." % npzfile)
-                raise
-            finally:
-                if 'tempf' in dir():
-                    tempf.close()
+            backnpz = npzfile + '-backup.npz'
+            log.debug("Rename '%s' to '%s'!" % (npzfile, backnpz))
+            os.rename(npzfile, backnpz)
+        else:
+            backnpz = None
+        npzfid = wrapfile.iopen(npzfile)
 
-        additional.append((self.name, self.data))
+        # write data
         try:
-            for name, data in additional:
-                for key, val in data.items():
-                    if name not in ('/', ''):
-                        key = name + '/' + key
-                    tempdict.update({key: val})
+            for name, data in [(self.name, self.data)] + additional:
+                wrapfile.write(npzfid, name, data)
         except ValueError:
-            log.error("``additional`` must be a list of (name, data) tuple")
+            log.error("``additional`` must be a list of (name, data) tuple. "
+                      "``data`` must be a dict.")
             raise
+        finally:
+            wrapfile.close(npzfid)
+        # close file
 
-        try:
-            numpy.savez_compressed(npzfile, **tempdict)
-        except IOError:
-            log.error("Failed to create file %s." % npzfile)
-            raise
+        # append original data
+        # tempdict -> {name1:data1,name2,data2}
+        if backnpz:
+            npzfid = wrapfile.iopen(npzfile)
+            npzfnset = set(os.path.splitext(n)[0] for n in npzfid.namelist())
+            log.debug("Read existent data from original file %s." % backnpz)
+            try:
+                backfid = numpy.load(backnpz)
+                bckfnset = set(backfid.files)
+                # keys in bckfnset but not npzfnset
+                datatodo = bckfnset.difference(npzfnset)
+                # group the keys
+                tempdict = {os.path.dirname(k): dict() for k in datatodo}
+                for k in datatodo:
+                    tempdict[os.path.dirname(k)][
+                        os.path.basename(k)] = backfid[k]
+            except (IOError, ValueError) as exc:
+                log.error("Failed to read original file %s: %s" %
+                          (backnpz, exc))
+            finally:
+                if 'backfid' in dir():
+                    backfid.close()
+                if 'tempdict' in dir():
+                    for name, data in tempdict.items():
+                        wrapfile.write(npzfid, name, data)
+                wrapfile.close(npzfid)
+                log.debug("Remove original file '%s'!" % backnpz)
+                os.remove(backnpz)
 
     def save2hdf5(self, hdf5file, additional=[]):
         '''save DataBlock.data to a h5py .hdf5 file
@@ -152,33 +176,32 @@ class DataBlock(object):
         Notes
         -----
         Q: How to read data from hdf5?
-        A: h5f['name/datakey'].value
-        >>> h5f = h5py.File('/tmp/data1d.hdf5', 'r')
+        A: h5fid['name/datakey'].value
+        >>> h5fid = h5py.File('/tmp/data1d.hdf5', 'r')
         >>> name = 'data1d/'
-        >>> print(h5f[name + 'description'][()])
-        >>> h5f[name + 'mpsi+1'].value
-        >>> h5f[name + 'field00-phi'][...]
+        >>> print(h5fid[name + 'description'][()])
+        >>> h5fid[name + 'mpsi+1'].value
+        >>> h5fid[name + 'field00-phi'][...]
         '''
 
         try:
-            from . import wraphdf5 as hdf5
+            from . import wraphdf5 as wrapfile
         except ImportError:
             log.error("Failed to import 'wraphdf5'!")
             raise
 
         hdf5file = _setpathname(hdf5file, '.hdf5')
-        h5f = hdf5.open(hdf5file)
+        h5fid = wrapfile.iopen(hdf5file)
 
-        additional.append((self.name, self.data))
         try:
-            for name, data in additional:
-                hdf5.write(h5f, name, data)
+            for name, data in [(self.name, self.data)] + additional:
+                wrapfile.write(h5fid, name, data)
         except ValueError:
             log.error("``additional`` must be a list of (name, data) tuple. "
                       "``data`` must be a dict.")
             raise
         finally:
-            hdf5.close(h5f)
+            wrapfile.close(h5fid)
 
     def save2mat(self, matfile, additional=[]):
         '''save DataBlock.data to a matlab .mat file
@@ -192,10 +215,9 @@ class DataBlock(object):
         '''
 
         try:
-            import scipy
+            from . import wrapmat as wrapfile
         except ImportError:
-            log.error('If you want to save data in a .mat file, '
-                      'please install scipy.')
+            log.error("Failed to import 'wrapmat'!")
             raise
 
         matfile = _setpathname(matfile, '.mat')

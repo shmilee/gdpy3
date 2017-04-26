@@ -8,7 +8,7 @@ import os
 import logging
 import numpy
 
-__all__ = ['open', 'write', 'close']
+__all__ = ['iopen', 'write', 'close']
 
 log = logging.getLogger('gdc')
 
@@ -20,7 +20,7 @@ except ImportError:
     raise
 
 
-def open(hdf5file):
+def iopen(hdf5file):
     '''Open ``.hdf5`` file
 
     Parameters
@@ -91,11 +91,10 @@ def write(h5pyfile, name, data):
             else:
                 fgrp.create_dataset(key, data=val)
         h5pyfile.flush()
-    except ValueError:
-        log.error("``name`` must be a str. ``data`` must be a dict.")
-    except Exception as e:
-        log.error(e)
-        log.error("Failed to save data of '%s'!" % name)
+    except ValueError as exc:
+        log.error("``name`` must be a str. ``data`` must be a dict: %s" % exc)
+    except Exception as exc:
+        log.error("Failed to save data of '%s': %s!" % (name, exc))
 
 
 def close(h5pyfile):

@@ -10,6 +10,7 @@ __all__ = ['convert', 'data1d', 'gtcout', 'history', 'snapshot']
 
 import os
 import sys
+import time
 import logging
 from . import data1d, gtcout, history, snapshot
 
@@ -33,7 +34,6 @@ __FileClassMapDict = {
 }
 
 
-@profile
 def convert(datadir, savepath, **kwargs):
     '''Read all GTC .out files in directory ``datadir``.
     Save the results in ``savepath``.
@@ -98,8 +98,9 @@ def convert(datadir, savepath, **kwargs):
 
     # description for this case
     desc = ("GTC .out data from directory '%s'.\n"
-            "Created by gdpy3.convert, '%s'.\n" %
-            (datadir, __version))
+            "Created by gdpy3.convert: '%s'.\n"
+            "Created on: %s." %
+            (datadir, __version, time.asctime()))
     if 'description' in kwargs:
         desc = desc + '\n' + str(kwargs['description'])
 
@@ -111,8 +112,7 @@ def convert(datadir, savepath, **kwargs):
         log.info("Use '.npz'.")
         saveext = '.npz'
         savepath = savepath + '.npz'
-    # paras.save2mat(savepath,additional=otherdatas)
-    # TODO(nobody): '.mat' is not ready. Use '.npz'
+    # TODO(nobody): delete this, when '.mat' is ready.
     if saveext == '.mat':
         log.warn("'.mat' is not ready. Use '.npz'.")
         saveext = '.npz'
@@ -128,40 +128,42 @@ def convert(datadir, savepath, **kwargs):
             return None
 
     if saveext == '.npz':
-        otherdatas = [('/', {'description': desc})]
-        for f in sorted(os.listdir(datadir)):
-            fcls = _get_fcls(f)
-            if not fcls:
-                continue
-            try:
-                log.info('getting data from %s ...' % fcls.file)
-                fcls.convert()
-            except:
-                log.error('Failed to get data from %s.' % fcls.file)
-            otherdatas.append((fcls.name, fcls.data))
-        # all files together
-        paras.save2npz(savepath, additional=otherdatas)
-
+        try:
+            from . import wrapnpz as wrapfile
+        except ImportError:
+            log.error("Failed to import 'wrapnpz'!")
+            raise
     elif saveext == '.hdf5':
         try:
-            from . import wraphdf5 as hdf5
+            from . import wraphdf5 as wrapfile
         except ImportError:
             log.error("Failed to import 'wraphdf5'!")
             raise
-        h5f = hdf5.open(savepath)
-        hdf5.write(h5f, '/', {'description': desc})
-        hdf5.write(h5f, paras.name, paras.data)
-        for f in sorted(os.listdir(datadir)):
-            fcls = _get_fcls(f)
-            if not fcls:
-                continue
-            try:
-                log.info('getting data from %s ...' % fcls.file)
-                fcls.convert()
-                hdf5.write(h5f, fcls.name, fcls.data)
-            except:
-                log.error('Failed to get data from %s.' % fcls.file)
-        hdf5.close(h5f)
+    elif saveext == '.mat':
+        try:
+            from . import wrapmat as wrapfile
+        except ImportError:
+            log.error("Failed to import 'wrapmat'!")
+            raise
+
+    if os.path.isfile(savepath):
+        log.warn("Remove file: '%s'!" % savepath)
+        os.remove(savepath)
+
+    savefid = wrapfile.iopen(savepath)
+    wrapfile.write(savefid, '/', {'description': desc})
+    wrapfile.write(savefid, paras.name, paras.data)
+    for f in sorted(os.listdir(datadir)):
+        fcls = _get_fcls(f)
+        if not fcls:
+            continue
+        try:
+            log.info('getting data from %s ...' % fcls.file)
+            fcls.convert()
+            wrapfile.write(savefid, fcls.name, fcls.data)
+        except:
+            log.error('Failed to get data from %s.' % fcls.file)
+    wrapfile.close(savefid)
 
     log.info("GTC '.out' files in %s are converted to %s!" %
              (datadir, savepath))
