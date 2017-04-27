@@ -6,13 +6,14 @@ r'''
     This is the subpackage ``convert`` of package gdpy3.
 '''
 
-__all__ = ['convert', 'data1d', 'gtcout', 'history', 'snapshot']
+__all__ = ['convert', 'gtcout', 'data1d',
+           'equilibrium', 'history', 'meshgrid', 'snapshot']
 
 import os
 import sys
 import time
 import logging
-from . import data1d, gtcout, history, snapshot
+from . import gtcout, data1d, equilibrium, history, meshgrid, snapshot
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -28,7 +29,9 @@ __FileClassMapDict = {
     '110922': {
         'gtc.out': gtcout.GtcOutV110922,
         'data1d.out': data1d.Data1dBlockV110922,
+        'equilibrium.out': equilibrium.EquilibriumBlockV110922,
         'history.out': history.HistoryBlockV110922,
+        'meshgrid.out': meshgrid.MeshgridBlockV110922,
         'snapshot.out': snapshot.SnapshotBlockV110922,
     }
 }
@@ -115,7 +118,7 @@ def convert(datadir, savepath, **kwargs):
 
     # save all data
     def _get_fcls(f):
-        if f in ('data1d.out', 'history.out'):
+        if f in ('data1d.out', 'equilibrium.out', 'history.out', 'meshgrid.out'):
             return FlClsMp[f](file=datadir + '/' + f)
         elif 'the-snap' in 'the-' + f:
             return FlClsMp['snapshot.out'](file=datadir + '/' + f)
