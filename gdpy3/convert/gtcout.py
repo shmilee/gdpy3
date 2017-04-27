@@ -41,7 +41,9 @@ class GtcOutV110922(DataBlock):
             raise IOError("Can't find '%s' file: '%s'!" % (name, file))
         self.name = name
         self.datakeys = ('set by function convert',)
-        self.data = dict(description='gtc.out parameters')
+        self.data = dict(description="gtc.out parameters.\n"
+                         "Original can be get by\n"
+                         "`numpy.ndarray.tostring(self.data['backup-gtcout']).decode()`")
 
     def convert(self, additionalpats=[]):
         '''Read gtc.out parameters
@@ -118,5 +120,8 @@ class GtcOutV110922(DataBlock):
                     else:
                         val = float(val)
                     sd.update({key: val})
+
+        # backup gtc.out
+        sd.update({'backup-gtcout': numpy.fromfile(self.file)})
 
         self.datakeys = tuple(sd.keys())
