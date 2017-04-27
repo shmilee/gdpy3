@@ -107,14 +107,9 @@ def convert(datadir, savepath, **kwargs):
     # prepare savepath
     saveext = os.path.splitext(savepath)[1]
     # default filetype is '.npz'
-    if saveext not in ('.npz', '.hdf5', '.mat'):
-        log.warn("Filetype of savepath should be '.npz', '.hdf5' or '.mat'!")
+    if saveext not in ('.npz', '.hdf5'):
+        log.warn("Filetype of savepath should be '.npz' or '.hdf5'!")
         log.info("Use '.npz'.")
-        saveext = '.npz'
-        savepath = savepath + '.npz'
-    # TODO(nobody): delete this, when '.mat' is ready.
-    if saveext == '.mat':
-        log.warn("'.mat' is not ready. Use '.npz'.")
         saveext = '.npz'
         savepath = savepath + '.npz'
 
@@ -138,12 +133,6 @@ def convert(datadir, savepath, **kwargs):
             from . import wraphdf5 as wrapfile
         except ImportError:
             log.error("Failed to import 'wraphdf5'!")
-            raise
-    elif saveext == '.mat':
-        try:
-            from . import wrapmat as wrapfile
-        except ImportError:
-            log.error("Failed to import 'wrapmat'!")
             raise
 
     if os.path.isfile(savepath):

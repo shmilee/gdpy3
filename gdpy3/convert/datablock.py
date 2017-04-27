@@ -24,8 +24,7 @@ class DataBlock(object):
     '''Base DataBlock class of Data1d, GtcOut, History, Snapshot, etc.
 
     1) save DataBlock.data to a numpy compressed .npz file, or
-    2) save DataBlock.data to a matlab .mat file, or
-    3) save DataBlock.data to a h5py .hdf5 file
+    2) save DataBlock.data to a h5py .hdf5 file
 
     Attributes
     ----------
@@ -202,26 +201,6 @@ class DataBlock(object):
             raise
         finally:
             wrapfile.close(h5fid)
-
-    def save2mat(self, matfile, additional=[]):
-        '''save DataBlock.data to a matlab .mat file
-
-        Parameters
-        ----------
-        matfile: str
-            File name of ``.mat`` file which the data is saved.
-        additional: list
-            additional data in a list of (name, data) tuple.
-        '''
-
-        try:
-            from . import wrapmat as wrapfile
-        except ImportError:
-            log.error("Failed to import 'wrapmat'!")
-            raise
-
-        matfile = _setpathname(matfile, '.mat')
-        # TODO(nobody): scipy.io.savemat, share data with matlab
 
     savez = save2npz
     saveh5 = save2hdf5
