@@ -8,8 +8,10 @@ if __name__ == '__main__':
     gdc.convert(
         # datadir='/home/IFTS_shmilee/obo20170421-300600',
         # savepath='./largetest.hdf5',
-        datadir='/home/IFTS_shmilee/phiobo-4-test',
-        savepath='./test.npz',
+        #datadir='/home/IFTS_shmilee/phiobo-4-test',
+        #savepath='./test.npz',
+        datadir='/home/IFTS_shmilee/banana-test',
+        savepath='./orbittest.npz',
         # loglevel='error',
         # loglevel='debug'
     )

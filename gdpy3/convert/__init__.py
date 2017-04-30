@@ -13,7 +13,8 @@ import os
 import sys
 import time
 import logging
-from . import gtcout, data1d, equilibrium, history, meshgrid, snapshot
+from . import (gtcout, data1d, equilibrium, history,
+               meshgrid, snapshot, trackparticle)
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -33,6 +34,7 @@ __FileClassMapDict = {
         'history.out': history.HistoryBlockV110922,
         'meshgrid.out': meshgrid.MeshgridBlockV110922,
         'snapshot.out': snapshot.SnapshotBlockV110922,
+        'trackp_dir': trackparticle.TrackParticleBlockV110922,
     }
 }
 
@@ -118,10 +120,13 @@ def convert(datadir, savepath, **kwargs):
 
     # save all data
     def _get_fcls(f):
-        if f in ('data1d.out', 'equilibrium.out', 'history.out', 'meshgrid.out'):
+        if f in ('data1d.out', 'equilibrium.out',
+                 'history.out', 'meshgrid.out'):
             return FlClsMp[f](file=datadir + '/' + f)
         elif 'the-snap' in 'the-' + f:
             return FlClsMp['snapshot.out'](file=datadir + '/' + f)
+        elif f == 'trackp_dir':
+            return FlClsMp[f](path=datadir + '/' + f)
         else:
             return None
 
