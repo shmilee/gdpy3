@@ -6,8 +6,8 @@ r'''
     This is the subpackage ``convert`` of package gdpy3.
 '''
 
-__all__ = ['convert', 'gtcout', 'data1d',
-           'equilibrium', 'history', 'meshgrid', 'snapshot']
+__all__ = ['convert', 'gtcout', 'data1d', 'equilibrium', 'history',
+           'meshgrid', 'snapshot', 'trackparticle']
 
 import os
 import sys
