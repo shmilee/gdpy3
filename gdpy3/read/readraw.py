@@ -53,6 +53,7 @@ class ReadRaw(ReadNpz):
     >>> npzf.keys()
     >>> npzf['gtcout/b0']
     '''
+    __slots__ = ['datadir', 'file', 'datakeys', 'desc', 'description']
 
     def __init__(self, datadir, **kwargs):
         if not os.path.isdir(datadir):

@@ -36,6 +36,7 @@ class ReadNpz(object):
     >>> npzf.keys()
     >>> npzf['a']
     '''
+    __slots__ = ['file', 'datakeys', 'desc', 'description']
 
     def __init__(self, npzfile):
         if os.path.isfile(npzfile):

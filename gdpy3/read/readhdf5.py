@@ -38,6 +38,7 @@ class ReadHdf5(ReadNpz):
     >>> h5f.keys()
     >>> h5f['a']
     '''
+    __slots__ = ['file', 'datakeys', 'desc', 'description']
 
     def __init__(self, hdf5file):
         if os.path.isfile(hdf5file):
