@@ -3,9 +3,12 @@
 # Copyright (c) 2017 shmilee
 
 import os
+import logging
 import numpy
 
 __all__ = ['ReadNpz']
+
+log = logging.getLogger('gdr')
 
 
 class ReadNpz(object):
@@ -40,15 +43,18 @@ class ReadNpz(object):
         else:
             raise IOError("Failed to find file %s." % npzfile)
         try:
+            log.debug("Open file %s." % self.file)
             tempf = numpy.load(self.file)
+            log.debug("Getting keys from %s ..." % self.file)
             self.datakeys = tuple(tempf.files)
             self.desc = str(tempf['description'])
             self.description = self.desc
         except (IOError, ValueError):
-            print("Failed to read file %s." % self.file)
+            log.critical("Failed to read file %s." % self.file)
             raise
         finally:
             if 'tempf' in dir():
+                log.debug("Close file %s." % self.file)
                 tempf.close()
 
     def keys(self):
@@ -58,15 +64,17 @@ class ReadNpz(object):
         if key not in self.datakeys:
             raise KeyError("%s is not in '%s'" % (key, self.file))
         try:
+            log.debug("Open file %s." % self.file)
             tempf = numpy.load(self.file)
             value = tempf[key]
             if value.size == 1:
                 value = value.item()
         except (IOError, ValueError):
-            print("Failed to get '%s' from '%s'!" % (key, self.file))
+            log.critical("Failed to get '%s' from '%s'!" % (key, self.file))
             raise
         finally:
             if 'tempf' in dir():
+                log.debug("Close file %s." % self.file)
                 tempf.close()
         return value
 

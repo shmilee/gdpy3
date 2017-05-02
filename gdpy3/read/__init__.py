@@ -6,19 +6,31 @@ r'''
     This is the subpackage ``read`` of package gdpy3.
 '''
 
-__all__ = ['readhdf5', 'readmat', 'readnpz', 'readraw']
+__all__ = ['read', 'readnpz', 'readhdf5', 'readraw']
 
 import os
+import sys
+import logging
+
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.INFO,
+    # format='[%(asctime)s %(name)s] %(levelname)s - %(message)s',
+    # datefmt='%Y-%m-%d %H:%M:%S',
+    format='[%(name)s]%(levelname)s - %(message)s'
+)
+
+log = logging.getLogger('gdr')
 
 
 def read(path, **kwargs):
-    '''Read .npz, .hdf5 or .mat file
+    '''Read .npz, .hdf5 file or original data.
     Return a dictionary-like object.
 
     Parameters
     ----------
     path: str
-        path of the .npz, .hdf5, .mat file to open
+        path of the .npz, .hdf5 file to open
         or path of the directory of GTC .out files
     kwargs: other parameters for gdpy3.read.Readraw
         ``description``, ``version``, ``additionalpats``
@@ -36,9 +48,6 @@ def read(path, **kwargs):
         elif ext == '.hdf5':
             from . import readhdf5
             dictobj = readhdf5.ReadHdf5(path)
-        elif ext == '.mat':
-            from . import readmat
-            dictobj = readmat.ReadMat(path)
         else:
             raise ValueError("Unsupported file type: '%s'!" % path)
     else:

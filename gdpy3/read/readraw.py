@@ -3,6 +3,7 @@
 # Copyright (c) 2017 shmilee
 
 import os
+import logging
 import numpy
 from hashlib import sha1
 
@@ -10,6 +11,8 @@ import gdpy3.convert as gdc
 from .readnpz import ReadNpz
 
 __all__ = ['ReadRaw']
+
+log = logging.getLogger('gdr')
 
 
 class ReadRaw(ReadNpz):
@@ -79,7 +82,7 @@ class ReadRaw(ReadNpz):
             self.desc = str(tempf['description'])
             self.description = self.desc
         except (IOError, ValueError):
-            print("Failed to read file %s." % self.file)
+            log.error("Failed to read file %s." % self.file)
             raise
         finally:
             if 'tempf' in dir():

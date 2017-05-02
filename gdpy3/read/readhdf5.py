@@ -3,12 +3,17 @@
 # Copyright (c) 2017 shmilee
 
 import os
+import logging
 import h5py
+
+from .readnpz import ReadNpz
 
 __all__ = ['ReadHdf5']
 
+log = logging.getLogger('gdr')
 
-class ReadHdf5(object):
+
+class ReadHdf5(ReadNpz):
     '''Load datasets from .hdf5 file.
     Return a dictionary-like object Hdf5File.
 
@@ -40,7 +45,9 @@ class ReadHdf5(object):
         else:
             raise IOError("Failed to find file %s." % hdf5file)
         try:
+            log.debug("Open file %s." % self.file)
             tempf = h5py.File(self.file, 'r')
+            log.debug("Getting keys from %s ..." % self.file)
             mykeys = []
             tempf.visititems(
                 lambda name, obj: mykeys.append(name)
@@ -49,37 +56,25 @@ class ReadHdf5(object):
             self.desc = str(tempf['description'].value)
             self.description = self.desc
         except (IOError, ValueError):
-            print("Failed to read file %s." % self.file)
+            log.critical("Failed to read file %s." % self.file)
             raise
         finally:
             if 'tempf' in dir():
+                log.debug("Close file %s." % self.file)
                 tempf.close()
-
-    def keys(self):
-        return self.datakeys
 
     def __getitem__(self, key):
         if key not in self.datakeys:
             raise KeyError("%s is not in '%s'" % (key, self.file))
         try:
+            log.debug("Open file %s." % self.file)
             tempf = h5py.File(self.file, 'r')
             value = tempf[key].value
         except (IOError, ValueError):
-            print("Failed to get '%s' from '%s'!" % (key, self.file))
+            log.critical("Failed to get '%s' from '%s'!" % (key, self.file))
             raise
         finally:
             if 'tempf' in dir():
+                log.debug("Close file %s." % self.file)
                 tempf.close()
         return value
-
-    get = __getitem__
-
-    def find(self, *keys):
-        '''find the datakeys which contain *keys
-        '''
-        result = self.datakeys
-        for key in keys:
-            key = str(key)
-            result = tuple(
-                filter(lambda k: True if key in k else False, result))
-        return tuple(result)
