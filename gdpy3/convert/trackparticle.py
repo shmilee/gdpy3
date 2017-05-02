@@ -76,7 +76,7 @@ class TrackParticleBlockV110922(DataBlock):
         Particles = [ion, electron, fastion]
         keyprefix = ['ion', 'electron', 'fastion']
         for f in sorted(os.listdir(self.path)):
-            with open(self.path + '/' + f, 'r') as fid:
+            with open(os.path.join(self.path, f), 'r') as fid:
                 istep = fid.readline()
                 while istep:
                     nums = [int(n) for n in fid.readline().split()]

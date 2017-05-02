@@ -78,7 +78,7 @@ def convert(datadir, savepath, **kwargs):
     if not os.access(os.path.dirname(savepath), os.W_OK):
         raise IOError("Can't access directory '%s'!" %
                       os.path.dirname(savepath))
-    if not os.path.isfile(datadir + '/gtc.out'):
+    if not os.path.isfile(os.path.join(datadir, 'gtc.out')):
         raise IOError("Can't find 'gtc.out' in '%s'!" % datadir)
 
     if 'loglevel' in kwargs:
@@ -94,7 +94,7 @@ def convert(datadir, savepath, **kwargs):
     FlClsMp = __FileClassMapDict[__version]
 
     # get gtc.out parameters
-    paras = FlClsMp['gtc.out'](file=datadir + '/gtc.out')
+    paras = FlClsMp['gtc.out'](file=os.path.join(datadir, 'gtc.out'))
     if 'additionalpats' in kwargs and type(kwargs['additionalpats']) is list:
         paras.convert(additionalpats=kwargs['additionalpats'])
     else:
@@ -122,11 +122,11 @@ def convert(datadir, savepath, **kwargs):
     def _get_fcls(f):
         if f in ('data1d.out', 'equilibrium.out',
                  'history.out', 'meshgrid.out'):
-            return FlClsMp[f](file=datadir + '/' + f)
+            return FlClsMp[f](file=os.path.join(datadir, f))
         elif 'the-snap' in 'the-' + f:
-            return FlClsMp['snapshot.out'](file=datadir + '/' + f)
+            return FlClsMp['snapshot.out'](file=os.path.join(datadir, f))
         elif f == 'trackp_dir':
-            return FlClsMp[f](path=datadir + '/' + f)
+            return FlClsMp[f](path=os.path.join(datadir, f))
         else:
             return None
 
