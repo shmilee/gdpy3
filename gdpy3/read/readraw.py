@@ -44,6 +44,7 @@ class ReadRaw(ReadNpz):
         ``version``, ``additionalpats`` for gdc.convert
         ``salt`` for name of saved file, default 'gtc.out'
         ``extension`` for extension of saved file, default 'npz'
+        ``overwrite`` for overwritting existing saved file or not
 
     Examples
     --------
@@ -91,7 +92,12 @@ class ReadRaw(ReadNpz):
         savefile = 'gdpy3-pickled-data-%s.%s' % (salt[:10], ext)
         savefile = os.path.join(datadir, savefile)
         log.info("Pickled data file is %s." % savefile)
-        if not os.path.isfile(savefile):
+        if 'overwrite' in kwargs:
+            overwrite = kwargs['overwrite']
+            overwrite = True if overwrite is not False else False
+        else:
+            overwrite = False
+        if not (overwrite is False and os.path.isfile(savefile)):
             try:
                 gdc.convert(datadir, savefile, **kwargs)
             except:
