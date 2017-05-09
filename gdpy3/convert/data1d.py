@@ -155,7 +155,8 @@ class Data1dBlockV110922(DataBlock):
                        'e-energy-flux': [], 'e-momentum-flux': []})
 
         # 5. data1df(0:mpsi,mpdata1d)
-        if sd['nspecies'] > 1 and sd['fload'] > 0:
+        if ((sd['nspecies'] == 2 and sd['nhybrid'] == 0) or
+                (sd['nspecies'] == 3 and sd['nhybrid'] > 0)):
             index0, index1 = index1, index1 + sd['mpsi+1']
             sd.update({'f-particle-flux': outdata[index0:index1, :]})
             index0, index1 = index1, index1 + sd['mpsi+1']
