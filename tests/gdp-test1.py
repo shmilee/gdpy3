@@ -63,6 +63,7 @@ if __name__ == '__main__':
     x = np.linspace(0, x - 1, x)
     y = np.linspace(1, y, y)
     x, y = np.meshgrid(x, y)
+
     def revise_surface(fig, ax):
         surf = None
         for child in ax.get_children():
@@ -81,11 +82,11 @@ if __name__ == '__main__':
         'data': [
             [1, 'plot_surface', (x, y, field),
                 dict(cmap=cm.jet,
-                    rstride=1, cstride=1, linewidth=1,
-                    antialiased=True,
-                    label='phi00'
-                    )
-            ],
+                     rstride=1, cstride=1, linewidth=1,
+                     antialiased=True,
+                     label='phi00'
+                     )
+             ],
         ],
         'revise': revise_surface,
     }
@@ -142,7 +143,14 @@ if __name__ == '__main__':
         ],
         'AxesStructures': [
             testax1, testax2, testax3, testax4, testax5,
-        ]
+            {
+                'layout': [336, dict()],
+                'data':[
+                    [1, 'plot', (range(20),), dict(label='line')],
+                    [2, 'axvspan', (8, 14), dict(alpha=0.5, color='red')],
+                ],
+            }
+        ],
     }
     fig = mplwrapper.mplfigure_factory(testfigstruct)
     print(fig)
