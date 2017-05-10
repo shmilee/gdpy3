@@ -36,6 +36,7 @@ if __name__ == '__main__':
              dict(label='time=301$\Delta t$', linewidth=1)],
             [2, 'plot', (case['data1d/field00-phi'][:, 599], 'go-'),
              dict(label='time=600$\Delta t$')],
+            [3, 'legend', (), dict()],
         ],
         'style': ['ggplot', 'errortest', {'axes.grid': False}],
     }
@@ -54,6 +55,7 @@ if __name__ == '__main__':
              dict(label='r=100', linewidth=1)],
             [2, 'plot', (case['data1d/field00-phi'][125, :], '-'),
              dict(label='r=126')],
+            [3, 'legend', (), dict(loc='upper left')],
         ],
     }
 
@@ -126,6 +128,7 @@ if __name__ == '__main__':
         ],
         'data': [
             [1, 'hist', (x, 50), dict(normed=1, label='H')],
+            [2, 'legend', (), dict()],
         ],
         'Style': ['default'],
     }
@@ -148,6 +151,7 @@ if __name__ == '__main__':
                 'data':[
                     [1, 'plot', (range(20),), dict(label='line')],
                     [2, 'axvspan', (8, 14), dict(alpha=0.5, color='red')],
+                    [3, 'legend', (), dict(loc='best')],
                 ],
             }
         ],

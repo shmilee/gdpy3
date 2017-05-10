@@ -54,7 +54,7 @@ def mplfigure_factory(figurestructure, num=None):
        value pairs for `matplotlib.rcParams`, or a path to a style file.
        Default: [{'figure.figsize': (8, 6), 'figure.dpi': 100}]
     3. Value of 'AxesStructures' is a list of `AxesStructure`. Each
-       `AxesStructure` is a dict has 3 keys: 'data', 'layout', 'style'
+       `AxesStructure` is a dict has 4 keys: 'data', 'layout', 'style'
        and 'revise'. 'style' and 'revise' are optional.
     3.1. Value of 'data' is a list of line_list. line_list[0] is an order
          number. line_list[1] is the name of a function attribute of
@@ -157,15 +157,11 @@ def _mplaxes_factory(fig, axstructure):
         # use data
         for index, plotfunc, dataargs, datakwargs in axstructure['data']:
             try:
-                log.debug("Adding data %s ..." % index)
+                log.debug("Adding artist %s ..." % index)
                 plotfunc = getattr(ax, plotfunc)
                 plotfunc(*dataargs, **datakwargs)
             except Exception as exc:
-                log.error("Failed to add data %s: %s" % (index, exc))
-        try:
-            ax.legend()
-        except Exception as exc:
-            log.error("Failed to add legend: %s" % exc)
+                log.error("Failed to add artist %s: %s" % (index, exc))
         # optional revise function
         if 'revise' in axstructure:
             try:
