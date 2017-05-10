@@ -54,34 +54,34 @@ def iopen(hdf5file):
     return h5f
 
 
-def write(h5pyfile, name, data):
-    '''Write dict ``data`` in group ``name`` to h5pyfile.
+def write(h5pyfile, group, data):
+    '''Write dict ``data`` in group ``group`` to h5pyfile.
 
     Parameters
     ----------
     h5pyfile: HDF5 file object
-    name: str, group name
+    group: str, group name
     data: dict in this group
 
     Raises
     ------
     ValueError
-        ``name`` is not str, or ``data`` is not a dict
+        ``group`` is not str, or ``data`` is not a dict
     '''
 
     try:
-        if name in ('/', ''):
+        if group in ('/', ''):
             fgrp = h5pyfile
             for key in data.keys():
                 if key in h5pyfile:
                     log.debug("Delete dataset '/%s'." % key)
                     h5pyfile.__delitem__(key)
         else:
-            if name in h5pyfile:
-                log.debug("Delete group '/%s'." % name)
-                h5pyfile.__delitem__(name)
-            log.debug("Create group '/%s'." % name)
-            fgrp = h5pyfile.create_group(name)
+            if group in h5pyfile:
+                log.debug("Delete group '/%s'." % group)
+                h5pyfile.__delitem__(group)
+            log.debug("Create group '/%s'." % group)
+            fgrp = h5pyfile.create_group(group)
         for key, val in data.items():
             log.debug("Create dataset '%s/%s'." % (fgrp.name, key))
             if isinstance(val, (list, numpy.ndarray)):
@@ -92,9 +92,9 @@ def write(h5pyfile, name, data):
                 fgrp.create_dataset(key, data=val)
         h5pyfile.flush()
     except ValueError as exc:
-        log.error("``name`` must be a str. ``data`` must be a dict: %s" % exc)
+        log.error("``group`` must be a str. ``data`` must be a dict: %s" % exc)
     except Exception as exc:
-        log.error("Failed to save data of '%s': %s!" % (name, exc))
+        log.error("Failed to save data of '%s': %s!" % (group, exc))
 
 
 def close(h5pyfile):

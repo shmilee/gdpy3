@@ -30,16 +30,16 @@ class DataBlock(object):
     ----------
         file: str of
             File name of GTC .out to convert
-        name: str of data name
+        group: str of data group
         datakeys: tuple
             data keys of physical quantities in the .out file
         data: dict of converted data
     '''
-    __slots__ = ['file', 'name', 'datakeys', 'data']
+    __slots__ = ['file', 'group', 'datakeys', 'data']
 
-    def __init__(self, file=None, name='exampledata'):
+    def __init__(self, file=None, group='exampledata'):
         self.file = file
-        self.name = name
+        self.group = group
         self.datakeys = ('example_int', 'example_pi', 'example_array')
         self.data = dict(description='example data dict',
                          example_int=666,
@@ -61,8 +61,8 @@ class DataBlock(object):
         npzfile: str
             File name of ``.npz`` file which the data is saved.
         additional: list
-            additional data in a list of (name, data) tuple.
-            example: [(name1, data1), (name2, data2)]
+            additional data in a list of (group, data) tuple.
+            example: [(group1, data1), (group2, data2)]
 
         Returns
         -------
@@ -73,27 +73,27 @@ class DataBlock(object):
         IOError
             If the .npz file does exist, but cannot be load.
         ValueError
-            additional list isn't a list of (name, data) tuple
+            additional list isn't a list of (group, data) tuple
 
         Examples
         --------
         >>> import datablock
         >>> db = datablock.DataBlock()
         >>> db.save2npz('/tmp/test.npz')
-        >>> name1 = 'name1'
+        >>> group1 = 'group1'
         >>> data1 = {'a': 1, 'b': 2}
-        >>> name2 = 'name2'
+        >>> group2 = 'group2'
         >>> data2 = {'a': 4, 'b': 6}
         >>> db.save2npz('/tmp/test123.npz', additional=[
-        ...             (name1, data1), (name2, data2)])
+        ...             (group1, data1), (group2, data2)])
 
         Notes
         -----
         Q: How to read data from npz?
-        A: npzf['name/datakey']
+        A: npzf['group/datakey']
         >>> npzf = numpy.load('/tmp/test.npz')
-        >>> name = 'name1/'
-        >>> npzf[name + 'a']
+        >>> group = 'group1/'
+        >>> npzf[group + 'a']
         '''
 
         try:
@@ -114,10 +114,10 @@ class DataBlock(object):
 
         # write data
         try:
-            for name, data in [(self.name, self.data)] + additional:
-                wrapfile.write(npzfid, name, data)
+            for group, data in [(self.group, self.data)] + additional:
+                wrapfile.write(npzfid, group, data)
         except ValueError:
-            log.error("``additional`` must be a list of (name, data) tuple. "
+            log.error("``additional`` must be a list of (group, data) tuple. "
                       "``data`` must be a dict.")
             raise
         finally:
@@ -125,7 +125,7 @@ class DataBlock(object):
         # close file
 
         # append original data
-        # tempdict -> {name1:data1,name2,data2}
+        # tempdict -> {group1:data1,group2,data2}
         if backnpz:
             npzfid = wrapfile.iopen(npzfile)
             npzfnset = set(os.path.splitext(n)[0] for n in npzfid.namelist())
@@ -147,8 +147,8 @@ class DataBlock(object):
                 if 'backfid' in dir():
                     backfid.close()
                 if 'tempdict' in dir():
-                    for name, data in tempdict.items():
-                        wrapfile.write(npzfid, name, data)
+                    for group, data in tempdict.items():
+                        wrapfile.write(npzfid, group, data)
                 wrapfile.close(npzfid)
                 log.debug("Remove original file '%s'!" % backnpz)
                 os.remove(backnpz)
@@ -161,7 +161,7 @@ class DataBlock(object):
         hdf5file: str
             File name of ``.hdf5`` file which the data is saved.
         additional: list
-            additional data in a list of (name, data) tuple.
+            additional data in a list of (group, data) tuple.
 
         Raises
         ------
@@ -170,17 +170,17 @@ class DataBlock(object):
         IOError
             Cannot read or create the .hdf5 file.
         ValueError
-            additional list isn't a list of (name, datadict) tuple
+            additional list isn't a list of (group, datadict) tuple
 
         Notes
         -----
         Q: How to read data from hdf5?
-        A: h5fid['name/datakey'].value
+        A: h5fid['group/datakey'].value
         >>> h5fid = h5py.File('/tmp/data1d.hdf5', 'r')
-        >>> name = 'data1d/'
-        >>> print(h5fid[name + 'description'][()])
-        >>> h5fid[name + 'mpsi+1'].value
-        >>> h5fid[name + 'field00-phi'][...]
+        >>> group = 'data1d/'
+        >>> print(h5fid[group + 'description'][()])
+        >>> h5fid[group + 'mpsi+1'].value
+        >>> h5fid[group + 'field00-phi'][...]
         '''
 
         try:
@@ -193,10 +193,10 @@ class DataBlock(object):
         h5fid = wrapfile.iopen(hdf5file)
 
         try:
-            for name, data in [(self.name, self.data)] + additional:
-                wrapfile.write(h5fid, name, data)
+            for group, data in [(self.group, self.data)] + additional:
+                wrapfile.write(h5fid, group, data)
         except ValueError:
-            log.error("``additional`` must be a list of (name, data) tuple. "
+            log.error("``additional`` must be a list of (group, data) tuple. "
                       "``data`` must be a dict.")
             raise
         finally:

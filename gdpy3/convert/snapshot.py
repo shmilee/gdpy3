@@ -55,22 +55,22 @@ class SnapshotBlockV110922(DataBlock):
     ----------
         file: str
             File path of GTC ``snap("%05d" % istep).out`` to convert
-        name: str of data name
+        group: str of data group
         datakeys: tuple
             data keys of physical quantities in ``snap("%05d" % istep).out``
         data: dict of converted data
     '''
-    __slots__ = ['file', 'name', 'datakeys', 'data']
+    __slots__ = ['file', 'group', 'datakeys', 'data']
 
-    def __init__(self, file=None, name=None):
+    def __init__(self, file=None, group=None):
         if os.path.isfile(file):
             self.file = file
         else:
-            raise IOError("Can't find '%s' file: '%s'!" % (name, file))
-        if name:
-            self.name = name
+            raise IOError("Can't find '%s' file: '%s'!" % (group, file))
+        if group:
+            self.group = group
         else:
-            self.name = os.path.basename(os.path.splitext(file)[0])
+            self.group = os.path.basename(os.path.splitext(file)[0])
         self.datakeys = (
             # 1. parameters
             'nspecies', 'nfield', 'nvgrid', 'mpsi+1',

@@ -93,14 +93,6 @@ def convert(datadir, savepath, **kwargs):
     log.info("Set the GTC data version: '%s'." % __version)
     FlClsMp = __FileClassMapDict[__version]
 
-    # get gtc.out parameters
-    paras = FlClsMp['gtc.out'](file=os.path.join(datadir, 'gtc.out'))
-    if 'additionalpats' in kwargs and type(kwargs['additionalpats']) is list:
-        paras.convert(additionalpats=kwargs['additionalpats'])
-    else:
-        log.info('getting data from %s ...' % paras.file)
-        paras.convert()
-
     # description for this case
     desc = ("GTC .out data from directory '%s'.\n"
             "Created by gdpy3.convert: '%s'.\n"
@@ -149,7 +141,19 @@ def convert(datadir, savepath, **kwargs):
 
     savefid = wrapfile.iopen(savepath)
     wrapfile.write(savefid, '/', {'description': desc})
-    wrapfile.write(savefid, paras.name, paras.data)
+    # get gtc.out parameters
+    try:
+        paras = FlClsMp['gtc.out'](file=os.path.join(datadir, 'gtc.out'))
+        log.info('getting data from %s ...' % paras.file)
+        if ('additionalpats' in kwargs
+                and type(kwargs['additionalpats']) is list):
+            paras.convert(additionalpats=kwargs['additionalpats'])
+        else:
+            paras.convert()
+        wrapfile.write(savefid, paras.group, paras.data)
+    except Exception as exc:
+        log.error('Failed to get data from %s. %s' % (paras.file, exc))
+    # get other data
     for f in sorted(os.listdir(datadir)):
         fcls = _get_fcls(f)
         if not fcls:
@@ -157,9 +161,9 @@ def convert(datadir, savepath, **kwargs):
         try:
             log.info('getting data from %s ...' % fcls.file)
             fcls.convert()
-            wrapfile.write(savefid, fcls.name, fcls.data)
-        except:
-            log.error('Failed to get data from %s.' % fcls.file)
+            wrapfile.write(savefid, fcls.group, fcls.data)
+        except Exception as exc:
+            log.error('Failed to get data from %s. %s' % (fcls.file, exc))
     wrapfile.close(savefid)
 
     log.info("GTC '.out' files in %s are converted to %s!" %

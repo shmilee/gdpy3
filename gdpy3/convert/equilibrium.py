@@ -67,19 +67,19 @@ class EquilibriumBlockV110922(DataBlock):
     ----------
         file: str
             File path of GTC ``equilibrium.out`` to convert
-        name: str of data name
+        group: str of data group
         datakeys: tuple
             data keys of physical quantities in ``equilibrium.out``
         data: dict of converted data
     '''
-    __slots__ = ['file', 'name', 'datakeys', 'data']
+    __slots__ = ['file', 'group', 'datakeys', 'data']
 
-    def __init__(self, file=None, name='equilibrium'):
+    def __init__(self, file=None, group='equilibrium'):
         if os.path.isfile(file):
             self.file = file
         else:
-            raise IOError("Can't find '%s' file: '%s'!" % (name, file))
-        self.name = name
+            raise IOError("Can't find '%s' file: '%s'!" % (group, file))
+        self.group = group
         self.datakeys = (
             # 1. first part, 1D
             'nplot-1d', 'nrad',

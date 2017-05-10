@@ -27,19 +27,19 @@ class GtcOutV110922(DataBlock):
     ----------
         file: str
             File path of GTC ``gtc.out`` to convert
-        name: str of data name
+        group: str of data group
         datakeys: tuple
             data keys of physical quantities in ``gtc.out``
         data: dict of converted data
     '''
-    __slots__ = ['file', 'name', 'datakeys', 'data']
+    __slots__ = ['file', 'group', 'datakeys', 'data']
 
-    def __init__(self, file=None, name='gtcout'):
+    def __init__(self, file=None, group='gtcout'):
         if os.path.isfile(file):
             self.file = file
         else:
-            raise IOError("Can't find '%s' file: '%s'!" % (name, file))
-        self.name = name
+            raise IOError("Can't find '%s' file: '%s'!" % (group, file))
+        self.group = group
         self.datakeys = ('set by function convert',)
         self.data = dict(description="gtc.out parameters.\n"
                          "Original can be get by\n"

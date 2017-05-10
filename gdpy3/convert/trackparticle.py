@@ -42,20 +42,20 @@ class TrackParticleBlockV110922(DataBlock):
         path: str
             Path of GTC ``trackp_dir/`` to convert
         file: alias path
-        name: str of data name
+        group: str of data group
         datakeys: tuple
             tags of tracked particles
         data: dict of converted data
     '''
-    __slots__ = ['path', 'file', 'name', 'datakeys', 'data']
+    __slots__ = ['path', 'file', 'group', 'datakeys', 'data']
 
-    def __init__(self, path=None, name='trackp'):
+    def __init__(self, path=None, group='trackp'):
         if os.path.isdir(path):
             self.path = path
         else:
-            raise IOError("Can't find '%s' dir: '%s'!" % (name, path))
+            raise IOError("Can't find '%s' dir: '%s'!" % (group, path))
         self.file = path
-        self.name = name
+        self.group = group
         self.datakeys = ('set by function convert',)
         self.data = dict(description='Tracking Particle data'
                          '\nShape of the array data is (mstep/ndiag,7).'

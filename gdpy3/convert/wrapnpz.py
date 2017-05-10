@@ -52,19 +52,19 @@ def iopen(npzfile):
     return zipf
 
 
-def write(zipf, name, data):
-    '''Write dict ``data`` in group ``name`` to zipfile.
+def write(zipf, group, data):
+    '''Write dict ``data`` in group ``group`` to zipfile.
 
     Parameters
     ----------
     zipf: zip file object, ``.npz`` format
-    name: str, group name
+    group: str, group name
     data: dict in this group
 
     Raises
     ------
     ValueError
-        ``name`` is not str, or ``data`` is not a dict
+        ``group`` is not str, or ``data`` is not a dict
     '''
     file_dir, file_prefix = os.path.split(zipf.filename)
     fd, tmpfile = tempfile.mkstemp(
@@ -74,10 +74,10 @@ def write(zipf, name, data):
 
     try:
         for key, val in data.items():
-            if name in ('/', ''):
+            if group in ('/', ''):
                 fname = key + '.npy'
             else:
-                fname = name + '/' + key + '.npy'
+                fname = group + '/' + key + '.npy'
             fid = open(tmpfile, mode='wb')
             try:
                 numpy.lib.format.write_array(fid, numpy.asanyarray(val),
@@ -93,7 +93,7 @@ def write(zipf, name, data):
                 if fid:
                     fid.close()
     except Exception as exc:
-        log.error("Failed to save data of '%s': %s!" % (name, exc))
+        log.error("Failed to save data of '%s': %s!" % (group, exc))
     finally:
         os.remove(tmpfile)
 
