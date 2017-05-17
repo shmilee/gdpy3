@@ -1,0 +1,37 @@
+# gdpy3 notebook context
+figure.figsize: 10.0, 8.0
+figure.dpi: 100
+
+figure.subplot.left: 0.1
+figure.subplot.right: 0.9
+figure.subplot.bottom: 0.1
+figure.subplot.top: 0.9
+figure.subplot.wspace: 0.2
+figure.subplot.hspace: 0.2
+
+axes.labelsize: 11
+axes.titlesize: 12
+axes.grid: True
+axes.formatter.limits: -4, 4
+axes.formatter.use_mathtext: True
+
+legend.fancybox: True
+legend.fontsize: 10
+
+grid.linestyle: : # dotted
+grid.linewidth: 0.5
+grid.alpha: 0.5
+
+lines.linewidth: 1.75
+patch.linewidth: .3
+lines.markersize: 7
+lines.markeredgewidth: 0
+
+xtick.labelsize: 10
+ytick.labelsize: 10
+xtick.major.width: 1
+ytick.major.width: 1
+xtick.minor.width: 0.5
+ytick.minor.width: 0.5
+xtick.major.pad: 7
+ytick.major.pad: 7
