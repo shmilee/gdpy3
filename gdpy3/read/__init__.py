@@ -11,6 +11,7 @@ __all__ = ['read', 'readnpz', 'readhdf5', 'readraw']
 import os
 import sys
 import logging
+from .readnpz import ReadNpz
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -38,16 +39,15 @@ def read(path, **kwargs):
     '''
 
     if os.path.isdir(path):
-        from . import readraw
-        dictobj = readraw.ReadRaw(path, **kwargs)
+        from .readraw import ReadRaw
+        dictobj = ReadRaw(path, **kwargs)
     elif os.path.isfile(path):
         ext = os.path.splitext(path)[1]
         if ext == '.npz':
-            from . import readnpz
-            dictobj = readnpz.ReadNpz(path)
+            dictobj = ReadNpz(path)
         elif ext == '.hdf5':
-            from . import readhdf5
-            dictobj = readhdf5.ReadHdf5(path)
+            from .readhdf5 import ReadHdf5
+            dictobj = ReadHdf5(path)
         else:
             raise ValueError("Unsupported file type: '%s'!" % path)
     else:
