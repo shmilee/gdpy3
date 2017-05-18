@@ -15,6 +15,7 @@ import time
 import logging
 from . import (gtcout, data1d, equilibrium, history,
                meshgrid, snapshot, trackparticle)
+from gdpy3 import __version__ as gdpy3_version
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -95,9 +96,9 @@ def convert(datadir, savepath, **kwargs):
 
     # description for this case
     desc = ("GTC .out data from directory '%s'.\n"
-            "Created by gdpy3.convert: '%s'.\n"
-            "Created on: %s." %
-            (datadir, __version, time.asctime()))
+            "Created by gdpy3 v%s.\n"
+            "Created on %s." %
+            (datadir, gdpy3_version, time.asctime()))
     if 'description' in kwargs:
         desc = desc + '\n' + str(kwargs['description'])
 
@@ -140,7 +141,7 @@ def convert(datadir, savepath, **kwargs):
         os.remove(savepath)
 
     savefid = wrapfile.iopen(savepath)
-    wrapfile.write(savefid, '/', {'description': desc})
+    wrapfile.write(savefid, '/', {'description': desc, 'version': __version})
     # get gtc.out parameters
     try:
         paras = FlClsMp['gtc.out'](file=os.path.join(datadir, 'gtc.out'))
