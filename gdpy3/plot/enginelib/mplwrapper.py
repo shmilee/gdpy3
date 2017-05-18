@@ -93,6 +93,7 @@ def mplfigure_factory(figurestructure, num=None):
     if not isinstance(figurestructure['AxesStructures'], list):
         raise ValueError("FigureStructure['AxesStructures'] must be a list. "
                          "Not %s." % type(figurestructure['AxesStructures']))
+    log.debug("Figure Style: %s" % str(figstyle))
     with style.context((figstyle)):
         fig = figure(num=num)
         for i, axstructure in enumerate(figurestructure['AxesStructures'], 1):
@@ -143,6 +144,7 @@ def _mplaxes_factory(fig, axstructure):
                       "Not %s. " % type(axstructure['style']) +
                       "Ignore 'style' setting!")
     # begin with style
+    log.debug("Axes Style: %s" % str(axstyle))
     with style.context(axstyle):
         # use layout
         try:
