@@ -18,9 +18,9 @@ axes.formatter.use_mathtext: True
 legend.fancybox: True
 legend.fontsize: 10
 
-grid.linestyle: : # dotted
+grid.linestyle: --
 grid.linewidth: 0.5
-grid.alpha: 0.5
+grid.alpha: 0.9
 
 lines.linewidth: 1.75
 patch.linewidth: .3
