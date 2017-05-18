@@ -6,11 +6,13 @@ r'''
     This is the subpackage ``plot`` of package gdpy3.
 '''
 
-__all__ = []
+__all__ = ['tools', 'gtcfigures']
 
 import os
 import sys
 import logging
+from . import tools
+from . import gtcfigures
 
 logging.basicConfig(
     stream=sys.stdout,
