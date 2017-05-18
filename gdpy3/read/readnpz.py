@@ -90,3 +90,29 @@ class ReadNpz(object):
             result = tuple(
                 filter(lambda k: True if key in k else False, result))
         return tuple(result)
+
+    def get_many(self, *keys):
+        '''
+        Get values by keys. Return a tuple of values.
+        '''
+        result = []
+        try:
+            log.debug("Open file %s." % self.file)
+            tempf = numpy.load(self.file)
+            for key in keys:
+                value = tempf[key]
+                if value.size == 1:
+                    value = value.item()
+                result.append(value)
+        except (IOError, ValueError):
+            if 'key' in dir():
+                log.critical("Failed to get '%s' from '%s'!"
+                             % (key, self.file))
+            else:
+                log.critical("Failed to open '%s'!" % self.file)
+            raise
+        finally:
+            if 'tempf' in dir():
+                log.debug("Close file %s." % self.file)
+                tempf.close()
+        return tuple(result)

@@ -121,3 +121,14 @@ class ReadRaw(ReadNpz):
             return ReadHdf5.__getitem__(self, key)
         else:
             log.error('Unknown extension.')
+            return None
+
+    def get_many(self, *keys):
+        if os.path.splitext(self.file)[1] == '.npz':
+            return ReadNpz.get_many(self, *keys)
+        elif os.path.splitext(self.file)[1] == '.hdf5':
+            from .readhdf5 import ReadHdf5
+            return ReadHdf5.get_many(self, *keys)
+        else:
+            log.error('Unknown extension.')
+            return None
