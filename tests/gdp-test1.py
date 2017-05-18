@@ -9,7 +9,7 @@ import numpy as np
 from matplotlib.gridspec import GridSpec
 from matplotlib import cm
 import gdpy3.read as gdr
-from gdpy3.plot.engine import mplwrapper
+import gdpy3.plot.enginelib as elib
 
 log0 = logging.getLogger('test')
 log1 = logging.getLogger('gdr')
@@ -130,7 +130,7 @@ if __name__ == '__main__':
             [1, 'hist', (x, 50), dict(normed=1, label='H')],
             [2, 'legend', (), dict()],
         ],
-        'Style': ['default'],
+        'style': ['default'],
     }
 
     # together
@@ -156,7 +156,7 @@ if __name__ == '__main__':
             }
         ],
     }
-    fig = mplwrapper.mplfigure_factory(testfigstruct)
+    fig = elib.get_figure_factory('mpl')(testfigstruct)
     print(fig)
     fig.show()
     input()
