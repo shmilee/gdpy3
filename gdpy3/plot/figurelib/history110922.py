@@ -113,7 +113,7 @@ def __getax_fieldmode(dictobj, name):
         ],
         'layout': [
             222,
-            dict(title=r'log(smooth(amplitude)), $k_{\theta}\rho_i$=%.6f'
+            dict(title=r'smooth(log(amplitude)), $k_{\theta}\rho_i$=%.6f'
                  % kthetarhoi,
                  xlabel=r'time($R_0/c_s$)',
                  xlim=[0, np.max(time)])
