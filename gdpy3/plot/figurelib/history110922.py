@@ -19,13 +19,179 @@ __all__ = ['Group' 'Figures' 'get_figurestructure']
 log = logging.getLogger('gdp')
 
 
-__FigInfo = {
+__ver = '110922'
+__FigInfo = dict()
+# field modes: phi, apara, fluidne. 1-8
+__ModeFigInfo = {
+    'fieldmode%s_%s' % (i, f):
+    dict(index=i - 1, field=f,
+         real='fieldmode-%s-real' % f, imag='fieldmode-%s-imag' % f)
+    for i in range(1, 9) for f in ['phi', 'apara', 'fluidne']
 }
+__FigInfo.update(__ModeFigInfo)
+
 __keysgrp = 'history/'
 __paragrp = 'gtcout/'
 
 Group = 'history'
 Figures = tuple(__FigInfo.keys())
+
+
+# field modes: phi, apara, fluidne. 1-8
+def __getax_fieldmode(dictobj, name):
+    '''
+    Return field modes axesstructures, calculation
+    '''
+
+    # check key, get data
+    index = __ModeFigInfo[name]['index']
+    field = __ModeFigInfo[name]['field']
+    real = __keysgrp + __ModeFigInfo[name]['real']
+    imag = __keysgrp + __ModeFigInfo[name]['imag']
+    tstep, ndiag, nmodes, mmodes, qiflux, rgiflux, rho0 = (
+        __paragrp + key for key in
+        ('tstep', 'ndiag', 'nmodes', 'mmodes', 'qiflux', 'rgiflux', 'rho0'))
+    ndstep = __keysgrp + 'ndstep'
+    try:
+        yreal = dictobj[real][index]
+        yimag = dictobj[imag][index]
+        (tstep, ndiag, nmodes, mmodes, qiflux, rgiflux, rho0, ndstep) = \
+            dictobj.get_many(tstep, ndiag, nmodes, mmodes,
+                             qiflux, rgiflux, rho0, ndstep)
+        time = np.arange(1, ndstep + 1) * tstep * ndiag
+        n = nmodes[index]
+        m = mmodes[index]
+        kthetarhoi = n * qiflux / rgiflux * rho0
+    except Exception as exc:
+        log.error("Failed to get data '%s' from %s! %s" %
+                  (name, dictobj.file, exc))
+        return None, None
+
+    # 1 original
+    axes1 = {
+        'data': [
+                [1, 'plot', (time, yreal), dict(label='real component')],
+                [2, 'plot', (time, yimag), dict(label='imag component')],
+                [3, 'legend', (), dict(loc='upper left')],
+        ],
+        'layout': [
+            221,
+            dict(title='n=%d, m=%d' % (n, m),
+                 xlabel=r'time($R_0/c_s$)',
+                 xlim=[0, np.max(time)])
+        ],
+    }
+
+    # 2 log(amplitude), growth rate
+    ya = np.sqrt(yreal**2 + yimag**2)
+    logya = np.log(ya)
+    # find growth region
+    tmpga = [1 if g > 0 else -ndstep for g in np.gradient(logya)]
+    region_len = tools.max_subarray(tmpga)
+    for region_start in range(ndstep):
+        if sum(tmpga[region_start:region_start + region_len]) == region_len:
+            break
+    reg1, reg2 = region_start, region_start + region_len
+    log.debug("Find growth region: [%s,%s]." % (time[reg1], time[reg2 - 1]))
+    # polyfit [0,1] or [0.5,0.9]*growth_region
+    result, line1 = tools.fitline(time[reg1:reg2], logya[reg1:reg2], 1,
+                                  info='[0,1] growth region')
+    growth1 = result[0][0]
+    reg3 = int(reg1 + 0.5 * region_len)
+    reg4 = int(reg1 + 0.9 * region_len)
+    result, line2 = tools.fitline(time[reg3:reg4], logya[reg3:reg4], 1,
+                                  info='[0.5,0.9] growth region')
+    growth2 = result[0][0]
+    axes2 = {
+        'data': [
+                [1, 'plot', (time, logya), dict(label='log(amplitude)')],
+                [2, 'plot', (time[reg1:reg2], line1),
+                    dict(label=r'Fitting, $\gamma=%.6f$' % growth1)],
+                [3, 'plot', (time[reg3:reg4], line2),
+                    dict(label=r'Fitting, $\gamma=%.6f$' % growth2)],
+                [4, 'legend', (), dict(loc='lower right')],
+        ],
+        'layout': [
+            222,
+            dict(title=r'$k_{\theta}\rho_i$=%.6f' % kthetarhoi,
+                 xlabel=r'time($R_0/c_s$)',
+                 xlim=[0, np.max(time)])
+        ],
+    }
+
+    # 3 amplitude normalized by growth rate, real frequency
+    normreal = np.divide(yreal, np.exp(growth2 * time))
+    normimag = np.divide(yimag, np.exp(growth2 * time))
+    index = [i for i in tools.argrelextrema(normreal, m='both')
+             if reg1 + 0.1 * region_len <= i < reg1 + 0.9 * region_len]
+    log.debug("real argrelextrema: %s" % index)
+    if len(index) >= 2:
+        reg3, reg4 = index[0], index[-1]
+        omega1 = np.pi * (len(index) - 1) / (time[reg4] - time[reg3])
+    else:
+        reg3, reg4 = reg1, reg2
+        omega1 = 0
+    index = [i for i in tools.argrelextrema(normimag, m='both')
+             if reg1 + 0.1 * region_len <= i < reg1 + 0.9 * region_len]
+    log.debug("imag argrelextrema: %s" % index)
+    if len(index) >= 2:
+        reg5, reg6 = index[0], index[-1]
+        omega2 = np.pi * (len(index) - 1) / (time[reg6] - time[reg5])
+    else:
+        reg5, reg6 = reg1, reg2
+        omega2 = 0
+    axes3 = {
+        'data': [
+                [1, 'plot', (time, normreal), dict(label='real component')],
+                [2, 'plot', (time, normimag), dict(label='imag component')],
+                [3, 'axvspan', (time[reg1], time[reg2 - 1]),
+                    dict(alpha=0.12, label='FFT region (224)')],
+                [4, 'plot', ((time[reg3], time[reg4]),
+                             (normreal[reg3], normreal[reg4]), 'D--'),
+                    dict(markersize=5, label=r'$\omega=%.6f$' % omega1)],
+                [5, 'plot', ((time[reg5], time[reg6]),
+                             (normimag[reg5], normimag[reg6]), 'D--'),
+                    dict(markersize=5, label=r'$\omega=%.6f$' % omega2)],
+                [6, 'legend', (), dict(loc='best')],
+        ],
+        'layout': [
+            223,
+            dict(xlabel=r'time($R_0/c_s$)',
+                 ylabel='normalized amplitude',
+                 xlim=[0, np.max(time)])
+        ],
+    }
+
+    # 4 FFT, real frequency, calculate by real or imag in growth region
+    fft_f, fft_ar, fft_pr = tools.fft(tstep * ndiag, normreal[reg1:reg2])
+    fft_f1, fft_ai, fft_pi = tools.fft(tstep * ndiag, normimag[reg1:reg2])
+    index = [i for i in tools.argrelextrema(fft_pr, m='max')
+             if i > region_len / 2 and fft_f[i] < 2 * abs(omega1)]
+    log.debug("frequency argrelextrema: %s, %s"
+              % (index, [fft_f[i] for i in index]))
+    if index:
+        omega3, xlim = fft_f[index[0]], 4 * abs(fft_f[index[0]])
+    else:
+        omega3, xlim = 0, 3
+    axes4 = {
+        'data': [
+                [1, 'plot', (fft_f, fft_pr), dict()],
+                [2, 'plot', (fft_f, fft_pi), dict()],
+                [3, 'axvline', (omega3,),
+                    dict(ls='--', label=r'$\omega=%.6f$' % omega3)],
+                [4, 'legend', (), dict(loc='best')]
+        ],
+        'layout': [
+            224,
+            dict(xlabel=r'$\omega$($c_s/R_0$)',
+                 xlim=[-xlim, xlim])
+        ],
+    }
+
+    calculation = {'n': n, 'm': m, 'kthetarhoi': kthetarhoi,
+                   'growth_long': growth1, 'growth_short': growth2,
+                   'omega1': omega1, 'omega2': omega2, 'omega3': omega3}
+    return [axes1, axes2, axes3, axes4], calculation
 
 
 def get_figurestructure(dictobj, name, figurestyle=[]):
@@ -45,24 +211,24 @@ def get_figurestructure(dictobj, name, figurestyle=[]):
     if name not in Figures:
         log.error("'%s' is not in the '%s' Figures!" % (name, Group))
         return None, None
-    # check key, get axdata #TODO
-    Zkey = __keysgrp + __FigInfo[name]['key']
-    tstep = __paragrp + 'tstep'
-    ndiag = __paragrp + 'ndiag'
-    if tools.in_dictobj(dictobj, Zkey, tstep, ndiag):
-        Z = dictobj[Zkey]
-        if Z.size == 0:
-            log.debug("No data for Figure '%s/%s'." % (Group, name))
-            return None, None
-        else:
-            tunit = dictobj[tstep] * dictobj[ndiag]
-    else:
-        return None, None
 
     log.debug("Get FigureStructure '%s/%s' ..." % (Group, name))
+
+    # axesstructures
+    axesstructures, calculation = None, None
+    try:
+        if name in __ModeFigInfo:
+            axesstructures, calculation = __getax_fieldmode(dictobj, name)
+            figurestyle += [{'axes.grid.which': 'both'}]
+        elif name in 'TODO':
+            pass
+    except Exception as exc:
+        pass
+    if not axesstructures:
+        return None, None
+
     figurestructure = {
         'Style': figurestyle,
-        'AxesStructures': [] #TODO
+        'AxesStructures': axesstructures,
     }
-    calculation = None
     return figurestructure, calculation
