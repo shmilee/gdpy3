@@ -23,6 +23,7 @@ __all__ = ['Group' 'Figures' 'get_figurestructure']
 log = logging.getLogger('gdp')
 
 
+__ver = '110922'
 __FigInfo = {
     # data1di(0:mpsi,mpdata1d)
     'ion_flux': dict(
