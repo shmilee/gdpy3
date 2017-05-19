@@ -179,3 +179,46 @@ def fft(dt, signal):
     else:
         log.error("'dt' must be 'float', 'signal' must be 'np.ndarray'!")
         return None, None, None
+
+
+def savgol_golay_filter(x, window_size, polyorder, deriv=0, delta=1.0,
+                        axis=-1, mode='interp', cval=0.0, rate=1):
+    '''
+    Try to import `scipy.signal.savgol_filter`.
+    If failed, use an old Savitzky-Golay filter:
+    http://scipy-cookbook.readthedocs.io/items/SavitzkyGolay.html?highlight=Savitzky#Sample-Code
+    '''
+    try:
+        from scipy.signal import savgol_filter
+        newfilter = True
+        log.debug("Use 'scipy.signal.savgol_filter' to smooth data.")
+    except ImportError as exc:
+        log.debug("Use an old Savitzky-Golay filter to smooth data. %s" % exc)
+        newfilter = False
+
+    if newfilter:
+        return savgol_filter(x, window_size, polyorder, deriv=deriv,
+                             delta=delta, axis=axis, mode=mode, cval=cval)
+
+    from math import factorial
+    try:
+        window_size = np.abs(np.int(window_size))
+        order = np.abs(np.int(polyorder))
+    except ValueError:
+        raise ValueError("window_size and polyorder have to be of type int")
+    if window_size % 2 != 1 or window_size < 1:
+        raise TypeError("window_size size must be a positive odd number")
+    if window_size < order + 2:
+        raise TypeError("window_size is too small for the polynomials order")
+    order_range = range(order + 1)
+    half_window = (window_size - 1) // 2
+    # precompute coefficients
+    b = np.mat([[k**i for i in order_range]
+                for k in range(-half_window, half_window + 1)])
+    m = np.linalg.pinv(b).A[deriv] * rate**deriv * factorial(deriv)
+    # pad the signal at the extremes with
+    # values taken from the signal itself
+    firstvals = x[0] - np.abs(x[1:half_window + 1][::-1] - x[0])
+    lastvals = x[-1] + np.abs(x[-half_window - 1:-1][::-1] - x[-1])
+    x = np.concatenate((firstvals, x, lastvals))
+    return np.convolve(m[::-1], x, mode='valid')

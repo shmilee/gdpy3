@@ -84,7 +84,7 @@ def __getax_fieldmode(dictobj, name):
 
     # 2 log(amplitude), growth rate
     ya = np.sqrt(yreal**2 + yimag**2)
-    logya = np.log(ya)
+    logya = tools.savgol_golay_filter(np.log(ya), 47, 3)
     # find growth region
     tmpga = [1 if g > 0 else -ndstep for g in np.gradient(logya)]
     region_len = tools.max_subarray(tmpga)
@@ -104,7 +104,7 @@ def __getax_fieldmode(dictobj, name):
     growth2 = result[0][0]
     axes2 = {
         'data': [
-                [1, 'plot', (time, logya), dict(label='log(amplitude)')],
+                [1, 'plot', (time, logya), dict()],
                 [2, 'plot', (time[reg1:reg2], line1),
                     dict(label=r'Fitting, $\gamma=%.6f$' % growth1)],
                 [3, 'plot', (time[reg3:reg4], line2),
@@ -113,15 +113,18 @@ def __getax_fieldmode(dictobj, name):
         ],
         'layout': [
             222,
-            dict(title=r'$k_{\theta}\rho_i$=%.6f' % kthetarhoi,
+            dict(title=r'log(smooth(amplitude)), $k_{\theta}\rho_i$=%.6f'
+                 % kthetarhoi,
                  xlabel=r'time($R_0/c_s$)',
                  xlim=[0, np.max(time)])
         ],
     }
 
     # 3 amplitude normalized by growth rate, real frequency
-    normreal = np.divide(yreal, np.exp(growth2 * time))
-    normimag = np.divide(yimag, np.exp(growth2 * time))
+    normreal = tools.savgol_golay_filter(
+        np.divide(yreal, np.exp(growth2 * time)), 47, 3)
+    normimag = tools.savgol_golay_filter(
+        np.divide(yimag, np.exp(growth2 * time)), 47, 3)
     index = [i for i in tools.argrelextrema(normreal, m='both')
              if reg1 + 0.1 * region_len <= i < reg1 + 0.9 * region_len]
     log.debug("real argrelextrema: %s" % index)
@@ -135,10 +138,10 @@ def __getax_fieldmode(dictobj, name):
              if reg1 + 0.1 * region_len <= i < reg1 + 0.9 * region_len]
     log.debug("imag argrelextrema: %s" % index)
     if len(index) >= 2:
-        reg5, reg6 = index[0], index[-1]
-        omega2 = np.pi * (len(index) - 1) / (time[reg6] - time[reg5])
+        reg5, reg6, nT = index[0], index[-1], (len(index) - 1) / 2
+        omega2 = 2 * np.pi * nT / (time[reg6] - time[reg5])
     else:
-        reg5, reg6 = reg1, reg2
+        reg5, reg6, nT = reg1, reg2, 0
         omega2 = 0
     axes3 = {
         'data': [
@@ -148,16 +151,18 @@ def __getax_fieldmode(dictobj, name):
                     dict(alpha=0.12, label='FFT region (224)')],
                 [4, 'plot', ((time[reg3], time[reg4]),
                              (normreal[reg3], normreal[reg4]), 'D--'),
-                    dict(markersize=5, label=r'$\omega=%.6f$' % omega1)],
+                    dict(markersize=5, label=r'$\omega=%.6f,nT=%.1f$'
+                         % (omega1, nT))],
                 [5, 'plot', ((time[reg5], time[reg6]),
                              (normimag[reg5], normimag[reg6]), 'D--'),
-                    dict(markersize=5, label=r'$\omega=%.6f$' % omega2)],
+                    dict(markersize=5, label=r'$\omega=%.6f,nT=%.1f$'
+                         % (omega2, nT))],
                 [6, 'legend', (), dict(loc='best')],
         ],
         'layout': [
             223,
             dict(xlabel=r'time($R_0/c_s$)',
-                 ylabel='normalized amplitude',
+                 ylabel='smooth normalized amplitude',
                  xlim=[0, np.max(time)])
         ],
     }
@@ -223,7 +228,7 @@ def get_figurestructure(dictobj, name, figurestyle=[]):
         elif name in 'TODO':
             pass
     except Exception as exc:
-        pass
+        log.error("Failed to get FigureStructure: %s" % exc)
     if not axesstructures:
         return None, None
 
