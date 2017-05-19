@@ -148,7 +148,7 @@ def __getax_fieldmode(dictobj, name):
                 [1, 'plot', (time, normreal), dict(label='real component')],
                 [2, 'plot', (time, normimag), dict(label='imag component')],
                 [3, 'axvspan', (time[reg1], time[reg2 - 1]),
-                    dict(alpha=0.12, label='FFT region (224)')],
+                    dict(alpha=0.12, label='(224) FFT region')],
                 [4, 'plot', ((time[reg3], time[reg4]),
                              (normreal[reg3], normreal[reg4]), 'D--'),
                     dict(markersize=5, label=r'$\omega=%.6f,nT=%.1f$'
@@ -170,14 +170,10 @@ def __getax_fieldmode(dictobj, name):
     # 4 FFT, real frequency, calculate by real or imag in growth region
     fft_f, fft_ar, fft_pr = tools.fft(tstep * ndiag, normreal[reg1:reg2])
     fft_f1, fft_ai, fft_pi = tools.fft(tstep * ndiag, normimag[reg1:reg2])
-    index = [i for i in tools.argrelextrema(fft_pr, m='max')
-             if i > region_len / 2 and fft_f[i] < 2 * abs(omega1)]
-    log.debug("frequency argrelextrema: %s, %s"
-              % (index, [fft_f[i] for i in index]))
-    if index:
-        omega3, xlim = fft_f[index[0]], 4 * abs(fft_f[index[0]])
-    else:
-        omega3, xlim = 0, 3
+    index = int(region_len / 2)
+    index = index + np.argmax(fft_pr[index:])
+    log.debug("Get frequency: %s, %s" % (index, fft_f[index]))
+    omega3, xlim = fft_f[index], 4 * abs(fft_f[index])
     axes4 = {
         'data': [
                 [1, 'plot', (fft_f, fft_pr), dict()],
