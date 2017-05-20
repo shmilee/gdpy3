@@ -166,6 +166,11 @@ def __getax_fieldmode(dictobj, name):
                  xlim=[0, np.max(time)])
         ],
     }
+    ymin = min(min(normreal[reg3:reg4]), min(normimag[reg5:reg6]))
+    ymax = max(max(normreal[reg3:reg4]), max(normimag[reg5:reg6]))
+    if (min(min(normreal), min(normimag)) < 20 * ymin
+            or max(max(normreal), max(normimag)) > 20 * ymax):
+        axes3['layout'][1]['ylim'] = [3 * ymin, 3 * ymax]
 
     # 4 FFT, real frequency, calculate by real or imag in growth region
     fft_f, fft_ar, fft_pr = tools.fft(tstep * ndiag, normreal[reg1:reg2])
