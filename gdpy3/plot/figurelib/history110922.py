@@ -91,6 +91,9 @@ def __getax_fieldmode(dictobj, name):
     for region_start in range(ndstep):
         if sum(tmpga[region_start:region_start + region_len]) == region_len:
             break
+    # [0,1] -> [0.05,0.95], resist smooth
+    region_start = int(region_start + 0.05 * region_len)
+    region_len = int(0.9 * region_len)
     reg1, reg2 = region_start, region_start + region_len
     log.debug("Find growth region: [%s,%s]." % (time[reg1], time[reg2 - 1]))
     # polyfit [0,1] or [0.5,0.9]*growth_region
