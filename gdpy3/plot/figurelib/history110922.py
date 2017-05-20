@@ -84,13 +84,19 @@ def __getax_fieldmode(dictobj, name):
 
     # 2 log(amplitude), growth rate
     ya = np.sqrt(yreal**2 + yimag**2)
-    logya = tools.savgol_golay_filter(np.log(ya), 47, 3)
+    if ya.any():
+        logya = tools.savgol_golay_filter(np.log(ya), 47, 3)
+    else:
+        # all zeros
+        logya = ya
     # find growth region
     tmpga = [1 if g > 0 else -ndstep for g in np.gradient(logya)]
-    region_len = tools.max_subarray(tmpga)
+    region_len = abs(tools.max_subarray(tmpga))
     for region_start in range(ndstep):
         if sum(tmpga[region_start:region_start + region_len]) == region_len:
             break
+    if region_start + region_len > ndstep:
+        region_start = 0
     # [0,1] -> [0.05,0.95], resist smooth
     region_start = int(region_start + 0.05 * region_len)
     region_len = int(0.9 * region_len)
