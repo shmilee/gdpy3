@@ -15,6 +15,7 @@ axes.grid: True
 axes.formatter.limits: -4, 4
 axes.formatter.use_mathtext: True
 
+legend.loc: best
 legend.fancybox: True
 legend.fontsize: 10
 
@@ -22,6 +23,7 @@ grid.linestyle: --
 grid.linewidth: 0.5
 grid.alpha: 0.9
 
+image.cmap: jet
 lines.linewidth: 1.75
 patch.linewidth: .3
 lines.markersize: 7

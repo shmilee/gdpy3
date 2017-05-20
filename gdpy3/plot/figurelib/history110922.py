@@ -160,7 +160,7 @@ def __getax_fieldmode(dictobj, name):
                              (normimag[reg5], normimag[reg6]), 'D--'),
                     dict(markersize=5, label=r'$\omega=%.6f,nT=%.1f$'
                          % (omega2, nT))],
-                [6, 'legend', (), dict(loc='best')],
+                [6, 'legend', (), dict()],
         ],
         'layout': [
             223,
@@ -188,7 +188,7 @@ def __getax_fieldmode(dictobj, name):
                 [2, 'plot', (fft_f, fft_pi), dict()],
                 [3, 'axvline', (omega3,),
                     dict(ls='--', label=r'$\omega=%.6f$' % omega3)],
-                [4, 'legend', (), dict(loc='best')]
+                [4, 'legend', (), dict()]
         ],
         'layout': [
             224,

@@ -124,8 +124,7 @@ def get_figurestructure(dictobj, name, figurestyle=[]):
         'Style': figurestyle,
         'AxesStructures': [{
             'data': [
-                [1, 'pcolormesh', (X, Y, Z), dict(
-                    cmap='jet', label='rtime')],
+                [1, 'pcolormesh', (X, Y, Z), dict(label='rtime')],
             ],
             'layout': [
                 111,
