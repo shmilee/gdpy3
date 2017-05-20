@@ -112,6 +112,7 @@ def get_figurestructure(dictobj, name, figurestyle=[]):
             log.debug("No data for Figure '%s/%s'." % (Group, name))
             return None, None
         else:
+            Zmax = max(abs(Z.max()), abs(Z.min()))
             tunit = dictobj[tstep] * dictobj[ndiag]
             Y, X = Z.shape
             X = np.arange(1, X + 1) * tunit
@@ -124,7 +125,8 @@ def get_figurestructure(dictobj, name, figurestyle=[]):
         'Style': figurestyle,
         'AxesStructures': [{
             'data': [
-                [1, 'pcolormesh', (X, Y, Z), dict(label='rtime')],
+                [1, 'pcolormesh', (X, Y, Z), dict(
+                    label='rtime', vmin=-Zmax, vmax=Zmax)],
             ],
             'layout': [
                 111,
