@@ -284,7 +284,7 @@ def __get_reszf_axesstructures(dictobj, X, Y, Z, Zmax, tunit, figurestyle):
                     ls='--', label=r'$r=%s, \omega=%.6f$' % (iZ1, omega1))],
                 [4, 'axvline', (omega2,), dict(
                     ls=':', label=r'$r=%s, \omega=%.6f$' % (iZ2, omega2))],
-                [4, 'legend', (), dict()]
+                [5, 'legend', (), dict()]
         ],
     }
 
