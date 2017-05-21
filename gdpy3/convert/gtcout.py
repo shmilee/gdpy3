@@ -121,6 +121,17 @@ class GtcOutV110922(DataBlock):
                         val = float(val)
                     sd.update({key: val})
 
+        # only residual zonal flow(zf) case, second occurence match
+        pat = (r'\*{6}\s+k_r\*rhoi=\s*?(?P<zfkrrhoi>' + numpat + r'?)\s*?,'
+               + r'\s+k_r\*rho0=\s*?(?P<zfkrrho0>' + numpat + r'?)\s+?\*{6}$'
+               + r'\s*istep=\s*?(?P<zfistep>' + numpat + r'?)\s*.+$'
+               + r'\s*\*{5}\s+k_r\*dlt_r=\s*?(?P<zfkrdltr>'
+               + numpat + r'?)\s+?\*{5}')
+        mdata = [m.groupdict() for m in re.finditer(pat, outdata, re.M)]
+        if len(mdata) == 2 and len(mdata[1]) == 4:
+            sd.update({key: int(val) if val.isdigit() else float(val)
+                       for key, val in mdata[1].items()})
+
         # backup gtc.out
         sd.update({'backup-gtcout': numpy.fromfile(self.file)})
 
