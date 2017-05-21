@@ -8,9 +8,13 @@ import numpy as np
 import matplotlib.style.core as score
 import gdpy3.read as gdr
 
+from matplotlib import rcParams
+
 __all__ = ['is_dictobj', 'in_dictobj',
-           'mplstyle_available', 'mplstylelib',
+           'mplstyle_available', 'mplstylelib', 'mplcmap',
            'colorbar_revise_function',
+           'max_subarray', 'fitline', 'argrelextrema',
+           'fft', 'savgol_golay_filter', 'findflat',
            ]
 
 log = logging.getLogger('gdp')
@@ -70,6 +74,17 @@ def mplstylelib(style=None):
     return style
 
 
+def mplcmap(figurestyle):
+    '''
+    Return using cmap, for Axes3D
+    '''
+    if 'image.cmap' in rcParams:
+        with score.context(figurestyle):
+            return rcParams['image.cmap']
+    else:
+        return 'jet'
+
+
 # 3. FigureStructure, revise function
 
 def colorbar_revise_function(label, grid_alpha=0.3, **kwargs):
@@ -119,7 +134,7 @@ def fitline(X, Y, deg, info=''):
     One-dimensional polynomial fit
     '''
     fitresult = np.polyfit(X, Y, deg, full=True)
-    log.debug("Fitting line %s result:" % info)
+    log.debug("Fitting line '%s' result:" % info)
     log.debug("%s" % (fitresult,))
     fit_p = np.poly1d(fitresult[0])
     return fitresult, fit_p(X)
@@ -182,7 +197,8 @@ def fft(dt, signal):
 
 
 def savgol_golay_filter(x, window_size, polyorder, deriv=0, delta=1.0,
-                        axis=-1, mode='interp', cval=0.0, rate=1):
+                        axis=-1, mode='interp', cval=0.0, rate=1,
+                        nodebug=False, info='data'):
     '''
     Try to import `scipy.signal.savgol_filter`.
     If failed, use an old Savitzky-Golay filter:
@@ -191,15 +207,17 @@ def savgol_golay_filter(x, window_size, polyorder, deriv=0, delta=1.0,
     try:
         from scipy.signal import savgol_filter
         newfilter = True
-        log.debug("Use 'scipy.signal.savgol_filter' to smooth data.")
-    except ImportError as exc:
-        log.debug("Use an old Savitzky-Golay filter to smooth data. %s" % exc)
+    except ImportError:
         newfilter = False
 
     if newfilter:
+        if not nodebug:
+            log.debug("Use 'scipy.signal.savgol_filter' to smooth %s." % info)
         return savgol_filter(x, window_size, polyorder, deriv=deriv,
                              delta=delta, axis=axis, mode=mode, cval=cval)
 
+    if not nodebug:
+        log.debug("Use an old Savitzky-Golay filter to smooth %s." % info)
     from math import factorial
     try:
         window_size = np.abs(np.int(window_size))
@@ -222,3 +240,16 @@ def savgol_golay_filter(x, window_size, polyorder, deriv=0, delta=1.0,
     lastvals = x[-1] + np.abs(x[-half_window - 1:-1][::-1] - x[-1])
     x = np.concatenate((firstvals, x, lastvals))
     return np.convolve(m[::-1], x, mode='valid')
+
+
+def findflat(X, upperlimit):
+    '''
+    Return flat region: start, len. *upperlimit* limits abs(gradient)
+    '''
+    Xg = np.abs(np.gradient(savgol_golay_filter(X, 51, 3, nodebug=True)))
+    Xg = [1 if g < upperlimit else -X.size for g in Xg]
+    _len = max_subarray(Xg)
+    for _start in range(X.size):
+        if sum(Xg[_start:_start + _len]) == _len:
+            break
+    return _start, _len
