@@ -68,6 +68,7 @@ def __getax_fieldmode(dictobj, name):
         return None, None
 
     # 1 original
+    log.debug("Getting Axes 221 ...")
     axes1 = {
         'data': [
                 [1, 'plot', (time, yreal), dict(label='real component')],
@@ -83,6 +84,7 @@ def __getax_fieldmode(dictobj, name):
     }
 
     # 2 log(amplitude), growth rate
+    log.debug("Getting Axes 222 ...")
     ya = np.sqrt(yreal**2 + yimag**2)
     if ya.any():
         logya = tools.savgol_golay_filter(np.log(ya), 47, 3)
@@ -108,9 +110,12 @@ def __getax_fieldmode(dictobj, name):
     growth1 = result[0][0]
     reg3 = int(reg1 + 0.5 * region_len)
     reg4 = int(reg1 + 0.9 * region_len)
-    result, line2 = tools.fitline(time[reg3:reg4], logya[reg3:reg4], 1,
-                                  info='[0.5,0.9] growth region')
-    growth2 = result[0][0]
+    if time[reg3:reg4].size != 0:
+        result, line2 = tools.fitline(time[reg3:reg4], logya[reg3:reg4], 1,
+                                      info='[0.5,0.9] growth region')
+        growth2 = result[0][0]
+    else:
+        line2, growth2 = line1, growth1
     axes2 = {
         'data': [
                 [1, 'plot', (time, logya), dict()],
@@ -130,6 +135,7 @@ def __getax_fieldmode(dictobj, name):
     }
 
     # 3 amplitude normalized by growth rate, real frequency
+    log.debug("Getting Axes 223 ...")
     normreal = tools.savgol_golay_filter(
         np.divide(yreal, np.exp(growth2 * time)), 47, 3)
     normimag = tools.savgol_golay_filter(
@@ -182,6 +188,7 @@ def __getax_fieldmode(dictobj, name):
         axes3['layout'][1]['ylim'] = [3 * ymin, 3 * ymax]
 
     # 4 FFT, real frequency, calculate by real or imag in growth region
+    log.debug("Getting Axes 224 ...")
     fft_f, fft_ar, fft_pr = tools.fft(tstep * ndiag, normreal[reg1:reg2])
     fft_f1, fft_ai, fft_pi = tools.fft(tstep * ndiag, normimag[reg1:reg2])
     index = int(region_len / 2)
