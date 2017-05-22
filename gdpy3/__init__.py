@@ -1,5 +1,5 @@
 __name__ = "gdpy3"
-__doc__ = "gdpy3: Gyrokinetic Toroidal Code Data Processing tools"
+__doc__ = "Gyrokinetic Toroidal Code Data Processing tools written in python3"
 __author__ = "shmilee"
 __version__ = "0.0.1"
 __status__ = "alpha"
