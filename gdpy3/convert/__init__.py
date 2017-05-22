@@ -13,6 +13,7 @@ import os
 import sys
 import time
 import logging
+import re
 from . import (gtcout, data1d, equilibrium, history,
                meshgrid, snapshot, trackparticle)
 from gdpy3 import __version__ as gdpy3_version
@@ -38,6 +39,7 @@ __FileClassMapDict = {
         'trackp_dir': trackparticle.TrackParticleBlockV110922,
     }
 }
+__SnapPattern = re.compile(r'^snap\d{5}\.out$')
 
 
 def convert(datadir, savepath, **kwargs):
@@ -116,7 +118,7 @@ def convert(datadir, savepath, **kwargs):
         if f in ('data1d.out', 'equilibrium.out',
                  'history.out', 'meshgrid.out'):
             return FlClsMp[f](file=os.path.join(datadir, f))
-        elif 'the-snap' in 'the-' + f:
+        elif __SnapPattern.match(f):
             return FlClsMp['snapshot.out'](file=os.path.join(datadir, f))
         elif f == 'trackp_dir':
             return FlClsMp[f](path=os.path.join(datadir, f))
