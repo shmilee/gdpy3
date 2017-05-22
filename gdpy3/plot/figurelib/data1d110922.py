@@ -292,7 +292,9 @@ def __get_reszf_axesstructures(dictobj, X, Y, Z, Zmax, tunit, figurestyle):
         ],
     }
 
-    calculation = {'ZFres1': abs(res1), 'ZFres2': abs(res2),
+    calculation = {'krrhoi': krrhoi, 'krrho0': krrho0,
+                   'qiflux': qiflux, 'rgiflux': rgiflux,
+                   'ZFres1': abs(res1), 'ZFres2': abs(res2),
                    'GAMomega1': omega1, 'GAMomega2': omega2,
                    'GAMgamma1': gamma1, 'GAMgamma2': gamma2}
     return [axes1, axes2, axes3, axes4], calculation
