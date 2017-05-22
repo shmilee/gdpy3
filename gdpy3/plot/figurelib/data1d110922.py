@@ -158,19 +158,20 @@ def __get_reszf_axesstructures(dictobj, X, Y, Z, Zmax, tunit, figurestyle):
     '''
     Return residual zonal flow axesstructures, calculation
     '''
-    krrhoi, krrho0, istep, krdltr = (
-        __paragrp + key
-        for key in ['zfkrrhoi', 'zfkrrho0', 'zfistep', 'zfkrdltr'])
+    krrhoi, krrho0, istep, krdltr, qiflux, rgiflux = (
+        __paragrp + key for key in
+        ['zfkrrhoi', 'zfkrrho0', 'zfistep', 'zfkrdltr', 'qiflux', 'rgiflux'])
     if tools.in_dictobj(dictobj, krrhoi, krrho0, istep, krdltr):
-        krrhoi, krrho0, istep, krdltr = dictobj.get_many(
-            krrhoi, krrho0, istep, krdltr)
+        krrhoi, krrho0, istep, krdltr, qiflux, rgiflux = dictobj.get_many(
+            krrhoi, krrho0, istep, krdltr, qiflux, rgiflux)
     else:
         return [], None
 
     # 1 original
     log.debug("Getting Axes 221 ...")
     axes1 = {
-        'layout': [221, dict(title=r'residual zonal flow, $\phi_{p00}$',
+        'layout': [221, dict(title=r'$\phi_{p00}, q=%.3f, \epsilon=%.3f$'
+                             % (qiflux, rgiflux),
                              xlabel=r'time($R_0/c_s$)',
                              ylabel='radial',
                              projection='3d',
@@ -189,6 +190,9 @@ def __get_reszf_axesstructures(dictobj, X, Y, Z, Zmax, tunit, figurestyle):
     # 2 history, $\Delta r/2$,  $\Delta r/2 + \lambda/2$
     log.debug("Getting Axes 222 ...")
     index = tools.argrelextrema(Z.sum(axis=1))
+    if index.size < 3:
+        log.warn("Lines of peak less than 3!")
+        return [axes1], None
     i = int(len(index) / 2)
     iZ1, iZ2 = index[i], index[i + 1]
     Z1, Z2 = Z[iZ1, :], Z[iZ2, :]
