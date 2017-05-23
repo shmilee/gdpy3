@@ -16,7 +16,7 @@ import logging
 import re
 from . import (gtcout, data1d, equilibrium, history,
                meshgrid, snapshot, trackparticle)
-from gdpy3 import __version__ as gdpy3_version
+from .. import __version__ as gdpy3_version
 
 logging.basicConfig(
     stream=sys.stdout,

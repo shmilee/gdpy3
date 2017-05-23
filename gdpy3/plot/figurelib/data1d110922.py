@@ -16,7 +16,7 @@ This module needs radial time data in group 'data1d' get by gdr.
 import os
 import logging
 import numpy as np
-from gdpy3.plot import tools
+from .. import tools
 
 __all__ = ['Group' 'Figures' 'get_figurestructure']
 

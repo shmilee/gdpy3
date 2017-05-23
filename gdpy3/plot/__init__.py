@@ -11,8 +11,8 @@ __all__ = ['tools', 'gtcfigures']
 import os
 import sys
 import logging
-from . import tools
-from . import gtcfigures
+from .tools import mplstyle_available
+from .gtcfigures import GtcFigures
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -23,3 +23,7 @@ logging.basicConfig(
 )
 
 log = logging.getLogger('gdp')
+
+
+def plot():
+    pass

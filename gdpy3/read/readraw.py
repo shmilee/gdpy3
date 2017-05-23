@@ -7,7 +7,7 @@ import logging
 import numpy
 from hashlib import sha1
 
-import gdpy3.convert as gdc
+from .. import convert as gdc
 from .readnpz import ReadNpz
 
 __all__ = ['ReadRaw']

@@ -6,7 +6,7 @@ import os
 import logging
 import numpy as np
 import matplotlib.style.core as score
-import gdpy3.read as gdr
+from .. import read as gdr
 
 from matplotlib import rcParams
 

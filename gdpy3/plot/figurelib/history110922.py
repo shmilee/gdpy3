@@ -12,7 +12,7 @@ This module needs history diagnosis data in group 'history' get by gdr.
 import os
 import logging
 import numpy as np
-from gdpy3.plot import tools
+from .. import tools
 
 __all__ = ['Group' 'Figures' 'get_figurestructure']
 
