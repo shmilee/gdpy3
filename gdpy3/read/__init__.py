@@ -11,7 +11,6 @@ __all__ = ['read', 'readnpz', 'readhdf5', 'readraw']
 import os
 import sys
 import logging
-from .readnpz import ReadNpz
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -44,6 +43,7 @@ def read(path, **kwargs):
     elif os.path.isfile(path):
         ext = os.path.splitext(path)[1]
         if ext == '.npz':
+            from .readnpz import ReadNpz
             dictobj = ReadNpz(path)
         elif ext == '.hdf5':
             from .readhdf5 import ReadHdf5
