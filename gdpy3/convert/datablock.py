@@ -11,15 +11,6 @@ __all__ = ['DataBlock']
 log = logging.getLogger('gdc')
 
 
-def _setpathname(pathname, ext):
-    '''if pathname extension is not ``ext``, change it's extension
-    '''
-    if os.path.splitext(pathname)[1] != ext:
-        return pathname + ext
-    else:
-        return pathname
-
-
 class DataBlock(object):
     '''Base DataBlock class of Data1d, GtcOut, History, Snapshot, etc.
 
@@ -52,6 +43,15 @@ class DataBlock(object):
         '''
         log.error('Define this function in derived class.')
         raise
+
+    @staticmethod
+    def _setpathname(pathname, ext):
+        '''if pathname extension is not ``ext``, change it's extension
+        '''
+        if os.path.splitext(pathname)[1] != ext:
+            return pathname + ext
+        else:
+            return pathname
 
     def save2npz(self, npzfile, additional=[]):
         '''save DataBlock.data to a numpy compressed .npz file
@@ -103,7 +103,7 @@ class DataBlock(object):
             raise
 
         # open file
-        npzfile = _setpathname(npzfile, '.npz')
+        npzfile = self._setpathname(npzfile, '.npz')
         if os.path.isfile(npzfile):
             backnpz = npzfile + '-backup.npz'
             log.debug("Rename '%s' to '%s'!" % (npzfile, backnpz))
@@ -189,7 +189,7 @@ class DataBlock(object):
             log.error("Failed to import 'wraphdf5'!")
             raise
 
-        hdf5file = _setpathname(hdf5file, '.hdf5')
+        hdf5file = self._setpathname(hdf5file, '.hdf5')
         h5fid = wrapfile.iopen(hdf5file)
 
         try:
