@@ -9,12 +9,15 @@ A simple wrapper for matplotlib used to plot simple figure.
 import os
 import logging
 from matplotlib import style
+from matplotlib import rcParams
 from matplotlib.pyplot import figure
 from matplotlib.axes._axes import Axes
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.gridspec import SubplotSpec
 
-__all__ = ['mplfigure_factory' 'mplstyle_available']
+from .base import Engine
+
+__all__ = ['mplengine']
 
 log = logging.getLogger('gdp')
 
@@ -225,5 +228,20 @@ def _filter_styles(mplstyles):
     return validstyles
 
 
-def mplstyle_param(mplstyle):
-    pass
+def mplstyle_param(mplstyle, param):
+    '''
+    Return param value from mplstyle
+    '''
+    if isinstance(mplstyle, str) or hasattr(mplstyle, 'keys'):
+        mplstyle = [mplstyle]
+    if param in rcParams:
+        with style.context(_filter_styles(_check_styles(mplstyle))):
+            return rcParams[param]
+    else:
+        log.error("Invalid param '%s' for matplotlib.rcParams!" % param)
+        return None
+
+mplengine = Engine('matplotlib')
+mplengine.figure_factory = mplfigure_factory
+mplengine.style_available = mplstyle_available
+mplengine.style_param = mplstyle_param
