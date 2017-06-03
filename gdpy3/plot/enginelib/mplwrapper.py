@@ -6,6 +6,7 @@ r'''
 A simple wrapper for matplotlib used to plot simple figure.
 '''
 
+import os
 import logging
 from matplotlib import style
 from matplotlib.pyplot import figure
@@ -13,7 +14,7 @@ from matplotlib.axes._axes import Axes
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.gridspec import SubplotSpec
 
-__all__ = ['mplfigure_factory']
+__all__ = ['mplfigure_factory' 'mplstyle_available']
 
 log = logging.getLogger('gdp')
 
@@ -82,19 +83,20 @@ def mplfigure_factory(figurestructure, num=None):
     if not isinstance(figurestructure, dict):
         raise ValueError("FigureStructure must be a dict. " +
                          "Not %s." % type(figurestructure))
-    figstyle = Default_FigureStructure['Style']
     if 'Style' in figurestructure:
         if isinstance(figurestructure['Style'], list):
-            figstyle = figstyle + _filter_styles(figurestructure['Style'])
+            figstyle = _check_styles(figurestructure['Style'])
         else:
             log.error("FigureStructure['Style'] must be a list. " +
                       "Not %s. " % type(figurestructure['Style']) +
                       "Ignore 'Style' setting!")
+    if 'figstyle' not in dir() or not figstyle:
+        figstyle = Default_FigureStructure['Style']
     if not isinstance(figurestructure['AxesStructures'], list):
         raise ValueError("FigureStructure['AxesStructures'] must be a list. "
                          "Not %s." % type(figurestructure['AxesStructures']))
     log.debug("Figure Style: %s" % str(figstyle))
-    with style.context((figstyle)):
+    with style.context(_filter_styles(figstyle)):
         fig = figure(num=num)
         for i, axstructure in enumerate(figurestructure['AxesStructures'], 1):
             log.debug("Picking AxesStructure %d ..." % i)
@@ -135,17 +137,18 @@ def _mplaxes_factory(fig, axstructure):
         log.debug("Ignore this axes.")
         return
     # check style
-    axstyle = Default_AxesStructure['style']
     if 'style' in axstructure:
-        if isinstance(axstyle, list):
-            axstyle = axstyle + _filter_styles(axstructure['style'])
+        if isinstance(axstructure['style'], list):
+            axstyle = _check_styles(axstructure['style'])
         else:
             log.error("AxesStructure['style'] must be a list. " +
                       "Not %s. " % type(axstructure['style']) +
                       "Ignore 'style' setting!")
+    if 'axstyle' not in dir() or not axstyle:
+        axstyle = Default_AxesStructure['style']
     # begin with style
     log.debug("Axes Style: %s" % str(axstyle))
-    with style.context(axstyle):
+    with style.context(_filter_styles(axstyle)):
         # use layout
         try:
             log.debug("Adding axes %s ..." % layout[0])
@@ -173,7 +176,19 @@ def _mplaxes_factory(fig, axstructure):
                 log.error("Failed to revise axes %s: %s" % (layout[0], exc))
 
 
-def _filter_styles(mplstyles):
+STYLE_LIBRARY_PATH = os.path.join(os.path.dirname(
+    os.path.abspath(__file__)), 'mpl-stylelib')
+mplstyle_available = style.available.copy()
+
+
+def _update_gdpy3_mplstyle_library():
+    global mplstyle_available
+    for path, name in style.core.iter_style_files(STYLE_LIBRARY_PATH):
+        mplstyle_available.append(name)
+_update_gdpy3_mplstyle_library()
+
+
+def _check_styles(mplstyles):
     '''
     Check the mplstyles available or not.
     Accept a list.
@@ -181,6 +196,9 @@ def _filter_styles(mplstyles):
     '''
     validstyles = []
     for st in mplstyles:
+        if st in mplstyle_available:
+            validstyles.append(st)
+            continue
         try:
             with style.context(st):
                 pass
@@ -188,3 +206,24 @@ def _filter_styles(mplstyles):
         except Exception as exc:
             log.error("Ignore style '%s': %s" % (st, exc))
     return validstyles
+
+
+def _filter_styles(mplstyles):
+    '''
+    Filter the mplstyle in *mplstyles*.
+    If the name starts with 'gdpy3-', change it to absolute path.
+    Accept a list of mplstyle.
+    Return a list.
+    '''
+    validstyles = []
+    for st in mplstyles:
+        if isinstance(st, str) and st.startswith('gdpy3-'):
+            validstyles.append(
+                os.path.join(STYLE_LIBRARY_PATH, st + '.mplstyle'))
+        else:
+            validstyles.append(st)
+    return validstyles
+
+
+def mplstyle_param(mplstyle):
+    pass

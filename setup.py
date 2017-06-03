@@ -56,8 +56,8 @@ setup(
         'smooth': ['scipy>=0.14.0'],
     },
     package_data={
-        'gdpy3': ['plot/mpl-stylelib/*.mplstyle',
-                  'plot/mpl-stylelib/readme.txt']
+        'gdpy3': ['plot/enginelib/mpl-stylelib/*.mplstyle',
+                  'plot/enginelib/mpl-stylelib/readme.txt']
     },
     data_files=[],
 )
