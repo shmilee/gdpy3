@@ -5,16 +5,12 @@
 import os
 import logging
 import numpy as np
-import matplotlib.style.core as score
-from .. import read as gdr
-
-from matplotlib import rcParams
+from ..read.readnpz import ReadNpz
 
 __all__ = ['is_dictobj', 'in_dictobj',
-           'mplstyle_available', 'mplstylelib', 'mplcmap',
-           'colorbar_revise_function',
            'max_subarray', 'fitline', 'argrelextrema',
            'fft', 'savgol_golay_filter', 'findflat',
+           'colorbar_revise_function',
            ]
 
 log = logging.getLogger('gdp')
@@ -26,7 +22,7 @@ def is_dictobj(dictobj):
     '''
     Check if *dictobj* is a instance of :class:`gdpy3.read.readnpz.ReadNpz`.
     '''
-    if isinstance(dictobj, gdr.ReadNpz):
+    if isinstance(dictobj, ReadNpz):
         return True
     else:
         return False
@@ -44,71 +40,7 @@ def in_dictobj(dictobj, *keys):
     return result
 
 
-# 2. mplstyle
-
-__mplstylepath = os.path.join(os.path.dirname(
-    os.path.abspath(__file__)), 'mpl-stylelib')
-mplstyle_available = score.available
-
-
-def __update_gdpy3_mplstyle_library():
-    global mplstyle_available
-    for path, name in score.iter_style_files(__mplstylepath):
-        mplstyle_available.append(name)
-__update_gdpy3_mplstyle_library()
-
-
-def mplstylelib(style=None):
-    '''
-    Filter the *style*.
-    If the name starts with 'gdpy3-', change it to absolute path.
-    Return str of mplstyle.
-    '''
-    if style not in mplstyle_available:
-        log.warn("'%s' not found in the style library! Use 'default'!" % style)
-        return 'default'
-    # start with 'gdpy3-'
-    if style.startswith('gdpy3-'):
-        return os.path.join(__mplstylepath, style + '.mplstyle')
-    # score.available
-    return style
-
-
-def mplcmap(figurestyle):
-    '''
-    Return using cmap, for Axes3D
-    '''
-    if 'image.cmap' in rcParams:
-        with score.context(figurestyle):
-            return rcParams['image.cmap']
-    else:
-        return 'jet'
-
-
-# 3. FigureStructure, revise function
-
-def colorbar_revise_function(label, grid_alpha=0.3, **kwargs):
-    '''
-    Return a colorbar `revise function` for FigureStructure.
-
-    Parameters
-    ----------
-    label: label of mappable which the colorbar applies
-    keyword arguments: kwargs passed to colorbar
-        *cax*, *ax*, *fraction*, *pad*, *ticks*, etc.
-    '''
-    def revise_func(figure, axes):
-        axes.grid(alpha=grid_alpha)
-        mappable = None
-        for child in axes.get_children():
-            if child.get_label() == label:
-                mappable = child
-        if mappable:
-            figure.colorbar(mappable, **kwargs)
-    return revise_func
-
-
-# 4 . math, numpy, etc.
+# 2 . math, numpy, etc.
 
 def max_subarray(A):
     '''
@@ -187,7 +119,11 @@ def fft(dt, signal):
     '''
     if isinstance(dt, float) and isinstance(signal, np.ndarray):
         size = signal.size
-        tf = 2 * np.pi / dt * np.linspace(-0.5, 0.5, size)
+        if size % 2 == 0:
+            tf = np.linspace(-0.5, 0.5, size, endpoint=False)
+        else:
+            tf = np.linspace(-0.5, 0.5, size, endpoint=True)
+        tf = 2 * np.pi / dt * tf
         af = np.fft.fftshift(np.fft.fft(signal))
         pf = np.sqrt(np.power(af.real, 2) + np.power(af.imag, 2))
         return tf, af, pf
@@ -253,3 +189,26 @@ def findflat(X, upperlimit):
         if sum(Xg[_start:_start + _len]) == _len:
             break
     return _start, _len
+
+
+# 3. FigureStructure, revise function
+
+def colorbar_revise_function(label, grid_alpha=0.3, **kwargs):
+    '''
+    Return a colorbar `revise function` for FigureStructure.
+
+    Parameters
+    ----------
+    label: label of mappable which the colorbar applies
+    keyword arguments: kwargs passed to colorbar
+        *cax*, *ax*, *fraction*, *pad*, *ticks*, etc.
+    '''
+    def revise_func(figure, axes):
+        axes.grid(alpha=grid_alpha)
+        mappable = None
+        for child in axes.get_children():
+            if child.get_label() == label:
+                mappable = child
+        if mappable:
+            figure.colorbar(mappable, **kwargs)
+    return revise_func

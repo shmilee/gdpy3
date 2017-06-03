@@ -11,7 +11,6 @@ __all__ = ['tools', 'gtcfigures']
 import os
 import sys
 import logging
-from .tools import mplstyle_available
 from .gtcfigures import GtcFigures
 
 logging.basicConfig(
