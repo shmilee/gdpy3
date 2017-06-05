@@ -22,10 +22,10 @@ class Engine(object):
         Use FigureStructure to create a Figure instance
     style_available: list
         available styles for Figure in this engine
-    style_param: function
-        get param value from Figure style
-    clear: function
-        clear the entire figure
+    close: function
+        close the entire figure
+    tool: dict
+        useful functions: key, val = name, function
     '''
 
     def __init__(self, name):
@@ -52,21 +52,26 @@ class Engine(object):
         self._style_available = styles
 
     @property
-    def style_param(self):
-        return self._style_param
+    def close(self):
+        return self._close
 
-    @style_param.setter
-    def style_param(self, function):
+    @close.setter
+    def close(self, function):
         if not isinstance(function, types.FunctionType):
-            raise ValueError("'style_param' must be function!")
-        self._style_param = function
+            raise ValueError("'close' must be function!")
+        self._close = function
 
     @property
-    def clear(self):
-        return self._clear
+    def tool(self):
+        return self._tool
 
-    @clear.setter
-    def clear(self, function):
-        if not isinstance(function, types.FunctionType):
-            raise ValueError("'clear' must be function!")
-        self._clear = function
+    @tool.setter
+    def tool(self, tols):
+        if not isinstance(tols, dict):
+            raise ValueError("'tool' must be dict!")
+        self._tool = {}
+        for key, val in tols.items():
+            if not isinstance(val, types.FunctionType):
+                log.error("'tool[%s]' must be function!" % key)
+            else:
+                self._tool[key] = val

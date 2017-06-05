@@ -10,7 +10,6 @@ from ..read.readnpz import ReadNpz
 __all__ = ['is_dictobj', 'in_dictobj',
            'max_subarray', 'fitline', 'argrelextrema',
            'fft', 'savgol_golay_filter', 'findflat',
-           'colorbar_revise_function',
            ]
 
 log = logging.getLogger('gdp')
@@ -189,26 +188,3 @@ def findflat(X, upperlimit):
         if sum(Xg[_start:_start + _len]) == _len:
             break
     return _start, _len
-
-
-# 3. FigureStructure, revise function
-
-def colorbar_revise_function(label, grid_alpha=0.3, **kwargs):
-    '''
-    Return a colorbar `revise function` for FigureStructure.
-
-    Parameters
-    ----------
-    label: label of mappable which the colorbar applies
-    keyword arguments: kwargs passed to colorbar
-        *cax*, *ax*, *fraction*, *pad*, *ticks*, etc.
-    '''
-    def revise_func(figure, axes):
-        axes.grid(alpha=grid_alpha)
-        mappable = None
-        for child in axes.get_children():
-            if child.get_label() == label:
-                mappable = child
-        if mappable:
-            figure.colorbar(mappable, **kwargs)
-    return revise_func

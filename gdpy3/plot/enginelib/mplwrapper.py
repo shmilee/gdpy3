@@ -10,7 +10,7 @@ import os
 import logging
 from matplotlib import style
 from matplotlib import rcParams
-from matplotlib.pyplot import figure
+from matplotlib.pyplot import figure, close
 from matplotlib.axes._axes import Axes
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.gridspec import SubplotSpec
@@ -228,7 +228,21 @@ def _filter_styles(mplstyles):
     return validstyles
 
 
-def mplstyle_param(mplstyle, param):
+def mplclose(fig):
+    '''
+    Close the figure *fig*.
+    '''
+    close(fig)
+
+mplengine = Engine('matplotlib')
+mplengine.figure_factory = mplfigure_factory
+mplengine.style_available = mplstyle_available
+mplengine.close = mplclose
+
+
+# tool functions
+
+def get_mplstyle_param(mplstyle, param):
     '''
     Return param value from mplstyle
     '''
@@ -241,14 +255,28 @@ def mplstyle_param(mplstyle, param):
         log.error("Invalid param '%s' for matplotlib.rcParams!" % param)
         return None
 
-def mplclear(fig):
-    '''
-    Clear the figure *fig*.
-    '''
-    fig.clear()
 
-mplengine = Engine('matplotlib')
-mplengine.figure_factory = mplfigure_factory
-mplengine.style_available = mplstyle_available
-mplengine.style_param = mplstyle_param
-mplengine.clear = mplclear
+def get_mplcolorbar_revise_func(label, grid_alpha=0.3, **kwargs):
+    '''
+    Return a colorbar `revise function` for FigureStructure.
+
+    Parameters
+    ----------
+    label: label of mappable which the colorbar applies
+    keyword arguments: kwargs passed to colorbar
+        *cax*, *ax*, *fraction*, *pad*, *ticks*, etc.
+    '''
+    def revise_func(figure, axes):
+        axes.grid(alpha=grid_alpha)
+        mappable = None
+        for child in axes.get_children():
+            if child.get_label() == label:
+                mappable = child
+        if mappable:
+            figure.colorbar(mappable, **kwargs)
+    return revise_func
+
+mplengine.tool = {
+    'get_style_param': get_mplstyle_param,
+    'get_colorbar_revise_func': get_mplcolorbar_revise_func,
+}
