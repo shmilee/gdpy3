@@ -241,7 +241,14 @@ def mplstyle_param(mplstyle, param):
         log.error("Invalid param '%s' for matplotlib.rcParams!" % param)
         return None
 
+def mplclear(fig):
+    '''
+    Clear the figure *fig*.
+    '''
+    fig.clear()
+
 mplengine = Engine('matplotlib')
 mplengine.figure_factory = mplfigure_factory
 mplengine.style_available = mplstyle_available
 mplengine.style_param = mplstyle_param
+mplengine.clear = mplclear

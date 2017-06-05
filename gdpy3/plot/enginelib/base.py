@@ -24,6 +24,8 @@ class Engine(object):
         available styles for Figure in this engine
     style_param: function
         get param value from Figure style
+    clear: function
+        clear the entire figure
     '''
 
     def __init__(self, name):
@@ -58,3 +60,13 @@ class Engine(object):
         if not isinstance(function, types.FunctionType):
             raise ValueError("'style_param' must be function!")
         self._style_param = function
+
+    @property
+    def clear(self):
+        return self._clear
+
+    @clear.setter
+    def clear(self, function):
+        if not isinstance(function, types.FunctionType):
+            raise ValueError("'clear' must be function!")
+        self._clear = function
