@@ -228,6 +228,13 @@ def _filter_styles(mplstyles):
     return validstyles
 
 
+def mplshow(fig):
+    '''
+    Display the figure *fig*.
+    '''
+    fig.show()
+
+
 def mplclose(fig):
     '''
     Close the figure *fig*.
@@ -237,6 +244,7 @@ def mplclose(fig):
 mplengine = Engine('matplotlib')
 mplengine.figure_factory = mplfigure_factory
 mplengine.style_available = mplstyle_available
+mplengine.show = mplshow
 mplengine.close = mplclose
 
 

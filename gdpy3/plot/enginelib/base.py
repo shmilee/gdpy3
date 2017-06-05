@@ -22,6 +22,8 @@ class Engine(object):
         Use FigureStructure to create a Figure instance
     style_available: list
         available styles for Figure in this engine
+    show: function
+        display the figure
     close: function
         close the entire figure
     tool: dict
@@ -50,6 +52,16 @@ class Engine(object):
         if not isinstance(styles, list):
             raise ValueError("'style_available' must be list!")
         self._style_available = styles
+
+    @property
+    def show(self):
+        return self._show
+
+    @show.setter
+    def show(self, function):
+        if not isinstance(function, types.FunctionType):
+            raise ValueError("'show' must be function!")
+        self._show = function
 
     @property
     def close(self):
