@@ -24,6 +24,8 @@ class ReadNpz(object):
     desc: str
         description of the .npz file
     description: alias desc
+    cache: dict
+        cached keys from NpzFile
 
     Parameters
     ----------
@@ -36,7 +38,22 @@ class ReadNpz(object):
     >>> npzf.keys()
     >>> npzf['a']
     '''
-    __slots__ = ['file', 'datakeys', 'desc', 'description']
+    __slots__ = ['file', 'datakeys', 'desc', 'description', 'cache']
+
+    def _special_openfile(self):
+        return numpy.load(self.file)
+
+    def _special_closefile(self, tempf):
+        tempf.close()
+
+    def _special_getkeys(self, tempf):
+        return tempf.files
+
+    def _special_getitem(self, tempf, key):
+        value = tempf[key]
+        if value.size == 1:
+            value = value.item()
+        return value
 
     def __init__(self, npzfile):
         if os.path.isfile(npzfile):
@@ -45,10 +62,10 @@ class ReadNpz(object):
             raise IOError("Failed to find file %s." % npzfile)
         try:
             log.debug("Open file %s." % self.file)
-            tempf = numpy.load(self.file)
+            tempf = self._special_openfile()
             log.debug("Getting keys from %s ..." % self.file)
-            self.datakeys = tuple(tempf.files)
-            self.desc = str(tempf['description'])
+            self.datakeys = tuple(self._special_getkeys(tempf))
+            self.desc = str(self._special_getitem(tempf,'description'))
             self.description = self.desc
         except (IOError, ValueError):
             log.critical("Failed to read file %s." % self.file)
@@ -56,7 +73,8 @@ class ReadNpz(object):
         finally:
             if 'tempf' in dir():
                 log.debug("Close file %s." % self.file)
-                tempf.close()
+                self._special_closefile(tempf)
+        self.cache = {}
 
     def keys(self):
         return self.datakeys
@@ -64,19 +82,20 @@ class ReadNpz(object):
     def __getitem__(self, key):
         if key not in self.datakeys:
             raise KeyError("%s is not in '%s'" % (key, self.file))
+        if key in self.cache:
+            return self.cache[key]
         try:
             log.debug("Open file %s." % self.file)
-            tempf = numpy.load(self.file)
-            value = tempf[key]
-            if value.size == 1:
-                value = value.item()
+            tempf = self._special_openfile()
+            value = self._special_getitem(tempf,key)
+            self.cache[key] = value
         except (IOError, ValueError):
             log.critical("Failed to get '%s' from '%s'!" % (key, self.file))
             raise
         finally:
             if 'tempf' in dir():
                 log.debug("Close file %s." % self.file)
-                tempf.close()
+                self._special_closefile(tempf)
         return value
 
     get = __getitem__
@@ -95,15 +114,18 @@ class ReadNpz(object):
         '''
         Get values by keys. Return a tuple of values.
         '''
-        result = []
+        result = [self.cache[k] if k in self.cache else None for k in keys]
+        idxtodo = [i for i, k in enumerate(result) if k is None]
+        if len(idxtodo) == 0:
+            return tuple(result)
         try:
             log.debug("Open file %s." % self.file)
-            tempf = numpy.load(self.file)
-            for key in keys:
-                value = tempf[key]
-                if value.size == 1:
-                    value = value.item()
-                result.append(value)
+            tempf = self._special_openfile()
+            for i in idxtodo:
+                key = keys[i]
+                value = self._special_getitem(tempf,key)
+                result[i] = value
+                self.cache[key] = value
         except (IOError, ValueError):
             if 'key' in dir():
                 log.critical("Failed to get '%s' from '%s'!"
@@ -114,5 +136,5 @@ class ReadNpz(object):
         finally:
             if 'tempf' in dir():
                 log.debug("Close file %s." % self.file)
-                tempf.close()
+                self._special_closefile(tempf)
         return tuple(result)

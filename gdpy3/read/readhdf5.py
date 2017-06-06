@@ -26,6 +26,8 @@ class ReadHdf5(ReadNpz):
     desc: str
         description of the .hdf5 file
     description: alias desc
+    cache: dict
+        cached keys from Hdf5File
 
     Parameters
     ----------
@@ -38,67 +40,20 @@ class ReadHdf5(ReadNpz):
     >>> h5f.keys()
     >>> h5f['a']
     '''
-    __slots__ = ['file', 'datakeys', 'desc', 'description']
+    __slots__ = []
 
-    def __init__(self, hdf5file):
-        if os.path.isfile(hdf5file):
-            self.file = hdf5file
-        else:
-            raise IOError("Failed to find file %s." % hdf5file)
-        try:
-            log.debug("Open file %s." % self.file)
-            tempf = h5py.File(self.file, 'r')
-            log.debug("Getting keys from %s ..." % self.file)
-            mykeys = []
-            tempf.visititems(
-                lambda name, obj: mykeys.append(name)
-                if isinstance(obj, h5py.Dataset) else None)
-            self.datakeys = tuple(mykeys)
-            self.desc = str(tempf['description'].value)
-            self.description = self.desc
-        except (IOError, ValueError):
-            log.critical("Failed to read file %s." % self.file)
-            raise
-        finally:
-            if 'tempf' in dir():
-                log.debug("Close file %s." % self.file)
-                tempf.close()
+    def _special_openfile(self):
+        return h5py.File(self.file, 'r')
 
-    def __getitem__(self, key):
-        if key not in self.datakeys:
-            raise KeyError("%s is not in '%s'" % (key, self.file))
-        try:
-            log.debug("Open file %s." % self.file)
-            tempf = h5py.File(self.file, 'r')
-            value = tempf[key].value
-        except (IOError, ValueError):
-            log.critical("Failed to get '%s' from '%s'!" % (key, self.file))
-            raise
-        finally:
-            if 'tempf' in dir():
-                log.debug("Close file %s." % self.file)
-                tempf.close()
-        return value
+    def _special_closefile(self, tempf):
+        tempf.close()
 
-    def get_many(self, *keys):
-        '''
-        Get values by keys. Return a tuple of values.
-        '''
-        result = []
-        try:
-            log.debug("Open file %s." % self.file)
-            tempf = h5py.File(self.file, 'r')
-            for key in keys:
-                result.append(tempf[key].value)
-        except (IOError, ValueError):
-            if 'key' in dir():
-                log.critical("Failed to get '%s' from '%s'!"
-                             % (key, self.file))
-            else:
-                log.critical("Failed to open '%s'!" % self.file)
-            raise
-        finally:
-            if 'tempf' in dir():
-                log.debug("Close file %s." % self.file)
-                tempf.close()
-        return tuple(result)
+    def _special_getkeys(self, tempf):
+        mykeys = []
+        tempf.visititems(
+            lambda name, obj: mykeys.append(name)
+            if isinstance(obj, h5py.Dataset) else None)
+        return mykeys
+
+    def _special_getitem(self, tempf, key):
+        return tempf[key].value
