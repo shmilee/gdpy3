@@ -56,8 +56,8 @@ class GFigure(object):
                  '__figurestyle', 'figure']
 
     def __init__(self, name, group, gtcdataobj, figurekeys,
-            engine=default_engine,
-            figurestyle=[]):
+                 engine=default_engine,
+                 figurestyle=[]):
         self.name = name
         self.group = group
         self.gtcdataobj = gtcdataobj
@@ -109,7 +109,7 @@ class GFigure(object):
             self.__figurestructure = structure
         else:
             log.error("'FigureStructure' must be a dict."
-                             " Not %s." % type(structure))
+                      " Not %s." % type(structure))
 
     @property
     def calculation(self):
@@ -121,7 +121,7 @@ class GFigure(object):
             self.__calculation = calresult
         else:
             log.error("'calculation result' must be a dict."
-                             " Not %s." % type(calresult))
+                      " Not %s." % type(calresult))
 
     @property
     def engine(self):
@@ -133,7 +133,7 @@ class GFigure(object):
             self.__engine = eng
         else:
             log.error("Plot engine '%s' not found in '%s'! Use default '%s'!"
-                  % (eng, engine_available, default_engine))
+                      % (eng, engine_available, default_engine))
             self.__engine = default_engine
         self.__nginp = get_engine(self.__engine)
 
@@ -198,4 +198,3 @@ class GFigure(object):
         if not self.figure:
             self.plot()
         self.nginp.show(self.figure)
-
