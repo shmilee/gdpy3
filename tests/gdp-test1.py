@@ -3,6 +3,10 @@
 
 # Copyright (c) 2017 shmilee
 
+'''
+plot engine test
+'''
+
 import os
 import logging
 import numpy as np
@@ -25,6 +29,7 @@ def get_testfigstruct(engine):
                 'figure.subplot.wspace': 0.2,
                 'figure.subplot.hspace': 0.2,
             },
+            'gdpy3-notebook',
         ],
         'AxesStructures': [],
     }
@@ -96,13 +101,13 @@ def get_testfigstruct(engine):
                 dict(rstride=1, cstride=1, linewidth=1,
                      antialiased=True,
                      # cmap='jet',
-                     cmap=engine.style_param(
+                     cmap=engine.tool['get_style_param'](
                          testfigstruct['Style'], 'image.cmap'),
                      label='phi00'
                      )
              ],
         ],
-        'revise': revise_surface,
+        'revise': engine.tool['get_colorbar_revise_func']('phi00'),
     }
 
     testfigstruct['AxesStructures'].extend([testax1, testax2, testax3])
@@ -173,10 +178,10 @@ if __name__ == '__main__':
 
     log0.info("engine '%s', style_available: %s"
               % (engine.name, engine.style_available))
-    log0.info('cmap: '
-              + engine.style_param('gdpy3-notebook', 'image.cmap'))
-    log0.info('cmap: '
-              + engine.style_param({'image.cmap': 'hot'}, 'image.cmap'))
+    log0.info('gdpy3-notebook, cmap: ' + engine.tool['get_style_param'](
+        'gdpy3-notebook', 'image.cmap'))
+    log0.info('set if cmap: ' + engine.tool['get_style_param'](
+        {'image.cmap': 'hot'}, 'image.cmap'))
 
     fig = engine.figure_factory(get_testfigstruct(engine))
     print(fig)
