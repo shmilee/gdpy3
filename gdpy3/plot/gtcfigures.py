@@ -6,7 +6,7 @@ import os
 import logging
 from . import tools
 from . import enginelib
-from . import figurelib
+from . import figurelib #TODO
 
 __all__ = ['GtcFigures']
 
