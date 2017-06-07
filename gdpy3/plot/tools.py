@@ -9,7 +9,7 @@ from ..read.readnpz import ReadNpz
 
 __all__ = ['is_dictobj', 'in_dictobj',
            'max_subarray', 'fitline', 'argrelextrema',
-           'fft', 'savgol_golay_filter', 'findflat',
+           'fft', 'savgol_golay_filter', 'findflat', 'findgrowth',
            ]
 
 log = logging.getLogger('gdp')
@@ -45,14 +45,6 @@ def max_subarray(A):
     '''
     Maximum subarray problem
     '''
-#    region_len = 0
-#    thissum = 0
-#    for a in A:
-#        thissum += a
-#        if thissum < 0:
-#            thissum = 0
-#        if thissum > region_len:
-#            region_len = thissum
     max_ending_here = max_so_far = A[0]
     for x in A[1:]:
         max_ending_here = max(x, max_ending_here + x)
@@ -71,17 +63,31 @@ def fitline(X, Y, deg, info=''):
     return fitresult, fit_p(X)
 
 
-def argrelextrema(X, m='both'):
+def argrelextrema(X, m='both', recheck=False):
     '''
     Index of relative extrema
+    Try to import `scipy.signal.argrelextrema`.
+    If failed, use an lame one.
     '''
-    tmp = np.diff(np.sign(np.gradient(X)))
-    if m == 'max':
-        index = (tmp < 0).nonzero()[0]
-    elif m == 'min':
-        index = (tmp > 0).nonzero()[0]
-    else:
-        index = tmp.nonzero()[0]
+    try:
+        from scipy.signal import argrelextrema as relextrema
+        if m == 'max':
+            index = relextrema(X, np.greater)[0]
+        elif m == 'min':
+            index = relextrema(X, np.less)[0]
+        else:
+            g, l = relextrema(X, np.greater)[0], relextrema(X, np.less)[0]
+            index = np.sort(np.append(g, l))
+    except ImportError:
+        tmp = np.diff(np.sign(np.gradient(X)))
+        if m == 'max':
+            index = (tmp < 0).nonzero()[0]
+        elif m == 'min':
+            index = (tmp > 0).nonzero()[0]
+        else:
+            index = tmp.nonzero()[0]
+    if not recheck:
+        return index
     # recheck
     if m == 'max':
         for j, i in enumerate(index):
@@ -179,11 +185,28 @@ def savgol_golay_filter(x, window_size, polyorder, deriv=0, delta=1.0,
 
 def findflat(X, upperlimit):
     '''
-    Return flat region: start, len. *upperlimit* limits abs(gradient)
+    Return flat region: start, len. *upperlimit* limits abs(gradient(X))
     '''
     Xg = np.abs(np.gradient(savgol_golay_filter(X, 51, 3, nodebug=True)))
     Xg = [1 if g < upperlimit else -X.size for g in Xg]
     _len = max_subarray(Xg)
+    if _len < 0:
+        return 0, 0
+    for _start in range(X.size):
+        if sum(Xg[_start:_start + _len]) == _len:
+            break
+    return _start, _len
+
+
+def findgrowth(X, lowerlimit):
+    '''
+    Return growth region: start, len. *lowerlimit* limits gradient(X)
+    '''
+    Xg = np.gradient(savgol_golay_filter(X, 51, 3, nodebug=True))
+    Xg = [1 if g > lowerlimit else -X.size for g in Xg]
+    _len = max_subarray(Xg)
+    if _len < 0:
+        return 0, 0
     for _start in range(X.size):
         if sum(Xg[_start:_start + _len]) == _len:
             break
