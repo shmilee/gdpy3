@@ -34,8 +34,6 @@ class ReadRaw(ReadNpz):
     desc: str
         description of the .out files
     description: alias desc
-    saveext: str
-        extension of savefile
 
     Parameters
     ----------
@@ -56,7 +54,7 @@ class ReadRaw(ReadNpz):
     >>> npzf.keys()
     >>> npzf['gtcout/b0']
     '''
-    __slots__ = ['datadir', 'saveext']
+    __slots__ = ['datadir', '_special_parent']
 
     def __init__(self, datadir, **kwargs):
         if not os.path.isdir(datadir):
@@ -107,41 +105,23 @@ class ReadRaw(ReadNpz):
 
         # __init__
         self.datadir = datadir
-        self.saveext = ext
+        if ext == 'npz':
+            self._special_parent = ReadNpz
+        elif ext == 'hdf5':
+            from .readhdf5 import ReadHdf5
+            self._special_parent = ReadHdf5
+        else:
+            raise IOError('Unknown file extension. Never!')
         super(ReadRaw, self).__init__(savefile)
 
     def _special_openfile(self):
-        if self.saveext == 'npz':
-            return ReadNpz._special_openfile(self)
-        elif self.saveext == 'hdf5':
-            from .readhdf5 import ReadHdf5
-            return ReadHdf5._special_openfile(self)
-        else:
-            log.error('Unknown extension.')
+        return self._special_parent._special_openfile(self)
 
     def _special_closefile(self, tempf):
-        if self.saveext == 'npz':
-            return ReadNpz._special_closefile(self, tempf)
-        elif self.saveext == 'hdf5':
-            from .readhdf5 import ReadHdf5
-            return ReadHdf5._special_closefile(self, tempf)
-        else:
-            log.error('Unknown extension.')
+        return self._special_parent._special_closefile(self, tempf)
 
     def _special_getkeys(self, tempf):
-        if self.saveext == 'npz':
-            return ReadNpz._special_getkeys(self, tempf)
-        elif self.saveext == 'hdf5':
-            from .readhdf5 import ReadHdf5
-            return ReadHdf5._special_getkeys(self, tempf)
-        else:
-            log.error('Unknown extension.')
+        return self._special_parent._special_getkeys(self, tempf)
 
     def _special_getitem(self, tempf, key):
-        if self.saveext == 'npz':
-            return ReadNpz._special_getitem(self, tempf, key)
-        elif self.saveext == 'hdf5':
-            from .readhdf5 import ReadHdf5
-            return ReadHdf5._special_getitem(self, tempf, key)
-        else:
-            log.error('Unknown extension.')
+        return self._special_parent._special_getitem(self, tempf, key)
