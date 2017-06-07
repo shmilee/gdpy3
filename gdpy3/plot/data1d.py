@@ -29,54 +29,56 @@ class Data1dFigureV110922(GFigure):
     __slots__ = []
     ver = '110922'
     _paragrp = 'gtcout/'
-    _keysgrp = 'data1d/'
     _FigInfo = {
         # data1di(0:mpsi,mpdata1d)
         'ion_flux': dict(
-            key='i-particle-flux', title='thermal ion particle flux'),
+            key=['data1d/i-particle-flux'],
+            title='thermal ion particle flux'),
         'ion_energy_flux': dict(
-            key='i-energy-flux', title='thermal ion energy flux'),
+            key=['data1d/i-energy-flux'], title='thermal ion energy flux'),
         'ion_momentum_flux': dict(
-            key='i-momentum-flux', title='thermal ion momentum flux'),
+            key=['data1d/i-momentum-flux'],
+            title='thermal ion momentum flux'),
         # data1de(0:mpsi,mpdata1d)
         'electron_flux': dict(
-            key='e-particle-flux', title='electron particle flux'),
+            key=['data1d/e-particle-flux'], title='electron particle flux'),
         'electron_energy_flux': dict(
-            key='e-energy-flux', title='electron energy flux'),
+            key=['data1d/e-energy-flux'], title='electron energy flux'),
         'electron_momentum_flux': dict(
-            key='e-momentum-flux', title='electron momentum flux'),
+            key=['data1d/e-momentum-flux'], title='electron momentum flux'),
         # data1df(0:mpsi,mpdata1d)
         'fast_ion_flux': dict(
-            key='f-particle-flux', title='fast ion particle flux'),
+            key=['data1d/f-particle-flux'], title='fast ion particle flux'),
         'fast_ion_energy_flux': dict(
-            key='f-energy-flux', title='fast ion energy flux'),
+            key=['data1d/f-energy-flux'], title='fast ion energy flux'),
         'fast_ion_momentum_flux': dict(
-            key='f-momentum-flux', title='fast ion momentum flux'),
+            key=['data1d/f-momentum-flux'], title='fast ion momentum flux'),
         # field00(0:mpsi,nfield)
         'zonal_flow': dict(
-            key='field00-phi', title='zonal flow'),
+            key=['data1d/field00-phi'], title='zonal flow'),
         'residual_zonal_flow': dict(
-            key='field00-phi', title='residual zonal flow'),
+            key=['data1d/field00-phi'], title='residual zonal flow'),
         'zonal_current': dict(
-            key='field00-apara', title='zonal current'),
+            key=['data1d/field00-apara'], title='zonal current'),
         'zonal_fluidne': dict(
-            key='field00-fluidne', title='zonal fluidne'),
+            key=['data1d/field00-fluidne'], title='zonal fluidne'),
         # fieldrms(0:mpsi,nfield)
         'phi_rms': dict(
-            key='fieldrms-phi', title=r'$\phi rms$'),
+            key=['data1d/fieldrms-phi'], title=r'$\phi rms$'),
         'apara_rms': dict(
-            key='fieldrms-apara', title=r'$A_{\parallel} rms$'),
+            key=['data1d/fieldrms-apara'], title=r'$A_{\parallel} rms$'),
         'fluidne_rms': dict(
-            key='fieldrms-fluidne', title=r'fluidne rms'),
+            key=['data1d/fieldrms-fluidne'], title=r'fluidne rms'),
     }
 
     def __init__(self, name, dataobj, figurestyle=['gdpy3-notebook']):
         grp = 'data1d'
         if name not in self._FigInfo.keys():
             raise ValueError("'%s' not found in group '%s'!" % (name, grp))
-        keys = [self._keysgrp + self._FigInfo[name]['key']]
+        info = self._FigInfo[name]
+        info['key'].extend([self._paragrp + 'tstep', self._paragrp + 'ndiag'])
         super(Data1dFigureV110922, self).__init__(
-            name, grp, dataobj, keys, figurestyle=figurestyle)
+            name, grp, dataobj, info, figurestyle=figurestyle)
 
     def calculate(self, **kwargs):
         '''
@@ -101,30 +103,23 @@ class Data1dFigureV110922(GFigure):
         }
         self.calculation = {}
 
-        Zkey = self.figurekeys[0]
-        tstep, ndiag = self._paragrp + 'tstep', self._paragrp + 'ndiag'
-        if tools.in_dictobj(self.gtcdataobj, Zkey, tstep, ndiag):
-            Z = self.gtcdataobj[Zkey]
-            if Z.size == 0:
-                Z = None
-            else:
-                Zmax = max(abs(Z.max()), abs(Z.min()))
-                tunit = self.gtcdataobj[tstep] * self.gtcdataobj[ndiag]
-                Y, X = Z.shape
-                X = np.arange(1, X + 1) * tunit
-                X, Y = np.meshgrid(X, range(0, Y))
-        else:
-            Z = None
-        if Z is None:
+        Zkey, tstep, ndiag = self.figureinfo['key']
+        Z = self.gtcdataobj[Zkey]
+        if Z.size == 0:
             log.debug("No data for Figure '%s'." % self.Name)
             return False
+        else:
+            Zmax = max(abs(Z.max()), abs(Z.min()))
+            tunit = self.gtcdataobj[tstep] * self.gtcdataobj[ndiag]
+            Y, X = Z.shape
+            X = np.arange(1, X + 1) * tunit
+            X, Y = np.meshgrid(X, range(0, Y))
 
         if ('plot_method' in kwargs
                 and kwargs['plot_method'] in ('pcolormesh', 'plot_surface')):
             plot_method = kwargs['plot_method']
         else:
             plot_method = 'pcolormesh'
-        addlayoutdict, adddatadict = {}, {}
         # fix 3d
         if plot_method == 'plot_surface':
             addlayoutdict = {'projection': '3d'}
@@ -133,6 +128,8 @@ class Data1dFigureV110922(GFigure):
                 cmap=self.nginp.tool['get_style_param'](
                     self.figurestyle, 'image.cmap')
             )
+        else:
+            addlayoutdict, adddatadict = {}, {}
 
         self.figurestructure['AxesStructures'] = [{
             'data': [
@@ -142,7 +139,7 @@ class Data1dFigureV110922(GFigure):
             ],
             'layout': [
                 111,
-                dict(title=self._FigInfo[self.name]['title'],
+                dict(title=self.figureinfo['title'],
                      xlabel=r'time($R_0/c_s$)', ylabel='radial',
                      **addlayoutdict)
             ],

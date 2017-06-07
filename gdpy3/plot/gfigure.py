@@ -30,8 +30,9 @@ class GFigure(object):
         *group*-*name*
     gtcdataobj: :class:`gdpy3.read.readnpz.ReadNpz` instance
         a dictionary-like object of *gtcdatafile*
-    figurekeys: list
+    figureinfo: dict
         physical quantities in *gtcdataobj* used in this figure
+        datakey, title etc.
     figurestructure: dict
         dict container for all plot elements
     calculation: dict
@@ -47,21 +48,21 @@ class GFigure(object):
 
     Parameters
     ----------
-    name, group, gtcdataobj, figurekeys
+    name, group, gtcdataobj, figureinfo
     engine, figurestyle
     '''
-    __slots__ = ['name', 'group', '__gtcdataobj', '__figurekeys',
+    __slots__ = ['name', 'group', '__gtcdataobj', '__figureinfo',
                  '__figurestructure', '__calculation',
                  '__engine', '__nginp',
                  '__figurestyle', 'figure']
 
-    def __init__(self, name, group, gtcdataobj, figurekeys,
+    def __init__(self, name, group, gtcdataobj, figureinfo,
                  engine=default_engine,
                  figurestyle=[]):
         self.name = name
         self.group = group
         self.gtcdataobj = gtcdataobj
-        self.figurekeys = figurekeys
+        self.figureinfo = figureinfo
         self.figurestructure = {}
         self.calculation = {}
         self.engine = engine
@@ -85,19 +86,22 @@ class GFigure(object):
                              " Not %s." % type(dataobj))
 
     @property
-    def figurekeys(self):
-        return self.__figurekeys
+    def figureinfo(self):
+        return self.__figureinfo
 
-    @figurekeys.setter
-    def figurekeys(self, keys):
-        if not isinstance(keys, list):
-            raise ValueError("'figurekeys' must be a list."
-                             " Not %s." % type(keys))
+    @figureinfo.setter
+    def figureinfo(self, info):
+        if not isinstance(info, dict):
+            raise ValueError("'figureinfo' must be a dict."
+                             " Not %s." % type(info))
         else:
-            if tools.in_dictobj(self.gtcdataobj, *keys):
-                self.__figurekeys = keys
+            if 'key' in info and isinstance(info['key'], list):
+                if tools.in_dictobj(self.gtcdataobj, *info['key']):
+                    self.__figureinfo = info
+                else:
+                    raise ValueError("Some keys are invalid!")
             else:
-                raise ValueError("Some keys are invalid!")
+                raise ValueError("figureinfo['key'] must be a list!")
 
     @property
     def figurestructure(self):
