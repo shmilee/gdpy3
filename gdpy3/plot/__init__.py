@@ -11,7 +11,6 @@ __all__ = ['tools', 'gtcfigures']
 import os
 import sys
 import logging
-from .gtcfigures import GtcFigures
 
 logging.basicConfig(
     stream=sys.stdout,
