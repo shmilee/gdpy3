@@ -21,6 +21,8 @@ class ReadNpz(object):
         path of .npz file
     datakeys: tuple
         keys of physical quantities in the .npz file
+    datagroups: tuple
+        groups of datakeys
     desc: str
         description of the .npz file
     description: alias desc
@@ -38,7 +40,8 @@ class ReadNpz(object):
     >>> npzf.keys()
     >>> npzf['a']
     '''
-    __slots__ = ['file', 'datakeys', 'desc', 'description', 'cache']
+    __slots__ = ['file', 'datakeys', 'datagroups',
+                 'desc', 'description', 'cache']
 
     def _special_openfile(self):
         return numpy.load(self.file)
@@ -65,7 +68,10 @@ class ReadNpz(object):
             tempf = self._special_openfile()
             log.debug("Getting keys from %s ..." % self.file)
             self.datakeys = tuple(self._special_getkeys(tempf))
-            self.desc = str(self._special_getitem(tempf,'description'))
+            self.datagroups = tuple(
+                os.path.dirname(k) for k in self.datakeys
+                if k.endswith('/description'))
+            self.desc = str(self._special_getitem(tempf, 'description'))
             self.description = self.desc
         except (IOError, ValueError):
             log.critical("Failed to read file %s." % self.file)
@@ -87,7 +93,7 @@ class ReadNpz(object):
         try:
             log.debug("Open file %s." % self.file)
             tempf = self._special_openfile()
-            value = self._special_getitem(tempf,key)
+            value = self._special_getitem(tempf, key)
             self.cache[key] = value
         except (IOError, ValueError):
             log.critical("Failed to get '%s' from '%s'!" % (key, self.file))
@@ -123,7 +129,7 @@ class ReadNpz(object):
             tempf = self._special_openfile()
             for i in idxtodo:
                 key = keys[i]
-                value = self._special_getitem(tempf,key)
+                value = self._special_getitem(tempf, key)
                 result[i] = value
                 self.cache[key] = value
         except (IOError, ValueError):
