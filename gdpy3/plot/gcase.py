@@ -51,7 +51,8 @@ class GCase(object):
                  'gfigure_ploted', 'gfigurelib',
                  ]
 
-    def __init__(self, dataobj, default_enable=[]):
+    def __init__(self, dataobj,
+                 default_enable=[], figurestyle=['gdpy3-notebook']):
         if tools.is_dictobj(dataobj):
             self.dataobj = dataobj
             self.datafile = dataobj.file
@@ -84,9 +85,9 @@ class GCase(object):
         self.gfigure_enabled = set()
         self.gfigurelib = {}
         if isinstance(default_enable, list):
-            self.enable(*default_enable)
+            self.enable(*default_enable, figurestyle=figurestyle)
         else:
-            self.enable(default_enable)
+            self.enable(default_enable, figurestyle=figurestyle)
         self.gfigure_ploted = set()
 
     def enable(self, *patterns, figurestyle=['gdpy3-notebook']):

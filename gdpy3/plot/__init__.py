@@ -6,11 +6,14 @@ r'''
     This is the subpackage ``plot`` of package gdpy3.
 '''
 
-__all__ = ['tools', 'gtcfigures']
+__all__ = ['plot', 'GCase']
 
 import os
 import sys
 import logging
+
+from .. import read as gdr
+from .gcase import GCase
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -23,5 +26,29 @@ logging.basicConfig(
 log = logging.getLogger('gdp')
 
 
-def plot():
-    pass
+def plot(path, default_enable=[], figurestyle=['gdpy3-notebook'], **kwargs):
+    '''
+    Read GTC data in *path*, get a GTC case.
+    Return an GCase object which contains all figures, calculations.
+
+    Parameters
+    ----------
+    path: str
+        path of the .npz, .hdf5 file to open
+        or path of the directory of GTC .out files
+    default_enable, figurestyle:
+        parameters for :class:`gdpy3.plot.gcase.GCase`
+    '''
+    try:
+        dataobj = gdr.read(path)
+    except Exception:
+        log.error("Failed to read path '%s'!" % path)
+        raise
+
+    try:
+        case = GCase(dataobj, default_enable, figurestyle)
+    except Exception:
+        log.error("Failed to get 'GCase' object!")
+        raise
+    else:
+        return case
