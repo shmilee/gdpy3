@@ -24,15 +24,13 @@ class GFigure(object):
 
     Attributes
     ----------
+    gtcdataobj: :class:`gdpy3.read.readnpz.ReadNpz` instance
+        a dictionary-like object
     name: str
     group: str
-    Name: str
-        *group*-*name*
-    gtcdataobj: :class:`gdpy3.read.readnpz.ReadNpz` instance
-        a dictionary-like object of *gtcdatafile*
+    Name: str, *group*-*name*
     figureinfo: dict
-        physical quantities in *gtcdataobj* used in this figure
-        datakey, title etc.
+        keys in *gtcdataobj* and title etc. used in this figure
     figurestructure: dict
         dict container for all plot elements
     calculation: dict
@@ -48,7 +46,7 @@ class GFigure(object):
 
     Parameters
     ----------
-    name, group, gtcdataobj, figureinfo
+    gtcdataobj, name, group, figureinfo
     engine, figurestyle
     '''
     __slots__ = ['name', 'group', '__gtcdataobj', '__figureinfo',
@@ -56,12 +54,15 @@ class GFigure(object):
                  '__engine', '__nginp',
                  '__figurestyle', 'figure']
 
-    def __init__(self, name, group, gtcdataobj, figureinfo,
-                 engine=default_engine,
-                 figurestyle=[]):
+    _paragrp = 'gtcout/'
+    _FigGroup = 'group'
+    _FigInfo = {'name': dict(key=[])}
+
+    def __init__(self, gtcdataobj, name, group, figureinfo,
+                 engine=default_engine, figurestyle=[]):
+        self.gtcdataobj = gtcdataobj
         self.name = name
         self.group = group
-        self.gtcdataobj = gtcdataobj
         self.figureinfo = figureinfo
         self.figurestructure = {}
         self.calculation = {}
@@ -69,9 +70,15 @@ class GFigure(object):
         self.figurestyle = figurestyle
         self.figure = None
 
+    @classmethod
+    def get_members(cls, group=None):
+        if not group:
+            group = cls._FigGroup
+        return tuple(group + '/' + n for n in cls._FigInfo.keys())
+
     @property
     def Name(self):
-        return self. group + '-' + self.name
+        return self. group + '/' + self.name
 
     @property
     def gtcdataobj(self):

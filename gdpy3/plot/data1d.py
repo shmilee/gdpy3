@@ -27,8 +27,7 @@ class Data1dFigureV110922(GFigure):
     A class for pcolormesh figures of Data1d
     '''
     __slots__ = []
-    ver = '110922'
-    _paragrp = 'gtcout/'
+    _FigGroup = 'data1d'
     _FigInfo = {
         # data1di(0:mpsi,mpdata1d)
         'ion_flux': dict(
@@ -71,14 +70,14 @@ class Data1dFigureV110922(GFigure):
             key=['data1d/fieldrms-fluidne'], title=r'fluidne rms'),
     }
 
-    def __init__(self, name, dataobj, figurestyle=['gdpy3-notebook']):
-        grp = 'data1d'
+    def __init__(self, dataobj, name,
+                 group=_FigGroup, figurestyle=['gdpy3-notebook']):
         if name not in self._FigInfo.keys():
-            raise ValueError("'%s' not found in group '%s'!" % (name, grp))
+            raise ValueError("'%s' not found in group '%s'!" % (name, group))
         info = self._FigInfo[name]
         info['key'].extend([self._paragrp + 'tstep', self._paragrp + 'ndiag'])
         super(Data1dFigureV110922, self).__init__(
-            name, grp, dataobj, info, figurestyle=figurestyle)
+            dataobj, name, group, info, figurestyle=figurestyle)
 
     def calculate(self, **kwargs):
         '''
@@ -162,7 +161,10 @@ def _set_reszf_axesstructures(self, X, Y, Z, Zmax, tunit):
     krrhoi, krrho0, istep, krdltr, qiflux, rgiflux = (
         self._paragrp + key for key in
         ['zfkrrhoi', 'zfkrrho0', 'zfistep', 'zfkrdltr', 'qiflux', 'rgiflux'])
-    if tools.in_dictobj(dictobj, krrhoi, krrho0, istep, krdltr):
+    self.figureinfo['zfkey'] = [krrhoi, krrho0, istep,
+                                krdltr, qiflux, rgiflux]
+    if tools.in_dictobj(dictobj, krrhoi, krrho0,
+                        istep, krdltr, qiflux, rgiflux):
         krrhoi, krrho0, istep, krdltr, qiflux, rgiflux = dictobj.get_many(
             krrhoi, krrho0, istep, krdltr, qiflux, rgiflux)
     else:
@@ -233,12 +235,12 @@ def _set_reszf_axesstructures(self, X, Y, Z, Zmax, tunit):
     tfit1, tfit2 = [time[i] for i in idx1], [time[i] for i in idx2]
     lzfit1, lzfit2 = [logZ1[i] for i in idx1], [logZ2[i] for i in idx2]
     if tfit1:
-        result, line1 = tools.fitline(tfit1, lzfit1, 1, info='%s max' % iZ1)
+        result, line1 = tools.fitline(tfit1, lzfit1, 1, info='%s peak' % iZ1)
         gamma1 = result[0][0]
     else:
         line1, gamma1 = [], 0
     if tfit2:
-        result, line2 = tools.fitline(tfit2, lzfit2, 1, info='%s max' % iZ2)
+        result, line2 = tools.fitline(tfit2, lzfit2, 1, info='%s peak' % iZ2)
         gamma2 = result[0][0]
     else:
         line2, gamma2 = [], 0

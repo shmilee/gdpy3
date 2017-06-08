@@ -28,8 +28,7 @@ class HistoryFigureV110922(GFigure):
     A class for figures of History
     '''
     __slots__ = []
-    ver = '110922'
-    _paragrp = 'gtcout/'
+    _FigGroup = 'history'
     _ModeFigInfo = {
         'fieldmode%s_%s' % (i, f):
         dict(index=i - 1, field=f,
@@ -40,10 +39,10 @@ class HistoryFigureV110922(GFigure):
     }
     _FigInfo = dict(_ModeFigInfo)
 
-    def __init__(self, name, dataobj, figurestyle=['gdpy3-notebook']):
-        grp = 'history'
+    def __init__(self, dataobj, name,
+                 group=_FigGroup, figurestyle=['gdpy3-notebook']):
         if name not in self._FigInfo.keys():
-            raise ValueError("'%s' not found in group '%s'!" % (name, grp))
+            raise ValueError("'%s' not found in group '%s'!" % (name, group))
         info = self._FigInfo[name]
         if name in self._ModeFigInfo:
             info['key'].extend([self._paragrp + k for k in
@@ -52,7 +51,7 @@ class HistoryFigureV110922(GFigure):
         else:
             pass
         super(HistoryFigureV110922, self).__init__(
-            name, grp, dataobj, info, figurestyle=figurestyle)
+            dataobj, name, group, info, figurestyle=figurestyle)
 
     def calculate(self, **kwargs):
         '''
@@ -141,9 +140,9 @@ def _set_fieldmode_axesstructures(self, **kwargs):
         if region_len == 0:
             reg1, region_len = 0, ndstep // 4
         reg2 = reg1 + region_len
+        log.info("Growth region index: (%s,%s)" % (reg1, reg2))
     log.debug("Find growth region: [%s,%s]." % (time[reg1], time[reg2 - 1]))
     # polyfit region1
-    print(reg1, reg2)
     result, line1 = tools.fitline(
         time[reg1:reg2], logya[reg1:reg2], 1,
         info='[%s,%s] growth region' % (time[reg1], time[reg2 - 1]))
