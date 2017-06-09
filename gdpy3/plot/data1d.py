@@ -28,46 +28,61 @@ class Data1dFigureV110922(GFigure):
     '''
     __slots__ = []
     _FigGroup = 'data1d'
+    __parakey = [GFigure._paragrp + 'tstep', GFigure._paragrp + 'ndiag']
     _FigInfo = {
         # data1di(0:mpsi,mpdata1d)
         'ion_flux': dict(
-            key=['data1d/i-particle-flux'],
+            key=['data1d/i-particle-flux'] + __parakey,
             title='thermal ion particle flux'),
         'ion_energy_flux': dict(
-            key=['data1d/i-energy-flux'], title='thermal ion energy flux'),
+            key=['data1d/i-energy-flux'] + __parakey,
+            title='thermal ion energy flux'),
         'ion_momentum_flux': dict(
-            key=['data1d/i-momentum-flux'],
+            key=['data1d/i-momentum-flux'] + __parakey,
             title='thermal ion momentum flux'),
         # data1de(0:mpsi,mpdata1d)
         'electron_flux': dict(
-            key=['data1d/e-particle-flux'], title='electron particle flux'),
+            key=['data1d/e-particle-flux'] + __parakey,
+            title='electron particle flux'),
         'electron_energy_flux': dict(
-            key=['data1d/e-energy-flux'], title='electron energy flux'),
+            key=['data1d/e-energy-flux'] + __parakey,
+            title='electron energy flux'),
         'electron_momentum_flux': dict(
-            key=['data1d/e-momentum-flux'], title='electron momentum flux'),
+            key=['data1d/e-momentum-flux'] + __parakey,
+            title='electron momentum flux'),
         # data1df(0:mpsi,mpdata1d)
         'fast_ion_flux': dict(
-            key=['data1d/f-particle-flux'], title='fast ion particle flux'),
+            key=['data1d/f-particle-flux'] + __parakey,
+            title='fast ion particle flux'),
         'fast_ion_energy_flux': dict(
-            key=['data1d/f-energy-flux'], title='fast ion energy flux'),
+            key=['data1d/f-energy-flux'] + __parakey,
+            title='fast ion energy flux'),
         'fast_ion_momentum_flux': dict(
-            key=['data1d/f-momentum-flux'], title='fast ion momentum flux'),
+            key=['data1d/f-momentum-flux'] + __parakey,
+            title='fast ion momentum flux'),
         # field00(0:mpsi,nfield)
         'zonal_flow': dict(
-            key=['data1d/field00-phi'], title='zonal flow'),
+            key=['data1d/field00-phi'] + __parakey,
+            title='zonal flow'),
         'residual_zonal_flow': dict(
-            key=['data1d/field00-phi'], title='residual zonal flow'),
+            key=['data1d/field00-phi'] + __parakey,
+            title='residual zonal flow'),
         'zonal_current': dict(
-            key=['data1d/field00-apara'], title='zonal current'),
+            key=['data1d/field00-apara'] + __parakey,
+            title='zonal current'),
         'zonal_fluidne': dict(
-            key=['data1d/field00-fluidne'], title='zonal fluidne'),
+            key=['data1d/field00-fluidne'] + __parakey,
+            title='zonal fluidne'),
         # fieldrms(0:mpsi,nfield)
         'phi_rms': dict(
-            key=['data1d/fieldrms-phi'], title=r'$\phi rms$'),
+            key=['data1d/fieldrms-phi'] + __parakey,
+            title=r'$\phi rms$'),
         'apara_rms': dict(
-            key=['data1d/fieldrms-apara'], title=r'$A_{\parallel} rms$'),
+            key=['data1d/fieldrms-apara'] + __parakey,
+            title=r'$A_{\parallel} rms$'),
         'fluidne_rms': dict(
-            key=['data1d/fieldrms-fluidne'], title=r'fluidne rms'),
+            key=['data1d/fieldrms-fluidne'] + __parakey,
+            title=r'fluidne rms'),
     }
 
     def __init__(self, dataobj, name,
@@ -75,7 +90,6 @@ class Data1dFigureV110922(GFigure):
         if name not in self._FigInfo.keys():
             raise ValueError("'%s' not found in group '%s'!" % (name, group))
         info = self._FigInfo[name]
-        info['key'].extend([self._paragrp + 'tstep', self._paragrp + 'ndiag'])
         super(Data1dFigureV110922, self).__init__(
             dataobj, name, group, info, figurestyle=figurestyle)
 

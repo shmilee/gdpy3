@@ -30,11 +30,16 @@ class HistoryFigureV110922(GFigure):
     __slots__ = []
     _FigGroup = 'history'
     _ModeFigInfo = {
-        'fieldmode%s_%s' % (i, f):
-        dict(index=i - 1, field=f,
-             key=['history/ndstep',
-                  'history/fieldmode-%s-real' % f,
-                  'history/fieldmode-%s-imag' % f])
+        'fieldmode%s_%s' % (i, f): dict(
+            index=i - 1,
+            field=f,
+            key=['history/ndstep',
+                 'history/fieldmode-%s-real' % f,
+                 'history/fieldmode-%s-imag' % f,
+                 ] + [
+                GFigure._paragrp + k for k in
+                ('tstep', 'ndiag', 'nmodes', 'mmodes',
+                 'qiflux', 'rgiflux', 'rho0')])
         for i in range(1, 9) for f in ['phi', 'apara', 'fluidne']
     }
     _FigInfo = dict(_ModeFigInfo)
@@ -44,12 +49,6 @@ class HistoryFigureV110922(GFigure):
         if name not in self._FigInfo.keys():
             raise ValueError("'%s' not found in group '%s'!" % (name, group))
         info = self._FigInfo[name]
-        if name in self._ModeFigInfo:
-            info['key'].extend([self._paragrp + k for k in
-                                ('tstep', 'ndiag', 'nmodes', 'mmodes',
-                                 'qiflux', 'rgiflux', 'rho0')])
-        else:
-            pass
         super(HistoryFigureV110922, self).__init__(
             dataobj, name, group, info, figurestyle=figurestyle)
 
