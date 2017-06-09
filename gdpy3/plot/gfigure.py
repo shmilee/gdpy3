@@ -23,13 +23,13 @@ class GFigure(object):
 
     Attributes
     ----------
-    gtcdataobj: :class:`gdpy3.read.readnpz.ReadNpz` instance
+    dataobj: :class:`gdpy3.read.readnpz.ReadNpz` instance
         a dictionary-like object
     name: str
     group: str
     Name: str, *group*-*name*
     figureinfo: dict
-        keys in *gtcdataobj* and title etc. used in this figure
+        keys in *dataobj* and title etc. used in this figure
     figurestructure: dict
         dict container for all plot elements
     calculation: dict
@@ -45,10 +45,10 @@ class GFigure(object):
 
     Parameters
     ----------
-    gtcdataobj, name, group, figureinfo
+    dataobj, name, group, figureinfo
     engine, figurestyle
     '''
-    __slots__ = ['name', 'group', '__gtcdataobj', '__figureinfo',
+    __slots__ = ['name', 'group', '__dataobj', '__figureinfo',
                  '__figurestructure', '__calculation',
                  '__engine', '__nginp',
                  '__figurestyle', 'figure']
@@ -57,9 +57,9 @@ class GFigure(object):
     _FigGroup = 'group'
     _FigInfo = {'name': dict(key=[])}
 
-    def __init__(self, gtcdataobj, name, group, figureinfo,
+    def __init__(self, dataobj, name, group, figureinfo,
                  engine=default_engine, figurestyle=[]):
-        self.gtcdataobj = gtcdataobj
+        self.dataobj = dataobj
         self.name = name
         self.group = group
         self.figureinfo = figureinfo
@@ -80,16 +80,16 @@ class GFigure(object):
         return self. group + '/' + self.name
 
     @property
-    def gtcdataobj(self):
-        return self.__gtcdataobj
+    def dataobj(self):
+        return self.__dataobj
 
-    @gtcdataobj.setter
-    def gtcdataobj(self, dataobj):
-        if tools.is_dictobj(dataobj):
-            self.__gtcdataobj = dataobj
+    @dataobj.setter
+    def dataobj(self, obj):
+        if tools.is_dictobj(obj):
+            self.__dataobj = obj
         else:
-            raise ValueError("'gtcdataobj' must be a ReadNpz instance."
-                             " Not %s." % type(dataobj))
+            raise ValueError("'dataobj' must be a ReadNpz instance."
+                             " Not %s." % type(obj))
 
     @property
     def figureinfo(self):
@@ -102,7 +102,7 @@ class GFigure(object):
                              " Not %s." % type(info))
         else:
             if 'key' in info and isinstance(info['key'], list):
-                if tools.in_dictobj(self.gtcdataobj, *info['key']):
+                if tools.in_dictobj(self.dataobj, *info['key']):
                     self.__figureinfo = info
                 else:
                     raise ValueError("Some keys are invalid!")

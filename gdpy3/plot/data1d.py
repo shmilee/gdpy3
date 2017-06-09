@@ -101,7 +101,7 @@ class Data1dFigureV110922(GFigure):
         Notes
         -----
         required parameters:
-            *name*, *gtcdataobj*, *figurestyle* of instance
+            *name*, *dataobj*, *figurestyle* of instance
         optional parameters:
             plot_method: 'pcolormesh', 'plot_surface'
             default 'pcolormesh'
@@ -117,13 +117,13 @@ class Data1dFigureV110922(GFigure):
         self.calculation = {}
 
         Zkey, tstep, ndiag = self.figureinfo['key']
-        Z = self.gtcdataobj[Zkey]
+        Z = self.dataobj[Zkey]
         if Z.size == 0:
             log.debug("No data for Figure '%s'." % self.Name)
             return False
         else:
             Zmax = max(abs(Z.max()), abs(Z.min()))
-            tunit = self.gtcdataobj[tstep] * self.gtcdataobj[ndiag]
+            tunit = self.dataobj[tstep] * self.dataobj[ndiag]
             Y, X = Z.shape
             X = np.arange(1, X + 1) * tunit
             X, Y = np.meshgrid(X, range(0, Y))
@@ -171,7 +171,7 @@ def _set_reszf_axesstructures(self, Z, tunit, **kwargs):
     '''
     Set residual zonal flow axesstructures, calculation
     '''
-    dictobj = self.gtcdataobj
+    dictobj = self.dataobj
     krrhoi, krrho0, istep, krdltr, qiflux, rgiflux = (
         self._paragrp + key for key in
         ['zfkrrhoi', 'zfkrrho0', 'zfistep', 'zfkrdltr', 'qiflux', 'rgiflux'])

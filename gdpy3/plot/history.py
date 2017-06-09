@@ -88,12 +88,12 @@ def _set_fieldmode_axesstructures(self, **kwargs):
      nmodes, mmodes, qiflux, rgiflux, rho0) = self.figureinfo['key']
     try:
         (ndstep, tstep, ndiag, qiflux, rgiflux, rho0) = \
-            self.gtcdataobj.get_many(ndstep, tstep, ndiag,
-                                     qiflux, rgiflux, rho0)
-        yreal = self.gtcdataobj[real][index]
-        yimag = self.gtcdataobj[imag][index]
-        n = self.gtcdataobj[nmodes][index]
-        m = self.gtcdataobj[mmodes][index]
+            self.dataobj.get_many(ndstep, tstep, ndiag,
+                                  qiflux, rgiflux, rho0)
+        yreal = self.dataobj[real][index]
+        yimag = self.dataobj[imag][index]
+        n = self.dataobj[nmodes][index]
+        m = self.dataobj[mmodes][index]
         time = np.arange(1, ndstep + 1) * tstep * ndiag
         kthetarhoi = n * qiflux / rgiflux * rho0
     except Exception as exc:
