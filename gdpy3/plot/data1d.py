@@ -225,7 +225,7 @@ def _set_reszf_axesstructures(self, Z, tunit, **kwargs):
             idx1, len1 = Z1.size // 2, Z1.size // 4
         if len2 == 0:
             idx2, len2 = Z1.size // 2, Z1.size // 4
-        log.info("Growth region index: r=%s, (%s,%s); r=%s, (%s,%s)"
+        log.info("Residual region index: r=%s, (%s,%s); r=%s, (%s,%s)"
                  % (iZ1, idx1, idx1 + len1, iZ2, idx2, idx2 + len2))
     log.debug("Flat region: [%s,%s], [%s,%s]."
               % (time[idx1], time[idx1 + len1 - 1],
