@@ -101,14 +101,18 @@ class GCase(object):
         '''
         figstodo = []
         for name in patterns:
-            try:
-                pat = re.compile(name)
-            except Exception as exc:
-                log.warn("Failed to enable '%s': %s" % (name, exc))
+            if isinstance(name, str) and name in self.gfigure_available:
+                if name not in figstodo:
+                    figstodo.append(name)
             else:
-                for member in self.gfigure_available:
-                    if pat.match(member) and member not in figstodo:
-                        figstodo.append(member)
+                try:
+                    pat = re.compile(name)
+                except Exception as exc:
+                    log.warn("Failed to pattern '%s': %s" % (name, exc))
+                else:
+                    for member in self.gfigure_available:
+                        if pat.match(member) and member not in figstodo:
+                            figstodo.append(member)
         if figstodo:
             log.debug("Gfigures to enable:\n%s" % figstodo)
         for member in figstodo:
@@ -133,8 +137,6 @@ class GCase(object):
             else:
                 self.gfigurelib[member] = gf
                 self.gfigure_enabled.add(member)
-        if self.gfigure_enabled:
-            log.debug("Enabled gfigures:\n%s" % self.gfigure_enabled)
 
     def disable(self, *patterns):
         '''
@@ -146,14 +148,18 @@ class GCase(object):
         '''
         figstodo = []
         for name in patterns:
-            try:
-                pat = re.compile(name)
-            except Exception as exc:
-                log.warn("Failed to disable '%s': %s" % (name, exc))
+            if isinstance(name, str) and name in self.gfigure_enabled:
+                if name not in figstodo:
+                    figstodo.append(name)
             else:
-                for member in self.gfigure_enabled:
-                    if pat.match(member) and member not in figstodo:
-                        figstodo.append(member)
+                try:
+                    pat = re.compile(name)
+                except Exception as exc:
+                    log.warn("Failed to pattern '%s': %s" % (name, exc))
+                else:
+                    for member in self.gfigure_enabled:
+                        if pat.match(member) and member not in figstodo:
+                            figstodo.append(member)
         if figstodo:
             log.debug("Gfigures to disable:\n%s" % figstodo)
         for member in figstodo:
@@ -167,12 +173,20 @@ class GCase(object):
                 self.gfigure_ploted.remove(member)
             if member in self.gfigure_enabled:
                 self.gfigure_enabled.remove(member)
-        if self.gfigure_enabled:
-            log.debug("Enabled gfigures left:\n%s" % self.gfigure_enabled)
 
     def plot(self, Name, show=True, **kwargs):
         '''
-        Plot gfigure *Name*. Show the figure if *show* is True.
+        Plot gfigure *Name*.
+
+        Parameters
+        ----------
+        Name: str
+        show: bool
+            Show the figure if *show* is True.
+        kwargs: pass to gfigure.draw method
+            ``num``, ``redraw``, ``recalculate``,
+            ``figurestyle``, ``engine`` etc.
+            and some kwargs for gfigure.calculate method
         '''
         gf = self.__getitem__(Name)
         if not gf:
@@ -188,6 +202,7 @@ class GCase(object):
                 self.gfigure_ploted.add(Name)
                 if show:
                     gf.show()
+                return True
             else:
                 log.error("Failed to plot gfigure '%s': %s" % (Name, exc))
                 return False
