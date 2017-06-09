@@ -171,7 +171,7 @@ class GFigure(object):
         log.error('Define this function in derived class.')
         raise
 
-    def draw(self, num=None, **kwargs):
+    def draw(self, num=None, redraw=False, recalculate=False, **kwargs):
         '''
         convert *figurestructure* to Figure instance *figure*
 
@@ -179,13 +179,25 @@ class GFigure(object):
         ----------
         num: integer or string
             pass to *nginp*.figure_factory method
+        redraw: bool
+            redraw the figure
+        recalculate: bool
+            recalculate the figurestructure
+            When recalculate is True, redraw will also be True.
         kwargs: pass to *calculate* method
         '''
-        self.close()
-        if not self.figurestructure:
+        if (not self.figurestructure
+                or not self.figurestructure['AxesStructures']):
+            recalculate = True
+        if recalculate:
             self.calculate(**kwargs)
-        log.debug("Drawing figure '%s' ..." % self.Name)
-        self.figure = self.nginp.figure_factory(self.figurestructure, num=num)
+        if recalculate or not self.figure:
+            redraw = True
+        if redraw:
+            self.close()
+            log.debug("Drawing figure '%s' ..." % self.Name)
+            self.figure = self.nginp.figure_factory(
+                self.figurestructure, num=num)
 
     def plot(self, **kwargs):
         '''
@@ -201,10 +213,10 @@ class GFigure(object):
             self.nginp.close(self.figure)
         self.figure = None
 
-    def show(self):
+    def show(self, **kwargs):
         '''
         display this figure
         '''
         if not self.figure:
-            self.plot()
+            self.plot(**kwargs)
         self.nginp.show(self.figure)
