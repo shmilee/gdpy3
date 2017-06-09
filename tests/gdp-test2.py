@@ -3,24 +3,32 @@
 
 # Copyright (c) 2017 shmilee
 
-import os
 import logging
 import gdpy3.read as gdr
-import gdpy3.plot.data1d as data1d
+from gdpy3.plot import data1d, history
 
-log = logging.getLogger('gdpy3')
-log0 = logging.getLogger('gdc')
-log1 = logging.getLogger('gdr')
-log2 = logging.getLogger('gdp')
+log0 = logging.getLogger('test')
+log1 = logging.getLogger('gdp')
+
+CasePath = '/home/IFTS_shmilee/201703XX-residual-ZF/n18-T'
+#CasePath = '/home/IFTS_shmilee/201703XX-residual-ZF/obo-4T-50dots-0.4'
 
 if __name__ == '__main__':
-    log2.setLevel(10)
-    dictobj = gdr.read('/home/IFTS_shmilee/2017-D/obo-4T-50dots-0.2',
-                       extension='hdf5')
-    #zf = data1d.Data1dFigureV110922('residual_zonal_flow', dictobj)
-    zf = data1d.Data1dFigureV110922('zonal_flow', dictobj)
-    # zf.calculate(plot_method='plot_surface')
-    zf.plot(plot_method='pcolormesh')
-    zf.show()
-    zf.figure.savefig(zf.Name + '.png')
-    input()
+    log1.setLevel(10)
+    dictobj = gdr.read(CasePath)
+    zf = data1d.Data1dFigureV110922(dictobj, 'zonal_flow')
+    rzf = data1d.Data1dFigureV110922(dictobj, 'residual_zonal_flow')
+    f3phi = history.HistoryFigureV110922(dictobj, 'fieldmode3_phi')
+    for gf in [zf, rzf, f3phi]:
+        gf.calculate(
+            #region_start=120, region_end=400,
+            #region_start=20, region_end=120,
+            #plot_method='plot_surface',
+            plot_method='pcolormesh',
+        )
+        log0.info('calculation: %s ' % gf.calculation)
+        input('Enter to continue, show: ')
+        gf.show()
+        input('Enter to continue, close: ')
+        gf.close()
+    input('Enter to exit. ')
