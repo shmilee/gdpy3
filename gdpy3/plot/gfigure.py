@@ -73,7 +73,7 @@ class GFigure(object):
     def get_members(cls, group=None):
         if not group:
             group = cls._FigGroup
-        return tuple(group + '/' + n for n in cls._FigInfo.keys())
+        return tuple(sorted(group + '/' + n for n in cls._FigInfo.keys()))
 
     @property
     def Name(self):
