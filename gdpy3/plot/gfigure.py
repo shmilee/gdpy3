@@ -219,4 +219,4 @@ class GFigure(object):
         '''
         if not self.figure:
             self.plot(**kwargs)
-        self.nginp.show(self.figure)
+        return self.nginp.show(self.figure)

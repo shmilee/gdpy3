@@ -206,7 +206,7 @@ class GCase(object):
             if gf.figure:
                 self.gfigure_ploted.add(Name)
                 if show:
-                    gf.show()
+                    return gf.show()
                 return True
             else:
                 log.error("Failed to plot gfigure '%s': %s" % (Name, exc))

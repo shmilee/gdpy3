@@ -8,8 +8,7 @@ A simple wrapper for matplotlib used to plot simple figure.
 
 import os
 import logging
-from matplotlib import style
-from matplotlib import rcParams
+from matplotlib import style, rcParams, get_backend
 from matplotlib.pyplot import figure, close
 from matplotlib.axes._axes import Axes
 from mpl_toolkits.mplot3d import Axes3D
@@ -232,7 +231,14 @@ def mplshow(fig):
     '''
     Display the figure *fig*.
     '''
-    fig.show()
+    if get_backend() in (
+            'nbAgg',
+            'nbagg',
+            'notebook',
+            'module://ipykernel.pylab.backend_inline'):
+        return fig
+    else:
+        return fig.show()
 
 
 def mplclose(fig):
