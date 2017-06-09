@@ -162,12 +162,12 @@ class Data1dFigureV110922(GFigure):
         # residual zonal flow
         if self.name == 'residual_zonal_flow':
             # set axesstructures, calculation
-            return _set_reszf_axesstructures(self, X, Y, Z, Zmax, tunit)
+            return _set_reszf_axesstructures(self, Z, tunit, **kwargs)
 
         return True
 
 
-def _set_reszf_axesstructures(self, X, Y, Z, Zmax, tunit):
+def _set_reszf_axesstructures(self, Z, tunit, **kwargs):
     '''
     Set residual zonal flow axesstructures, calculation
     '''
@@ -211,8 +211,22 @@ def _set_reszf_axesstructures(self, X, Y, Z, Zmax, tunit):
     time = np.arange(istep, Z1.size) * tunit
     Z1, Z2 = Z1[istep:] / abs(Z1[istep]), Z2[istep:] / abs(Z2[istep])
     # find residual region
-    idx1, len1 = tools.findflat(Z1, 0.0005)
-    idx2, len2 = tools.findflat(Z2, 0.0005)
+    if ('region_start' in kwargs and 'region_end' in kwargs
+            and isinstance(kwargs['region_start'], int)
+            and isinstance(kwargs['region_end'], int)
+            and kwargs['region_start'] < kwargs['region_end'] < Z1.size):
+        idx1, len1 = kwargs['region_start'], kwargs['region_end']
+        len1 = len1 - idx1
+        idx2, len2 = idx1, len1
+    else:
+        idx1, len1 = tools.findflat(Z1, 0.0005)
+        idx2, len2 = tools.findflat(Z2, 0.0005)
+        if len1 == 0:
+            idx1, len1 = Z1.size // 2, Z1.size // 4
+        if len2 == 0:
+            idx2, len2 = Z1.size // 2, Z1.size // 4
+        log.info("Growth region index: r=%s, (%s,%s); r=%s, (%s,%s)"
+                 % (iZ1, idx1, idx1 + len1, iZ2, idx2, idx2 + len2))
     log.debug("Flat region: [%s,%s], [%s,%s]."
               % (time[idx1], time[idx1 + len1 - 1],
                  time[idx2], time[idx2 + len2 - 1]))
@@ -229,10 +243,10 @@ def _set_reszf_axesstructures(self, X, Y, Z, Zmax, tunit):
                 label=r'$r=%s, \phi_{res}=%.6f$' % (iZ1, abs(res1)))],
             [2, 'plot', (time, Z2), dict(
                 label=r'$r=%s, \phi_{res}=%.6f$' % (iZ2, abs(res2)))],
-            [3, 'plot', (time[idx1:idx1 + len1],
-                         Z1[idx1:idx1 + len1], '--'), dict()],
-            [4, 'plot', (time[idx2:idx2 + len2],
-                         Z2[idx2:idx2 + len2], '--'), dict()],
+            [3, 'plot', ([time[idx1], time[idx1 + len1 - 1]],
+                         [Z1[idx1], Z1[idx1 + len1 - 1]], 'v--'), dict()],
+            [4, 'plot', ([time[idx2], time[idx2 + len2 - 1]],
+                         [Z2[idx2], Z2[idx2 + len2 - 1]], '^--'), dict()],
             [5, 'legend', (), dict()]
         ],
     }
@@ -266,9 +280,9 @@ def _set_reszf_axesstructures(self, X, Y, Z, Zmax, tunit):
         'data': [
             [1, 'plot', (time, logZ1), dict(label=r'$r=%s$' % iZ1)],
             [2, 'plot', (time, logZ2), dict(label=r'$r=%s$' % iZ2)],
-            [3, 'plot', (tfit1, line1, '--'),
+            [3, 'plot', (tfit1, line1, 'v--'),
                 dict(label=r'$\gamma_{%s}=%.6f$' % (iZ1, gamma1))],
-            [4, 'plot', (tfit2, line2, 'v--'),
+            [4, 'plot', (tfit2, line2, '^--'),
                 dict(label=r'$\gamma_{%s}=%.6f$' % (iZ2, gamma2))],
             [5, 'legend', (), dict()]
         ],
