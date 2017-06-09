@@ -183,15 +183,20 @@ class GCase(object):
         Name: str
         show: bool
             Show the figure if *show* is True.
-        kwargs: pass to gfigure.draw method
-            ``num``, ``redraw``, ``recalculate``,
-            ``figurestyle``, ``engine`` etc.
-            and some kwargs for gfigure.calculate method
+        kwargs:
+            1) ``figurestyle``, ``engine`` for gfigure
+            2) pass to gfigure.draw method
+               ``num``, ``redraw``, ``recalculate``,
+            3) and some kwargs for gfigure.calculate method
         '''
         gf = self.__getitem__(Name)
         if not gf:
             return False
         try:
+            if 'figurestyle' in kwargs:
+                gf.figurestyle = kwargs['figurestyle']
+            if 'engine' in kwargs:
+                gf.engine = kwargs['engine']
             log.info("Plotting gfigure '%s' ..." % Name)
             gf.draw(**kwargs)
         except Exception as exc:
