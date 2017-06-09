@@ -40,7 +40,6 @@ setup(
         'Operating System :: OS Independent',
         'Operating System :: POSIX :: Linux',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
@@ -53,7 +52,7 @@ setup(
     ],
     extras_require={
         'hdf5': ['h5py>=2.6.0'],
-        'smooth': ['scipy>=0.14.0'],
+        'tools': ['scipy>=0.14.0'],
     },
     package_data={
         'gdpy3': ['plot/enginelib/mpl-stylelib/*.mplstyle',
