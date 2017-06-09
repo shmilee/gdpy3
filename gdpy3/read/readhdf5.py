@@ -2,7 +2,6 @@
 
 # Copyright (c) 2017 shmilee
 
-import os
 import logging
 import h5py
 

@@ -7,7 +7,6 @@ This module provides the :class:`GFigure`, which contains
 all the plot elements, calculation results, figure methods.
 '''
 
-import os
 import logging
 
 from . import tools
