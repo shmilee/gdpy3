@@ -33,3 +33,17 @@ def get_engine(name):
         return mplengine
     else:
         pass
+
+
+def style_available(engine=default_engine):
+    '''
+    Return a list of available styles in Engine *engine*.
+    '''
+    if engine not in engine_available:
+        log.error("Plot engine '%s' not found in '%s'!"
+                  % (engine, engine_available))
+        return []
+    if engine in ('mpl', 'matplotlib'):
+        return mplengine.style_available
+    else:
+        pass

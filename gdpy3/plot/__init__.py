@@ -14,6 +14,7 @@ import logging
 
 from .. import read as gdr
 from .gcase import GCase
+from .enginelib import engine_available, style_available
 
 logging.basicConfig(
     stream=sys.stdout,
