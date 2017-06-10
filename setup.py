@@ -53,6 +53,7 @@ setup(
     extras_require={
         'hdf5': ['h5py>=2.6.0'],
         'tools': ['scipy>=0.14.0'],
+        'ipynbtool': ['ipython', 'notebook'],
     },
     package_data={
         'gdpy3': ['plot/enginelib/mpl-stylelib/*.mplstyle',
