@@ -154,6 +154,9 @@ def scrollbar(*args):
     elements_div = ''
     elements_script = ''
     for ele in args:
+        if ele not in elements:
+            print("'%s' not supported!" % ele)
+            continue
         if elements[ele][0]:
             elements_css += elements[ele][0]
         if elements[ele][1]:
