@@ -1,0 +1,26 @@
+# gdpy3 latex context
+# from github.com/petebachant/mplstyles/blob/master/styles/latex.mplstyle
+
+axes.prop_cycle : cycler('color', ['k', 'b', 'g', 'r', 'c', 'm', 'y'])
+
+grid.color: 777777
+
+lines.markersize: 9
+lines.markeredgewidth: 1
+lines.linewidth: 1.2
+
+legend.numpoints: 1
+legend.fontsize: small
+legend.frameon: False
+
+font.size: 12.0
+font.family: serif
+font.serif: cmr10
+xtick.major.pad: 6
+
+axes.grid: True
+axes.formatter.limits: -4, 4
+axes.formatter.use_mathtext: True
+
+legend.loc: best
+legend.fancybox: True
