@@ -162,6 +162,7 @@ class GFigure(object):
             self.__figurestyle = []
         else:
             self.__figurestyle = styles
+        self.figurestructure['Style'] = self.__figurestyle
 
     def calculate(self, **kwargs):
         '''
@@ -186,7 +187,7 @@ class GFigure(object):
             When recalculate is True, redraw will also be True.
         kwargs: pass to *calculate* method
         '''
-        if (not self.figurestructure
+        if ('AxesStructures' not in self.figurestructure
                 or not self.figurestructure['AxesStructures']):
             recalculate = True
         if recalculate:
