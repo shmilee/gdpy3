@@ -27,9 +27,9 @@ logging.basicConfig(
 log = logging.getLogger('gdp')
 
 
-def plot(path, default_enable=[], figurestyle=['gdpy3-notebook'], **kwargs):
+def pick(path, default_enable=[], figurestyle=['gdpy3-notebook'], **kwargs):
     '''
-    Read GTC data in *path*, get a GTC case.
+    Pick up GTC data in *path*, get a GTC case.
     Return an GCase object which contains all figures, calculations.
 
     Parameters
