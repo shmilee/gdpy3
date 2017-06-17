@@ -172,7 +172,7 @@ class GFigure(object):
         log.error('Define this function in derived class.')
         raise
 
-    def draw(self, num=None, redraw=False, recalculate=False, **kwargs):
+    def draw(self, num=None, redraw=False, recal=False, **kwargs):
         '''
         convert *figurestructure* to Figure instance *figure*
 
@@ -182,17 +182,17 @@ class GFigure(object):
             pass to *nginp*.figure_factory method
         redraw: bool
             redraw the figure
-        recalculate: bool
+        recal: bool
             recalculate the figurestructure
-            When recalculate is True, redraw will also be True.
+            When recal is True, redraw will also be True.
         kwargs: pass to *calculate* method
         '''
         if ('AxesStructures' not in self.figurestructure
                 or not self.figurestructure['AxesStructures']):
-            recalculate = True
-        if recalculate:
+            recal = True
+        if recal:
             self.calculate(**kwargs)
-        if recalculate or not self.figure:
+        if recal or not self.figure:
             redraw = True
         if redraw:
             self.close()

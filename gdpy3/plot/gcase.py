@@ -186,7 +186,7 @@ class GCase(object):
         kwargs:
             1) ``figurestyle``, ``engine`` for gfigure
             2) pass to gfigure.draw method
-               ``num``, ``redraw``, ``recalculate``,
+               ``num``, ``redraw``, ``recal``,
             3) and some kwargs for gfigure.calculate method
         '''
         gf = self.__getitem__(Name)
