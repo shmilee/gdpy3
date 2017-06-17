@@ -6,7 +6,7 @@ import os
 import re
 import logging
 from . import tools
-from . import data1d, history
+from . import data1d, history, trackparticle
 
 __all__ = ['GCase']
 
@@ -17,6 +17,7 @@ _FigGroupClassMap = {
     '110922': {
         'data1d': data1d.Data1dFigureV110922,
         'history': history.HistoryFigureV110922,
+        'trackp': trackparticle.TrackParticleFigureV110922,
     }
 }
 _SnapPattern = re.compile(r'^snap\d{5}$')
