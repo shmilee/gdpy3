@@ -6,7 +6,7 @@ import os
 import re
 import logging
 from . import tools
-from . import data1d, history, trackparticle
+from . import data1d, history, snapshot, trackparticle
 
 __all__ = ['GCase']
 
@@ -17,6 +17,7 @@ _FigGroupClassMap = {
     '110922': {
         'data1d': data1d.Data1dFigureV110922,
         'history': history.HistoryFigureV110922,
+        'snapshot': snapshot.SnapshotFigureV110922,
         'trackp': trackparticle.TrackParticleFigureV110922,
     }
 }
@@ -75,10 +76,9 @@ class GCase(object):
             if grp in _FigGroupClassMap[self.version]:
                 cls = _FigGroupClassMap[self.version][grp]
                 gfigure_available.extend(cls.get_members())
-            # elif _SnapPattern.match(grp):
-            #    cls = _FigGroupClassMap[self.version]['snapshot']
-            #    cls._FigGroup = grp
-            #    gfigure_available.extend(cls.get_members())
+            elif _SnapPattern.match(grp):
+                cls = _FigGroupClassMap[self.version]['snapshot']
+                gfigure_available.extend(cls.get_members(group=grp))
             else:
                 pass
         self.gfigure_available = tuple(gfigure_available)
@@ -124,10 +124,8 @@ class GCase(object):
             name = os.path.basename(member)
             if grp in _FigGroupClassMap[self.version]:
                 cls = _FigGroupClassMap[self.version][grp]
-            # elif _SnapPattern.match(grp):
-            #    cls = _FigGroupClassMap[self.version]['snapshot']
-            #    cls._FigGroup = grp
-            #    gfigure_available.extend(cls.get_members())
+            elif _SnapPattern.match(grp):
+                cls = _FigGroupClassMap[self.version]['snapshot']
             else:
                 pass
             try:
