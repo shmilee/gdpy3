@@ -172,6 +172,8 @@ class GCase(object):
                 self.gfigure_ploted.remove(member)
             if member in self.gfigure_enabled:
                 self.gfigure_enabled.remove(member)
+            if member in self.gfigurelib:
+                self.gfigurelib.pop(member, None)
 
     def plot(self, Name, show=True, **kwargs):
         '''
