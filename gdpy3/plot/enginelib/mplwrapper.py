@@ -30,6 +30,7 @@ Default_AxesStructure = {
     'data': [
         [1, 'plot', ('xarray', 'yarray', 'ro-'), {'label': 'line default'}],
         ['int', 'Axes plot func', ("args",), {"kwargs, such as 'label'"}],
+        ['twin', 'twinx or twiny', (), dict(nextcolor='int')],
     ],
     'layout': ['int, grid or list', {'add_subplot or add_axes kwargs'}],
     'style': [{'axes.grid': True}],
@@ -162,11 +163,18 @@ def _mplaxes_factory(fig, axstructure):
             log.error("Failed to add axes %s: %s" % (layout[0], exc))
             return
         # use data
-        for index, plotfunc, dataargs, datakwargs in axstructure['data']:
+        for index, axfunc, dataargs, datakwargs in axstructure['data']:
             try:
-                log.debug("Adding artist %s ..." % index)
-                plotfunc = getattr(ax, plotfunc)
-                plotfunc(*dataargs, **datakwargs)
+                log.debug("Adding artist %s: %s ..." % (index, axfunc))
+                if index == 'twin':
+                    ax = getattr(ax, axfunc)()
+                    if 'nextcolor' in datakwargs:
+                        for i in range(datakwargs['nextcolor']):
+                            # i=next(ax._get_lines.prop_cycler)
+                            i = ax._get_lines.get_next_color()
+                else:
+                    plotfunc = getattr(ax, axfunc)
+                    plotfunc(*dataargs, **datakwargs)
             except Exception as exc:
                 log.error("Failed to add artist %s: %s" % (index, exc))
         # optional revise function
