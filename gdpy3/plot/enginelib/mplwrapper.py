@@ -186,16 +186,16 @@ def _mplaxes_factory(fig, axstructure):
                 log.error("Failed to revise axes %s: %s" % (layout[0], exc))
 
 
+def _get_mplstyle_library(path):
+    available = style.available.copy()
+    for path, name in style.core.iter_style_files(path):
+        available.append(name)
+    return available
+
+
 STYLE_LIBRARY_PATH = os.path.join(os.path.dirname(
     os.path.abspath(__file__)), 'mpl-stylelib')
-mplstyle_available = style.available.copy()
-
-
-def _update_gdpy3_mplstyle_library():
-    global mplstyle_available
-    for path, name in style.core.iter_style_files(STYLE_LIBRARY_PATH):
-        mplstyle_available.append(name)
-_update_gdpy3_mplstyle_library()
+mplstyle_available = _get_mplstyle_library(STYLE_LIBRARY_PATH)
 
 
 def _check_styles(mplstyles):
