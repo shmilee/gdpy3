@@ -6,7 +6,7 @@ r'''
     This is the subpackage ``plot`` of package gdpy3.
 '''
 
-__all__ = ['plot', 'GCase']
+__all__ = ['pick', 'GCase']
 
 import os
 import sys
