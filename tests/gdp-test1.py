@@ -81,13 +81,10 @@ def get_testfigstruct(engine):
     y = np.linspace(1, y, y)
     x, y = np.meshgrid(x, y)
 
-    def revise_surface(fig, ax):
-        surf = None
-        for child in ax.get_children():
-            if child.get_label() == 'phi00':
-                surf = child
-        if surf:
-            fig.colorbar(surf)
+    def mess_colorbar(fig, ax, art, **kwargs):
+        log2.debug("TEST: %s" % kwargs['info'])
+        fig.colorbar(art[1], ax=fig.get_axes()[:2])
+
     testax3 = {
         'layout': [
             [0.33, 0, 0.66, 0.33],
@@ -106,8 +103,9 @@ def get_testfigstruct(engine):
                      label='phi00'
                      )
              ],
+            [2, 'revise', lambda fig, ax, art: fig.colorbar(art[1]), {}],
+            [3, 'revise', mess_colorbar, dict(info='colorbar in a mess')],
         ],
-        'revise': engine.tool['get_colorbar_revise_func']('phi00'),
     }
 
     testfigstruct['AxesStructures'].extend([testax1, testax2, testax3])
@@ -157,11 +155,17 @@ def get_testfigstruct(engine):
     testfigstruct['AxesStructures'].extend(
         [testax4, testax5,
          {
-             'layout': [336, dict()],
+             'layout': [336, dict(ylabel='line1')],
              'data':[
-                 [1, 'plot', (range(20),), dict(label='line')],
-                 [2, 'axvspan', (8, 14), dict(alpha=0.5, color='red')],
-                 [3, 'legend', (), dict(loc='best')],
+                 [1, 'plot', (range(30),), dict(label='line1')],
+                 [2, 'axvspan', (10, 12), dict(
+                     alpha=0.5, ymin=0.1, ymax=0.8, color='red')],
+                 [3, 'legend', (), dict(loc='upper left')],
+                 [4, 'twinx', (), dict(nextcolor=2)],
+                 [5, 'plot', (range(8, 17), range(0, 18, 2)),
+                  dict(label='line2')],
+                 [6, 'set_ylabel', ('line2',), dict()],
+                 [7, 'legend', (), dict(loc='center right')],
              ],
          }
          ])
@@ -183,7 +187,8 @@ if __name__ == '__main__':
     log0.info('set if cmap: ' + engine.tool['get_style_param'](
         {'image.cmap': 'hot'}, 'image.cmap'))
 
-    fig = engine.figure_factory(get_testfigstruct(engine))
+    #fig = engine.figure_factory(get_testfigstruct(engine))
+    fig = engine(get_testfigstruct(engine))
     print(fig)
     fig.show()
 
