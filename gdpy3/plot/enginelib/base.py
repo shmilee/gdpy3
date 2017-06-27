@@ -28,6 +28,11 @@ class Engine(object):
         close the entire figure
     tool: dict
         useful functions: key, val = name, function
+
+    Notes
+    -----
+    The Engine instance is callable.
+    instance() is equivalent to instance.figure_factory().
     '''
 
     def __init__(self, name):
@@ -42,6 +47,9 @@ class Engine(object):
         if not isinstance(function, types.FunctionType):
             raise ValueError("'figure_factory' must be function!")
         self._figure_factory = function
+
+    def __call__(self, *args, **kwargs):
+        return self._figure_factory(*args, **kwargs)
 
     @property
     def style_available(self):
