@@ -103,8 +103,9 @@ class Data1dFigureV110922(GFigure):
         required parameters:
             *name*, *dataobj*, *figurestyle* of instance
         optional parameters:
-            plot_method: 'pcolormesh', 'plot_surface'
-            default 'pcolormesh'
+            plot_method: 'pcolormesh', 'plot_surface'. default 'pcolormesh'
+            grid_alpha: float, [0.0, 1.0].
+                transparency of grid for axes of 'plot_method'
         return:
             True: success
             False: get empty figure
@@ -147,17 +148,19 @@ class Data1dFigureV110922(GFigure):
         self.figurestructure['AxesStructures'] = [{
             'data': [
                 [1, plot_method, (X, Y, Z),
-                    dict(label='rtime', vmin=-Zmax, vmax=Zmax,
-                         **adddatadict)],
+                    dict(vmin=-Zmax, vmax=Zmax, **adddatadict)],
+                [2, 'revise', lambda fig, ax, art: fig.colorbar(art[1]), {}],
             ],
             'layout': [
                 111,
                 dict(title=self.figureinfo['title'],
-                     xlabel=r'time($R_0/c_s$)', ylabel='radial',
+                     xlabel=r'time($R_0/c_s$)', ylabel=r'$r$(mpsi)',
                      **addlayoutdict)
             ],
-            'revise': self.nginp.tool['get_colorbar_revise_func']('rtime'),
         }]
+        if 'grid_alpha' in kwargs and isinstance(kwargs['grid_alpha'], float):
+            self.figurestructure['AxesStructures'][0]['data'].append(
+                [3, 'grid', (), dict(alpha=kwargs['grid_alpha'])])
 
         # residual zonal flow
         if self.name == 'residual_zonal_flow':

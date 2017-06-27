@@ -203,9 +203,10 @@ def _set_orbit_axesstructures(self, **kwargs):
                 pass
             # suptitle
             if n == 0:
-                axes['revise'] = lambda fig, ax: fig.suptitle(
-                    "%s orbits of %s (9/%d)"
-                    % (dim.upper(), species, total))
+                order = len(axes['data']) + 1
+                addsuptitle = lambda fig, ax, art: fig.suptitle(
+                    "%s orbits of %s (9/%d)" % (dim.upper(), species, total))
+                axes['data'].append([order, 'revise', addsuptitle, dict()])
         except Exception as exc:
             log.error("Failed to get data of %s: %s. %s."
                       % (species, pname, exc))
