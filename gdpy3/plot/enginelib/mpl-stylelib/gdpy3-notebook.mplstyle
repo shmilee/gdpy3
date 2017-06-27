@@ -3,7 +3,7 @@ figure.figsize: 10.0, 8.0
 figure.dpi: 100
 
 figure.subplot.left: 0.1
-figure.subplot.right: 0.95
+figure.subplot.right: 0.9
 figure.subplot.bottom: 0.1
 figure.subplot.top: 0.9
 figure.subplot.wspace: 0.25
