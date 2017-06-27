@@ -28,13 +28,13 @@ Default_FigureStructure = {
 
 Default_AxesStructure = {
     'data': [
+        [int, 'Axes plot func', ("args",), {"kwargs, such as 'label'"}],
         [1, 'plot', ('xarray', 'yarray', 'ro-'), {'label': 'line default'}],
-        ['int', 'Axes plot func', ("args",), {"kwargs, such as 'label'"}],
-        ['twin', 'twinx or twiny', (), dict(nextcolor='int')],
+        [2, 'twinx or twiny', (), dict(nextcolor='int')],
+        [int, 'revise', lambda fig, axesdict, artistdict: print(fig), dict()],
     ],
     'layout': ['int, grid or list', {'add_subplot or add_axes kwargs'}],
     'style': [{'axes.grid': True}],
-    'revise': 'revise_function(fig, ax)',
 }
 
 
@@ -51,36 +51,52 @@ def mplfigure_factory(figurestructure, num=None):
 
     Notes
     =====
+
     1. The figurestructure dict has 2 keys: 'Style' and 'AxesStructures'.
        'Style' is optional.
+
     2. Value of 'Style' is a list of mplstyles, and valid elements can be
        available style names in `style.available`, dict with valid key,
        value pairs for `matplotlib.rcParams`, or a path to a style file.
        Default: [{'figure.figsize': (8, 6), 'figure.dpi': 100}]
+
     3. Value of 'AxesStructures' is a list of `AxesStructure`. Each
-       `AxesStructure` is a dict has 4 keys: 'data', 'layout', 'style'
-       and 'revise'. 'style' and 'revise' are optional.
-    3.1. Value of 'data' is a list of line_list. line_list[0] is an order
-         number. line_list[1] is the name of a function attribute of
-         :class:`matplotlib.axes._axes.Axes`. It can be any plot function,
-         such as 'contour', 'fill', 'imshow', 'pcolor', 'plot', etc.
-         line_list[2] is a tuple of args for plot function, such as
-         xarray, yarray, 'ro-'. line_list[3] is a dict of kwargs
-         for plot function, such as {'label': 'a line', 'linewidth': 2}.
-    3.2. Value of 'layout' is a list of 2 elements. layout[0] is
-         a position rect list for matplotlib.figure.Figure.add_axes, or
-         a three digit number for matplotlib.figure.Figure.add_subplot, or
-         a instance of :class:`matplotlib.gridspec.GridSpec`. layout[1] is
-         a dict of kwargs for Figure.add_axes or Figure.add_subplot.
-    3.3. Value of 'style' is a list of mplstyles. The style will
-         only affect this axes except others.
-         Default: [{'axes.grid': True}]
-    3.4. Value of 'revise' is an optional function to revise the axes.
-         It accepts two parameters: this figure, and this axes.
+       `AxesStructure` is a dict has 3 keys: 'data', 'layout' and 'style'.
+       'style' is optional.
+
+       a. Value of 'data' is a list of method_list.
+          method_list[0] is an order number. method_list[1] is the name of
+          a method of :class:`matplotlib.axes._axes.Axes`. It can be any
+          plot function, such as 'contour', 'fill', 'imshow', 'pcolor',
+          'plot', etc. method_list[2] is a tuple of args for plot function,
+          such as xarray, yarray, 'ro-'. method_list[3] is a dict of kwargs
+          for plot function, such as {'label': 'a line', 'linewidth': 2}.
+
+          When method_list[1] is 'twinx' or 'twiny', 'nextcolor' can be set
+          in method_list[3] to correct the color order.
+
+          method_list[1] can also be 'revise'. In this situation,
+          method_list[2] is a function to revise the axes. It accepts three
+          parameters: figure, axesdict, artistdict. axesdict[0] is the
+          default axes. When 'twinx' or 'twiny' used in 'data',
+          axesdict[twin-order-number] will be assigned to the twin axes.
+          artistdict is a dict of all artists already plotted. The keys
+          are the order numbers of artists in their method_lists.
+          Other kwargs for revise function can be set in method_list[3].
+
+       b. Value of 'layout' is a list of two elements. layout[0] is a
+          position rect list for matplotlib.figure.Figure.add_axes, or a
+          three digit number for matplotlib.figure.Figure.add_subplot, or
+          a instance of :class:`matplotlib.gridspec.GridSpec`. layout[1]
+          is a dict of kwargs for Figure.add_axes or Figure.add_subplot.
+
+       c. Value of 'style' is a list of mplstyles. The style will only
+          affect this axes except others. Default: [{'axes.grid': True}].
+
     4. If you want to plot 3D figure, such as 'plot3D', 'plot_surface',
        in :class:`mpl_toolkits.mplot3d.axes3d.Axes3D`.
        First, add projection='3d' to layout[1].
-       Then, set line_list[1] to the plot function.
+       Then, set method_list[1] to the plot function.
     '''
 
     if not isinstance(figurestructure, dict):
@@ -163,27 +179,37 @@ def _mplaxes_factory(fig, axstructure):
             log.error("Failed to add axes %s: %s" % (layout[0], exc))
             return
         # use data
+        axesdict, artistdict = {0: ax}, {}
         for index, axfunc, dataargs, datakwargs in axstructure['data']:
-            try:
-                log.debug("Adding artist %s: %s ..." % (index, axfunc))
-                if index == 'twin':
+            if axfunc in ('twinx', 'twiny'):
+                log.debug("Creating twin axes %s: %s ..." % (index, axfunc))
+                try:
                     ax = getattr(ax, axfunc)()
+                    if index in axesdict:
+                        log.warn("Duplicate index %s!" % index)
+                    axesdict[index] = ax
                     if 'nextcolor' in datakwargs:
                         for i in range(datakwargs['nextcolor']):
                             # i=next(ax._get_lines.prop_cycler)
                             i = ax._get_lines.get_next_color()
-                else:
-                    plotfunc = getattr(ax, axfunc)
-                    plotfunc(*dataargs, **datakwargs)
-            except Exception as exc:
-                log.error("Failed to add artist %s: %s" % (index, exc))
-        # optional revise function
-        if 'revise' in axstructure:
-            try:
+                except Exception as exc:
+                    log.error("Failed to create axes %s: %s" % (index, exc))
+            elif axfunc == 'revise':
                 log.debug("Revising axes %s ..." % layout[0])
-                axstructure['revise'](fig, ax)
-            except Exception as exc:
-                log.error("Failed to revise axes %s: %s" % (layout[0], exc))
+                try:
+                    dataargs(fig, axesdict, artistdict, **datakwargs)
+                except Exception as exc:
+                    log.error("Failed to revise axes %s: %s"
+                              % (layout[0], exc))
+            else:
+                log.debug("Adding artist %s: %s ..." % (index, axfunc))
+                try:
+                    art = getattr(ax, axfunc)(*dataargs, **datakwargs)
+                    if index in artistdict:
+                        log.warn("Duplicate index %s!" % index)
+                    artistdict[index] = art
+                except Exception as exc:
+                    log.error("Failed to add artist %s: %s" % (index, exc))
 
 
 def _get_mplstyle_library(path):
@@ -278,27 +304,6 @@ def get_mplstyle_param(mplstyle, param):
         return None
 
 
-def get_mplcolorbar_revise_func(label, grid_alpha=0.3, **kwargs):
-    '''
-    Return a colorbar `revise function` for FigureStructure.
-
-    Parameters
-    ----------
-    label: label of mappable which the colorbar applies
-    keyword arguments: kwargs passed to colorbar
-        *cax*, *ax*, *fraction*, *pad*, *ticks*, etc.
-    '''
-    def revise_func(figure, axes):
-        axes.grid(alpha=grid_alpha)
-        mappable = None
-        for child in axes.get_children():
-            if child.get_label() == label:
-                mappable = child
-        if mappable:
-            figure.colorbar(mappable, **kwargs)
-    return revise_func
-
 mplengine.tool = {
     'get_style_param': get_mplstyle_param,
-    'get_colorbar_revise_func': get_mplcolorbar_revise_func,
 }
