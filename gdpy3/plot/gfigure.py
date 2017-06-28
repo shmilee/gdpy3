@@ -8,6 +8,7 @@ all the plot elements, calculation results, figure methods.
 '''
 
 import logging
+import numpy as np
 
 from . import tools
 from .enginelib import engine_available, default_engine, get_engine
@@ -221,3 +222,117 @@ class GFigure(object):
         if not self.figure:
             self.plot(**kwargs)
         return self.nginp.show(self.figure)
+
+
+def get_twinx_axesstructures(X, YS, xlabel, title, twinx, **kwargs):
+    '''
+    Get a list of axesstructure.
+
+    .. code::
+
+               title
+             +--------+
+      ylabel | axes 1 | ylabel
+             +--------+
+      ylabel | axes 2 | ylabel
+             +--------+
+               xlabel
+
+    Parameters
+    ----------
+
+    X: 1 dimension array
+    YS: 2 dimension array, len(X) == YS.shape[1]
+    xlabel: str
+    title: str
+    twinx: list, all info for the axes
+
+    kwargs:
+        xlim: (`left`, `right`), default [min(X), max(X)]
+
+    Notes
+    -----
+
+    Form of *twinx*.
+
+    .. code:: python
+
+        twinx = [
+            # axes 1
+            dict(left=[(index1, label1), (index2, label2)],
+                 right=[(index3, label3)],
+                 llegend=dict(loc='upper left'), # optional
+                 rlegend=dict(loc='upper right'), # optional
+                 lylabel='left ylabel',
+                 rylabel='right ylabel'),
+            # axes 2
+            dict(left=[(0, 'phi')], right=[(2, 'phi rms')],
+                 lylabel='field',
+                 rylabel='rms')]
+
+    twinx[0]['left'][0]: (index, label) of ydata in YS
+
+    twinx[0]['right']: can be empty
+
+    twinx[0]['llegend']: optional kwargs for legend
+
+    twinx[1]['rylabel']: right ylabel in axes 2
+    '''
+
+    # check
+    if not isinstance(X, (list, np.ndarray)):
+        log.error("`X` array must be list or numpy.ndarray!")
+        return False
+    if not isinstance(YS, np.ndarray):
+        log.error("`YS` array must be numpy.ndarray!")
+        return False
+    if len(X) != YS.shape[1]:
+        log.error("Invalid `X`, `YS` array length!")
+        return False
+
+    if 'xlim' in kwargs and len(kwargs['xlim']) == 2:
+        xlim = kwargs['xlim']
+    else:
+        xlim = [np.min(X), np.max(X)]
+
+    axesstructure = []
+    for row in range(len(twinx)):
+        number = int("%s1%s" % (len(twinx), row + 1))
+        log.debug("Getting Axes %s ..." % number)
+        layout = dict(xlim=xlim)
+        if row == 0:
+            layout['title'] = title
+        if row == len(twinx) - 1:
+            layout['xlabel'] = xlabel
+        else:
+            layout['xticklabels'] = []
+        data = []
+        for i, left in enumerate(twinx[row]['left'], 1):
+            data.append(
+                [i, 'plot', (X, YS[left[0]]), dict(label=left[1])])
+        if 'llegend' in twinx[row]:
+            legendkw = twinx[row]['llegend']
+        else:
+            legendkw = dict(loc='upper left')
+        data.extend([
+            [i + 1, 'set_ylabel', (twinx[row]['lylabel'],), {}],
+            [i + 2, 'legend', (), legendkw],
+        ])
+        if len(twinx[row]['right']) > 0:
+            data.append(
+                [i + 3, 'twinx', (), dict(nextcolor=len(twinx[row]['left']))])
+            for i, right in enumerate(twinx[row]['right'], i + 4):
+                data.append(
+                    [i, 'plot', (X, YS[right[0]]), dict(label=right[1])])
+            if 'rlegend' in twinx[row]:
+                legendkw = twinx[row]['rlegend']
+            else:
+                legendkw = dict(loc='upper right')
+            data.extend([
+                [i + 1, 'set_ylabel', (twinx[row]['rylabel'],), {}],
+                [i + 2, 'legend', (), legendkw],
+                [i + 3, 'set_xlim', xlim, {}],
+            ])
+        axesstructure.append({'data': data, 'layout': [number, layout]})
+
+    return axesstructure

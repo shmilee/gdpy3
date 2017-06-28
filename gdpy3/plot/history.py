@@ -15,7 +15,7 @@ import logging
 import numpy as np
 
 from . import tools
-from .gfigure import GFigure
+from .gfigure import GFigure, get_twinx_axesstructures
 
 __all__ = ['HistoryFigureV110922']
 
@@ -29,39 +29,47 @@ class HistoryFigureV110922(GFigure):
     __slots__ = []
     _FigGroup = 'history'
     _ParticleFigInfo = {
-        '%s_%s' % (p, d[0]): dict(
-            index=d[1], title=d[2],
+        '%s%s' % (p, twin[0]): dict(
+            xlabel=r'time($R_0/c_s$)',
+            title='particle %s' % p + twin[0].replace('_', ' '),
+            twinx=twin[1],
             key=['history/ndstep', 'history/%s' % p]
             + [GFigure._paragrp + k for k in ('tstep', 'ndiag')])
         for p in ['ion', 'electron', 'fastion']
-        for d in [
-            ['density_entropy', [0, 1],
-                [r'%s density $\delta f$' % p,
-                 r'%s entropy $\delta f^2$' % p]],
-            ['momentum', [2, 3], [r'%s flow u' % p, r'%s $\delta u$' % p]],
-            ['energy', [4, 5],
-                [r'%s energy $E-1.5$' % p, r'%s entropy $\delta E$' % p]],
-            ['particle_momentum_flux', [6, 7],
-                [r'%s particle flux' % p, r'%s momentum flux' % p]],
-            ['energy_flux', [8, 9],
-                [r'%s energy flux' % p, r'%s total density' % p]],
+        for twin in [
+            ('', [
+                dict(left=[(0, r'density $\delta f$')],
+                     right=[(1, r'entropy $\delta f^2$')],
+                     lylabel=r'$\delta f$', rylabel=r'$\delta f^2$'),
+                dict(left=[(2, r'flow u')], right=[(3, r'$\delta u$')],
+                     lylabel='u', rylabel=r'$\delta u$'),
+                dict(left=[(4, r'energy $E-1.5$')],
+                     right=[(5, r'entropy $\delta E$')],
+                     lylabel=r'$E-1.5$', rylabel=r'$\delta E$'),
+            ]),
+            ('_flux', [
+                dict(left=[(6, 'particle flux')], right=[],
+                     lylabel='', rylabel=''),
+                dict(left=[(7, 'momentum flux')], right=[],
+                     lylabel='', rylabel=''),
+                dict(left=[(8, 'energy flux')], right=[],
+                     lylabel='', rylabel=''),
+            ]),
         ]
     }
-    _FieldFigInfo = dict({
+    _FieldFigInfo = {
         'field_%s' % f: dict(
-            index=0, rmsindex=3, field=f,
-            title=r'$%s (\theta=\zeta=0)$' % f,
+            xlabel=r'time($R_0/c_s$)',
+            title=r'$%s (\theta=\zeta=0), %s00 (i=iflux)$' % (f, f),
+            twinx=[dict(left=[(0, '$%s$' % f)], right=[(3, '$%s RMS$' % f)],
+                        lylabel='$%s$' % f, rylabel='$RMS$'),
+                   dict(left=[(1, '$%s00$' % f)],
+                        right=[(2, '$%s00 RMS$' % f)],
+                        lylabel='$%s00$' % f, rylabel='$RMS$')],
             key=['history/ndstep', 'history/fieldtime-%s' % f]
             + [GFigure._paragrp + k for k in ('tstep', 'ndiag')])
         for f in ['phi', 'apara', 'fluidne']
-    }, **{
-        'field_%s00' % f: dict(
-            index=1, rmsindex=2, field='%s00' % f,
-            title='$%s00 (i=iflux)$' % f,
-            key=['history/ndstep', 'history/fieldtime-%s' % f]
-            + [GFigure._paragrp + k for k in ('tstep', 'ndiag')])
-        for f in ['phi', 'apara', 'fluidne']
-    })
+    }
     _ModeFigInfo = {
         'mode%s_%s' % (i, f): dict(
             index=i - 1,
@@ -93,7 +101,10 @@ class HistoryFigureV110922(GFigure):
         Notes
         -----
         1. fieldmode kwargs:
-         region_start, region_end: int, in tstep unit
+           region_start, region_end: int, in tstep unit
+        2. fieldtime, particle kwargs:
+           hspace: float, subplot.hspace, default 0.01
+           xlim: (`left`, `right`), default [0, max(time)]
         '''
         log.debug("Get FigureStructure, calculation of '%s' ..." % self.Name)
         self.figurestructure = {
@@ -102,10 +113,15 @@ class HistoryFigureV110922(GFigure):
         }
         self.calculation = {}
 
-        if self.name in self._ParticleFigInfo:
-            return _set_particle_axesstructures(self, **kwargs)
-        elif self.name in self._FieldFigInfo:
-            return _set_fieldtime_axesstructures(self, **kwargs)
+        if (self.name in self._ParticleFigInfo
+                or self.name in self._FieldFigInfo):
+            if 'hspace' in kwargs and isinstance(kwargs['hspace'], float):
+                hspace = kwargs['hspace']
+            else:
+                hspace = 0.01
+            self.figurestructure['Style'] = self.figurestyle + \
+                [{'figure.subplot.hspace': hspace}]
+            return _set_particle_or_fieldtime_axesstructures(self, **kwargs)
         elif self.name in self._ModeFigInfo:
             return _set_fieldmode_axesstructures(self, **kwargs)
         else:
@@ -130,104 +146,59 @@ def __replace_str(field):
 
 
 # particle: ion, electron, fastion
-def _set_particle_axesstructures(self, **kwargs):
-    '''
-    Set particle axesstructures, calculation
-    '''
-
-    # check key, get data
-    index = self.figureinfo['index']
-    title = self.figureinfo['title']
-    if len(index) != len(title):
-        log.error("Invalid figure info!")
-        return False
-    else:
-        length = len(index)
-    ndstep, partdata, tstep, ndiag = self.figureinfo['key']
-    try:
-        ndstep, partdata, tstep, ndiag = \
-            self.dataobj.get_many(ndstep, partdata, tstep, ndiag)
-        time = np.arange(1, ndstep + 1) * tstep * ndiag
-        ypart = [partdata[index[i]] for i in range(length)]
-    except Exception as exc:
-        log.error("Failed to get data of '%s' from %s! %s" %
-                  (self.Name, self.dataobj.file, exc))
-        return False
-
-    for i in range(length):
-        number = int("%s1%s" % (length, i + 1))
-        log.debug("Getting Axes %s ..." % number)
-        axes = {
-            'data': [
-                [1, 'plot', (time, ypart[i]), dict(label=title[i])],
-                [2, 'legend', (), dict()],
-            ],
-            'layout': [
-                number, dict(xlabel=r'time($R_0/c_s$)',
-                             xlim=[0, np.max(time)],
-                             **{'title': title[i] if i == 0 else ''})
-            ],
-        }
-        self.figurestructure['AxesStructures'].append(axes)
-
-    return True
-
-
 # field time: phi, phip00, apara, apara00, fluidne, fluidne00
-def _set_fieldtime_axesstructures(self, **kwargs):
+def _set_particle_or_fieldtime_axesstructures(self, **kwargs):
     '''
-    Set field(phi, apara, fluidne) time axesstructures, calculation
+    Set particle(ion, electron, fastion) or
+    field(phi, apara, fluidne) time axesstructures, calculation
     '''
 
     # check key, get data
-    index = self.figureinfo['index']
-    rmsindex = self.figureinfo['rmsindex']
-    field = __replace_str(self.figureinfo['field'])
-    ndstep, fieldtime, tstep, ndiag = self.figureinfo['key']
+    xlabel = self.figureinfo['xlabel']
+    if self.name in self._ParticleFigInfo:
+        title = self.figureinfo['title']
+        twinx = self.figureinfo['twinx']
+    else:
+        title = __replace_str(self.figureinfo['title'])
+        twinx = []
+        for axinfo in self.figureinfo['twinx']:
+            newinfo = {}
+            for k, v in axinfo.items():
+                if k in ('left', 'right'):
+                    newinfo[k] = [(i[0], __replace_str(i[1])) for i in v]
+                elif k in ('lylabel', 'rylabel'):
+                    newinfo[k] = __replace_str(v)
+                else:
+                    newinfo[k] = v
+            twinx.append(newinfo)
+
+    # ydata: partdata or fieldtime
+    ndstep, ydata, tstep, ndiag = self.figureinfo['key']
     try:
-        ndstep, fieldtime, tstep, ndiag = \
-            self.dataobj.get_many(ndstep, fieldtime, tstep, ndiag)
+        ndstep, ydata, tstep, ndiag = \
+            self.dataobj.get_many(ndstep, ydata, tstep, ndiag)
         time = np.arange(1, ndstep + 1) * tstep * ndiag
-        yfield = fieldtime[index]
-        yrms = fieldtime[rmsindex]
     except Exception as exc:
         log.error("Failed to get data of '%s' from %s! %s" %
                   (self.Name, self.dataobj.file, exc))
         return False
 
-    # 1 field
-    log.debug("Getting Axes 211 ...")
-    axes1 = {
-        'data': [
-                [1, 'plot', (time, yfield), dict(label='$%s$' % field)],
-                [2, 'legend', (), dict()],
-        ],
-        'layout': [
-            211, dict(title=__replace_str(self.figureinfo['title']),
-                      xlabel=r'time($R_0/c_s$)', xlim=[0, np.max(time)])
-        ],
-    }
-    self.figurestructure['AxesStructures'].append(axes1)
+    xlim = kwargs['xlim'] if 'xlim' in kwargs else [0, np.max(time)]
+
+    try:
+        axesstructures = get_twinx_axesstructures(
+            time, ydata, xlabel, title, twinx, xlim=xlim)
+        self.figurestructure['AxesStructures'] = axesstructures
+    except Exception as exc:
+        log.error("Failed to set AxesStructures of '%s'! %s"
+                  % (self.Name, exc))
+        return False
     # self.calculation.update({})
 
-    # 2 fieldrms
-    log.debug("Getting Axes 212 ...")
-    axes2 = {
-        'data': [
-                [1, 'plot', (time, yrms), dict(label='$%s RMS$' % field)],
-                [2, 'legend', (), dict()],
-        ],
-        'layout': [
-            212, dict(xlabel=r'time($R_0/c_s$)', xlim=[0, np.max(time)])
-        ],
-    }
-    self.figurestructure['AxesStructures'].append(axes2)
-
     return True
 
+
 # field modes: phi, apara, fluidne. 1-8
-
-
 def _set_fieldmode_axesstructures(self, **kwargs):
     '''
     Set field modes axesstructures, calculation
