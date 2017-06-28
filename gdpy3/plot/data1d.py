@@ -136,31 +136,40 @@ class Data1dFigureV110922(GFigure):
             plot_method = 'pcolormesh'
         # fix 3d
         if plot_method == 'plot_surface':
-            addlayoutdict = {'projection': '3d'}
-            adddatadict = dict(
-                rstride=1, cstride=1, linewidth=1, antialiased=True,
-                cmap=self.nginp.tool['get_style_param'](
-                    self.figurestyle, 'image.cmap')
-            )
+            addlayoutkw = {'projection': '3d',
+                           #'xlim': [-3, X[-1][-1]],
+                           'zlim': [-Zmax, Zmax]}
+            cmap = self.nginp.tool['get_style_param'](
+                self.figurestyle, 'image.cmap')
+            addplotkw = dict(rstride=1, cstride=1, linewidth=1,
+                             antialiased=True, cmap=cmap)
+            adddata = [
+                [3, 'contourf', (X, Y, Z),
+                    dict(zdir='z', offset=-Zmax, cmap=cmap)],
+                #[4, 'contourf', (X, Y, Z),
+                #    dict(zdir='x', offset=-3, cmap=cmap)],
+            ]
         else:
-            addlayoutdict, adddatadict = {}, {}
+            addlayoutkw, addplotkw = {}, {}
+            alpha = kwargs['grid_alpha'] if 'grid_alpha' in kwargs else None
+            if alpha is not None and isinstance(alpha, float):
+                adddata = [[3, 'grid', (), dict(alpha=alpha)]]
+            else:
+                adddata = []
 
         self.figurestructure['AxesStructures'] = [{
             'data': [
                 [1, plot_method, (X, Y, Z),
-                    dict(vmin=-Zmax, vmax=Zmax, **adddatadict)],
+                    dict(vmin=-Zmax, vmax=Zmax, **addplotkw)],
                 [2, 'revise', lambda fig, ax, art: fig.colorbar(art[1]), {}],
-            ],
+            ] + adddata,
             'layout': [
                 111,
                 dict(title=self.figureinfo['title'],
                      xlabel=r'time($R_0/c_s$)', ylabel=r'$r$(mpsi)',
-                     **addlayoutdict)
+                     **addlayoutkw)
             ],
         }]
-        if 'grid_alpha' in kwargs and isinstance(kwargs['grid_alpha'], float):
-            self.figurestructure['AxesStructures'][0]['data'].append(
-                [3, 'grid', (), dict(alpha=kwargs['grid_alpha'])])
 
         # residual zonal flow
         if self.name == 'residual_zonal_flow':
