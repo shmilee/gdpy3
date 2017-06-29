@@ -45,7 +45,7 @@ class HistoryFigureV110922(GFigure):
                      lylabel='u', rylabel=r'$\delta u$'),
                 dict(left=[(4, r'energy $E-1.5$')],
                      right=[(5, r'entropy $\delta E$')],
-                     lylabel=r'$E-1.5$', rylabel=r'$\delta E$'),
+                     lylabel=r'$E$', rylabel=r'$\delta E$'),
             ]),
             ('_flux', [
                 dict(left=[(6, 'particle flux')], right=[],
@@ -105,6 +105,7 @@ class HistoryFigureV110922(GFigure):
         2. fieldtime, particle kwargs:
            hspace: float, subplot.hspace, default 0.01
            xlim: (`left`, `right`), default [0, max(time)]
+           ylabel_rotation: str or int, default 'vertical'
         '''
         log.debug("Get FigureStructure, calculation of '%s' ..." % self.Name)
         self.figurestructure = {
@@ -177,17 +178,21 @@ def _set_particle_or_fieldtime_axesstructures(self, **kwargs):
     try:
         ndstep, ydata, tstep, ndiag = \
             self.dataobj.get_many(ndstep, ydata, tstep, ndiag)
+        if ydata.size == 0:
+            log.debug("No data for Figure '%s'." % self.Name)
+            return False
         time = np.arange(1, ndstep + 1) * tstep * ndiag
     except Exception as exc:
         log.error("Failed to get data of '%s' from %s! %s" %
                   (self.Name, self.dataobj.file, exc))
         return False
 
-    xlim = kwargs['xlim'] if 'xlim' in kwargs else [0, np.max(time)]
+    if 'xlim' not in kwargs:
+        kwargs['xlim'] = [0, np.max(time)]
 
     try:
         axesstructures = get_twinx_axesstructures(
-            time, ydata, xlabel, title, twinx, xlim=xlim)
+            time, ydata, xlabel, title, twinx, **kwargs)
         self.figurestructure['AxesStructures'] = axesstructures
     except Exception as exc:
         log.error("Failed to set AxesStructures of '%s'! %s"

@@ -249,6 +249,7 @@ def get_twinx_axesstructures(X, YS, xlabel, title, twinx, **kwargs):
 
     kwargs:
         xlim: (`left`, `right`), default [min(X), max(X)]
+        ylabel_rotation: str or int, default 'vertical'
 
     Notes
     -----
@@ -294,6 +295,11 @@ def get_twinx_axesstructures(X, YS, xlabel, title, twinx, **kwargs):
         xlim = kwargs['xlim']
     else:
         xlim = [np.min(X), np.max(X)]
+    if ('ylabel_rotation' in kwargs
+            and isinstance(kwargs['ylabel_rotation'], (int, 'str'))):
+        yl_rotation = kwargs['ylabel_rotation']
+    else:
+        yl_rotation = 'vertical'
 
     axesstructure = []
     for row in range(len(twinx)):
@@ -315,7 +321,8 @@ def get_twinx_axesstructures(X, YS, xlabel, title, twinx, **kwargs):
         else:
             legendkw = dict(loc='upper left')
         data.extend([
-            [i + 1, 'set_ylabel', (twinx[row]['lylabel'],), {}],
+            [i + 1, 'set_ylabel', (twinx[row]['lylabel'],),
+                dict(rotation=yl_rotation)],
             [i + 2, 'legend', (), legendkw],
         ])
         if len(twinx[row]['right']) > 0:
@@ -329,7 +336,8 @@ def get_twinx_axesstructures(X, YS, xlabel, title, twinx, **kwargs):
             else:
                 legendkw = dict(loc='upper right')
             data.extend([
-                [i + 1, 'set_ylabel', (twinx[row]['rylabel'],), {}],
+                [i + 1, 'set_ylabel', (twinx[row]['rylabel'],),
+                    dict(rotation=yl_rotation)],
                 [i + 2, 'legend', (), legendkw],
                 [i + 3, 'set_xlim', xlim, {}],
             ])
