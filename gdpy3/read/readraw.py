@@ -34,6 +34,8 @@ class ReadRaw(ReadNpz):
     desc: str
         description of the .out files
     description: alias desc
+    cache: dict
+        cached keys from .npz, .hdf5 file
 
     Parameters
     ----------
