@@ -15,7 +15,11 @@ import logging
 import numpy as np
 
 from . import tools
-from .gfigure import GFigure, get_twinx_axesstructures
+from .gfigure import (
+    GFigure,
+    get_twinx_axesstructures,
+    get_pcolor_axesstructures,
+)
 
 __all__ = ['SnapshotFigureV110922']
 
@@ -60,7 +64,14 @@ class SnapshotFigureV110922(GFigure):
             srckey=['nvgrid', '%s-pdf' % p])
         for p in ['ion', 'electron', 'fastion']
     }
-    _FigInfo = dict(_ProfileFigInfo, **_PdfFigInfo)
+    _FieldFluxFigInfo = {
+        '%s_flux' % f: dict(
+            title=r'$%s$ on flux surface' % f.replace(
+                'phi', '\phi').replace('apara', 'a_{\parallel}'),
+            srckey=['fluxdata-%s' % f])
+        for f in ['phi', 'apara', 'fluidne']
+    }
+    _FigInfo = dict(_ProfileFigInfo, **_PdfFigInfo, **_FieldFluxFigInfo)
 
     def __init__(self, dataobj, name,
                  group=None, figurestyle=['gdpy3-notebook']):
@@ -79,9 +90,14 @@ class SnapshotFigureV110922(GFigure):
         Notes
         -----
         1. profile, pdf kwargs:
-           hspace: float, subplot.hspace, default 0.02
-           xlim: (`left`, `right`), default [0, max(X)]
-           ylabel_rotation: str or int, default 'vertical'
+           *hspace*: float, subplot.hspace, default 0.02
+           *xlim*: (`left`, `right`), default [0, max(X)]
+           *ylabel_rotation*: str or int, default 'vertical'
+        2. fieldflux kwargs:
+           *plot_method*, *plot_args*, *plot_kwargs*,
+           *colorbar*, *grid_alpha*, *surface_contourf*
+           keyword arguments are passed on to
+           :func:`gdpy3.plot.gfigure.get_pcolor_axesstructures`
         '''
         log.debug("Get FigureStructure, calculation of '%s' ..." % self.Name)
         self.figurestructure = {
@@ -98,6 +114,8 @@ class SnapshotFigureV110922(GFigure):
             self.figurestructure['Style'] = self.figurestyle + \
                 [{'figure.subplot.hspace': hspace}]
             return _set_profile_or_pdf_axesstructures(self, **kwargs)
+        elif self.name in self._FieldFluxFigInfo:
+            return _set_fieldflux_axesstructures(self, **kwargs)
         else:
             return False
 
@@ -134,6 +152,48 @@ def _set_profile_or_pdf_axesstructures(self, **kwargs):
     try:
         axesstructures = get_twinx_axesstructures(
             X, Ydata, xlabel, title, twinx, **kwargs)
+        self.figurestructure['AxesStructures'] = axesstructures
+    except Exception as exc:
+        log.error("Failed to set AxesStructures of '%s'! %s"
+                  % (self.Name, exc))
+        return False
+
+    return True
+
+
+def _set_fieldflux_axesstructures(self, **kwargs):
+    '''
+    Set phi, apara, fluidne on flux surface axesstructures, calculation
+    '''
+
+    fluxdata, = self.figureinfo['key']
+    title = self.figureinfo['title']
+    try:
+        fluxdata = self.dataobj[fluxdata]
+        if fluxdata.size == 0:
+            log.debug("No data for Figure '%s'." % self.Name)
+            return False
+        Y, X = fluxdata.shape
+        X = np.arange(0, X) / X * 2 * np.pi
+        Y = np.arange(0, Y) / Y * 2 * np.pi
+    except Exception as exc:
+        log.error("Failed to get data of '%s' from %s! %s" %
+                  (self.Name, self.dataobj.file, exc))
+        return False
+
+    # fix 3d plot_surface cmap
+    if 'plot_method' in kwargs and kwargs['plot_method'] == 'plot_surface':
+        cmap = self.nginp.tool['get_style_param'](
+            self.figurestyle, 'image.cmap')
+        if ('plot_kwargs' in kwargs
+                and isinstance(kwargs['plot_kwargs'], dict)):
+            kwargs['plot_kwargs']['cmap'] = cmap
+        else:
+            kwargs['plot_kwargs'] = dict(cmap=cmap)
+
+    try:
+        axesstructures = get_pcolor_axesstructures(
+            X, Y, fluxdata, r'$\zeta$', r'$\theta$', title, **kwargs)
         self.figurestructure['AxesStructures'] = axesstructures
     except Exception as exc:
         log.error("Failed to set AxesStructures of '%s'! %s"
