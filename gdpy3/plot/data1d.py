@@ -15,7 +15,7 @@ import logging
 import numpy as np
 
 from . import tools
-from .gfigure import GFigure
+from .gfigure import GFigure, get_pcolor_axesstructures
 
 __all__ = ['Data1dFigureV110922']
 
@@ -100,15 +100,14 @@ class Data1dFigureV110922(GFigure):
 
         Notes
         -----
-        required parameters:
-            *name*, *dataobj*, *figurestyle* of instance
-        optional parameters:
-            plot_method: 'pcolormesh', 'plot_surface'. default 'pcolormesh'
-            grid_alpha: float, [0.0, 1.0].
-                transparency of grid for axes of 'plot_method'
-        return:
-            True: success
-            False: get empty figure
+        1. optional keyword parameters:
+           *plot_method*, *plot_args*, *plot_kwargs*,
+           *colorbar*, *grid_alpha*, *surface_contourf*
+           keyword arguments are passed on to
+           :func:`gdpy3.plot.gfigure.get_pcolor_axesstructures`
+        2. residual_zonal_flow special keywords:
+           *reregion_start*, *region_end*: int,
+           in tstep unit, set residual region.
         '''
         log.debug("Get FigureStructure, calculation of '%s' ..." % self.Name)
         self.figurestructure = {
@@ -118,58 +117,40 @@ class Data1dFigureV110922(GFigure):
         self.calculation = {}
 
         Zkey, tstep, ndiag = self.figureinfo['key']
-        Z = self.dataobj[Zkey]
-        if Z.size == 0:
-            log.debug("No data for Figure '%s'." % self.Name)
-            return False
-        else:
-            Zmax = max(abs(Z.max()), abs(Z.min()))
+        title = self.figureinfo['title']
+        try:
+            Z = self.dataobj[Zkey]
+            if Z.size == 0:
+                log.debug("No data for Figure '%s'." % self.Name)
+                return False
             tunit = self.dataobj[tstep] * self.dataobj[ndiag]
             Y, X = Z.shape
             X = np.arange(1, X + 1) * tunit
-            X, Y = np.meshgrid(X, range(0, Y))
+            Y = np.arange(0, Y)
+        except Exception as exc:
+            log.error("Failed to get data of '%s' from %s! %s" %
+                      (self.Name, self.dataobj.file, exc))
+            return False
 
+        # fix 3d plot_surface cmap
         if ('plot_method' in kwargs
-                and kwargs['plot_method'] in ('pcolormesh', 'plot_surface')):
-            plot_method = kwargs['plot_method']
-        else:
-            plot_method = 'pcolormesh'
-        # fix 3d
-        if plot_method == 'plot_surface':
-            addlayoutkw = {'projection': '3d',
-                           #'xlim': [-3, X[-1][-1]],
-                           'zlim': [-Zmax, Zmax]}
+                and kwargs['plot_method'] == 'plot_surface'):
             cmap = self.nginp.tool['get_style_param'](
                 self.figurestyle, 'image.cmap')
-            addplotkw = dict(rstride=1, cstride=1, linewidth=1,
-                             antialiased=True, cmap=cmap)
-            adddata = [
-                [3, 'contourf', (X, Y, Z),
-                    dict(zdir='z', offset=-Zmax, cmap=cmap)],
-                #[4, 'contourf', (X, Y, Z),
-                #    dict(zdir='x', offset=-3, cmap=cmap)],
-            ]
-        else:
-            addlayoutkw, addplotkw = {}, {}
-            alpha = kwargs['grid_alpha'] if 'grid_alpha' in kwargs else None
-            if alpha is not None and isinstance(alpha, float):
-                adddata = [[3, 'grid', (), dict(alpha=alpha)]]
+            if ('plot_kwargs' in kwargs
+                    and isinstance(kwargs['plot_kwargs'], dict)):
+                kwargs['plot_kwargs']['cmap'] = cmap
             else:
-                adddata = []
+                kwargs['plot_kwargs'] = dict(cmap=cmap)
 
-        self.figurestructure['AxesStructures'] = [{
-            'data': [
-                [1, plot_method, (X, Y, Z),
-                    dict(vmin=-Zmax, vmax=Zmax, **addplotkw)],
-                [2, 'revise', lambda fig, ax, art: fig.colorbar(art[1]), {}],
-            ] + adddata,
-            'layout': [
-                111,
-                dict(title=self.figureinfo['title'],
-                     xlabel=r'time($R_0/c_s$)', ylabel=r'$r$(mpsi)',
-                     **addlayoutkw)
-            ],
-        }]
+        try:
+            axesstructures = get_pcolor_axesstructures(
+                X, Y, Z, r'time($R_0/c_s$)', r'$r$(mpsi)', title, **kwargs)
+            self.figurestructure['AxesStructures'] = axesstructures
+        except Exception as exc:
+            log.error("Failed to set AxesStructures of '%s'! %s"
+                      % (self.Name, exc))
+            return False
 
         # residual zonal flow
         if self.name == 'residual_zonal_flow':
