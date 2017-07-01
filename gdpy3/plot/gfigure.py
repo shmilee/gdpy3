@@ -344,3 +344,99 @@ def get_twinx_axesstructures(X, YS, xlabel, title, twinx, **kwargs):
         axesstructure.append({'data': data, 'layout': [number, layout]})
 
     return axesstructure
+
+
+def get_pcolor_axesstructures(X, Y, Z, xlabel, ylabel, title, **kwargs):
+    '''
+    Get a axesstructure for pcolor, pcolormesh, contourf or plot_surface.
+
+    Parameters
+    ----------
+    X, Y: 1 dimension array
+    Z: 2 dimension array
+    xlabel, ylabel, title: str
+
+    kwargs:
+        *plot_method*: str, 'pcolor', 'pcolormesh', 'contourf', 'plot_surface'
+                     default 'pcolor'
+        *plot_args*: list, optional args for *plot_method*,
+                   like 'N', chosen levels for contourf, default 100
+        *plot_kwargs*: dict, optional kwargs for *plot_method*,
+                     like 'cmap', useful for plot_surface, default 'jet'
+        *colorbar*: bool, add colorbar or not, default True
+        *grid_alpha*: float, [0.0, 1.0], transparency of grid
+                    use this when 'grid.alpha' in style has no effect
+        *surface_contourf*: list of ['x', 'y', 'z'], default ['z']
+                          add contourf in a surface plot
+    '''
+
+    # check
+    if not isinstance(X, (list, np.ndarray)):
+        log.error("`X` array must be list or numpy.ndarray!")
+        return False
+    if not isinstance(Y, (list, np.ndarray)):
+        log.error("`Y` array must be list or numpy.ndarray!")
+        return False
+    if not isinstance(Z, np.ndarray):
+        log.error("`Z` array must be numpy.ndarray!")
+        return False
+    if (len(Y), len(X)) != Z.shape:
+        log.error("Invalid `X`, `Y` length or `Z` shape!")
+        return False
+
+    XX, YY = np.meshgrid(X, Y)
+    Zmax = max(abs(Z.max()), abs(Z.min()))
+
+    if ('plot_method' in kwargs
+            and kwargs['plot_method'] in (
+                'pcolor', 'pcolormesh', 'contourf', 'plot_surface')):
+        plot_method = kwargs['plot_method']
+    else:
+        plot_method = 'pcolor'
+    # pre
+    addlayoutkw, addplotkw, addplotarg, order, adddata = {}, {}, [], 1, []
+    if plot_method == 'plot_surface':
+        addlayoutkw = {'projection': '3d', 'zlim': [-Zmax, Zmax]}
+        addplotkw = dict(rstride=1, cstride=1, linewidth=1,
+                         antialiased=True, cmap='jet')
+        if 'surface_contourf' in kwargs:
+            surface_contourf = kwargs['surface_contourf']
+        else:
+            surface_contourf = ['z']
+        _offsetd = {'x': np.min(X), 'y': np.max(Y), 'z': -Zmax}
+        _limd = {'x': ('xlim', [np.min(X), np.max(X)]),
+                 'y': ('ylim', [np.min(Y), np.max(Y)]),
+                 'z': ('zlim', [-Zmax, Zmax])}
+        for x in surface_contourf:
+            if x in _offsetd.keys():
+                order += 1
+                addlayoutkw[_limd[x][0]] = _limd[x][1]
+                adddata.append([order, 'contourf', (XX, YY, Z),
+                                dict(zdir=x, offset=_offsetd[x])])
+    if 'plot_args' in kwargs and isinstance(kwargs['plot_args'], list):
+        addplotarg.extend(kwargs['plot_args'])
+    else:
+        if plot_method == 'contourf':
+            addplotarg.extend([100])
+    if 'plot_kwargs' in kwargs and isinstance(kwargs['plot_kwargs'], dict):
+        addplotkw.update(kwargs['plot_kwargs'])
+    if not ('colorbar' in kwargs and not kwargs['colorbar']):
+        order += 1
+        adddata.append([order, 'revise',
+                        lambda fig, ax, art: fig.colorbar(art[1]), {}])
+    if 'grid_alpha' in kwargs and isinstance(kwargs['grid_alpha'], float):
+        order += 1
+        adddata.append([order, 'grid', (), dict(alpha=kwargs['grid_alpha'])])
+
+    axesstructure = [{
+        'data': [
+            [1, plot_method, [XX, YY, Z] + addplotarg,
+                dict(vmin=-Zmax, vmax=Zmax, **addplotkw)],
+        ] + adddata,
+        'layout': [
+            111,
+            dict(title=title, xlabel=xlabel, ylabel=ylabel, **addlayoutkw)
+        ],
+    }]
+
+    return axesstructure
