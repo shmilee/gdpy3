@@ -283,13 +283,13 @@ def get_twinx_axesstructures(X, YS, xlabel, title, twinx, **kwargs):
     # check
     if not isinstance(X, (list, np.ndarray)):
         log.error("`X` array must be list or numpy.ndarray!")
-        return False
+        return []
     if not isinstance(YS, np.ndarray):
         log.error("`YS` array must be numpy.ndarray!")
-        return False
+        return []
     if len(X) != YS.shape[1]:
         log.error("Invalid `X`, `YS` array length!")
-        return False
+        return []
 
     if 'xlim' in kwargs and len(kwargs['xlim']) == 2:
         xlim = kwargs['xlim']
@@ -352,13 +352,13 @@ def get_pcolor_axesstructures(X, Y, Z, xlabel, ylabel, title, **kwargs):
 
     Parameters
     ----------
-    X, Y: 1 dimension array
-    Z: 2 dimension array
+    X, Y: 1 or 2 dimension numpy.ndarray
+    Z: 2 dimension numpy.ndarray
     xlabel, ylabel, title: str
 
     kwargs:
         *plot_method*: str, 'pcolor', 'pcolormesh', 'contourf', 'plot_surface'
-                     default 'pcolor'
+                     default 'pcolormesh'
         *plot_args*: list, optional args for *plot_method*,
                    like 'N', chosen levels for contourf, default 100
         *plot_kwargs*: dict, optional kwargs for *plot_method*,
@@ -371,29 +371,34 @@ def get_pcolor_axesstructures(X, Y, Z, xlabel, ylabel, title, **kwargs):
     '''
 
     # check
-    if not isinstance(X, (list, np.ndarray)):
-        log.error("`X` array must be list or numpy.ndarray!")
-        return False
-    if not isinstance(Y, (list, np.ndarray)):
-        log.error("`Y` array must be list or numpy.ndarray!")
-        return False
-    if not isinstance(Z, np.ndarray):
-        log.error("`Z` array must be numpy.ndarray!")
-        return False
-    if (len(Y), len(X)) != Z.shape:
-        log.error("Invalid `X`, `Y` length or `Z` shape!")
-        return False
-
-    XX, YY = np.meshgrid(X, Y)
-    Zmax = max(abs(Z.max()), abs(Z.min()))
+    for _x, _X in [('X', X), ('Y', Y), ('Z', Z)]:
+        if not isinstance(_X, np.ndarray):
+            log.error("`%s` array must be numpy.ndarray!" % _x)
+            return []
+    if len(X.shape) == 1 and len(Y.shape) == 1:
+        # X, Y: 1 dimension
+        if (len(Y), len(X)) != Z.shape:
+            log.error("Invalid `X`, `Y` length or `Z` shape!")
+            return []
+        XX, YY = np.meshgrid(X, Y)
+    elif len(X.shape) == 2 and len(Y.shape) == 2:
+        # X, Y: 2 dimension
+        if not (X.shape == Y.shape == Z.shape):
+            log.error("Invalid `X`, `Y` or `Z` shape!")
+            return []
+        XX, YY = X, Y
+    else:
+        log.error("Invalid `X`, `Y` dimension!")
+        return []
 
     if ('plot_method' in kwargs
             and kwargs['plot_method'] in (
                 'pcolor', 'pcolormesh', 'contourf', 'plot_surface')):
         plot_method = kwargs['plot_method']
     else:
-        plot_method = 'pcolor'
+        plot_method = 'pcolormesh'
     # pre
+    Zmax = max(abs(Z.max()), abs(Z.min()))
     addlayoutkw, addplotkw, addplotarg, order, adddata = {}, {}, [], 1, []
     if plot_method == 'plot_surface':
         addlayoutkw = {'projection': '3d', 'zlim': [-Zmax, Zmax]}
@@ -411,7 +416,7 @@ def get_pcolor_axesstructures(X, Y, Z, xlabel, ylabel, title, **kwargs):
             if x in _offsetd.keys():
                 order += 1
                 addlayoutkw[_limd[x][0]] = _limd[x][1]
-                adddata.append([order, 'contourf', (XX, YY, Z),
+                adddata.append([order, 'contourf', (XX, YY, Z, 100),
                                 dict(zdir=x, offset=_offsetd[x])])
     if 'plot_args' in kwargs and isinstance(kwargs['plot_args'], list):
         addplotarg.extend(kwargs['plot_args'])
