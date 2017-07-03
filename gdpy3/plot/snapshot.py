@@ -82,12 +82,19 @@ class SnapshotFigureV110922(GFigure):
         '%s_ploidal' % f: dict(
             title=r'$%s$ on ploidal plane' % f.replace(
                 'phi', '\phi').replace('apara', 'a_{\parallel}'),
-            srckey=['mpsi+1', 'mtgrid+1',
-                    'poloidata-x', 'poloidata-z', 'poloidata-%s' % f])
+            srckey=['poloidata-x', 'poloidata-z', 'poloidata-%s' % f])
         for f in ['phi', 'apara', 'fluidne']
     }
-    _FigInfo = dict(_ProfileFigInfo, **_PdfFigInfo, **_FieldFluxFigInfo,
-                    **_FieldSpectrumFigInfo, **_FieldPloidalFigInfo)
+    _FieldProfileFigInfo = {
+        '%s_profile' % f: dict(
+            field=r'$%s$' % f.replace(
+                'phi', '\phi').replace('apara', 'a_{\parallel}'),
+            srckey=['mpsi+1', 'mtgrid+1', 'poloidata-%s' % f])
+        for f in ['phi', 'apara', 'fluidne']
+    }
+    _FigInfo = dict(_ProfileFigInfo, **_PdfFigInfo,
+                    **_FieldFluxFigInfo, **_FieldSpectrumFigInfo,
+                    **_FieldPloidalFigInfo, **_FieldProfileFigInfo)
 
     def __init__(self, dataobj, name,
                  group=None, figurestyle=['gdpy3-notebook']):
@@ -116,6 +123,8 @@ class SnapshotFigureV110922(GFigure):
            :func:`gdpy3.plot.gfigure.get_pcolor_axesstructures`
         3. fieldspectrum kwargs:
            *mmode*, *pmode*
+        4. fieldprofile kwargs:
+           *itgrid*, *ipsi*
         '''
         log.debug("Get FigureStructure, calculation of '%s' ..." % self.Name)
         self.figurestructure = {
@@ -138,6 +147,8 @@ class SnapshotFigureV110922(GFigure):
             return _set_fieldspectrum_axesstructures(self, **kwargs)
         elif self.name in self._FieldPloidalFigInfo:
             return _set_fieldploidal_axesstructures(self, **kwargs)
+        elif self.name in self._FieldProfileFigInfo:
+            return _set_fieldprofile_axesstructures(self, **kwargs)
         else:
             return False
 
@@ -299,11 +310,10 @@ def _set_fieldploidal_axesstructures(self, **kwargs):
     Set phi, apara, fluidne on ploidal plane axesstructures, calculation
     '''
 
-    mpsi1, mtgrid1, xdata, zdata, pdata = self.figureinfo['key']
+    xdata, zdata, pdata = self.figureinfo['key']
     title = self.figureinfo['title']
     try:
-        mpsi1, mtgrid1, xdata, zdata, pdata = self.dataobj.get_many(
-            mpsi1, mtgrid1, xdata, zdata, pdata)
+        xdata, zdata, pdata = self.dataobj.get_many(xdata, zdata, pdata)
         if pdata.size == 0:
             log.debug("No data for Figure '%s'." % self.Name)
             return False
@@ -338,5 +348,68 @@ def _set_fieldploidal_axesstructures(self, **kwargs):
         log.error("Failed to set AxesStructures of '%s'! %s"
                   % (self.Name, exc))
         return False
+
+    return True
+
+
+def _set_fieldprofile_axesstructures(self, **kwargs):
+    '''
+    Set field and rms radius poloidal profile axesstructures, calculation
+    '''
+
+    mpsi1, mtgrid1, pdata = self.figureinfo['key']
+    field = self.figureinfo['field']
+    try:
+        mpsi1, mtgrid1, pdata = self.dataobj.get_many(mpsi1, mtgrid1, pdata)
+        if pdata.size == 0:
+            log.debug("No data for Figure '%s'." % self.Name)
+            return False
+        if pdata.shape != (mtgrid1, mpsi1):
+            log.error("Invalid poloidata shape!")
+            return False
+        itgrid = 0
+        ipsi = (mpsi1 - 1) // 2
+        if ('itgrid' in kwargs and isinstance(kwargs['itgrid'], int)
+                and kwargs['itgrid'] < mtgrid1):
+            itgrid = kwargs['itgrid']
+        if ('ipsi' in kwargs and isinstance(kwargs['ipsi'], int)
+                and kwargs['ipsi'] < mpsi1):
+            ipsi = kwargs['ipsi']
+        log.info("Poloidal and radius cut: itgrid=%s, ipsi=%s."
+                 "Maximal itgrid=%s, ipsi=%s."
+                 % (itgrid, ipsi, mtgrid1 - 1, mpsi1 - 1))
+        X1, Y11 = np.arange(0, mpsi1), pdata[itgrid, :]
+        X2 = np.arange(0, mtgrid1) / mtgrid1 * 2 * np.pi
+        Y21 = pdata[:, ipsi]
+        # f*f [ f[i,j]*f[i,j] ]; np.sum, axis=0, along col
+        Y12 = np.sqrt(np.sum(pdata * pdata, axis=0) / mtgrid1)
+        Y22 = np.sqrt(np.sum(pdata * pdata, axis=1) / mpsi1)
+    except Exception as exc:
+        log.error("Failed to get data of '%s' from %s! %s" %
+                  (self.Name, self.dataobj.file, exc))
+        return False
+
+    for ax in [[211, (X1, Y11, 'o-'), (X1, Y12, '--'), 'r(mpsi)',
+                r'%s radius profile: itgrid=%d ($\theta=%.2f=%.2f\degree$)'
+                % (field, itgrid, X2[itgrid], itgrid / mtgrid1 * 360)],
+               [212, (X2, Y21, 'o-'), (X2, Y22, '--'), r'$\theta$',
+                '%s poloidal profile: ipsi=%d' % (field, ipsi)]]:
+        log.debug("Getting Axes %s ..." % ax[0])
+        xlim = [ax[1][0].min(), ax[1][0].max()]
+        axes = {
+            'data': [
+                    [1, 'plot', ax[1], dict(label='point value')],
+                    [2, 'legend', (), dict(loc='upper left')],
+                    [3, 'twinx', (), dict(nextcolor=1)],
+                    [4, 'plot', ax[2], dict(label='rms')],
+                    [5, 'legend', (), dict(loc='upper right')],
+                    [6, 'set_xlim', xlim, {}],
+                    [7, 'set_ylabel', ('RMS',), {}],
+            ],
+            'layout': [ax[0], dict(xlabel=ax[3], xlim=xlim,
+                                   title=ax[4], ylabel='point value')
+                       ],
+        }
+        self.figurestructure['AxesStructures'].append(axes)
 
     return True
