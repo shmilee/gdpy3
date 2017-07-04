@@ -375,7 +375,7 @@ def _set_fieldprofile_axesstructures(self, **kwargs):
         if ('ipsi' in kwargs and isinstance(kwargs['ipsi'], int)
                 and kwargs['ipsi'] < mpsi1):
             ipsi = kwargs['ipsi']
-        log.info("Poloidal and radius cut: itgrid=%s, ipsi=%s."
+        log.info("Poloidal and radius cut: itgrid=%s, ipsi=%s. "
                  "Maximal itgrid=%s, ipsi=%s."
                  % (itgrid, ipsi, mtgrid1 - 1, mpsi1 - 1))
         X1, Y11 = np.arange(0, mpsi1), pdata[itgrid, :]
