@@ -102,6 +102,10 @@ class SnapshotFigureV110922(GFigure):
             raise ValueError("'%s' not found in group '%s'!" % (name, group))
         info = self._FigInfo[name].copy()
         info['key'] = [group + '/' + k for k in info['srckey']]
+        istep = int(group.replace('snap', ''))
+        timestr = ('istep=%d, time=%s$R_0/c_s$' %
+                   (istep, istep * dataobj[GFigure._paragrp + 'tstep']))
+        info['timestr'] = timestr
         super(SnapshotFigureV110922, self).__init__(
             dataobj, name, group, info, figurestyle=figurestyle)
 
@@ -160,14 +164,12 @@ def _set_profile_or_pdf_axesstructures(self, **kwargs):
 
     # check key, get data
     xlabel = self.figureinfo['xlabel']
-    title = self.figureinfo['title']
+    title = self.figureinfo['title'] + ', ' + self.figureinfo['timestr']
     twinx = self.figureinfo['twinx']
     # when x='mpsi+1', ydata='profile'
     # when x='nvgrid', ydata='pdf'
     x, ydata = self.figureinfo['key']
     try:
-        time = ' (istep=%d)' % int(self.group.replace('snap', ''))
-        title = title + time
         x, ydata = self.dataobj.get_many(x, ydata)
         if ydata.size == 0:
             log.debug("No data for Figure '%s'." % self.Name)
@@ -200,7 +202,7 @@ def _set_fieldflux_axesstructures(self, **kwargs):
     '''
 
     fluxdata, = self.figureinfo['key']
-    title = self.figureinfo['title']
+    title = self.figureinfo['title'] + ', ' + self.figureinfo['timestr']
     try:
         fluxdata = self.dataobj[fluxdata]
         if fluxdata.size == 0:
@@ -244,6 +246,7 @@ def _set_fieldspectrum_axesstructures(self, **kwargs):
     # check key
     mtgrid1, mtoroidal, fluxdata = self.figureinfo['key']
     field = self.figureinfo['field']
+    timestr = self.figureinfo['timestr']
     try:
         mtgrid1, mtoroidal, fluxdata = self.dataobj.get_many(
             mtgrid1, mtoroidal, fluxdata)
@@ -296,7 +299,7 @@ def _set_fieldspectrum_axesstructures(self, **kwargs):
             ],
             'layout': [
                 ax[0],
-                dict(title='%s %s spectrum' % (field, ax[2]),
+                dict(title='%s %s spectrum, %s' % (field, ax[2], timestr),
                      xlim=ax[3], xlabel=ax[4])
             ],
         }
@@ -311,7 +314,7 @@ def _set_fieldploidal_axesstructures(self, **kwargs):
     '''
 
     xdata, zdata, pdata = self.figureinfo['key']
-    title = self.figureinfo['title']
+    title = self.figureinfo['title'] + ', ' + self.figureinfo['timestr']
     try:
         xdata, zdata, pdata = self.dataobj.get_many(xdata, zdata, pdata)
         if pdata.size == 0:
@@ -359,6 +362,7 @@ def _set_fieldprofile_axesstructures(self, **kwargs):
 
     mpsi1, mtgrid1, pdata = self.figureinfo['key']
     field = self.figureinfo['field']
+    timestr = self.figureinfo['timestr']
     try:
         mpsi1, mtgrid1, pdata = self.dataobj.get_many(mpsi1, mtgrid1, pdata)
         if pdata.size == 0:
@@ -410,6 +414,9 @@ def _set_fieldprofile_axesstructures(self, **kwargs):
                                    title=ax[4], ylabel='point value')
                        ],
         }
+        if ax[0] == 211:
+            addsuptitle = lambda fig, ax, art: fig.suptitle(timestr)
+            axes['data'].append([8, 'revise', addsuptitle, dict()])
         self.figurestructure['AxesStructures'].append(axes)
 
     return True
