@@ -2,10 +2,11 @@
 
 # Copyright (c) 2017 shmilee
 
-r''' Source fortran code:
+'''
+Source fortran code:
 
 v110922
-=======
+-------
 
 1. snapshot.F90:316-321, ::
     ! parameters: # of species, fields, and grids in velocity, radius, poloidal, toroidal; T_up
@@ -42,57 +43,47 @@ __all__ = ['SnapshotBlockV110922']
 
 
 class SnapshotBlockV110922(DataBlock):
-    '''Snapshot data
+    '''
+    Snapshot Data
 
-    1) ion, electron, EP radial profiles:
-       density, flow, energy of fullf and delf
+    1) ion, electron, EP radial profiles.
+       Profile 2d array is profile[r,6].
+       6 profiles order:
+       fullf density, delf density, fullf flow,
+       delf flow, fullf energy, delf energy.
     2) ion, electron, EP distribution function in:
-       energy, pitch angle of fullf and delf
+       energy, pitch angle of fullf and delf.
+       pdf 2d array is pdf[nvgrid,4].
+       4 pdf order: fullf energy, delf energy,
+       fullf pitch angle, delf pitch angle.
     3) phi, a_para, fluidne on ploidal plane
+       poloidata 2d array is poloidata[theta,r].
     4) phi, a_para, fluidne on flux surface
+       fluxdata 2d array is fluxdata[theta,zeta].
 
     Attributes
     ----------
-        file: str
-            File path of GTC ``snap("%05d" % istep).out`` to convert
-        group: str of data group
-        datakeys: tuple
-            data keys of physical quantities in ``snap("%05d" % istep).out``
-        data: dict of converted data
+    file: str
+        File path of GTC ``snap("%05d" % istep).out`` to convert
+    group: str of data group
+    datakeys: tuple
+        data keys of physical quantities in ``snap("%05d" % istep).out``
+    data: dict of converted data
     '''
-    __slots__ = ['file', 'group', 'datakeys', 'data']
-
-    def __init__(self, file=None, group=None):
-        if os.path.isfile(file):
-            self.file = file
-        else:
-            raise IOError("Can't find '%s' file: '%s'!" % (group, file))
-        if group:
-            self.group = group
-        else:
-            self.group = os.path.basename(os.path.splitext(file)[0])
-        self.datakeys = (
-            # 1. parameters
-            'nspecies', 'nfield', 'nvgrid', 'mpsi+1',
-            'mtgrid+1', 'mtoroidal', 'T_up',
-            # 2. profile(0:mpsi,6,nspecies)
-            'ion-profile', 'electron-profile', 'fastion-profile',
-            # 3. pdf(nvgrid,4,nspecies)
-            'ion-pdf', 'electron-pdf', 'fastion-pdf',
-            # 4. poloidata(0:mtgrid,0:mpsi,nfield+2)
-            'poloidata-phi', 'poloidata-apara', 'poloidata-fluidne',
-            'poloidata-x', 'poloidata-z',
-            # 5. fluxdata(0:mtgrid,mtoroidal,nfield)
-            'fluxdata-phi', 'fluxdata-apara', 'fluxdata-fluidne')
-        self.data = dict(description='Snapshot Data:'
-                         '\n1) profile 2d array is profile[r,6]\n'
-                         '   6 profiles order: fullf density, delf density,'
-                         'fullf flow, delf flow, fullf energy, delf energy.'
-                         '\n2) pdf 2d array is pdf[nvgrid,4]\n'
-                         '   4 pdf order: fullf energy, delf energy,'
-                         'fullf pitch angle, delf pitch angle.'
-                         '\n3) poloidata 2d array is poloidata[theta,r]'
-                         '\n4) fluxdata 2d array is fluxdata[theta,zeta]')
+    __slots__ = []
+    _Datakeys = (
+        # 1. parameters
+        'nspecies', 'nfield', 'nvgrid', 'mpsi+1',
+        'mtgrid+1', 'mtoroidal', 'T_up',
+        # 2. profile(0:mpsi,6,nspecies)
+        'ion-profile', 'electron-profile', 'fastion-profile',
+        # 3. pdf(nvgrid,4,nspecies)
+        'ion-pdf', 'electron-pdf', 'fastion-pdf',
+        # 4. poloidata(0:mtgrid,0:mpsi,nfield+2)
+        'poloidata-phi', 'poloidata-apara', 'poloidata-fluidne',
+        'poloidata-x', 'poloidata-z',
+        # 5. fluxdata(0:mtgrid,mtoroidal,nfield)
+        'fluxdata-phi', 'fluxdata-apara', 'fluxdata-fluidne')
 
     def convert(self):
         '''Read snap("%05d" % istep).out

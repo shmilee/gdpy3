@@ -2,10 +2,11 @@
 
 # Copyright (c) 2017 shmilee
 
-r''' Source fortran code:
+'''
+Source fortran code:
 
 v110922
-=======
+-------
 
 eqplot.F90, subroutine eqplot
 
@@ -44,9 +45,10 @@ __all__ = ['EquilibriumBlockV110922']
 
 
 class EquilibriumBlockV110922(DataBlock):
-    '''Equilibrium data
+    '''
+    Equilibrium data
 
-    1) first part, 1D radial plots
+    1) first part, 1D radial plots. Shape of 1D data is (nrad,).
         'nplot-1d', 'nrad',
         'radial-axis-using-poloidal-flux-function',
         'sqaure-root-of-normalized-toroidal-flux-function-is0',
@@ -58,58 +60,49 @@ class EquilibriumBlockV110922(DataBlock):
         'd(ln(q))-over-dpsi', 'gcurrent-profile', 'pressure-profile',
         'minor-radius', 'toroidal-flux', 'rgpsi', 'psitor', 'psirg',
         'error-of-spline-cos', 'error-of-spline-sin',
-    2) second part, 2D contour plots on poloidal plane
+    2) second part, 2D contour plots on poloidal plane.
+       Shape of 2D data is (mpsi-over-mskip+1, lst).
         'nplot-2d', 'mpsi-over-mskip+1', 'lst',
         'mesh-points-on-X', 'mesh-points-on-Z', 'b-field',
         'Jacobian', 'icurrent', 'zeta2phi', 'delb'
 
     Attributes
     ----------
-        file: str
-            File path of GTC ``equilibrium.out`` to convert
-        group: str of data group
-        datakeys: tuple
-            data keys of physical quantities in ``equilibrium.out``
-        data: dict of converted data
+    file: str
+        File path of GTC ``equilibrium.out`` to convert
+    group: str of data group
+    datakeys: tuple
+        data keys of physical quantities in ``equilibrium.out``
+    data: dict of converted data
     '''
-    __slots__ = ['file', 'group', 'datakeys', 'data']
-
-    def __init__(self, file=None, group='equilibrium'):
-        if os.path.isfile(file):
-            self.file = file
-        else:
-            raise IOError("Can't find '%s' file: '%s'!" % (group, file))
-        self.group = group
-        self.datakeys = (
-            # 1. first part, 1D
-            'nplot-1d', 'nrad',
-            # 0) datap
-            'radial-axis-using-poloidal-flux-function',
-            # 1) data1d
-            'sqaure-root-of-normalized-toroidal-flux-function-is0',
-            # 2-3) data1d
-            'minor-radius-is0', 'major-radius-is0',
-            # 4-7) data1d
-            'Te', '-d(ln(Te))-over-dr', 'ne', '-d(ln(ne))-over-dr',
-            # 8-11) data1d
-            'Ti', '-d(ln(Ti))-over-dr', 'ni', '-d(ln(ni))-over-dr',
-            # 12-15) data1d
-            'Tf', '-d(ln(Tf))-over-dr', 'nf', '-d(ln(nf))-over-dr',
-            # 16-19) data1d
-            'zeff', 'toroidal-rotation', 'radial-electric-field', 'q-profile',
-            # 20-22) data1d
-            'd(ln(q))-over-dpsi', 'gcurrent-profile', 'pressure-profile',
-            # 23-27) data1d
-            'minor-radius', 'toroidal-flux', 'rgpsi', 'psitor', 'psirg',
-            # 28-29) data1d
-            'error-of-spline-cos', 'error-of-spline-sin',
-            # 2. second part, 2D
-            'nplot-2d', 'mpsi-over-mskip+1', 'lst',
-            'mesh-points-on-X', 'mesh-points-on-Z',
-            'b-field', 'Jacobian', 'icurrent', 'zeta2phi', 'delb')
-        self.data = dict(description='Equilibrium Data:'
-                         '\n1) Shape of 1D data is (nrad,).'
-                         '\n2) Shape of 2D data is (mpsi-over-mskip+1, lst).')
+    __slots__ = []
+    _Datakeys = (
+        # 1. first part, 1D
+        'nplot-1d', 'nrad',
+        # 0) datap # TODO single
+        'radial-axis-using-poloidal-flux-function',
+        # 1) data1d #TODO group 1-29
+        'sqaure-root-of-normalized-toroidal-flux-function-is0',
+        # 2-3) data1d
+        'minor-radius-is0', 'major-radius-is0',
+        # 4-7) data1d
+        'Te', '-d(ln(Te))-over-dr', 'ne', '-d(ln(ne))-over-dr',
+        # 8-11) data1d
+        'Ti', '-d(ln(Ti))-over-dr', 'ni', '-d(ln(ni))-over-dr',
+        # 12-15) data1d
+        'Tf', '-d(ln(Tf))-over-dr', 'nf', '-d(ln(nf))-over-dr',
+        # 16-19) data1d
+        'zeff', 'toroidal-rotation', 'radial-electric-field', 'q-profile',
+        # 20-22) data1d
+        'd(ln(q))-over-dpsi', 'gcurrent-profile', 'pressure-profile',
+        # 23-27) data1d
+        'minor-radius', 'toroidal-flux', 'rgpsi', 'psitor', 'psirg',
+        # 28-29) data1d
+        'error-of-spline-cos', 'error-of-spline-sin',
+        # 2. second part, 2D
+        'nplot-2d', 'mpsi-over-mskip+1', 'lst',
+        'mesh-points-on-X', 'mesh-points-on-Z',
+        'b-field', 'Jacobian', 'icurrent', 'zeta2phi', 'delb')
 
     def convert(self):
         '''Read equilibrium.out
@@ -121,7 +114,7 @@ class EquilibriumBlockV110922(DataBlock):
             outdata = f.readlines()
 
         sd = self.data
-        # 1. first part
+        # 1. first part # TODO
         sd.update({'nplot-1d': int(outdata[0].strip()),
                    'nrad': int(outdata[1].strip())})
         size1 = (sd['nplot-1d'] + 1) * sd['nrad']

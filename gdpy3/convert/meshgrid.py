@@ -2,10 +2,11 @@
 
 # Copyright (c) 2017 shmilee
 
-r''' Source fortran code:
+'''
+Source fortran code:
 
 v110922
-=======
+-------
 
 diagnosis.F90, subroutine diagnosis:37-50
     !!diagnosis xy
@@ -33,32 +34,25 @@ __all__ = ['MeshgridBlockV110922']
 
 
 class MeshgridBlockV110922(DataBlock):
-    '''Meshgrid data
+    '''
+    Meshgrid data
 
     1) psimesh, sprpsi, qmesh, kapatmti, kapatmte, kapatmni, kapatmne
+       Shape of the array data is (mpsi+1,).
 
     Attributes
     ----------
-        file: str
-            File path of GTC ``meshgrid.out`` to convert
-        group: str of data group
-        datakeys: tuple
-            data keys of physical quantities in ``meshgrid.out``
-        data: dict of converted data
+    file: str
+        File path of GTC ``meshgrid.out`` to convert
+    group: str of data group
+    datakeys: tuple
+        data keys of physical quantities in ``meshgrid.out``
+    data: dict of converted data
     '''
-    __slots__ = ['file', 'group', 'datakeys', 'data']
-
-    def __init__(self, file=None, group='meshgrid'):
-        if os.path.isfile(file):
-            self.file = file
-        else:
-            raise IOError("Can't find '%s' file: '%s'!" % (group, file))
-        self.group = group
-        self.datakeys = (
-            'psimesh', 'sprpsi', 'qmesh',
-            'kapatmti', 'kapatmte', 'kapatmni', 'kapatmne')
-        self.data = dict(description='Meshgrid Data:'
-                         '\nShape of the array data is (mpsi+1,).')
+    __slots__ = []
+    _Datakeys = (
+        'psimesh', 'sprpsi', 'qmesh',
+        'kapatmti', 'kapatmte', 'kapatmni', 'kapatmne')
 
     def convert(self, mpsi=None):
         '''Read meshgrid.out

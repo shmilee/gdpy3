@@ -2,10 +2,11 @@
 
 # Copyright (c) 2017 shmilee
 
-r''' Source fortran code:
+'''
+Source fortran code:
 
 v110922
-=======
+-------
 
 1. diagnosis.F90:opendiag():734-735, ::
     write(iodiag,101)ndstep,nspecies,mpdiag,nfield,modes,mfdiag
@@ -64,46 +65,39 @@ __all__ = ['HistoryBlockV110922']
 
 
 class HistoryBlockV110922(DataBlock):
-    '''history data
+    '''
+    History Data
 
     1) density,entropy,flow,energy,fluxes of particle,momentum,heat
-       diagion, diagelectron, diagfast
+       Source: diagion, diagelectron, diagfast.
+       The particle 2d array is particle[mpdiag,time].
     2) time history of field quantity at theta=zeta=0 & i=iflux
-       fieldtime, fieldmode: phi, a_para, fluid_ne
+       Source: fieldtime, fieldmode: phi, a_para, fluid_ne
+       The fieldtime 2d array is fieldtime[mfdiag,time].
+       The fieldmode 2d array is fieldmode[modes,time].
 
     Attributes
     ----------
-        file: str
-            File path of GTC ``history.out`` to convert
-        group: str of data group
-        datakeys: tuple
-            data keys of physical quantities in ``history.out``
-        data: dict of converted data
+    file: str
+        File path of GTC ``history.out`` to convert
+    group: str of data group
+    datakeys: tuple
+        data keys of physical quantities in ``history.out``
+    data: dict of converted data
     '''
-    __slots__ = ['file', 'group', 'datakeys', 'data']
-
-    def __init__(self, file=None, group='history'):
-        if os.path.isfile(file):
-            self.file = file
-        else:
-            raise IOError("Can't find '%s' file: '%s'!" % (group, file))
-        self.group = group
-        self.datakeys = (
-            # 1. diagnosis.F90:opendiag():734-735
-            'ndstep', 'nspecies', 'mpdiag', 'nfield', 'modes', 'mfdiag',
-            'tstep*ndiag',
-            # 3. partdata(mpdiag,nspecies)
-            'ion', 'electron', 'fastion',
-            # 4. fieldtime(mfdiag,nfield)
-            'fieldtime-phi', 'fieldtime-apara', 'fieldtime-fluidne',
-            # 5. fieldmode(2,modes,nfield)
-            'fieldmode-phi-real', 'fieldmode-phi-imag',
-            'fieldmode-apara-real', 'fieldmode-apara-imag',
-            'fieldmode-fluidne-real', 'fieldmode-fluidne-imag')
-        self.data = dict(description='History Data:\n'
-                         'The particle 2d array is particle[mpdiag,time].\n'
-                         'The fieldtime 2d array is fieldtime[mfdiag,time].\n'
-                         'The fieldmode 2d array is fieldmode[modes,time]')
+    __slots__ = []
+    _Datakeys = (
+        # 1. diagnosis.F90:opendiag():734-735
+        'ndstep', 'nspecies', 'mpdiag', 'nfield', 'modes', 'mfdiag',
+        'tstep*ndiag',
+        # 3. partdata(mpdiag,nspecies)
+        'ion', 'electron', 'fastion',
+        # 4. fieldtime(mfdiag,nfield)
+        'fieldtime-phi', 'fieldtime-apara', 'fieldtime-fluidne',
+        # 5. fieldmode(2,modes,nfield)
+        'fieldmode-phi-real', 'fieldmode-phi-imag',
+        'fieldmode-apara-real', 'fieldmode-apara-imag',
+        'fieldmode-fluidne-real', 'fieldmode-fluidne-imag')
 
     def convert(self):
         '''Read history.out

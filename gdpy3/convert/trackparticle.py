@@ -2,10 +2,11 @@
 
 # Copyright (c) 2017 shmilee
 
-r''' Source fortran code:
+'''
+Source fortran code:
 
 v110922
-=======
+-------
 
 tracking.F90, subroutine write_tracked_particles:270:278-289
      write(cdum,'("trackp_dir/TRACKP.",i5.5)')mype
@@ -33,35 +34,34 @@ __all__ = ['TrackParticleBlockV110922']
 
 
 class TrackParticleBlockV110922(DataBlock):
-    '''Tracking Particle data
+    '''
+    Tracking Particle Data
 
     1) ion, electron
+       Shape of the array data is (mstep/ndiag,7).
+       7 quantities of particle:
+       istep, X, Z, zeta, rho_para, weight, sqrt(mu).
 
     Attributes
     ----------
-        path: str
-            Path of GTC ``trackp_dir/`` to convert
-        file: alias path
-        group: str of data group
-        datakeys: tuple
-            tags of tracked particles
-        data: dict of converted data
+    path: str
+        Path of GTC ``trackp_dir/`` to convert
+    file: alias path
+    group: str of data group
+    datakeys: tuple
+        tags of tracked particles
+    data: dict of converted data
     '''
-    __slots__ = ['path', 'file', 'group', 'datakeys', 'data']
+    __slots__ = ['path']
+    _Datakeys = ('set by function convert',)
 
-    def __init__(self, path=None, group='trackp'):
+    def __init__(self, path, group='trackp'):
         if os.path.isdir(path):
             self.path = path
         else:
             raise IOError("Can't find '%s' dir: '%s'!" % (group, path))
-        self.file = path
-        self.group = group
-        self.datakeys = ('set by function convert',)
-        self.data = dict(description='Tracking Particle data'
-                         '\nShape of the array data is (mstep/ndiag,7).'
-                         '\n7 quantities of particle:'
-                         '\n  istep, X, Z, zeta,'
-                         '\n  rho_para, weight, sqrt(mu).')
+        super(TrackParticleBlockV110922, self).__init__(
+            path, group=group, check_file=False)
 
     def convert(self):
         '''Read trackp_dir/TRACKP.("%05d" % mype)

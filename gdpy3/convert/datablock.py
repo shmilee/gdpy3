@@ -12,30 +12,49 @@ log = logging.getLogger('gdc')
 
 
 class DataBlock(object):
-    '''Base DataBlock class of Data1d, GtcOut, History, Snapshot, etc.
+    '''
+    Base DataBlock class of Data1d, GtcOut, History, Snapshot, etc.
 
     1) save DataBlock.data to a numpy compressed .npz file, or
     2) save DataBlock.data to a h5py .hdf5 file
 
     Attributes
     ----------
-        file: str of
-            File name of GTC .out to convert
-        group: str of data group
-        datakeys: tuple
-            data keys of physical quantities in the .out file
-        data: dict of converted data
+    file: str
+        File path of GTC .out to convert
+    group: str of data group
+    datakeys: tuple
+        data keys of physical quantities in the .out file
+    data: dict of converted data
     '''
     __slots__ = ['file', 'group', 'datakeys', 'data']
+    _Datakeys = ('description',)
 
-    def __init__(self, file=None, group='exampledata'):
-        self.file = file
-        self.group = group
-        self.datakeys = ('example_int', 'example_pi', 'example_array')
-        self.data = dict(description='example data dict',
-                         example_int=666,
-                         example_pi=3.14159265358979,
-                         example_array=numpy.array([2.0, 4.0, 6.0]))
+    def __init__(self, file, group=None, check_file=True):
+        if not isinstance(file, str):
+            raise ValueError("Data file path must be str!")
+        if check_file:
+            if os.path.isfile(file):
+                self.file = file
+            else:
+                raise IOError("Can't find data file: '%s'!" % file)
+        else:
+            self.file = file
+        if group:
+            if not isinstance(group, str):
+                raise ValueError("Data group must be str!")
+            self.group = group
+        else:
+            self.group = os.path.basename(os.path.splitext(file)[0])
+        self.datakeys = self.get_cls_datakeys()
+        cutoff = self.__doc__.index('Attributes\n')
+        self.data = {
+            'description': self.__doc__[:cutoff].strip(),
+        }
+
+    @classmethod
+    def get_cls_datakeys(cls):
+        return cls._Datakeys
 
     def convert(self):
         '''Read GTC .out file to self.data as a dict.

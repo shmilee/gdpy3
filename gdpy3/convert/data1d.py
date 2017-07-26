@@ -2,10 +2,11 @@
 
 # Copyright (c) 2017 shmilee
 
-r''' Source fortran code:
+'''
+Source fortran code:
 
 v110922
-=======
+-------
 
 1. diagnosis.F90:opendiag():739, ::
     write(iodata1d,101)ndstep,mpsi+1,nspecies,nhybrid,mpdata1d,nfield,mfdata1d
@@ -68,47 +69,40 @@ __all__ = ['Data1dBlockV110922']
 
 
 class Data1dBlockV110922(DataBlock):
-    '''radial time data
+    '''
+    Radial Time Data
 
-    1) radial profile of particle, energy and momentum flux
-       data1di, data1de, data1df
-    2) field diagnosis: phi, a_para, fluid_ne
-       field00, fieldrms
+    1) Radial profile of particle, energy and momentum flux.
+       Source: data1di, data1de, data1df.
+       The flux 2d array is flux[r,time].
+    2) Field diagnosis: phi, a_para, fluid_ne.
+       Source: field00, fieldrms.
+       The field 2d array is field[r,time].
 
     Attributes
     ----------
-        file: str
-            File path of GTC ``data1d.out`` to convert
-        group: str of data group
-        datakeys: tuple
-            data keys of physical quantities in ``data1d.out``
-        data: dict of converted data
+    file: str
+        File path of GTC ``data1d.out`` to convert
+    group: str of data group
+    datakeys: tuple
+        data keys of physical quantities in ``data1d.out``
+    data: dict of converted data
     '''
-    __slots__ = ['file', 'group', 'datakeys', 'data']
-
-    def __init__(self, file=None, group='data1d'):
-        if os.path.isfile(file):
-            self.file = file
-        else:
-            raise IOError("Can't find '%s' file: '%s'!" % (group, file))
-        self.group = group
-        self.datakeys = (
-            # 1. diagnosis.F90:opendiag():739
-            'ndstep', 'mpsi+1', 'nspecies', 'nhybrid',
-            'mpdata1d', 'nfield', 'mfdata1d',
-            # 3. data1di(0:mpsi,mpdata1d)
-            'i-particle-flux', 'i-energy-flux', 'i-momentum-flux',
-            # 4. data1de(0:mpsi,mpdata1d)
-            'e-particle-flux', 'e-energy-flux', 'e-momentum-flux',
-            # 5. data1df(0:mpsi,mpdata1d)
-            'f-particle-flux', 'f-energy-flux', 'f-momentum-flux',
-            # 6. field00(0:mpsi,nfield)
-            'field00-phi', 'field00-apara', 'field00-fluidne',
-            # 7. fieldrms(0:mpsi,nfield)
-            'fieldrms-phi', 'fieldrms-apara', 'fieldrms-fluidne')
-        self.data = dict(description='Radial Time Data:\n'
-                         'The flux 2d array is flux[r,time].\n'
-                         'The field 2d array is field[r,time].')
+    __slots__ = []
+    _Datakeys = (
+        # 1. diagnosis.F90:opendiag():739
+        'ndstep', 'mpsi+1', 'nspecies', 'nhybrid',
+        'mpdata1d', 'nfield', 'mfdata1d',
+        # 3. data1di(0:mpsi,mpdata1d)
+        'i-particle-flux', 'i-energy-flux', 'i-momentum-flux',
+        # 4. data1de(0:mpsi,mpdata1d)
+        'e-particle-flux', 'e-energy-flux', 'e-momentum-flux',
+        # 5. data1df(0:mpsi,mpdata1d)
+        'f-particle-flux', 'f-energy-flux', 'f-momentum-flux',
+        # 6. field00(0:mpsi,nfield)
+        'field00-phi', 'field00-apara', 'field00-fluidne',
+        # 7. fieldrms(0:mpsi,nfield)
+        'fieldrms-phi', 'fieldrms-apara', 'fieldrms-fluidne')
 
     def convert(self):
         '''Read data1d.out

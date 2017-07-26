@@ -2,10 +2,11 @@
 
 # Copyright (c) 2017 shmilee
 
-r''' Source fortran code:
+'''
+Source fortran code:
 
 v110922
-=======
+-------
 
 skip
 '''
@@ -19,31 +20,25 @@ __all__ = ['GtcOutV110922']
 
 
 class GtcOutV110922(DataBlock):
-    '''gtc.out data
+    '''
+    gtc.out parameters
 
     INPUT_PARAMETERS, PHYSICAL_PARAMETERS, KEY_PARAMETERS, etc.
 
+    Original can be get by
+    `numpy.ndarray.tostring(self.data['backup-gtcout']).decode()`
+
     Attributes
     ----------
-        file: str
-            File path of GTC ``gtc.out`` to convert
-        group: str of data group
-        datakeys: tuple
-            data keys of physical quantities in ``gtc.out``
-        data: dict of converted data
+    file: str
+        File path of GTC ``gtc.out`` to convert
+    group: str of data group
+    datakeys: tuple
+        data keys of physical quantities in ``gtc.out``
+    data: dict of converted data
     '''
-    __slots__ = ['file', 'group', 'datakeys', 'data']
-
-    def __init__(self, file=None, group='gtcout'):
-        if os.path.isfile(file):
-            self.file = file
-        else:
-            raise IOError("Can't find '%s' file: '%s'!" % (group, file))
-        self.group = group
-        self.datakeys = ('set by function convert',)
-        self.data = dict(description="gtc.out parameters.\n"
-                         "Original can be get by\n"
-                         "`numpy.ndarray.tostring(self.data['backup-gtcout']).decode()`")
+    __slots__ = []
+    _Datakeys = ('set by function convert',)
 
     def convert(self, additionalpats=[]):
         '''Read gtc.out parameters
