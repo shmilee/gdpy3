@@ -48,23 +48,25 @@ class EquilibriumBlockV110922(DataBlock):
     '''
     Equilibrium data
 
-    1) first part, 1D radial plots. Shape of 1D data is (nrad,).
-        'nplot-1d', 'nrad',
-        'radial-axis-using-poloidal-flux-function',
-        'sqaure-root-of-normalized-toroidal-flux-function-is0',
-        'minor-radius-is0', 'major-radius-is0',
-        'Te', '-d(ln(Te))-over-dr', 'ne', '-d(ln(ne))-over-dr',
-        'Ti', '-d(ln(Ti))-over-dr', 'ni', '-d(ln(ni))-over-dr',
-        'Tf', '-d(ln(Tf))-over-dr', 'nf', '-d(ln(nf))-over-dr',
-        'zeff', 'toroidal-rotation', 'radial-electric-field', 'q-profile',
-        'd(ln(q))-over-dpsi', 'gcurrent-profile', 'pressure-profile',
-        'minor-radius', 'toroidal-flux', 'rgpsi', 'psitor', 'psirg',
-        'error-of-spline-cos', 'error-of-spline-sin',
+    1) first part, 1D radial plots. 'nplot-1d', 'nrad'. 'nplot-1d' + 1 = 30.
+       Shape of '1d-data' is ('nplot-1d' + 1, nrad). 30 plots order:
+       0'radial-axis-using-poloidal-flux-function',
+       1'sqaure-root-of-normalized-toroidal-flux-function',
+       2'minor-radius', 3'major-radius',
+       4'Te', 5'-d(ln(Te))/dr', 6'ne', 7'-d(ln(ne))/dr',
+       8'Ti', 9'-d(ln(Ti))/dr', 10'ni', 11'-d(ln(ni))/dr',
+       12'Tf', 13'-d(ln(Tf))/dr', 14'nf', 15'-d(ln(nf))/dr',
+       16'zeff', 17'toroidal-rotation', 18'radial-electric-field',
+       19'q-profile', 20'd(ln(q))/dpsi',
+       21'gcurrent-profile', 22'pressure-profile',
+       23'minor-radius', 24'toroidal-flux', 25'rgpsi', 26'psitor', 27'psirg',
+       28'error-of-spline-cos', 29'error-of-spline-sin'.
+
     2) second part, 2D contour plots on poloidal plane.
-       Shape of 2D data is (mpsi-over-mskip+1, lst).
-        'nplot-2d', 'mpsi-over-mskip+1', 'lst',
-        'mesh-points-on-X', 'mesh-points-on-Z', 'b-field',
-        'Jacobian', 'icurrent', 'zeta2phi', 'delb'
+       'nplot-2d', 'mpsi/mskip+1', 'lst'.
+       Shape of 2D data is (mpsi/mskip+1, lst).
+       'mesh-points-on-X', 'mesh-points-on-Z',
+       'b-field', 'Jacobian', 'icurrent', 'zeta2phi', 'delb'.
 
     Attributes
     ----------
@@ -78,27 +80,7 @@ class EquilibriumBlockV110922(DataBlock):
     __slots__ = []
     _Datakeys = (
         # 1. first part, 1D
-        'nplot-1d', 'nrad',
-        # 0) datap # TODO single
-        'radial-axis-using-poloidal-flux-function',
-        # 1) data1d #TODO group 1-29
-        'sqaure-root-of-normalized-toroidal-flux-function-is0',
-        # 2-3) data1d
-        'minor-radius-is0', 'major-radius-is0',
-        # 4-7) data1d
-        'Te', '-d(ln(Te))-over-dr', 'ne', '-d(ln(ne))-over-dr',
-        # 8-11) data1d
-        'Ti', '-d(ln(Ti))-over-dr', 'ni', '-d(ln(ni))-over-dr',
-        # 12-15) data1d
-        'Tf', '-d(ln(Tf))-over-dr', 'nf', '-d(ln(nf))-over-dr',
-        # 16-19) data1d
-        'zeff', 'toroidal-rotation', 'radial-electric-field', 'q-profile',
-        # 20-22) data1d
-        'd(ln(q))-over-dpsi', 'gcurrent-profile', 'pressure-profile',
-        # 23-27) data1d
-        'minor-radius', 'toroidal-flux', 'rgpsi', 'psitor', 'psirg',
-        # 28-29) data1d
-        'error-of-spline-cos', 'error-of-spline-sin',
+        'nplot-1d', 'nrad', '1d-data',
         # 2. second part, 2D
         'nplot-2d', 'mpsi-over-mskip+1', 'lst',
         'mesh-points-on-X', 'mesh-points-on-Z',
@@ -114,15 +96,14 @@ class EquilibriumBlockV110922(DataBlock):
             outdata = f.readlines()
 
         sd = self.data
-        # 1. first part # TODO
+        # 1. first part
         sd.update({'nplot-1d': int(outdata[0].strip()),
                    'nrad': int(outdata[1].strip())})
         size1 = (sd['nplot-1d'] + 1) * sd['nrad']
         shape1 = ((sd['nplot-1d'] + 1), sd['nrad'])
         data1 = numpy.array([float(n.strip()) for n in outdata[2:2 + size1]])
         data1 = data1.reshape(shape1, order='C')
-        for i, key in enumerate(self.datakeys[2:32]):
-            sd.update({key: data1[i]})
+        sd.update({'1d-data': data1})
         # 2. second part
         index2 = 2 + size1
         sd.update({'nplot-2d': int(outdata[index2].strip()),
@@ -134,5 +115,5 @@ class EquilibriumBlockV110922(DataBlock):
                              for n in outdata[index2 + 3:index2 + 3 + size2]])
         data2 = data2.reshape(shape2, order='C')
         shape3 = (sd['mpsi-over-mskip+1'], sd['lst'])
-        for i, key in enumerate(self.datakeys[35:]):
+        for i, key in enumerate(self.datakeys[6:]):
             sd.update({key: data2[i].reshape(shape3, order='F')})
