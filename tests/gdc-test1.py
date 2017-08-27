@@ -2,16 +2,18 @@
 
 # Copyright (c) 2017 shmilee
 
+import sys
 import gdpy3.convert as gdc
+import gdpy3.glogger 
+
+log = gdpy3.glogger.getGLogger('gdc')
 
 if __name__ == '__main__':
+    log.setLevel(10)
+    log.handlers[0].setLevel(10)
+    print(log, log.handlers)
     gdc.convert(
-        # datadir='/home/IFTS_shmilee/obo20170421-300600',
-        # savepath='./largetest.hdf5',
-        #datadir='/home/IFTS_shmilee/phiobo-4-test',
-        #savepath='./test.npz',
-        datadir='/home/IFTS_shmilee/banana-test',
-        savepath='./orbittest.npz',
-        # loglevel='error',
-        # loglevel='debug'
+        datadir=sys.argv[1],
+        savepath='./gdc-test1.hdf5',
+        #savepath='./gdc-test1.npz',
     )
