@@ -2,31 +2,23 @@
 
 # Copyright (c) 2017 shmilee
 
-r'''
+'''
     This is the subpackage ``convert`` of package gdpy3.
 '''
+
+import os
+import time
+import re
+
+from . import (gtcout, data1d, equilibrium, history,
+               meshgrid, snapshot, trackparticle)
+from .. import __version__ as gdpy3_version
+from ..glogger import getGLogger
 
 __all__ = ['convert', 'gtcout', 'data1d', 'equilibrium', 'history',
            'meshgrid', 'snapshot', 'trackparticle']
 
-import os
-import sys
-import time
-import logging
-import re
-from . import (gtcout, data1d, equilibrium, history,
-               meshgrid, snapshot, trackparticle)
-from .. import __version__ as gdpy3_version
-
-logging.basicConfig(
-    stream=sys.stdout,
-    level=logging.INFO,
-    # format='[%(asctime)s %(name)s] %(levelname)s - %(message)s',
-    # datefmt='%Y-%m-%d %H:%M:%S',
-    format='[%(name)s]%(levelname)s - %(message)s'
-)
-
-log = logging.getLogger('gdc')
+log = getGLogger('gdc')
 
 __FileClassMapDict = {
     '110922': {
@@ -53,7 +45,6 @@ def convert(datadir, savepath, **kwargs):
     savepath: str
         path of file which the data is save
     kwargs: other parameters
-        ``loglevel`` for setting log level
         ``description`` description of the simulation case
         ``version`` for setting gtc version, default is 110922
         ``additionalpats`` for reading gtc.out
@@ -65,7 +56,7 @@ def convert(datadir, savepath, **kwargs):
        so that they can be auto-detected.
     2) ``additionalpats`` should be a list. See gtcout.convert.
     3) The ``savepath`` extension defines the filetype of saved data,
-       which may be ``npz``, ``hdf5`` or ``mat``.
+       which may be ``npz`` or ``hdf5``.
        If no one is matched, ".npz" will be adopted.
 
     Raises
@@ -83,11 +74,6 @@ def convert(datadir, savepath, **kwargs):
                       os.path.dirname(savepath))
     if not os.path.isfile(os.path.join(datadir, 'gtc.out')):
         raise IOError("Can't find 'gtc.out' in '%s'!" % datadir)
-
-    if 'loglevel' in kwargs:
-        loglevel = getattr(logging, kwargs['loglevel'].upper(), None)
-        if isinstance(loglevel, int):
-            log.setLevel(loglevel)
 
     if 'version' in kwargs and str(kwargs['version']) in __FileClassMapDict:
         __version = str(kwargs['version'])
@@ -143,6 +129,7 @@ def convert(datadir, savepath, **kwargs):
         os.remove(savepath)
 
     savefid = wrapfile.iopen(savepath)
+    log.debug("Saving '/description', '/version' to '%s' ..." % savepath)
     wrapfile.write(savefid, '/', {'description': desc, 'version': __version})
     # get gtc.out parameters
     try:
@@ -153,20 +140,26 @@ def convert(datadir, savepath, **kwargs):
             paras.convert(additionalpats=kwargs['additionalpats'])
         else:
             paras.convert()
+        log.debug("Saving data of '%s' to '%s' ..." % ('gtc.out', savepath))
         wrapfile.write(savefid, paras.group, paras.data)
-    except Exception as exc:
-        log.error('Failed to get data from %s. %s' % (paras.file, exc))
+    except Exception:
+        log.error('Failed to get data from %s.' % paras.file, exc_info=1)
     # get other data
     for f in sorted(os.listdir(datadir)):
+        if f == 'gtc.out':
+            continue
         fcls = _get_fcls(f)
         if not fcls:
+            log.debug("Ignore file '%s'." % os.path.join(datadir, f))
             continue
         try:
             log.info('getting data from %s ...' % fcls.file)
             fcls.convert()
+            log.debug("Saving data of '%s' to '%s' ..." %
+                      (fcls.group, savepath))
             wrapfile.write(savefid, fcls.group, fcls.data)
-        except Exception as exc:
-            log.error('Failed to get data from %s. %s' % (fcls.file, exc))
+        except Exception:
+            log.error('Failed to get data from %s.' % fcls.file, exc_info=1)
     wrapfile.close(savefid)
 
     log.info("GTC '.out' files in %s are converted to %s!" %

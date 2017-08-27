@@ -3,12 +3,13 @@
 # Copyright (c) 2017 shmilee
 
 import os
-import logging
 import numpy
+
+from ..glogger import getGLogger
 
 __all__ = ['DataBlock']
 
-log = logging.getLogger('gdc')
+log = getGLogger('gdc')
 
 
 class DataBlock(object):
@@ -46,6 +47,7 @@ class DataBlock(object):
             self.group = group
         else:
             self.group = os.path.basename(os.path.splitext(file)[0])
+            log.ddebug("Get group from file name -> '%s'." % self.group)
         self.datakeys = self.get_cls_datakeys()
         cutoff = self.__doc__.index('Attributes\n')
         self.data = {
@@ -159,9 +161,9 @@ class DataBlock(object):
                 for k in datatodo:
                     tempdict[os.path.dirname(k)][
                         os.path.basename(k)] = backfid[k]
-            except (IOError, ValueError) as exc:
-                log.error("Failed to read original file %s: %s" %
-                          (backnpz, exc))
+            except (IOError, ValueError):
+                log.error("Failed to read original file %s." %
+                          backnpz, exc_info=1)
             finally:
                 if 'backfid' in dir():
                     backfid.close()

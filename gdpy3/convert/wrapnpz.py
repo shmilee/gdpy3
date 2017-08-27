@@ -6,14 +6,15 @@
 # /usr/lib/python3.x/site-packages/numpy/lib/npyio.py, funtion _savez
 
 import os
-import logging
 import numpy
 import zipfile
 import tempfile
 
+from ..glogger import getGLogger
+
 __all__ = ['iopen', 'write', 'close']
 
-log = logging.getLogger('gdc')
+log = getGLogger('gdc')
 
 
 def iopen(npzfile):
@@ -35,19 +36,19 @@ def iopen(npzfile):
 
     if os.path.isfile(npzfile):
         try:
-            log.debug("Open file '%s' to append data." % npzfile)
+            log.ddebug("Open file '%s' to append data." % npzfile)
             zipf = numpy.lib.npyio.zipfile_factory(
                 npzfile, mode="a", compression=zipfile.ZIP_DEFLATED)
         except IOError:
-            log.error("Failed to read file %s." % npzfile)
+            log.error("Failed to read file %s." % npzfile, exc_info=1)
             raise
     else:
         try:
-            log.debug("Create file '%s' to store data." % npzfile)
+            log.ddebug("Create file '%s' to store data." % npzfile)
             zipf = numpy.lib.npyio.zipfile_factory(
                 npzfile, mode="w", compression=zipfile.ZIP_DEFLATED)
         except IOError:
-            log.error("Failed to create file %s." % npzfile)
+            log.error("Failed to create file %s." % npzfile, exc_info=1)
             raise
     return zipf
 
@@ -70,7 +71,7 @@ def write(zipf, group, data):
     fd, tmpfile = tempfile.mkstemp(
         prefix=file_prefix, dir=file_dir, suffix='-numpy.npy')
     os.close(fd)
-    log.debug("Using tempfile: %s" % tmpfile)
+    log.ddebug("Using tempfile: %s" % tmpfile)
 
     try:
         for key, val in data.items():
@@ -85,15 +86,15 @@ def write(zipf, group, data):
                                              pickle_kwargs=None)
                 fid.close()
                 fid = None
-                log.debug("Writting %s ..." % fname)
+                log.ddebug("Writting %s ..." % fname)
                 zipf.write(tmpfile, arcname=fname)
-            except Exception as exc:
-                log.error("Failed to write %s: %s" % (fname, exc))
+            except Exception:
+                log.error("Failed to write %s." % fname, exc_info=1)
             finally:
                 if fid:
                     fid.close()
-    except Exception as exc:
-        log.error("Failed to save data of '%s': %s!" % (group, exc))
+    except Exception:
+        log.error("Failed to save data of '%s'!" % group, exc_info=1)
     finally:
         os.remove(tmpfile)
 
