@@ -3,12 +3,13 @@
 # Copyright (c) 2017 shmilee
 
 import os
-import logging
 import numpy
+
+from ..glogger import getGLogger
 
 __all__ = ['ReadNpz']
 
-log = logging.getLogger('gdr')
+log = getGLogger('gdr')
 
 
 class ReadNpz(object):
@@ -66,7 +67,7 @@ class ReadNpz(object):
         try:
             log.debug("Open file %s." % self.file)
             tempf = self._special_openfile()
-            log.debug("Getting keys from %s ..." % self.file)
+            log.debug("Getting datakeys from %s ..." % self.file)
             self.datakeys = tuple(self._special_getkeys(tempf))
             self.datagroups = tuple(
                 os.path.dirname(k) for k in self.datakeys
@@ -74,7 +75,7 @@ class ReadNpz(object):
             self.desc = str(self._special_getitem(tempf, 'description'))
             self.description = self.desc
         except (IOError, ValueError):
-            log.critical("Failed to read file %s." % self.file)
+            log.critical("Failed to read file %s." % self.file, exc_info=1)
             raise
         finally:
             if 'tempf' in dir():
@@ -93,10 +94,12 @@ class ReadNpz(object):
         try:
             log.debug("Open file %s." % self.file)
             tempf = self._special_openfile()
+            log.debug("Getting key '%s' from %s ..." % (key, self.file))
             value = self._special_getitem(tempf, key)
             self.cache[key] = value
         except (IOError, ValueError):
-            log.critical("Failed to get '%s' from '%s'!" % (key, self.file))
+            log.critical("Failed to get '%s' from %s!" %
+                         (key, self.file), exc_info=1)
             raise
         finally:
             if 'tempf' in dir():
@@ -129,15 +132,16 @@ class ReadNpz(object):
             tempf = self._special_openfile()
             for i in idxtodo:
                 key = keys[i]
+                log.debug("Getting key '%s' from %s ..." % (key, self.file))
                 value = self._special_getitem(tempf, key)
                 result[i] = value
                 self.cache[key] = value
         except (IOError, ValueError):
             if 'key' in dir():
-                log.critical("Failed to get '%s' from '%s'!"
-                             % (key, self.file))
+                log.critical("Failed to get '%s' from %s!" %
+                             (key, self.file), exc_info=1)
             else:
-                log.critical("Failed to open '%s'!" % self.file)
+                log.critical("Failed to open '%s'!" % self.file, exc_info=1)
             raise
         finally:
             if 'tempf' in dir():

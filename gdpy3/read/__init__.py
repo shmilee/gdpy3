@@ -2,25 +2,13 @@
 
 # Copyright (c) 2017 shmilee
 
-r'''
+'''
     This is the subpackage ``read`` of package gdpy3.
 '''
 
-__all__ = ['read', 'readnpz', 'readhdf5', 'readraw']
-
 import os
-import sys
-import logging
 
-logging.basicConfig(
-    stream=sys.stdout,
-    level=logging.INFO,
-    # format='[%(asctime)s %(name)s] %(levelname)s - %(message)s',
-    # datefmt='%Y-%m-%d %H:%M:%S',
-    format='[%(name)s]%(levelname)s - %(message)s'
-)
-
-log = logging.getLogger('gdr')
+__all__ = ['read', 'readnpz', 'readhdf5', 'readraw']
 
 
 def read(path, **kwargs):
@@ -32,9 +20,9 @@ def read(path, **kwargs):
     path: str
         path of the .npz, .hdf5 file to open
         or path of the directory of GTC .out files
-    kwargs: other parameters for gdpy3.read.Readraw
+    kwargs: other parameters for gdpy3.read.readraw
+        ``salt``, ``extension``, ``overwrite``,
         ``description``, ``version``, ``additionalpats``
-        ``salt``
     '''
 
     if os.path.isdir(path):

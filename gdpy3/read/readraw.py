@@ -3,16 +3,13 @@
 # Copyright (c) 2017 shmilee
 
 import os
-import logging
 import numpy
 from hashlib import sha1
 
 from .. import convert as gdc
-from .readnpz import ReadNpz
+from .readnpz import ReadNpz, log
 
 __all__ = ['ReadRaw']
-
-log = logging.getLogger('gdr')
 
 
 class ReadRaw(ReadNpz):
@@ -41,12 +38,14 @@ class ReadRaw(ReadNpz):
     ----------
     datadir: str
         the GTC .out files to open
-    kwargs: other parameters
-        ``loglevel``, ``description``,
-        ``version``, ``additionalpats`` for gdc.convert
-        ``salt`` for name of saved file, default 'gtc.out'
-        ``extension`` for extension of saved file, default 'npz'
-        ``overwrite`` for overwritting existing saved file or not
+    salt: str, a .out file name
+        salt for the name of saved file, default 'gtc.out'
+    extension: 'npz' or 'hdf5'
+        extension of saved file, default 'npz'
+    overwrite: bool
+        overwrite existing saved file or not, default False
+    kwargs: other parameters for gdc.convert
+        ``description``, ``version``, ``additionalpats``
 
     Examples
     --------
@@ -58,20 +57,18 @@ class ReadRaw(ReadNpz):
     '''
     __slots__ = ['datadir', '_special_parent']
 
-    def __init__(self, datadir, **kwargs):
+    def __init__(self, datadir,
+                 salt='gtc.out', extension='npz', overwrite=False, **kwargs):
         if not os.path.isdir(datadir):
             raise IOError("Can't find directory '%s'!" % datadir)
 
         # salt
-        if 'salt' in kwargs:
-            salt = os.path.join(datadir, str(kwargs['salt']))
-            if not os.path.isfile(salt):
-                log.error("Can't find file '%s'!" % salt)
-            else:
-                salt = os.path.join(datadir, 'gtc.out')
+        salt = os.path.join(datadir, str(salt))
+        if not os.path.isfile(salt):
+            log.error("Can't find file '%s'!" % salt)
         else:
             salt = os.path.join(datadir, 'gtc.out')
-        log.debug("Use file %s as salt." % salt)
+        log.debug("Use file '%s' as salt." % salt)
 
         try:
             with open(salt, 'r') as f:
@@ -81,12 +78,9 @@ class ReadRaw(ReadNpz):
             raise IOError("Failed to read file '%s'!" % salt)
 
         # extension
-        if 'extension' in kwargs:
-            ext = str(kwargs['extension'])
-            if ext not in ('npz', 'hdf5'):
-                log.error("Extension '%s' is not supported!" % ext)
-                ext = 'npz'
-        else:
+        ext = str(extension)
+        if ext not in ('npz', 'hdf5'):
+            log.error("Extension '%s' is not supported!" % ext)
             ext = 'npz'
         log.debug("Use extension '%s'." % ext)
 
@@ -94,16 +88,14 @@ class ReadRaw(ReadNpz):
         savefile = 'gdpy3-pickled-data-%s.%s' % (salt[:10], ext)
         savefile = os.path.join(datadir, savefile)
         log.info("Pickled data file is %s." % savefile)
-        if 'overwrite' in kwargs:
-            overwrite = kwargs['overwrite']
-            overwrite = True if overwrite is not False else False
-        else:
-            overwrite = False
+        overwrite = bool(overwrite)
         if not (overwrite is False and os.path.isfile(savefile)):
             try:
                 gdc.convert(datadir, savefile, **kwargs)
             except:
-                raise IOError("Failed to create file %s." % savefile)
+                log.critical("Failed to create file %s." %
+                             savefile, exc_info=1)
+                raise
 
         # __init__
         self.datadir = datadir

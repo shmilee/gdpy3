@@ -2,14 +2,11 @@
 
 # Copyright (c) 2017 shmilee
 
-import logging
 import h5py
 
 from .readnpz import ReadNpz
 
 __all__ = ['ReadHdf5']
-
-log = logging.getLogger('gdr')
 
 
 class ReadHdf5(ReadNpz):
