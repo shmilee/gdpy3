@@ -63,7 +63,7 @@ diagnosis.F90:194-203, ::
 
 import os
 import numpy
-from .datablock import DataBlock
+from .datablock import DataBlock, log
 
 __all__ = ['Data1dBlockV110922']
 
@@ -111,10 +111,12 @@ class Data1dBlockV110922(DataBlock):
         save list in data dict as numpy.array.
         '''
         with open(self.file, 'r') as f:
+            log.ddebug("Read file '%s'." % self.file)
             outdata = f.readlines()
 
         sd = self.data
         # 1. diagnosis.F90:opendiag():739
+        log.debug("Filling datakeys: %s ..." % str(self.datakeys[:7]))
         for i, key in enumerate(self.datakeys[:7]):
             sd.update({key: int(outdata[i].strip())})
 
@@ -123,6 +125,7 @@ class Data1dBlockV110922(DataBlock):
         ndata = sd['mpsi+1'] * (sd['nspecies'] * sd['mpdata1d'] +
                                 sd['nfield'] * sd['mfdata1d'])
         if len(outdata) // ndata != sd['ndstep']:
+            log.debug("Filling datakeys: %s ..." % 'ndstep')
             sd.update({'ndstep': len(outdata) // ndata})
             outdata = outdata[:sd['ndstep'] * ndata]
 
@@ -130,6 +133,7 @@ class Data1dBlockV110922(DataBlock):
         outdata = outdata.reshape((ndata, sd['ndstep']), order='F')
 
         # 3. data1di(0:mpsi,mpdata1d), mpdata1d=3
+        log.debug("Filling datakeys: %s ..." % str(self.datakeys[7:10]))
         sd.update({'i-particle-flux': outdata[:sd['mpsi+1'], :]})
         index0, index1 = sd['mpsi+1'], 2 * sd['mpsi+1']
         sd.update({'i-energy-flux':  outdata[index0:index1, :]})
@@ -138,6 +142,7 @@ class Data1dBlockV110922(DataBlock):
 
         # 4. data1de(0:mpsi,mpdata1d)
         if sd['nspecies'] > 1 and sd['nhybrid'] > 0:
+            log.debug("Filling datakeys: %s ..." % str(self.datakeys[10:13]))
             index0, index1 = index1, index1 + sd['mpsi+1']
             sd.update({'e-particle-flux': outdata[index0:index1, :]})
             index0, index1 = index1, index1 + sd['mpsi+1']
@@ -151,6 +156,7 @@ class Data1dBlockV110922(DataBlock):
         # 5. data1df(0:mpsi,mpdata1d)
         if ((sd['nspecies'] == 2 and sd['nhybrid'] == 0) or
                 (sd['nspecies'] == 3 and sd['nhybrid'] > 0)):
+            log.debug("Filling datakeys: %s ..." % str(self.datakeys[13:16]))
             index0, index1 = index1, index1 + sd['mpsi+1']
             sd.update({'f-particle-flux': outdata[index0:index1, :]})
             index0, index1 = index1, index1 + sd['mpsi+1']
@@ -162,6 +168,7 @@ class Data1dBlockV110922(DataBlock):
                        'f-energy-flux': [], 'f-momentum-flux': []})
 
         # 6. field00(0:mpsi,nfield), nfield=3
+        log.debug("Filling datakeys: %s ..." % str(self.datakeys[16:19]))
         index0 = sd['mpsi+1'] * sd['nspecies'] * sd['mpdata1d']
         index1 = index0 + sd['mpsi+1']
         sd.update({'field00-phi': outdata[index0:index1, :]})
@@ -171,6 +178,7 @@ class Data1dBlockV110922(DataBlock):
         sd.update({'field00-fluidne': outdata[index0:index1, :]})
 
         # 7. fieldrms(0:mpsi,nfield)
+        log.debug("Filling datakeys: %s ..." % str(self.datakeys[19:22]))
         index0, index1 = index1, index1 + sd['mpsi+1']
         sd.update({'fieldrms-phi': outdata[index0:index1, :]})
         index0, index1 = index1, index1 + sd['mpsi+1']

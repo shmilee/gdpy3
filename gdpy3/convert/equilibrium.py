@@ -39,7 +39,7 @@ datax(mpsi/mskip+1,lst),dataz(mpsi/mskip+1,lst),data2d(mpsi/mskip+1,lst,5)
 
 import os
 import numpy
-from .datablock import DataBlock
+from .datablock import DataBlock, log
 
 __all__ = ['EquilibriumBlockV110922']
 
@@ -93,10 +93,12 @@ class EquilibriumBlockV110922(DataBlock):
         save list in data dict as numpy.array.
         '''
         with open(self.file, 'r') as f:
+            log.ddebug("Read file '%s'." % self.file)
             outdata = f.readlines()
 
         sd = self.data
         # 1. first part
+        log.debug("Filling datakeys: %s ..." % str(self.datakeys[:3]))
         sd.update({'nplot-1d': int(outdata[0].strip()),
                    'nrad': int(outdata[1].strip())})
         size1 = (sd['nplot-1d'] + 1) * sd['nrad']
@@ -105,10 +107,12 @@ class EquilibriumBlockV110922(DataBlock):
         data1 = data1.reshape(shape1, order='C')
         sd.update({'1d-data': data1})
         # 2. second part
+        log.debug("Filling datakeys: %s ..." % str(self.datakeys[3:6]))
         index2 = 2 + size1
         sd.update({'nplot-2d': int(outdata[index2].strip()),
                    'mpsi-over-mskip+1': int(outdata[index2 + 1].strip()),
                    'lst': int(outdata[index2 + 2].strip())})
+        log.debug("Filling datakeys: %s ..." % str(self.datakeys[6:]))
         size2 = (sd['nplot-2d'] + 2) * sd['mpsi-over-mskip+1'] * sd['lst']
         shape2 = ((sd['nplot-2d'] + 2), sd['mpsi-over-mskip+1'] * sd['lst'])
         data2 = numpy.array([float(n.strip())

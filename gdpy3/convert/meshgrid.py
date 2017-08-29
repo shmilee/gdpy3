@@ -28,7 +28,7 @@ diagnosis.F90, subroutine diagnosis:37-50
 
 import os
 import numpy
-from .datablock import DataBlock
+from .datablock import DataBlock, log
 
 __all__ = ['MeshgridBlockV110922']
 
@@ -61,6 +61,7 @@ class MeshgridBlockV110922(DataBlock):
         save list in data dict as numpy.array.
         '''
         with open(self.file, 'r') as f:
+            log.ddebug("Read file '%s'." % self.file)
             outdata = f.readlines()
 
         sd = self.data
@@ -71,6 +72,7 @@ class MeshgridBlockV110922(DataBlock):
             shape = (7, len(outdata) // 7)
             outdata = outdata[:len(outdata) // 7 * 7]
 
+        log.debug("Filling datakeys: %s ..." % str(self.datakeys[:]))
         outdata = numpy.array([float(n.strip()) for n in outdata])
         outdata = outdata.reshape(shape, order='F')
         for i, key in enumerate(self.datakeys):

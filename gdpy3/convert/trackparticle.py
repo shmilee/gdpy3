@@ -28,7 +28,7 @@ tracking.F90, subroutine write_tracked_particles:270:278-289
 
 import os
 import numpy
-from .datablock import DataBlock
+from .datablock import DataBlock, log
 
 __all__ = ['TrackParticleBlockV110922']
 
@@ -77,6 +77,7 @@ class TrackParticleBlockV110922(DataBlock):
         keyprefix = ['ion', 'electron', 'fastion']
         for f in sorted(os.listdir(self.path)):
             with open(os.path.join(self.path, f), 'r') as fid:
+                log.ddebug("Read file '%s'." % fid.name)
                 istep = fid.readline()
                 while istep:
                     nums = [int(n) for n in fid.readline().split()]
@@ -100,6 +101,9 @@ class TrackParticleBlockV110922(DataBlock):
             for key in particle.keys():
                 particle[key].sort()
                 particle[key] = numpy.array(particle[key])
-            self.data.update(particle)
+            if particle.keys():
+                log.debug("Filling datakeys: %s ..." %
+                          str(tuple(particle.keys())))
+                self.data.update(particle)
 
         self.datakeys = tuple(self.data.keys())

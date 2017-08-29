@@ -37,7 +37,7 @@ field quantities: phi, a_para, fluidne.
 
 import os
 import numpy
-from .datablock import DataBlock
+from .datablock import DataBlock, log
 
 __all__ = ['SnapshotBlockV110922']
 
@@ -92,10 +92,12 @@ class SnapshotBlockV110922(DataBlock):
         save list in data dict as numpy.array.
         '''
         with open(self.file, 'r') as f:
+            log.ddebug("Read file '%s'." % self.file)
             outdata = f.readlines()
 
         sd = self.data
         # 1. parameters
+        log.debug("Filling datakeys: %s ..." % str(self.datakeys[:7]))
         for i, key in enumerate(self.datakeys[:6]):
             sd.update({key: int(outdata[i].strip())})
         # 1. T_up, 1.0/emax_inv
@@ -107,12 +109,15 @@ class SnapshotBlockV110922(DataBlock):
         tempsize = sd['mpsi+1'] * 6 * sd['nspecies']
         tempshape = (sd['mpsi+1'], 6, sd['nspecies'])
         tempdata = outdata[:tempsize].reshape(tempshape, order='F')
+        log.debug("Filling datakey: %s ..." % 'ion-profile')
         sd.update({'ion-profile': tempdata[:, :, 0]})
         if sd['nspecies'] > 1:
+            log.debug("Filling datakey: %s ..." % 'electron-profile')
             sd.update({'electron-profile': tempdata[:, :, 1]})
         else:
             sd.update({'electron-profile': []})
         if sd['nspecies'] > 2:
+            log.debug("Filling datakey: %s ..." % 'fastion-profile')
             sd.update({'fastion-profile': tempdata[:, :, 2]})
         else:
             sd.update({'fastion-profile': []})
@@ -123,17 +128,21 @@ class SnapshotBlockV110922(DataBlock):
         index1 = index0 + tempsize
         tempshape = (sd['nvgrid'], 4, sd['nspecies'])
         tempdata = outdata[index0:index1].reshape(tempshape, order='F')
+        log.debug("Filling datakey: %s ..." % 'ion-pdf')
         sd.update({'ion-pdf': tempdata[:, :, 0]})
         if sd['nspecies'] > 1:
+            log.debug("Filling datakey: %s ..." % 'electron-pdf')
             sd.update({'electron-pdf': tempdata[:, :, 1]})
         else:
             sd.update({'electron-pdf': []})
         if sd['nspecies'] > 2:
+            log.debug("Filling datakey: %s ..." % 'fastion-pdf')
             sd.update({'fastion-pdf': tempdata[:, :, 2]})
         else:
             sd.update({'fastion-pdf': []})
 
         # 4. poloidata(0:mtgrid,0:mpsi,nfield+2), nfield=3
+        log.debug("Filling datakeys: %s ..." % str(self.datakeys[13:18]))
         tempsize = sd['mtgrid+1'] * sd['mpsi+1'] * (sd['nfield'] + 2)
         index0, index1 = index1, index1 + tempsize
         tempshape = (sd['mtgrid+1'], sd['mpsi+1'], sd['nfield'] + 2)
@@ -145,6 +154,7 @@ class SnapshotBlockV110922(DataBlock):
         sd.update({'poloidata-z': tempdata[:, :, 4]})
 
         # 5. fluxdata(0:mtgrid,mtoroidal,nfield)
+        log.debug("Filling datakeys: %s ..." % str(self.datakeys[18:]))
         tempsize = sd['mtgrid+1'] * sd['mtoroidal'] * sd['nfield']
         index0, index1 = index1, index1 + tempsize
         tempshape = (sd['mtgrid+1'], sd['mtoroidal'], sd['nfield'])

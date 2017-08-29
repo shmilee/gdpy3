@@ -12,7 +12,7 @@ import logging
 import logging.config
 
 # levels
-PARAMETER = 45
+PARAMETER = 25
 VERBOSE = 15
 DDEBUG = 5
 
@@ -64,7 +64,7 @@ gloggerConfig = {
         },
         # gdpy3.convert
         'gdc': {
-            'level': 'DEBUG',
+            'level': 'VERBOSE',
             'handlers': ['console', 'file'],
             'propagate': False,
         },

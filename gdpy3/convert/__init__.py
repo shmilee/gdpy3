@@ -10,15 +10,13 @@ import os
 import time
 import re
 
+from .datablock import log
 from . import (gtcout, data1d, equilibrium, history,
                meshgrid, snapshot, trackparticle)
 from .. import __version__ as gdpy3_version
-from ..glogger import getGLogger
 
 __all__ = ['convert', 'gtcout', 'data1d', 'equilibrium', 'history',
            'meshgrid', 'snapshot', 'trackparticle']
-
-log = getGLogger('gdc')
 
 __FileClassMapDict = {
     '110922': {
@@ -129,18 +127,18 @@ def convert(datadir, savepath, **kwargs):
         os.remove(savepath)
 
     savefid = wrapfile.iopen(savepath)
-    log.debug("Saving '/description', '/version' to '%s' ..." % savepath)
+    log.verbose("Saving '/description', '/version' to '%s' ..." % savepath)
     wrapfile.write(savefid, '/', {'description': desc, 'version': __version})
     # get gtc.out parameters
     try:
         paras = FlClsMp['gtc.out'](file=os.path.join(datadir, 'gtc.out'))
-        log.info('getting data from %s ...' % paras.file)
+        log.info('Getting data from %s ...' % paras.file)
         if ('additionalpats' in kwargs
                 and type(kwargs['additionalpats']) is list):
             paras.convert(additionalpats=kwargs['additionalpats'])
         else:
             paras.convert()
-        log.debug("Saving data of '%s' to '%s' ..." % ('gtc.out', savepath))
+        log.verbose("Saving data of '%s' to '%s' ..." % ('gtc.out', savepath))
         wrapfile.write(savefid, paras.group, paras.data)
     except Exception:
         log.error('Failed to get data from %s.' % paras.file, exc_info=1)
@@ -153,10 +151,10 @@ def convert(datadir, savepath, **kwargs):
             log.debug("Ignore file '%s'." % os.path.join(datadir, f))
             continue
         try:
-            log.info('getting data from %s ...' % fcls.file)
+            log.info('Getting data from %s ...' % fcls.file)
             fcls.convert()
-            log.debug("Saving data of '%s' to '%s' ..." %
-                      (fcls.group, savepath))
+            log.verbose("Saving data of '%s' to '%s' ..." %
+                        (fcls.group, savepath))
             wrapfile.write(savefid, fcls.group, fcls.data)
         except Exception:
             log.error('Failed to get data from %s.' % fcls.file, exc_info=1)

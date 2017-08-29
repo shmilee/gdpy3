@@ -59,7 +59,7 @@ diagfast(mpdiag), pushf.F90:472-483
 
 import os
 import numpy
-from .datablock import DataBlock
+from .datablock import DataBlock, log
 
 __all__ = ['HistoryBlockV110922']
 
@@ -106,10 +106,12 @@ class HistoryBlockV110922(DataBlock):
         save list in data dict as numpy.array.
         '''
         with open(self.file, 'r') as f:
+            log.ddebug("Read file '%s'." % self.file)
             outdata = f.readlines()
 
         sd = self.data
         # 1. diagnosis.F90:opendiag():734-735
+        log.debug("Filling datakeys: %s ..." % str(self.datakeys[:7]))
         for i, key in enumerate(self.datakeys[:6]):
             sd.update({key: int(outdata[i].strip())})
         # 1. tstep*ndiag
@@ -120,6 +122,8 @@ class HistoryBlockV110922(DataBlock):
         ndata = sd['nspecies'] * sd['mpdiag'] + \
             sd['nfield'] * (2 * sd['modes'] + sd['mfdiag'])
         if len(outdata) // ndata != sd['ndstep']:
+            ndstep = len(outdata) // ndata
+            log.debug("Updating datakey: %s=%d ..." % ('ndstep', ndstep))
             sd.update({'ndstep': len(outdata) // ndata})
             outdata = outdata[:sd['ndstep'] * ndata]
 
@@ -127,19 +131,23 @@ class HistoryBlockV110922(DataBlock):
         outdata = outdata.reshape((ndata, sd['ndstep']), order='F')
 
         # 3. partdata(mpdiag,nspecies)
+        log.debug("Filling datakey: %s ..." % 'ion')
         sd.update({'ion': outdata[:sd['mpdiag'], :]})
         if sd['nspecies'] > 1:
+            log.debug("Filling datakey: %s ..." % 'electron')
             index0, index1 = sd['mpdiag'], 2 * sd['mpdiag']
             sd.update({'electron': outdata[index0:index1, :]})
         else:
             sd.update({'electron': []})
         if sd['nspecies'] > 2:
+            log.debug("Filling datakey: %s ..." % 'fastion')
             index0, index1 = 2 * sd['mpdiag'], 3 * sd['mpdiag']
             sd.update({'fastion': outdata[index0:index1, :]})
         else:
             sd.update({'fastion': []})
 
         # 4. fieldtime(mfdiag,nfield)
+        log.debug("Filling datakeys: %s ..." % str(self.datakeys[10:13]))
         index0 = sd['nspecies'] * sd['mpdiag']
         index1 = index0 + sd['mfdiag']
         sd.update({'fieldtime-phi': outdata[index0:index1, :]})
@@ -149,6 +157,7 @@ class HistoryBlockV110922(DataBlock):
         sd.update({'fieldtime-fluidne': outdata[index0:index1, :]})
 
         # 5. fieldmode(2,modes,nfield)
+        log.debug("Filling datakeys: %s ..." % str(self.datakeys[13:]))
         index0, index1 = index1, index1 + 2 * sd['modes']
         sd.update({'fieldmode-phi-real': outdata[index0:index1:2, :]})
         sd.update({'fieldmode-phi-imag': outdata[index0 + 1:index1:2, :]})

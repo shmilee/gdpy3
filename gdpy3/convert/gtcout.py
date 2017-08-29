@@ -14,7 +14,7 @@ skip
 import os
 import re
 import numpy
-from .datablock import DataBlock
+from .datablock import DataBlock, log
 
 __all__ = ['GtcOutV110922']
 
@@ -61,6 +61,7 @@ class GtcOutV110922(DataBlock):
         >>> gtcout.convert(additionalpats=mypats)
         '''
         with open(self.file, 'r') as f:
+            log.ddebug("Read file '%s'." % self.file)
             outdata = f.readlines()
 
         sd = self.data
@@ -79,7 +80,9 @@ class GtcOutV110922(DataBlock):
                     val = float(val)
                     # if int(val) - val == 0:
                     #    val = int(val)
+                log.ddebug("Filling datakey: %s=%s ..." % (key.lower(), val))
                 sd.update({key.lower(): val})
+        log.debug("Filled datakeys: %s ..." % str(tuple(sd.keys())))
 
         # search other parameters, one by one
         otherparapats = [
@@ -100,6 +103,7 @@ class GtcOutV110922(DataBlock):
             + r'\x00{2}\s+TIME=(?P<end_time>' + numpat + r'?)$',
         ]
         outdata = ''.join(outdata)
+        debugkeys = []
         # TODO: additionalpats, val is a array of integer or float
         # val is a number -> len(val.split()) == 1
         for pat in otherparapats + additionalpats:
@@ -114,7 +118,10 @@ class GtcOutV110922(DataBlock):
                         val = int(val)
                     else:
                         val = float(val)
+                    log.ddebug("Filling datakey: %s=%s ..." % (key, val))
+                    debugkeys.append(key)
                     sd.update({key: val})
+        log.debug("Filled datakeys: %s ..." % str(debugkeys))
 
         # only residual zonal flow(zf) case, second occurence match
         pat = (r'\*{6}\s+k_r\*rhoi=\s*?(?P<zfkrrhoi>' + numpat + r'?)\s*?,'
@@ -124,10 +131,13 @@ class GtcOutV110922(DataBlock):
                + numpat + r'?)\s+?\*{5}')
         mdata = [m.groupdict() for m in re.finditer(pat, outdata, re.M)]
         if len(mdata) == 2 and len(mdata[1]) == 4:
+            log.debug("Filling datakeys: %s ..." %
+                      str([key for key, val in mdata[1].items()]))
             sd.update({key: int(val) if val.isdigit() else float(val)
                        for key, val in mdata[1].items()})
 
         # backup gtc.out
+        log.ddebug("Filling datakey: %s ..." % 'backup-gtcout')
         sd.update({'backup-gtcout': numpy.fromfile(self.file)})
 
         self.datakeys = tuple(sd.keys())
