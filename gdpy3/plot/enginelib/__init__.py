@@ -2,16 +2,13 @@
 
 # Copyright (c) 2017 shmilee
 
-r'''
+'''
     plot engines
 '''
 
-import logging
-from .mplwrapper import mplengine
+from .mplwrapper import mplengine, log
 
 __all__ = ['engine_available', 'get_engine']
-
-log = logging.Logger('gdp')
 
 engine_available = [
     'mpl', 'matplotlib',
@@ -29,7 +26,7 @@ def get_engine(name):
                   % (name, engine_available, default_engine))
         name = default_engine
     if name in ('mpl', 'matplotlib'):
-        log.debug("Use plot engine 'matplotlib'.")
+        log.ddebug("Use plot engine 'matplotlib'.")
         return mplengine
     else:
         pass

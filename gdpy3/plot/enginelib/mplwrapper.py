@@ -2,23 +2,20 @@
 
 # Copyright (c) 2017 shmilee
 
-r'''
+'''
 A simple wrapper for matplotlib used to plot simple figure.
 '''
 
 import os
-import logging
 from matplotlib import style, rcParams, get_backend
 from matplotlib.pyplot import figure, close
 from matplotlib.axes._axes import Axes
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.gridspec import SubplotSpec
 
-from .base import Engine
+from .base import Engine, log
 
 __all__ = ['mplengine']
-
-log = logging.getLogger('gdp')
 
 
 Default_FigureStructure = {
@@ -100,25 +97,25 @@ def mplfigure_factory(figurestructure, num=None):
     '''
 
     if not isinstance(figurestructure, dict):
-        raise ValueError("FigureStructure must be a dict. " +
-                         "Not %s." % type(figurestructure))
+        raise ValueError("FigureStructure must be a dict. "
+                         + "Not %s." % type(figurestructure))
     if 'Style' in figurestructure:
         if isinstance(figurestructure['Style'], list):
             figstyle = _check_styles(figurestructure['Style'])
         else:
-            log.error("FigureStructure['Style'] must be a list. " +
-                      "Not %s. " % type(figurestructure['Style']) +
-                      "Ignore 'Style' setting!")
+            log.error("FigureStructure['Style'] must be a list. "
+                      + "Not %s. " % type(figurestructure['Style'])
+                      + "Ignore 'Style' setting!")
     if 'figstyle' not in dir() or not figstyle:
         figstyle = Default_FigureStructure['Style']
     if not isinstance(figurestructure['AxesStructures'], list):
         raise ValueError("FigureStructure['AxesStructures'] must be a list. "
                          "Not %s." % type(figurestructure['AxesStructures']))
-    log.debug("Figure Style: %s" % str(figstyle))
+    log.ddebug("Figure Style: %s" % str(figstyle))
     with style.context(_filter_styles(figstyle)):
         fig = figure(num=num)
         for i, axstructure in enumerate(figurestructure['AxesStructures'], 1):
-            log.debug("Picking AxesStructure %d ..." % i)
+            log.ddebug("Picking AxesStructure %d ..." % i)
             _mplaxes_factory(fig, axstructure)
     return fig
 
@@ -136,53 +133,52 @@ def _mplaxes_factory(fig, axstructure):
     # simple check
     for k in ('data', 'layout'):
         if k not in axstructure:
-            log.error("AxesStructure must contain key: '%s'!" % k)
-            log.debug("Ignore this axes.")
+            log.error("AxesStructure must contain key: '%s'! " % k
+                      + "Ignore this axes.")
             return
         if not isinstance(axstructure[k], list):
-            log.error("AxesStructure[%s] must be a list. " % k +
-                      "Not %s." % type(axstructure[k]))
-            log.debug("Ignore this axes.")
+            log.error("AxesStructure[%s] must be a list. " % k
+                      + "Not %s. " % type(axstructure[k])
+                      + "Ignore this axes.")
             return
     # check layout
     layout = axstructure['layout']
     if not(isinstance(layout, list) and len(layout) == 2):
-        log.error("AxesStructure['layout'] must be a two elements list.")
-        log.debug("Ignore this axes.")
+        log.error("AxesStructure['layout'] must be a two elements list. "
+                  "Ignore this axes.")
         return
     if not isinstance(layout[0], (int, list, SubplotSpec)):
         log.error("AxesStructure['layout'][0] must be a "
-                  "int, list or SubplotSpec.")
-        log.debug("Ignore this axes.")
+                  "int, list or SubplotSpec. Ignore this axes.")
         return
     # check style
     if 'style' in axstructure:
         if isinstance(axstructure['style'], list):
             axstyle = _check_styles(axstructure['style'])
         else:
-            log.error("AxesStructure['style'] must be a list. " +
-                      "Not %s. " % type(axstructure['style']) +
-                      "Ignore 'style' setting!")
+            log.error("AxesStructure['style'] must be a list. "
+                      + "Not %s. " % type(axstructure['style'])
+                      + "Ignore 'style' setting!")
     if 'axstyle' not in dir() or not axstyle:
         axstyle = Default_AxesStructure['style']
     # begin with style
-    log.debug("Axes Style: %s" % str(axstyle))
+    log.ddebug("Axes Style: %s" % str(axstyle))
     with style.context(_filter_styles(axstyle)):
         # use layout
         try:
-            log.debug("Adding axes %s ..." % layout[0])
+            log.ddebug("Adding axes %s ..." % layout[0])
             if isinstance(layout[0], list):
                 ax = fig.add_axes(layout[0], **layout[1])
             else:
                 ax = fig.add_subplot(layout[0], **layout[1])
-        except Exception as exc:
-            log.error("Failed to add axes %s: %s" % (layout[0], exc))
+        except Exception:
+            log.error("Failed to add axes %s!" % layout[0], exc_info=1)
             return
         # use data
         axesdict, artistdict = {0: ax}, {}
         for index, axfunc, dataargs, datakwargs in axstructure['data']:
             if axfunc in ('twinx', 'twiny'):
-                log.debug("Creating twin axes %s: %s ..." % (index, axfunc))
+                log.ddebug("Creating twin axes %s: %s ..." % (index, axfunc))
                 try:
                     ax = getattr(ax, axfunc)()
                     if index in axesdict:
@@ -192,24 +188,24 @@ def _mplaxes_factory(fig, axstructure):
                         for i in range(datakwargs['nextcolor']):
                             # i=next(ax._get_lines.prop_cycler)
                             i = ax._get_lines.get_next_color()
-                except Exception as exc:
-                    log.error("Failed to create axes %s: %s" % (index, exc))
+                except Exception:
+                    log.error("Failed to create axes %s!" % index, exc_info=1)
             elif axfunc == 'revise':
-                log.debug("Revising axes %s ..." % layout[0])
+                log.ddebug("Revising axes %s ..." % layout[0])
                 try:
                     dataargs(fig, axesdict, artistdict, **datakwargs)
-                except Exception as exc:
-                    log.error("Failed to revise axes %s: %s"
-                              % (layout[0], exc))
+                except Exception:
+                    log.error("Failed to revise axes %s!"
+                              % layout[0], exc_info=1)
             else:
-                log.debug("Adding artist %s: %s ..." % (index, axfunc))
+                log.ddebug("Adding artist %s: %s ..." % (index, axfunc))
                 try:
                     art = getattr(ax, axfunc)(*dataargs, **datakwargs)
                     if index in artistdict:
                         log.warn("Duplicate index %s!" % index)
                     artistdict[index] = art
-                except Exception as exc:
-                    log.error("Failed to add artist %s: %s" % (index, exc))
+                except Exception:
+                    log.error("Failed to add artist %s!" % index, exc_info=1)
 
 
 def _get_mplstyle_library(path):
@@ -280,6 +276,7 @@ def mplclose(fig):
     Close the figure *fig*.
     '''
     close(fig)
+
 
 mplengine = Engine('matplotlib')
 mplengine.figure_factory = mplfigure_factory

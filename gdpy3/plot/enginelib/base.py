@@ -8,7 +8,11 @@ Defines :class:`.Engine`
 
 import types
 
+from ...glogger import getGLogger
+
 __all__ = ['Engine']
+
+log = getGLogger('gdp')
 
 
 class Engine(object):
