@@ -7,7 +7,6 @@ This module provides the :class:`GFigure`, which contains
 all the plot elements, calculation results, figure methods.
 '''
 
-import logging
 import numpy as np
 
 from . import tools
@@ -15,7 +14,7 @@ from .enginelib import engine_available, default_engine, get_engine
 
 __all__ = ['GFigure']
 
-log = logging.getLogger('gdp')
+log = tools.getGLogger('gdp')
 
 
 class GFigure(object):
@@ -54,7 +53,7 @@ class GFigure(object):
                  '__engine', '__nginp',
                  '__figurestyle', 'figure']
 
-    _paragrp = 'gtcout/'
+    _paragrp = 'gtc/'
     _FigGroup = 'group'
     _FigInfo = {'name': dict(key=[])}
 

@@ -2,7 +2,7 @@
 
 # Copyright (c) 2017 shmilee
 
-r'''
+'''
 Snapshot figures
 ----------------
 
@@ -11,7 +11,6 @@ This module needs data in group 'snapshot' get by gdr.
 This module provides the :class:`SnapshotFigureV110922`.
 '''
 
-import logging
 import numpy as np
 
 from . import tools
@@ -23,7 +22,7 @@ from .gfigure import (
 
 __all__ = ['SnapshotFigureV110922']
 
-log = logging.getLogger('gdp')
+log = tools.getGLogger('gdp')
 
 
 class SnapshotFigureV110922(GFigure):
@@ -176,9 +175,9 @@ def _set_profile_or_pdf_axesstructures(self, **kwargs):
             return False
         X = np.arange(x)
         Ydata = ydata.T
-    except Exception as exc:
-        log.error("Failed to get data of '%s' from %s! %s" %
-                  (self.Name, self.dataobj.file, exc))
+    except Exception:
+        log.error("Failed to get data of '%s' from %s!"
+                  % (self.Name, self.dataobj.file), exc_info=1)
         return False
 
     if 'xlim' not in kwargs:
@@ -188,9 +187,9 @@ def _set_profile_or_pdf_axesstructures(self, **kwargs):
         axesstructures = get_twinx_axesstructures(
             X, Ydata, xlabel, title, twinx, **kwargs)
         self.figurestructure['AxesStructures'] = axesstructures
-    except Exception as exc:
-        log.error("Failed to set AxesStructures of '%s'! %s"
-                  % (self.Name, exc))
+    except Exception:
+        log.error("Failed to set AxesStructures of '%s'!"
+                  % self.Name, exc_info=1)
         return False
 
     return True
@@ -211,9 +210,9 @@ def _set_fieldflux_axesstructures(self, **kwargs):
         Y, X = fluxdata.shape
         X = np.arange(0, X) / X * 2 * np.pi
         Y = np.arange(0, Y) / Y * 2 * np.pi
-    except Exception as exc:
-        log.error("Failed to get data of '%s' from %s! %s" %
-                  (self.Name, self.dataobj.file, exc))
+    except Exception:
+        log.error("Failed to get data of '%s' from %s!"
+                  % (self.Name, self.dataobj.file), exc_info=1)
         return False
 
     # fix 3d plot_surface cmap
@@ -230,9 +229,9 @@ def _set_fieldflux_axesstructures(self, **kwargs):
         axesstructures = get_pcolor_axesstructures(
             X, Y, fluxdata, r'$\zeta$', r'$\theta$', title, **kwargs)
         self.figurestructure['AxesStructures'] = axesstructures
-    except Exception as exc:
-        log.error("Failed to set AxesStructures of '%s'! %s"
-                  % (self.Name, exc))
+    except Exception:
+        log.error("Failed to set AxesStructures of '%s'!"
+                  % self.Name, exc_info=1)
         return False
 
     return True
@@ -267,7 +266,7 @@ def _set_fieldspectrum_axesstructures(self, **kwargs):
         if ('pmode' in kwargs and isinstance(kwargs['pmode'], (int, float))
                 and int(kwargs['pmode']) <= maxpmode):
             pmode = int(kwargs['pmode'])
-        log.info("Poloidal and parallel range: m=%s, p=%s. Maximal m=%s, p=%s"
+        log.parm("Poloidal and parallel range: m=%s, p=%s. Maximal m=%s, p=%s"
                  % (mmode, pmode, maxmmode, maxpmode))
         X1, Y1 = np.arange(1, mmode + 1), np.zeros(mmode)
         X2, Y2 = np.arange(1, pmode + 1), np.zeros(pmode)
@@ -283,9 +282,9 @@ def _set_fieldspectrum_axesstructures(self, **kwargs):
             for j in range(1, pmode):
                 Y2[j] = Y2[j] + (abs(yy[j]))**2 + (abs(yy[mtoroidal - j]))**2
         Y2 = np.sqrt(Y2 / mtgrid) / mtoroidal
-    except Exception as exc:
-        log.error("Failed to get data of '%s' from %s! %s" %
-                  (self.Name, self.dataobj.file, exc))
+    except Exception:
+        log.error("Failed to get data of '%s' from %s!"
+                  % (self.Name, self.dataobj.file), exc_info=1)
         return False
 
     for ax in [[211, (X1, Y1, 'o-'), 'poloidal', [0, mmode], 'mtgrid'],
@@ -320,9 +319,9 @@ def _set_fieldploidal_axesstructures(self, **kwargs):
         if pdata.size == 0:
             log.debug("No data for Figure '%s'." % self.Name)
             return False
-    except Exception as exc:
-        log.error("Failed to get data of '%s' from %s! %s" %
-                  (self.Name, self.dataobj.file, exc))
+    except Exception:
+        log.error("Failed to get data of '%s' from %s!"
+                  % (self.Name, self.dataobj.file), exc_info=1)
         return False
 
     # default contourf,  levels 200
@@ -347,9 +346,9 @@ def _set_fieldploidal_axesstructures(self, **kwargs):
         data = axesstructures[0]['data']
         data.append([len(data) + 1, 'set_aspect', ('equal',), dict()])
         self.figurestructure['AxesStructures'] = axesstructures
-    except Exception as exc:
-        log.error("Failed to set AxesStructures of '%s'! %s"
-                  % (self.Name, exc))
+    except Exception:
+        log.error("Failed to set AxesStructures of '%s'!"
+                  % self.Name, exc_info=1)
         return False
 
     return True
@@ -379,7 +378,7 @@ def _set_fieldprofile_axesstructures(self, **kwargs):
         if ('ipsi' in kwargs and isinstance(kwargs['ipsi'], int)
                 and kwargs['ipsi'] < mpsi1):
             ipsi = kwargs['ipsi']
-        log.info("Poloidal and radius cut: itgrid=%s, ipsi=%s. "
+        log.parm("Poloidal and radius cut: itgrid=%s, ipsi=%s. "
                  "Maximal itgrid=%s, ipsi=%s."
                  % (itgrid, ipsi, mtgrid1 - 1, mpsi1 - 1))
         X1, Y11 = np.arange(0, mpsi1), pdata[itgrid, :]
@@ -388,9 +387,9 @@ def _set_fieldprofile_axesstructures(self, **kwargs):
         # f*f [ f[i,j]*f[i,j] ]; np.sum, axis=0, along col
         Y12 = np.sqrt(np.sum(pdata * pdata, axis=0) / mtgrid1)
         Y22 = np.sqrt(np.sum(pdata * pdata, axis=1) / mpsi1)
-    except Exception as exc:
-        log.error("Failed to get data of '%s' from %s! %s" %
-                  (self.Name, self.dataobj.file, exc))
+    except Exception:
+        log.error("Failed to get data of '%s' from %s!"
+                  % (self.Name, self.dataobj.file), exc_info=1)
         return False
 
     for ax in [[211, (X1, Y11, 'o-'), (X1, Y12, '--'), 'r(mpsi)',
@@ -415,7 +414,7 @@ def _set_fieldprofile_axesstructures(self, **kwargs):
                        ],
         }
         if ax[0] == 211:
-            addsuptitle = lambda fig, ax, art: fig.suptitle(timestr)
+            def addsuptitle(fig, ax, art): return fig.suptitle(timestr)
             axes['data'].append([8, 'revise', addsuptitle, dict()])
         self.figurestructure['AxesStructures'].append(axes)
 

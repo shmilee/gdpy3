@@ -2,7 +2,7 @@
 
 # Copyright (c) 2017 shmilee
 
-r'''
+'''
 History figures
 -------------------
 
@@ -11,7 +11,6 @@ This module needs history diagnosis data in group 'history' get by gdr.
 This module provides the :class:`HistoryFigureV110922`.
 '''
 
-import logging
 import numpy as np
 
 from . import tools
@@ -19,7 +18,7 @@ from .gfigure import GFigure, get_twinx_axesstructures
 
 __all__ = ['HistoryFigureV110922']
 
-log = logging.getLogger('gdp')
+log = tools.getGLogger('gdp')
 
 
 class HistoryFigureV110922(GFigure):
@@ -182,9 +181,9 @@ def _set_particle_or_fieldtime_axesstructures(self, **kwargs):
             log.debug("No data for Figure '%s'." % self.Name)
             return False
         time = np.arange(1, ndstep + 1) * tstep * ndiag
-    except Exception as exc:
-        log.error("Failed to get data of '%s' from %s! %s" %
-                  (self.Name, self.dataobj.file, exc))
+    except Exception:
+        log.error("Failed to get data of '%s' from %s!"
+                  % (self.Name, self.dataobj.file), exc_info=1)
         return False
 
     if 'xlim' not in kwargs:
@@ -194,9 +193,9 @@ def _set_particle_or_fieldtime_axesstructures(self, **kwargs):
         axesstructures = get_twinx_axesstructures(
             time, ydata, xlabel, title, twinx, **kwargs)
         self.figurestructure['AxesStructures'] = axesstructures
-    except Exception as exc:
-        log.error("Failed to set AxesStructures of '%s'! %s"
-                  % (self.Name, exc))
+    except Exception:
+        log.error("Failed to set AxesStructures of '%s'!"
+                  % self.Name, exc_info=1)
         return False
     # self.calculation.update({})
 
@@ -224,9 +223,9 @@ def _set_fieldmode_axesstructures(self, **kwargs):
         m = self.dataobj[mmodes][index]
         time = np.arange(1, ndstep + 1) * tstep * ndiag
         kthetarhoi = n * qiflux / rgiflux * rho0
-    except Exception as exc:
-        log.error("Failed to get data of '%s' from %s! %s" %
-                  (self.Name, self.dataobj.file, exc))
+    except Exception:
+        log.error("Failed to get data of '%s' from %s!"
+                  % (self.Name, self.dataobj.file), exc_info=1)
         return False
 
     # 1 original
@@ -267,8 +266,8 @@ def _set_fieldmode_axesstructures(self, **kwargs):
         if region_len == 0:
             reg1, region_len = 0, ndstep // 4
         reg2 = reg1 + region_len
-        log.info("Growth region index: (%s,%s)" % (reg1, reg2))
-    log.debug("Find growth region: [%s,%s]." % (time[reg1], time[reg2 - 1]))
+    log.parm("Find growth region: [%s,%s], index: [%s,%s)."
+             % (time[reg1], time[reg2 - 1], reg1, reg2))
     # polyfit region1
     result, line1 = tools.fitline(
         time[reg1:reg2], logya[reg1:reg2], 1,
@@ -316,7 +315,7 @@ def _set_fieldmode_axesstructures(self, **kwargs):
         np.divide(yreal, np.exp(growth1 * time)), 47, 3)
     index = [i for i in tools.argrelextrema(normreal, m='both')
              if reg1 + 0.1 * region_len <= i < reg1 + 0.9 * region_len]
-    log.debug("real argrelextrema: %s" % index)
+    log.parm("Real argrelextrema: %s" % index)
     if len(index) >= 2:
         reg3, reg4, nT1 = index[0], index[-1], (len(index) - 1) / 2
         omega1 = 2 * np.pi * nT1 / (time[reg4] - time[reg3])
@@ -327,7 +326,7 @@ def _set_fieldmode_axesstructures(self, **kwargs):
         np.divide(yimag, np.exp(growth1 * time)), 47, 3)
     index = [i for i in tools.argrelextrema(normimag, m='both')
              if reg1 + 0.1 * region_len <= i < reg1 + 0.9 * region_len]
-    log.debug("imag argrelextrema: %s" % index)
+    log.parm("Imag argrelextrema: %s" % index)
     if len(index) >= 2:
         reg5, reg6, nT2 = index[0], index[-1], (len(index) - 1) / 2
         omega2 = 2 * np.pi * nT2 / (time[reg6] - time[reg5])
@@ -371,7 +370,7 @@ def _set_fieldmode_axesstructures(self, **kwargs):
     fft_f1, fft_ai, fft_pi = tools.fft(tstep * ndiag, normimag[reg1:reg2])
     index = int(region_len / 2)
     index = index + np.argmax(fft_pr[index:])
-    log.debug("Get frequency: %s, %s" % (index, fft_f[index]))
+    log.parm("Get frequency: %s, %s" % (index, fft_f[index]))
     omega3, xlim = fft_f[index], 4 * abs(fft_f[index])
     if omega3 == 0:
         xlim = 0.5

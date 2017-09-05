@@ -2,8 +2,9 @@
 
 # Copyright (c) 2017 shmilee
 
-import logging
 import numpy as np
+
+from ..glogger import getGLogger
 from ..read.readnpz import ReadNpz
 
 __all__ = ['is_dictobj', 'in_dictobj',
@@ -11,7 +12,7 @@ __all__ = ['is_dictobj', 'in_dictobj',
            'fft', 'savgol_golay_filter', 'findflat', 'findgrowth',
            ]
 
-log = logging.getLogger('gdp')
+log = getGLogger('gdp')
 
 
 # 1. dictobj
@@ -56,8 +57,8 @@ def fitline(X, Y, deg, info=''):
     One-dimensional polynomial fit
     '''
     fitresult = np.polyfit(X, Y, deg, full=True)
-    log.debug("Fitting line '%s' result:" % info)
-    log.debug("%s" % (fitresult,))
+    log.ddebug("Fitting line '%s' result:" % info)
+    log.ddebug("%s" % (fitresult,))
     fit_p = np.poly1d(fitresult[0])
     return fitresult, fit_p(X)
 
@@ -152,12 +153,13 @@ def savgol_golay_filter(x, window_size, polyorder, deriv=0, delta=1.0,
 
     if newfilter:
         if not nodebug:
-            log.debug("Use 'scipy.signal.savgol_filter' to smooth %s." % info)
+            log.ddebug("Use 'scipy.signal.savgol_filter' to smooth %s."
+                       % info)
         return savgol_filter(x, window_size, polyorder, deriv=deriv,
                              delta=delta, axis=axis, mode=mode, cval=cval)
 
     if not nodebug:
-        log.debug("Use an old Savitzky-Golay filter to smooth %s." % info)
+        log.ddebug("Use an old Savitzky-Golay filter to smooth %s." % info)
     from math import factorial
     try:
         window_size = np.abs(np.int(window_size))

@@ -2,7 +2,7 @@
 
 # Copyright (c) 2017 shmilee
 
-r'''
+'''
 Particle orbit figures
 ----------------------
 
@@ -12,7 +12,6 @@ This module provides the :class:`TrackParticleFigureV110922`.
 '''
 
 import types
-import logging
 import numpy as np
 
 from . import tools
@@ -20,7 +19,7 @@ from .gfigure import GFigure
 
 __all__ = ['TrackParticleFigureV110922']
 
-log = logging.getLogger('gdp')
+log = tools.getGLogger('gdp')
 
 
 class TrackParticleFigureV110922(GFigure):
@@ -85,21 +84,22 @@ def _set_orbit_axesstructures(self, **kwargs):
     r0 = self.dataobj[self.figureinfo['key'][0]]
     particles = self.dataobj.find(self.figureinfo['track'])
     total = len(particles)
-    log.info("Total number of tracked %s particles: %d." % (species, total))
+    log.parm("Total number of tracked %s particles: %d." % (species, total))
     # sorted key function
     if 'key' not in kwargs:
         kwargs['key'] = 'increase'
     if isinstance(kwargs['key'], types.FunctionType):
         skey = kwargs['key']
     elif kwargs['key'] in ('in-', 'increase'):
-        skey = lambda n: int(n.split('-')[1] * 10 + n.split('-')[2])
+        def skey(n): return int(n.split('-')[1] * 10 + n.split('-')[2])
     elif kwargs['key'] in ('de-', 'decrease'):
-        skey = lambda n: -int(n.split('-')[1] * 10 + n.split('-')[2])
+        def skey(n): return -int(n.split('-')[1] * 10 + n.split('-')[2])
     elif kwargs['key'] == 'random':
-        skey = lambda n: np.random.random()
+        def skey(n): return np.random.random()
     else:
         log.warn("Invalid `sorted` key for tracked particles. Use 'random'.")
-        skey = lambda n: np.random.random()
+
+        def skey(n): return np.random.random()
     sortedparticles = sorted(particles, key=skey)
     # index of sorted particles
     if 'index' not in kwargs:
@@ -204,12 +204,13 @@ def _set_orbit_axesstructures(self, **kwargs):
             # suptitle
             if n == 0:
                 order = len(axes['data']) + 1
-                addsuptitle = lambda fig, ax, art: fig.suptitle(
+
+                def addsuptitle(fig, ax, art): return fig.suptitle(
                     "%s orbits of %s (9/%d)" % (dim.upper(), species, total))
                 axes['data'].append([order, 'revise', addsuptitle, dict()])
-        except Exception as exc:
-            log.error("Failed to get data of %s: %s. %s."
-                      % (species, pname, exc))
+        except Exception:
+            log.error("Failed to get data of '%s' from %s!"
+                      % (species +':' + pname, self.dataobj.file), exc_info=1)
         else:
             self.figurestructure['AxesStructures'].append(axes)
     return True

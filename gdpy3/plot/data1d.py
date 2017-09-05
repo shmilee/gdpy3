@@ -2,7 +2,7 @@
 
 # Copyright (c) 2017 shmilee
 
-r'''
+'''
 Radial-Time figures
 -------------------
 
@@ -11,7 +11,6 @@ This module needs radial time data in group 'data1d' get by gdr.
 This module provides the :class:`Data1dFigureV110922`.
 '''
 
-import logging
 import numpy as np
 
 from . import tools
@@ -19,7 +18,7 @@ from .gfigure import GFigure, get_pcolor_axesstructures
 
 __all__ = ['Data1dFigureV110922']
 
-log = logging.getLogger('gdp')
+log = tools.getGLogger('gdp')
 
 
 class Data1dFigureV110922(GFigure):
@@ -127,9 +126,9 @@ class Data1dFigureV110922(GFigure):
             Y, X = Z.shape
             X = np.arange(1, X + 1) * tunit
             Y = np.arange(0, Y)
-        except Exception as exc:
-            log.error("Failed to get data of '%s' from %s! %s" %
-                      (self.Name, self.dataobj.file, exc))
+        except Exception:
+            log.error("Failed to get data of '%s' from %s!"
+                      % (self.Name, self.dataobj.file), exc_info=1)
             return False
 
         # fix 3d plot_surface cmap
@@ -147,9 +146,9 @@ class Data1dFigureV110922(GFigure):
             axesstructures = get_pcolor_axesstructures(
                 X, Y, Z, r'time($R_0/c_s$)', r'$r$(mpsi)', title, **kwargs)
             self.figurestructure['AxesStructures'] = axesstructures
-        except Exception as exc:
-            log.error("Failed to set AxesStructures of '%s'! %s"
-                      % (self.Name, exc))
+        except Exception:
+            log.error("Failed to set AxesStructures of '%s'!"
+                      % self.Name, exc_info=1)
             return False
 
         # residual zonal flow
@@ -218,11 +217,10 @@ def _set_reszf_axesstructures(self, Z, tunit, **kwargs):
             idx1, len1 = Z1.size // 2, Z1.size // 4
         if len2 == 0:
             idx2, len2 = Z1.size // 2, Z1.size // 4
-        log.info("Residual region index: r=%s, (%s,%s); r=%s, (%s,%s)"
-                 % (iZ1, idx1, idx1 + len1, iZ2, idx2, idx2 + len2))
-    log.debug("Flat region: [%s,%s], [%s,%s]."
-              % (time[idx1], time[idx1 + len1 - 1],
-                 time[idx2], time[idx2 + len2 - 1]))
+    log.parm("Residual region of r=%s: [%s,%s], index: [%s,%s)."
+             % (iZ1, time[idx1], time[idx1 + len1 - 1], idx1, idx1 + len1))
+    log.parm("Residual region of r=%s: [%s,%s], index: [%s,%s)."
+             % (iZ2, time[idx2], time[idx2 + len2 - 1], idx2, idx2 + len2))
     res1, res2 = sum(Z1[idx1:idx1 + len1]) / len1, \
         sum(Z2[idx2:idx2 + len2]) / len2
     axes2 = {
