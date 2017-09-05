@@ -70,7 +70,7 @@ gloggerConfig = {
         },
         # gdpy3.read
         'gdr': {
-            'level': 'DDEBUG',
+            'level': 'VERBOSE',
             'handlers': ['console', 'file'],
             'propagate': False,
         },
