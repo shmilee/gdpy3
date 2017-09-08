@@ -3,14 +3,15 @@
 # Copyright (c) 2017 shmilee
 
 '''
-    This is the subpackage ``convert`` of package gdpy3.
+This is the subpackage ``convert`` of package gdpy3.
 '''
 
 import os
 import time
 import re
 
-from .datablock import log
+from .block import log
+from .utils import NpzSaver, Hdf5Saver
 from . import (gtcout, data1d, equilibrium, history,
                meshgrid, snapshot, trackparticle)
 from .. import __version__ as gdpy3_version
@@ -109,26 +110,23 @@ def convert(datadir, savepath, **kwargs):
         else:
             return None
 
-    if saveext == '.npz':
-        try:
-            from . import wrapnpz as wrapfile
-        except ImportError:
-            log.error("Failed to import 'wrapnpz'!")
-            raise
-    elif saveext == '.hdf5':
-        try:
-            from . import wraphdf5 as wrapfile
-        except ImportError:
-            log.error("Failed to import 'wraphdf5'!")
-            raise
-
     if os.path.isfile(savepath):
         log.warn("Remove file: '%s'!" % savepath)
         os.remove(savepath)
 
-    savefid = wrapfile.iopen(savepath)
+    try:
+        if saveext == '.npz':
+            saver = NpzSaver(savepath)
+        elif saveext == '.hdf5':
+            saver = Hdf5Saver(savepath)
+        else:
+            raise ValueError("Wrong file extension!")
+    except Exception:
+        log.error("Failed to initialize the saver!")
+        raise
+    saver.iopen()
     log.verbose("Saving '/description', '/version' to '%s' ..." % savepath)
-    wrapfile.write(savefid, '/', {'description': desc, 'version': __version})
+    saver.write('/', {'description': desc, 'version': __version})
     # get gtc.out parameters
     try:
         paras = FlClsMp['gtc.out'](file=os.path.join(datadir, 'gtc.out'))
@@ -139,7 +137,7 @@ def convert(datadir, savepath, **kwargs):
         else:
             paras.convert()
         log.verbose("Saving data of '%s' to '%s' ..." % ('gtc.out', savepath))
-        wrapfile.write(savefid, paras.group, paras.data)
+        saver.write(paras.group, paras.data)
     except Exception:
         log.error('Failed to get data from %s.' % paras.file, exc_info=1)
     # get other data
@@ -155,10 +153,10 @@ def convert(datadir, savepath, **kwargs):
             fcls.convert()
             log.verbose("Saving data of '%s' to '%s' ..." %
                         (fcls.group, savepath))
-            wrapfile.write(savefid, fcls.group, fcls.data)
+            saver.write(fcls.group, fcls.data)
         except Exception:
             log.error('Failed to get data from %s.' % fcls.file, exc_info=1)
-    wrapfile.close(savefid)
+    saver.close()
 
     log.info("GTC '.out' files in %s are converted to %s!" %
              (datadir, savepath))

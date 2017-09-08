@@ -59,12 +59,12 @@ diagfast(mpdiag), pushf.F90:472-483
 
 import os
 import numpy
-from .datablock import DataBlock, log
+from .block import Block, log
 
 __all__ = ['HistoryBlockV110922']
 
 
-class HistoryBlockV110922(DataBlock):
+class HistoryBlockV110922(Block):
     '''
     History Data
 

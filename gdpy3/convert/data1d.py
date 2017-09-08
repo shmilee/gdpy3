@@ -63,12 +63,12 @@ diagnosis.F90:194-203, ::
 
 import os
 import numpy
-from .datablock import DataBlock, log
+from .block import Block, log
 
 __all__ = ['Data1dBlockV110922']
 
 
-class Data1dBlockV110922(DataBlock):
+class Data1dBlockV110922(Block):
     '''
     Radial Time Data
 

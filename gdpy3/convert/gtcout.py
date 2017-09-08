@@ -14,12 +14,12 @@ skip
 import os
 import re
 import numpy
-from .datablock import DataBlock, log
+from .block import Block, log
 
 __all__ = ['GtcOutV110922']
 
 
-class GtcOutV110922(DataBlock):
+class GtcOutV110922(Block):
     '''
     gtc.out parameters
 

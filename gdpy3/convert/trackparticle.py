@@ -28,12 +28,12 @@ tracking.F90, subroutine write_tracked_particles:270:278-289
 
 import os
 import numpy
-from .datablock import DataBlock, log
+from .block import Block, log
 
 __all__ = ['TrackParticleBlockV110922']
 
 
-class TrackParticleBlockV110922(DataBlock):
+class TrackParticleBlockV110922(Block):
     '''
     Tracking Particle Data
 

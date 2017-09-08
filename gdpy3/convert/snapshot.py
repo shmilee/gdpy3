@@ -37,12 +37,12 @@ field quantities: phi, a_para, fluidne.
 
 import os
 import numpy
-from .datablock import DataBlock, log
+from .block import Block, log
 
 __all__ = ['SnapshotBlockV110922']
 
 
-class SnapshotBlockV110922(DataBlock):
+class SnapshotBlockV110922(Block):
     '''
     Snapshot Data
 

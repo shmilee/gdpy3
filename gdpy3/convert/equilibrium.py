@@ -39,12 +39,12 @@ datax(mpsi/mskip+1,lst),dataz(mpsi/mskip+1,lst),data2d(mpsi/mskip+1,lst,5)
 
 import os
 import numpy
-from .datablock import DataBlock, log
+from .block import Block, log
 
 __all__ = ['EquilibriumBlockV110922']
 
 
-class EquilibriumBlockV110922(DataBlock):
+class EquilibriumBlockV110922(Block):
     '''
     Equilibrium data
 

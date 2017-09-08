@@ -28,12 +28,12 @@ diagnosis.F90, subroutine diagnosis:37-50
 
 import os
 import numpy
-from .datablock import DataBlock, log
+from .block import Block, log
 
 __all__ = ['MeshgridBlockV110922']
 
 
-class MeshgridBlockV110922(DataBlock):
+class MeshgridBlockV110922(Block):
     '''
     Meshgrid data
 
