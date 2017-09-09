@@ -110,6 +110,9 @@ class GLogger(logging.Logger):
 
     ddbg = ddebug
 
+    def warn(self, msg, *args, **kwargs):
+        self.warning(msg, *args, **kwargs)
+
 
 def getGLogger(name):
     if name not in gloggerConfig['loggers']:
