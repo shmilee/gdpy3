@@ -9,7 +9,7 @@ import tempfile
 
 from ..glogger import getGLogger
 
-__all__ = ['NpzSaver', 'Hdf5Saver']
+__all__ = ['NpzSaver', 'Hdf5Saver', 'NpzLoader', 'Hdf5Loader']
 
 log = getGLogger('gdc')
 
@@ -82,14 +82,14 @@ class NpzSaver(object):
         fobj = None
         if os.path.isfile(file):
             try:
-                log.ddebug("Open file '%s' to append data." % file)
+                log.debug("Open file '%s' to append data." % file)
                 fobj = self._open_append()
             except Exception:
                 log.error("Failed to open file '%s'." % file, exc_info=1)
                 raise
         else:
             try:
-                log.ddebug("Create file '%s' to store data." % file)
+                log.debug("Create file '%s' to store data." % file)
                 fobj = self._open_new()
             except Exception:
                 log.error("Failed to create file '%s'." % file, exc_info=1)
@@ -155,7 +155,7 @@ class NpzSaver(object):
         Close initialized file object ``fobj``.
         '''
         if self.fobj_on:
-            log.ddebug("Close initialized file '%s'." % self.file)
+            log.debug("Close initialized file '%s'." % self.file)
             self.fobj.close()
         self.fobj = None
         self.fobj_on = False
@@ -223,3 +223,210 @@ class Hdf5Saver(NpzSaver):
             self.fobj.flush()
         except Exception:
             log.error("Failed to save data of '%s'!" % group, exc_info=1)
+
+
+class NpzLoader(object):
+    '''
+    Load pickled data in ``.npz`` file. Return a dictionary-like object.
+
+    Attributes
+    ----------
+    file: str
+        path of the .npz file
+    datakeys: tuple
+        keys of physical quantities in the .npz file
+    datagroups: tuple
+        groups of datakeys
+    desc: str
+        description of the .npz file
+    description: alias desc
+    cache: dict
+        cached keys from .npz file
+
+    Parameters
+    ----------
+    file: str
+        path of the .npz file to open
+
+    Notes
+    -----
+    Q: How to read data from .npz file?
+    A: npzfile[datakey]
+    >>> npzfile = numpy.load('/tmp/test.npz')
+    >>> datakey = 'group/key'
+    >>> npzfile[datakey]
+    '''
+    __slots__ = ['file', 'datakeys', 'datagroups',
+                 'desc', 'description', 'cache',
+                 '_speciallib']
+
+    def _set_speciallib(self):
+        self._speciallib = numpy
+
+    def _special_openfile(self):
+        return self._speciallib.load(self.file)
+
+    def _special_closefile(self, tempf):
+        tempf.close()
+
+    def _special_getkeys(self, tempf):
+        return tempf.files
+
+    def _special_getitem(self, tempf, key):
+        value = tempf[key]
+        if value.size == 1:
+            value = value.item()
+        return value
+
+    def __init__(self, file):
+        if os.path.isfile(file):
+            self.file = file
+        else:
+            raise IOError("Failed to find file %s." % file)
+        self._set_speciallib()
+        try:
+            log.debug("Open file %s." % self.file)
+            tempf = self._special_openfile()
+            log.debug("Getting datakeys from %s ..." % self.file)
+            self.datakeys = tuple(self._special_getkeys(tempf))
+            self.datagroups = tuple(
+                os.path.dirname(k) for k in self.datakeys
+                if k.endswith('/description'))
+            self.desc = str(self._special_getitem(tempf, 'description'))
+            self.description = self.desc
+        except (IOError, ValueError):
+            log.critical("Failed to read file %s." % self.file, exc_info=1)
+            raise
+        finally:
+            if 'tempf' in dir():
+                log.debug("Close file %s." % self.file)
+                self._special_closefile(tempf)
+        self.cache = {}
+
+    def keys(self):
+        return self.datakeys
+
+    def __getitem__(self, key):
+        if key not in self.datakeys:
+            raise KeyError("%s is not in '%s'" % (key, self.file))
+        if key in self.cache:
+            return self.cache[key]
+        try:
+            log.debug("Open file %s." % self.file)
+            tempf = self._special_openfile()
+            log.debug("Getting key '%s' from %s ..." % (key, self.file))
+            value = self._special_getitem(tempf, key)
+            self.cache[key] = value
+        except (IOError, ValueError):
+            log.critical("Failed to get '%s' from %s!" %
+                         (key, self.file), exc_info=1)
+            raise
+        finally:
+            if 'tempf' in dir():
+                log.debug("Close file %s." % self.file)
+                self._special_closefile(tempf)
+        return value
+
+    get = __getitem__
+
+    def find(self, *keys):
+        '''
+        Find the datakeys which contain ``keys``
+        '''
+        result = self.datakeys
+        for key in keys:
+            key = str(key)
+            result = tuple(
+                filter(lambda k: True if key in k else False, result))
+        return tuple(result)
+
+    def get_many(self, *keys):
+        '''
+        Get values by ``keys``. Return a tuple of values.
+        '''
+        result = [self.cache[k] if k in self.cache else None for k in keys]
+        idxtodo = [i for i, k in enumerate(result) if k is None]
+        if len(idxtodo) == 0:
+            return tuple(result)
+        try:
+            log.debug("Open file %s." % self.file)
+            tempf = self._special_openfile()
+            for i in idxtodo:
+                key = keys[i]
+                log.debug("Getting key '%s' from %s ..." % (key, self.file))
+                value = self._special_getitem(tempf, key)
+                result[i] = value
+                self.cache[key] = value
+        except (IOError, ValueError):
+            if 'key' in dir():
+                log.critical("Failed to get '%s' from %s!" %
+                             (key, self.file), exc_info=1)
+            else:
+                log.critical("Failed to open '%s'!" % self.file, exc_info=1)
+            raise
+        finally:
+            if 'tempf' in dir():
+                log.debug("Close file %s." % self.file)
+                self._special_closefile(tempf)
+        return tuple(result)
+
+
+class Hdf5Loader(NpzLoader):
+    '''
+    Load datasets in ``.hdf5`` file. Return a dictionary-like object.
+
+    Attributes
+    ----------
+    file: str
+        path of the .hdf5 file
+    datakeys: tuple
+        keys of physical quantities in the .hdf5 file
+    datagroups: tuple
+        groups of datakeys
+    desc: str
+        description of the .hdf5 file
+    description: alias desc
+    cache: dict
+        cached keys from .hdf5 file
+
+    Parameters
+    ----------
+    file: str
+        path of the .hdf5 file to open
+
+    Notes
+    -----
+    Q: How to read data from .hdf5 file?
+    A: h5file[datakey].value
+    >>> h5file = h5py.File('/tmp/test.hdf5', 'r')
+    >>> datakey = 'group/key'
+    >>> h5file[datakey].value
+    >>> h5file[datakey][()]
+    >>> h5file[datakey][...]
+    '''
+    __slots__ = []
+
+    def _set_speciallib(self):
+        try:
+            import h5py
+        except ImportError:
+            log.error('If you want to load data in a .hdf5 file, '
+                      'please install h5py(python bindings for HDF5).')
+            raise
+        self._speciallib = h5py
+
+    def _special_openfile(self):
+        return self._speciallib.File(self.file, 'r')
+
+    def _special_closefile(self, tempf):
+        tempf.close()
+
+    def _special_getkeys(self, tempf):
+        mykeys = []
+        tempf.visititems(
+            lambda name, obj: mykeys.append(name)
+            if isinstance(obj, self._speciallib.Dataset) else None)
+        return mykeys
+
+    def _special_getitem(self, tempf, key):
+        return tempf[key].value
