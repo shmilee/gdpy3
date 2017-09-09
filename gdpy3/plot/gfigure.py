@@ -23,7 +23,7 @@ class GFigure(object):
 
     Attributes
     ----------
-    dataobj: :class:`gdpy3.read.readnpz.ReadNpz` instance
+    dataobj: :class:`gdpy3.convert.NpzLoader` instance
         a dictionary-like object
     name: str
     group: str
@@ -88,7 +88,7 @@ class GFigure(object):
         if tools.is_dictobj(obj):
             self.__dataobj = obj
         else:
-            raise ValueError("'dataobj' must be a ReadNpz instance."
+            raise ValueError("'dataobj' must be a NpzLoader instance."
                              " Not %s." % type(obj))
 
     @property

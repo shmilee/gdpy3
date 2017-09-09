@@ -6,7 +6,7 @@
 Radial-Time figures
 -------------------
 
-This module needs radial time data in group 'data1d' get by gdr.
+This module needs radial time data in group 'data1d' get by gdc.
 
 This module provides the :class:`Data1dFigureV110922`.
 '''

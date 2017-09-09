@@ -6,7 +6,7 @@
 Particle orbit figures
 ----------------------
 
-This module needs tracking particle data in group 'trackp' get by gdr.
+This module needs tracking particle data in group 'trackp' get by gdc.
 
 This module provides the :class:`TrackParticleFigureV110922`.
 '''

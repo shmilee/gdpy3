@@ -3,7 +3,7 @@
 # Copyright (c) 2017 shmilee
 
 '''
-    This is the subpackage ``plot`` of package gdpy3.
+This is the subpackage ``plot`` of package gdpy3.
 '''
 
 import os
@@ -13,7 +13,7 @@ import sys
 from . import tools
 from . import data1d, history, snapshot, trackparticle
 from .enginelib import engine_available, style_available
-from .. import read as gdr
+from ..convert import load
 
 __all__ = ['pick', 'GCase']
 
@@ -38,7 +38,7 @@ class GCase(object):
     ----------
     datafile: str
         path of .npz or hdf5 file
-    dataobj: :class:`gdpy3.read.readnpz.ReadNpz` instance
+    dataobj: :class:`gdpy3.convert.NpzLoader` instance
         a dictionary-like object of *datafile*
     version: str
         gtc code version, read from *datafile*
@@ -65,7 +65,7 @@ class GCase(object):
             self.dataobj = dataobj
             self.datafile = dataobj.file
         else:
-            raise ValueError("'dataobj' must be a ReadNpz object."
+            raise ValueError("'dataobj' must be a NpzLoader object."
                              " Not %s." % type(dataobj))
         # version
         if tools.in_dictobj(dataobj, 'version'):
@@ -258,12 +258,13 @@ def pick(path, default_enable=[], figurestyle=['gdpy3-notebook'], **kwargs):
         path of the .npz, .hdf5 file to open
         or path of the directory of GTC .out files
     default_enable, figurestyle:
-        parameters for :class:`gdpy3.plot.gcase.GCase`
+        parameters for :class:`gdpy3.plot.GCase`
+    kwargs: other parameters for :class:`gdpy3.convert.RawLoader`
     '''
     try:
-        dataobj = gdr.read(path)
+        dataobj = load(path, **kwargs)
     except Exception:
-        log.error("Failed to read path '%s'!" % path)
+        log.error("Failed to load GTC data from path %s!" % path)
         raise
 
     try:

@@ -6,7 +6,7 @@
 History figures
 -------------------
 
-This module needs history diagnosis data in group 'history' get by gdr.
+This module needs history diagnosis data in group 'history' get by gdc.
 
 This module provides the :class:`HistoryFigureV110922`.
 '''

@@ -5,7 +5,7 @@
 import numpy as np
 
 from ..glogger import getGLogger
-from ..read.readnpz import ReadNpz
+from ..convert import NpzLoader
 
 __all__ = ['is_dictobj', 'in_dictobj',
            'max_subarray', 'fitline', 'argrelextrema',
@@ -19,9 +19,9 @@ log = getGLogger('gdp')
 
 def is_dictobj(dictobj):
     '''
-    Check if *dictobj* is a instance of :class:`gdpy3.read.readnpz.ReadNpz`.
+    Check if *dictobj* is a instance of :class:`gdpy3.convert.NpzLoader`.
     '''
-    if isinstance(dictobj, ReadNpz):
+    if isinstance(dictobj, NpzLoader):
         return True
     else:
         return False

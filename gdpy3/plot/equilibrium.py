@@ -6,7 +6,7 @@
 Equilibrium figures
 -------------------
 
-This module needs data in group 'equilibrium' get by gdr.
+This module needs data in group 'equilibrium' get by gdc.
 
 This module provides the :class:`EquilibriumFigureV110922`.
 '''

@@ -68,12 +68,6 @@ gloggerConfig = {
             'handlers': ['console', 'file'],
             'propagate': False,
         },
-        # gdpy3.read
-        'gdr': {
-            'level': 'VERBOSE',
-            'handlers': ['console', 'file'],
-            'propagate': False,
-        },
         # gdpy3.plot
         'gdp': {
             'level': 'DDEBUG',

@@ -6,7 +6,7 @@
 Snapshot figures
 ----------------
 
-This module needs data in group 'snapshot' get by gdr.
+This module needs data in group 'snapshot' get by gdc.
 
 This module provides the :class:`SnapshotFigureV110922`.
 '''
