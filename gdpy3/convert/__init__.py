@@ -18,7 +18,7 @@ from .. import __version__ as gdpy3_version
 
 __all__ = ['gtcout', 'data1d', 'equilibrium', 'history',
            'meshgrid', 'snapshot', 'trackparticle',
-           'RawLoader', 'load']
+           'RawLoader', 'convert', 'load']
 
 
 class RawLoader(NpzLoader):
@@ -57,7 +57,7 @@ class RawLoader(NpzLoader):
         overwrite existing saved file or not, default False
     Sid: bool
         If Sid is here(True), Buzz Lightyear will be destroyed,
-        so no one can call self._convert to convert GTC .out files.
+        so self.__init__ will stop after setting self.casedir.
     kwargs: other parameters for self._convert
         ``description``, ``additionalpats``
 
@@ -98,6 +98,11 @@ class RawLoader(NpzLoader):
             log.error("'%s' is not a GTC case directory!" % casedir)
             raise IOError("Can't find 'gtc.out' in '%s'!" % casedir)
         self.casedir = casedir
+
+        # Sid is here?
+        if bool(Sid):
+            return None
+
         # gtcver
         gtcver = str(gtcver)
         if not gtcver in self._GTCFilesMap:
@@ -136,13 +141,12 @@ class RawLoader(NpzLoader):
         overwrite = bool(overwrite)
         if not (overwrite is False and os.path.isfile(savefile)):
             # _convert
-            if not bool(Sid):
-                try:
-                    self._convert(savefile, gtcver=gtcver, **kwargs)
-                except:
-                    log.critical("Failed to create file %s." %
-                                 savefile, exc_info=1)
-                    raise
+            try:
+                self._convert(savefile, gtcver=gtcver, **kwargs)
+            except:
+                log.critical("Failed to create file %s." %
+                             savefile, exc_info=1)
+                raise
         # __init__
         if os.path.isfile(savefile):
             super(RawLoader, self).__init__(savefile)
@@ -264,9 +268,24 @@ class RawLoader(NpzLoader):
                  (casedir, savefile))
 
 
+def convert(casedir, savefile, **kwargs):
+    '''
+    Convert GTC .out files to a .npz or .hdf5 file.
+
+    Parameters
+    ----------
+    casedir: path of GTC .out files
+    savefile: path of the saved file
+    kwargs: other parameters for RawLoader._convert
+        ``gtcver``, ``description``, ``additionalpats``
+    '''
+    case = RawLoader(casedir, Sid=True)
+    case._convert(savefile, **kwargs)
+
+
 def load(path, **kwargs):
     '''
-    Load .npz, .hdf5 file or original .out files.
+    Load .npz, .hdf5 file or original GTC .out files.
     Return a dictionary-like object: NpzLoader, Hdf5Loader or RawLoader.
 
     Parameters
