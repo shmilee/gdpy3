@@ -21,9 +21,7 @@ setup(
     url='https://github.com/shmilee/gdpy3.git',
     license=gdpy3.__license__,
     keywords='GTC, matplotlib',
-    packages=find_packages(
-        exclude=['tests']
-    ),
+    packages=find_packages(),
     platforms=[
         'Linux',
         'MacOS X',
