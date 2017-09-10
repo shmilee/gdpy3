@@ -13,6 +13,8 @@ from . import casedir
 glogger.getGLogger('gdc').handlers[0].setLevel(60)
 
 
+@unittest.skipUnless(os.path.isfile(os.path.join(casedir, 'gtc.out')),
+                     "Can't find 'gtc.out' in '%s'!" % casedir)
 class TestRawLoader(unittest.TestCase):
     '''
     Test class RawLoader
@@ -20,8 +22,6 @@ class TestRawLoader(unittest.TestCase):
 
     def setUp(self):
         self.tmpfile = tempfile.mktemp(suffix='-test.npz')
-        if not os.path.isfile(os.path.join(casedir, 'gtc.out')):
-            raise IOError("Can't find 'gtc.out' in '%s'!" % casedir)
 
     def tearDown(self):
         if os.path.isfile(self.tmpfile):

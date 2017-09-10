@@ -176,6 +176,7 @@ class Template_mixin(object):
         0: 'pass',
         1: 'fail',
         2: 'error',
+        3: 'skip',
     }
 
     DEFAULT_TITLE = 'Unit Test Report'
@@ -197,22 +198,30 @@ class Template_mixin(object):
 <script language="javascript" type="text/javascript"><!--
 output_list = Array();
 
-/* level - 0:Summary; 1:Failed; 2:All */
+/* level - 0:Summary; 1:Failed; 2: Skipped; 3:All */
 function showCase(level) {
     trs = document.getElementsByTagName("tr");
     for (var i = 0; i < trs.length; i++) {
         tr = trs[i];
         id = tr.id;
         if (id.substr(0,2) == 'ft') {
-            if (level < 1) {
-                tr.className = 'hiddenRow';
+            if (level == 1 || level >= 3) {
+                tr.className = '';
             }
             else {
+                tr.className = 'hiddenRow';
+            }
+        }
+        if (id.substr(0,2) == 'st') {
+            if (level == 2 || level >= 3) {
                 tr.className = '';
+            }
+            else {
+                tr.className = 'hiddenRow';
             }
         }
         if (id.substr(0,2) == 'pt') {
-            if (level > 1) {
+            if (level >= 3) {
                 tr.className = '';
             }
             else {
@@ -231,6 +240,10 @@ function showClassDetail(cid, count) {
         tid = 'f' + tid0;
         tr = document.getElementById(tid);
         if (!tr) {
+            tid = 's' + tid0;
+            tr = document.getElementById(tid);
+        }
+        if (!tr) {
             tid = 'p' + tid0;
             tr = document.getElementById(tid);
         }
@@ -242,8 +255,11 @@ function showClassDetail(cid, count) {
     for (var i = 0; i < count; i++) {
         tid = id_list[i];
         if (toHide) {
-            document.getElementById('div_'+tid).style.display = 'none'
             document.getElementById(tid).className = 'hiddenRow';
+            dtr = document.getElementById('div_'+tid);
+            if (dtr) {
+                dtr.style.display = 'none';
+            }
         }
         else {
             document.getElementById(tid).className = '';
@@ -376,6 +392,7 @@ a.popup_link:hover {
 .passClass  { background-color: #6c6; }
 .failClass  { background-color: #c60; }
 .errorClass { background-color: #c00; }
+.skipClass  { background-color: #6a9; }
 .passCase   { color: #6c6; }
 .failCase   { color: #c60; font-weight: bold; }
 .errorCase  { color: #c00; font-weight: bold; }
@@ -413,7 +430,8 @@ a.popup_link:hover {
 <p id='show_detail_line'>Show
 <a href='javascript:showCase(0)'>Summary</a>
 <a href='javascript:showCase(1)'>Failed</a>
-<a href='javascript:showCase(2)'>All</a>
+<a href='javascript:showCase(2)'>Skipped</a>
+<a href='javascript:showCase(3)'>All</a>
 </p>
 <table id='result_table'>
 <colgroup>
@@ -430,6 +448,7 @@ a.popup_link:hover {
     <td>Pass</td>
     <td>Fail</td>
     <td>Error</td>
+    <td>Skip</td>
     <td>View</td>
 </tr>
 %(test_list)s
@@ -439,10 +458,11 @@ a.popup_link:hover {
     <td>%(Pass)s</td>
     <td>%(fail)s</td>
     <td>%(error)s</td>
+    <td>%(skip)s</td>
     <td>&nbsp;</td>
 </tr>
 </table>
-"""  # variables: (test_list, count, Pass, fail, error)
+"""  # variables: (test_list, count, Pass, fail, error, skip)
 
     REPORT_CLASS_TMPL = r"""
 <tr class='%(style)s'>
@@ -451,14 +471,15 @@ a.popup_link:hover {
     <td>%(Pass)s</td>
     <td>%(fail)s</td>
     <td>%(error)s</td>
+    <td>%(skip)s</td>
     <td><a href="javascript:showClassDetail('%(cid)s',%(count)s)">Detail</a></td>
 </tr>
-"""  # variables: (style, desc, count, Pass, fail, error, cid)
+"""  # variables: (style, desc, count, Pass, fail, error, skip, cid)
 
     REPORT_TEST_WITH_OUTPUT_TMPL = r"""
 <tr id='%(tid)s' class='%(Class)s'>
     <td class='%(style)s'><div class='testcase'>%(desc)s</div></td>
-    <td colspan='5' align='center'>
+    <td colspan='6' align='center'>
 
     <!--css div popup start-->
     <a class="popup_link" onfocus='this.blur();' href="javascript:showTestDetail('div_%(tid)s')" >
@@ -482,7 +503,7 @@ a.popup_link:hover {
     REPORT_TEST_NO_OUTPUT_TMPL = r"""
 <tr id='%(tid)s' class='%(Class)s'>
     <td class='%(style)s'><div class='testcase'>%(desc)s</div></td>
-    <td colspan='5' align='center'>%(status)s</td>
+    <td colspan='6' align='center'>%(status)s</td>
 </tr>
 """  # variables: (tid, Class, style, desc, status)
 
@@ -513,11 +534,12 @@ class _TestResult(TestResult):
         self.success_count = 0
         self.failure_count = 0
         self.error_count = 0
+        self.skipped_count = 0
         self.verbosity = verbosity
 
         # result is a list of result in 4 tuple
         # (
-        #   result code (0: success; 1: fail; 2: error),
+        #   result code (0: success; 1: fail; 2: error; 3: skip),
         #   TestCase object,
         #   Test output (byte string),
         #   stack trace,
@@ -591,6 +613,18 @@ class _TestResult(TestResult):
         else:
             sys.stderr.write('F')
 
+    def addSkip(self, test, reason):
+        self.skipped_count += 1
+        TestResult.addSkip(self, test, reason)
+        output = self.complete_output()
+        self.result.append((3, test, output, reason))
+        if self.verbosity > 1:
+            sys.stderr.write('S  ')
+            sys.stderr.write(str(test))
+            sys.stderr.write('\n')
+        else:
+            sys.stderr.write('s')
+
 
 class HTMLTestRunner(Template_mixin):
     """
@@ -649,8 +683,10 @@ class HTMLTestRunner(Template_mixin):
             status.append('Failure %s' % result.failure_count)
         if result.error_count:
             status.append('Error %s' % result.error_count)
+        if result.skipped_count:
+            status.append('Skip %s' % result.skipped_count)
         if status:
-            status = ' '.join(status)
+            status = '; '.join(status)
         else:
             status = 'none'
         return [
@@ -699,14 +735,16 @@ class HTMLTestRunner(Template_mixin):
         sortedResult = self.sortResult(result.result)
         for cid, (cls, cls_results) in enumerate(sortedResult):
             # subtotal for a class
-            np = nf = ne = 0
+            np = nf = ne = ns = 0
             for n, t, o, e in cls_results:
                 if n == 0:
                     np += 1
                 elif n == 1:
                     nf += 1
-                else:
+                elif n == 2:
                     ne += 1
+                else:
+                    ns += 1
 
             # format class description
             if cls.__module__ == "__main__":
@@ -717,12 +755,13 @@ class HTMLTestRunner(Template_mixin):
             desc = doc and '%s: %s' % (name, doc) or name
 
             row = self.REPORT_CLASS_TMPL % dict(
-                style=ne > 0 and 'errorClass' or nf > 0 and 'failClass' or 'passClass',
+                style=ne > 0 and 'errorClass' or nf > 0 and 'failClass' or ns > 0 and 'skipClass' or 'passClass',
                 desc=desc,
-                count=np + nf + ne,
+                count=np + nf + ne + ns,
                 Pass=np,
                 fail=nf,
                 error=ne,
+                skip=ns,
                 cid='c%s' % (cid + 1),
             )
             rows.append(row)
@@ -732,18 +771,20 @@ class HTMLTestRunner(Template_mixin):
 
         report = self.REPORT_TMPL % dict(
             test_list=''.join(rows),
-            count=str(result.success_count +
-                      result.failure_count + result.error_count),
+            count=str(result.success_count + result.failure_count +
+                      result.error_count + result.skipped_count),
             Pass=str(result.success_count),
             fail=str(result.failure_count),
             error=str(result.error_count),
+            skip=str(result.skipped_count),
         )
         return report
 
     def _generate_report_test(self, rows, cid, tid, n, t, o, e):
         # e.g. 'pt1.1', 'ft1.1', etc
         has_output = bool(o or e)
-        tid = (n == 0 and 'p' or 'f') + 't%s.%s' % (cid + 1, tid + 1)
+        tid = (n == 0 and 'p' or n == 3 and 's' or 'f') + \
+            't%s.%s' % (cid + 1, tid + 1)
         name = t.id().split('.')[-1]
         doc = t.shortDescription() or ""
         desc = doc and ('%s: %s' % (name, doc)) or name
@@ -754,25 +795,25 @@ class HTMLTestRunner(Template_mixin):
             # TODO: some problem with 'string_escape': it escape \n and mess up formating
             # uo = unicode(o.encode('string_escape'))
             # uo = o.decode('latin-1')
-            uo = e
-        else:
             uo = o
+        else:
+            uo = str(o)
         if isinstance(e, str):
             # TODO: some problem with 'string_escape': it escape \n and mess up formating
             # ue = unicode(e.encode('string_escape'))
             # ue = e.decode('latin-1')
             ue = e
         else:
-            ue = e
+            ue = str(e)
 
         script = self.REPORT_TEST_OUTPUT_TMPL % dict(
             id=tid,
-            output=saxutils.escape(str(uo) + ue),
+            output=saxutils.escape(uo + ue),
         )
 
         row = tmpl % dict(
             tid=tid,
-            Class=(n == 0 and 'hiddenRow' or 'none'),
+            Class=n == 0 and 'hiddenRow' or (n == 3 and 'hiddenRow' or 'none'),
             style=n == 2 and 'errorCase' or (n == 1 and 'failCase' or 'none'),
             desc=desc,
             script=script,
