@@ -1,7 +1,7 @@
 *~
 *.npz
 *.hdf5
-*.mat
+tests-report.html
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
