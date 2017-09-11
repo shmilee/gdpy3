@@ -36,14 +36,27 @@ class TestRawLoader(unittest.TestCase):
                             extension='.npz',
                             overwrite=True,
                             description='... test desc .npz ...')
+        self.assertEqual(casenpz.casedir, casedir)
+        self.assertRegex(casenpz.desc, 'desc .npz ...')
+        self.assertEqual(casenpz['version'], '110922')
         casehd5 = RawLoader(casedir,
                             extension='.hdf5',
                             overwrite=True,
                             description='... test desc .hdf5 ...')
-        key = 'gtc/r0'
-        self.assertEqual(casenpz[key], casehd5[key])
+        self.assertEqual(casehd5.casedir, casedir)
+        self.assertRegex(casehd5.desc, 'desc .hdf5 ...')
+        self.assertEqual(casehd5['version'], '110922')
+        for key in ['gtc/r0', 'gtc/b0']:
+            self.assertEqual(casenpz[key], casehd5[key])
+        self.assertListEqual(sorted(casenpz.datagroups),
+                             sorted(casehd5.datagroups))
+        self.assertListEqual(sorted(casenpz.datakeys),
+                             sorted(casehd5.datakeys))
 
     def test_rawloader_convert(self):
         case = RawLoader(casedir, Sid=True)
+        t = case.casedir
+        with self.assertRaises(AttributeError):
+            t = case.file, case.cache
         case._convert(self.tmpfile, description='... test desc Sid ...')
         self.assertTrue(os.path.isfile(self.tmpfile))

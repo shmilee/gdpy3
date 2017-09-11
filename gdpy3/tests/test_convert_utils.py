@@ -32,19 +32,14 @@ class TestSaver(unittest.TestCase):
     def test_saver_init(self):
         saver = utils.NpzSaver(self.npzfile)
         saver2 = utils.Hdf5Saver(self.hd5file)
-        return None
         with self.assertRaises(IOError):
             utils.NpzSaver(os.path.join(self.npzfile, 'BreakSuffix'))
         with self.assertRaises(IOError):
             utils.Hdf5Saver(os.path.join(self.hd5file, 'BreakSuffix'))
 
     def test_saver_iopen_close(self):
-        for f in [self.npzfile, self.hd5file]:
-            ext = os.path.splitext(f)[1]
-            if ext == '.npz':
-                saver = utils.NpzSaver(f)
-            else:
-                saver = utils.Hdf5Saver(f)
+        for saver in [utils.NpzSaver(self.npzfile),
+                      utils.Hdf5Saver(self.hd5file)]:
             self.assertTrue(saver.iopen())
             self.assertTrue(saver.fobj)
             self.assertTrue(saver.fobj_on)
@@ -53,12 +48,8 @@ class TestSaver(unittest.TestCase):
             self.assertFalse(saver.fobj_on)
 
     def test_saver_write(self):
-        for f in [self.npzfile, self.hd5file]:
-            ext = os.path.splitext(f)[1]
-            if ext == '.npz':
-                saver = utils.NpzSaver(f)
-            else:
-                saver = utils.Hdf5Saver(f)
+        for saver in [utils.NpzSaver(self.npzfile),
+                      utils.Hdf5Saver(self.hd5file)]:
             self.assertFalse(saver.write('', {'ver': '1'}))
             saver.iopen()
             self.assertFalse(saver.write('/', []))
@@ -66,123 +57,77 @@ class TestSaver(unittest.TestCase):
             saver.close()
 
 
-class TestNpzLoader(unittest.TestCase):
+class TestLoader(unittest.TestCase):
     '''
-    Test NpzLoader load pickled data
-    '''
-
-    def setUp(self):
-        tmpfile = tempfile.mktemp(suffix='-test.npz')
-        saver = utils.NpzSaver(tmpfile)
-        saver.iopen()
-        saver.write('/', {'num': 100, 'description': 'test case'})
-        saver.write('group', {'str': 'abc', 'list': [1, 2, 3]})
-        saver.close()
-        self.tmpfile = tmpfile
-        self.loadercls = utils.NpzLoader
-
-        tmpfile2 = tempfile.mktemp(suffix='-test.npz')
-        saver = utils.NpzSaver(tmpfile2)
-        saver.iopen()
-        saver.write('/', {'num': 100})
-        saver.close()
-        self.tmpfile2 = tmpfile2
-
-    def tearDown(self):
-        if os.path.isfile(self.tmpfile):
-            os.remove(self.tmpfile)
-        if os.path.isfile(self.tmpfile2):
-            os.remove(self.tmpfile2)
-
-    def test_npzloader_init(self):
-        with self.assertRaises(IOError):
-            self.loadercls(os.path.join(self.tmpfile, 'BreakSuffix'))
-        with self.assertRaises((KeyError, ValueError)):
-            self.loadercls(self.tmpfile2)
-
-    def test_npzloader_keys(self):
-        inkeys = {'num', 'description', 'group/str', 'group/list'}
-        outkeys = set(self.loadercls(self.tmpfile).keys())
-        self.assertEqual(inkeys, outkeys)
-
-    def test_npzloader_get(self):
-        inval = [100, 'test case', 'abc', [1, 2, 3]]
-        outval = []
-        loader = self.loadercls(self.tmpfile)
-        for key in ['num', 'description', 'group/str']:
-            outval.append(loader[key])
-        outval.append(list(loader['group/list']))
-        self.assertEqual(inval, outval)
-
-    def test_npzloader_find(self):
-        loader = self.loadercls(self.tmpfile)
-        outval = set(loader.find('st'))
-        inval = {'group/str', 'group/list'}
-        self.assertEqual(inval, outval)
-
-    def test_npzloader_get_many(self):
-        inval = (100, 'test case', 'abc')
-        loader = self.loadercls(self.tmpfile)
-        outval = loader.get_many('num', 'description', 'group/str')
-        self.assertEqual(inval, outval)
-
-
-class TestHdf5Loader(unittest.TestCase):
-    '''
-    Test Hdf5Loader load pickled data
+    Test NpzLoader, Hdf5Loader load pickled data
     '''
 
     def setUp(self):
-        tmpfile = tempfile.mktemp(suffix='-test.hdf5')
-        saver = utils.Hdf5Saver(tmpfile)
-        saver.iopen()
-        saver.write('/', {'num': 100, 'description': 'test case'})
-        saver.write('group', {'str': 'abc', 'list': [1, 2, 3]})
-        saver.close()
-        self.tmpfile = tmpfile
-        self.loadercls = utils.Hdf5Loader
+        tmpfile = tempfile.mktemp(suffix='-test')
+        self.npzfile = tmpfile + '.npz'
+        self.hd5file = tmpfile + '.hdf5'
+        for saver in [utils.NpzSaver(self.npzfile),
+                      utils.Hdf5Saver(self.hd5file)]:
+            saver.iopen()
+            saver.write('/', {'num': 100, 'description': 'test case'})
+            saver.write('group', {'str': 'abc', 'list': [1, 2, 3]})
+            saver.close()
 
-        tmpfile2 = tempfile.mktemp(suffix='-test.hdf5')
-        saver = utils.Hdf5Saver(tmpfile2)
-        saver.iopen()
-        saver.write('/', {'num': 100})
-        saver.close()
-        self.tmpfile2 = tmpfile2
+        self.npzfile2 = tmpfile + '-nodesc.npz'
+        self.hd5file2 = tmpfile + '-nodesc.hdf5'
+        for saver in [utils.NpzSaver(self.npzfile2),
+                      utils.Hdf5Saver(self.hd5file2)]:
+            saver.iopen()
+            saver.write('/', {'num': 100})
+            saver.close()
 
     def tearDown(self):
-        if os.path.isfile(self.tmpfile):
-            os.remove(self.tmpfile)
-        if os.path.isfile(self.tmpfile2):
-            os.remove(self.tmpfile2)
+        if os.path.isfile(self.npzfile):
+            os.remove(self.npzfile)
+        if os.path.isfile(self.hd5file):
+            os.remove(self.hd5file)
+        if os.path.isfile(self.npzfile2):
+            os.remove(self.npzfile2)
+        if os.path.isfile(self.hd5file2):
+            os.remove(self.hd5file2)
 
-    def test_hd5loader_init(self):
+    def test_loader_init(self):
         with self.assertRaises(IOError):
-            self.loadercls(os.path.join(self.tmpfile, 'BreakSuffix'))
+            utils.NpzLoader(os.path.join(self.npzfile, 'BreakSuffix'))
+        with self.assertRaises(IOError):
+            utils.Hdf5Loader(os.path.join(self.hd5file, 'BreakSuffix'))
         with self.assertRaises((KeyError, ValueError)):
-            self.loadercls(self.tmpfile2)
+            utils.NpzLoader(self.npzfile2)
+        with self.assertRaises((KeyError, ValueError)):
+            utils.Hdf5Loader(self.hd5file2)
 
-    def test_hd5loader_keys(self):
-        inkeys = {'num', 'description', 'group/str', 'group/list'}
-        outkeys = set(self.loadercls(self.tmpfile).keys())
-        self.assertEqual(inkeys, outkeys)
+    def test_loader_keys(self):
+        for loader in [utils.NpzLoader(self.npzfile),
+                       utils.Hdf5Loader(self.hd5file)]:
+            inkeys = {'num', 'description', 'group/str', 'group/list'}
+            outkeys = set(loader.keys())
+            self.assertSetEqual(inkeys, outkeys)
 
-    def test_hd5loader_get(self):
-        inval = [100, 'test case', 'abc', [1, 2, 3]]
-        outval = []
-        loader = self.loadercls(self.tmpfile)
-        for key in ['num', 'description', 'group/str']:
-            outval.append(loader[key])
-        outval.append(list(loader['group/list']))
-        self.assertEqual(inval, outval)
+    def test_loader_get(self):
+        for loader in [utils.NpzLoader(self.npzfile),
+                       utils.Hdf5Loader(self.hd5file)]:
+            inval = [100, 'test case', 'abc', [1, 2, 3]]
+            outval = []
+            for key in ['num', 'description', 'group/str']:
+                outval.append(loader[key])
+            outval.append(list(loader['group/list']))
+            self.assertListEqual(inval, outval)
 
-    def test_hd5loader_find(self):
-        loader = self.loadercls(self.tmpfile)
-        outval = set(loader.find('st'))
-        inval = {'group/str', 'group/list'}
-        self.assertEqual(inval, outval)
+    def test_loader_find(self):
+        for loader in [utils.NpzLoader(self.npzfile),
+                       utils.Hdf5Loader(self.hd5file)]:
+            outval = set(loader.find('st'))
+            inval = {'group/str', 'group/list'}
+            self.assertSetEqual(inval, outval)
 
-    def test_hd5loader_get_many(self):
-        inval = (100, 'test case', 'abc')
-        loader = self.loadercls(self.tmpfile)
-        outval = loader.get_many('num', 'description', 'group/str')
-        self.assertEqual(inval, outval)
+    def test_loader_get_many(self):
+        for loader in [utils.NpzLoader(self.npzfile),
+                       utils.Hdf5Loader(self.hd5file)]:
+            inval = (100, 'test case', 'abc')
+            outval = loader.get_many('num', 'description', 'group/str')
+            self.assertTupleEqual(inval, outval)
