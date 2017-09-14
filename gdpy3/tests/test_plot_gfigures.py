@@ -90,10 +90,10 @@ class TestGFigures(unittest.TestCase):
         gf = history.HistoryFigureV110922(
             self.dataobj,
             #'ion',
-            'ion_flux',
+            #'ion_flux',
             #'field_phi',
             #'field_apara',
-            #'mode3_phi',
+            'mode3_phi',
             #'mode3_apara',
         )
         gf.calculate(
@@ -159,7 +159,7 @@ class TestGFigures(unittest.TestCase):
 
     @unittest.skipUnless(os.path.isdir(os.path.join(casedir, 'trackp_dir')),
                          "Can't find 'trackp_dir' in '%s'!" % casedir)
-    def test_gfigure_snapshot(self):
+    def test_gfigure_trackparticle(self):
         gf = trackparticle.TrackParticleFigureV110922(
             self.dataobj,
             'orbit_2d_ion',
