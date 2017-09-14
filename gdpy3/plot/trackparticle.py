@@ -210,7 +210,7 @@ def _set_orbit_axesstructures(self, **kwargs):
                 axes['data'].append([order, 'revise', addsuptitle, dict()])
         except Exception:
             log.error("Failed to get data of '%s' from %s!"
-                      % (species +':' + pname, self.dataobj.file), exc_info=1)
+                      % (species + ':' + pname, self.dataobj.file), exc_info=1)
         else:
             self.figurestructure['AxesStructures'].append(axes)
     return True
