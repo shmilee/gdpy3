@@ -181,3 +181,4 @@ class TestMplEngine(unittest.TestCase):
             fig.savefig(tmpfile)
         # fig.show()
         input("[I]nterrupt, to see figure in %s." % tmpfile)
+        self.engine.close(fig)
