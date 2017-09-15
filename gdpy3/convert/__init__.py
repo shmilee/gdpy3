@@ -240,28 +240,27 @@ class RawLoader(NpzLoader):
             log.error('Failed to get data from %s.' % paras.file, exc_info=1)
         # get other data
         for f in sorted(os.listdir(casedir)):
-            if f == 'gtc.out':
-                continue
-            elif f in ('data1d.out', 'equilibrium.out',
-                       'history.out', 'meshgrid.out'):
-                fcls = GTCFilesMap[f](file=os.path.join(casedir, f))
-            elif self._SnapPattern.match(f):
-                fcls = GTCFilesMap['snapshot.out'](
-                    file=os.path.join(casedir, f))
-            elif f == 'trackp_dir':
-                fcls = GTCFilesMap[f](path=os.path.join(casedir, f))
-            else:
-                log.debug("Ignore file '%s'." % os.path.join(casedir, f))
-                continue
             try:
+                fpath = os.path.join(casedir, f)
+                if f == 'gtc.out':
+                    continue
+                elif f in ('data1d.out', 'equilibrium.out',
+                           'history.out', 'meshgrid.out'):
+                    fcls = GTCFilesMap[f](file=fpath)
+                elif self._SnapPattern.match(f):
+                    fcls = GTCFilesMap['snapshot.out'](file=fpath)
+                elif f == 'trackp_dir':
+                    fcls = GTCFilesMap[f](path=fpath)
+                else:
+                    log.debug("Ignore file '%s'." % fpath)
+                    continue
                 log.info('Getting data from %s ...' % fcls.file)
                 fcls.convert()
                 log.verbose("Saving data of '%s' to %s ..." %
                             (fcls.group, savefile))
                 fcls.save(casesaver, auto_close=False)
             except Exception:
-                log.error('Failed to get data from %s.' %
-                          fcls.file, exc_info=1)
+                log.error('Failed to get data from %s.' % fpath, exc_info=1)
         casesaver.close()
 
         log.info("GTC '.out' files in %s are converted to %s!" %
