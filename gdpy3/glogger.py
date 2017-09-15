@@ -57,7 +57,7 @@ gloggerConfig = {
     },
     'loggers': {
         # gdpy3
-        'gd3': {
+        'gdpy3': {
             'level': 'DEBUG',
             'handlers': ['console', 'file'],
             'propagate': False,
