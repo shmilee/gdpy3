@@ -33,8 +33,8 @@ default_enable = [
     'data1d/zonal_flow',
     'data1d/residual_zonal_flow',
     r'history/fieldmode\d_phi',
-    #r'history/fieldmode\d_apara',
-    #r'history/fieldmode\d_fluidne',
+    # r'history/fieldmode\d_apara',
+    # r'history/fieldmode\d_fluidne',
 ]
 
 
@@ -73,6 +73,6 @@ if __name__ == '__main__':
                                 % (croot + '/' + name, gf.calculation))
                     ccalf.flush()
                 case.disable(name)
-        #break
+        # break
     ccalf.write("}\n")
     ccalf.close()
