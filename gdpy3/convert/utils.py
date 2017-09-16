@@ -11,7 +11,7 @@ from ..glogger import getGLogger
 
 __all__ = ['NpzSaver', 'Hdf5Saver', 'NpzLoader', 'Hdf5Loader']
 
-log = getGLogger('gdc')
+log = getGLogger('C')
 
 
 class NpzSaver(object):

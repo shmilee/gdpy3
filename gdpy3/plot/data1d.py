@@ -14,11 +14,9 @@ This module provides the :class:`Data1dFigureV110922`.
 import numpy as np
 
 from . import tools
-from .gfigure import GFigure, get_pcolor_axesstructures
+from .gfigure import GFigure, log, get_pcolor_axesstructures
 
 __all__ = ['Data1dFigureV110922']
-
-log = tools.getGLogger('gdp')
 
 
 class Data1dFigureV110922(GFigure):

@@ -13,9 +13,9 @@ class TestGLoggerMethods(unittest.TestCase):
     '''
 
     def setUp(self):
-        self.gdpy3 = glogger.getGLogger('gdpy3')
-        self.gdc = glogger.getGLogger('gdc')
-        self.gdp = glogger.getGLogger('gdp')
+        self.gdpy3 = glogger.getGLogger('G')
+        self.gdc = glogger.getGLogger('C')
+        self.gdp = glogger.getGLogger('P')
 
     def test_glogger_change_level(self):
         self.gdpy3.handlers[0].setLevel(40)

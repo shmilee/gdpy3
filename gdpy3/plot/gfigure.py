@@ -14,7 +14,7 @@ from .enginelib import engine_available, default_engine, get_engine
 
 __all__ = ['GFigure']
 
-log = tools.getGLogger('gdp')
+log = tools.getGLogger('P')
 
 
 class GFigure(object):

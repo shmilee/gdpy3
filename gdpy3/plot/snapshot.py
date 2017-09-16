@@ -16,13 +16,12 @@ import numpy as np
 from . import tools
 from .gfigure import (
     GFigure,
+    log,
     get_twinx_axesstructures,
     get_pcolor_axesstructures,
 )
 
 __all__ = ['SnapshotFigureV110922']
-
-log = tools.getGLogger('gdp')
 
 
 class SnapshotFigureV110922(GFigure):

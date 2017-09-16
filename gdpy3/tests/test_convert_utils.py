@@ -10,7 +10,7 @@ import tempfile
 from .. import glogger
 from ..convert import utils
 
-glogger.getGLogger('gdc').handlers[0].setLevel(60)
+glogger.getGLogger('C').handlers[0].setLevel(60)
 
 
 class TestSaver(unittest.TestCase):

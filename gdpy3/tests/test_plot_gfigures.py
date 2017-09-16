@@ -14,8 +14,7 @@ from ..plot import (
 )
 from . import casedir
 
-glogger.getGLogger('gdc').handlers[0].setLevel(60)
-glogger.getGLogger('gdp').handlers[0].setLevel(60)
+glogger.getGLogger('P').handlers[0].setLevel(60)
 
 
 @unittest.skipUnless(os.path.isfile(os.path.join(casedir, 'gtc.out')),

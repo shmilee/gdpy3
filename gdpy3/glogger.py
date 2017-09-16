@@ -57,19 +57,19 @@ gloggerConfig = {
     },
     'loggers': {
         # gdpy3
-        'gdpy3': {
+        'G': {
             'level': 'DEBUG',
             'handlers': ['console', 'file'],
             'propagate': False,
         },
         # gdpy3.convert
-        'gdc': {
+        'C': {
             'level': 'VERBOSE',
             'handlers': ['console', 'file'],
             'propagate': False,
         },
         # gdpy3.plot
-        'gdp': {
+        'P': {
             'level': 'DDEBUG',
             'handlers': ['console', 'file'],
             'propagate': False,

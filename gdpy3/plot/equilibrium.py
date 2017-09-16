@@ -16,13 +16,12 @@ import numpy as np
 from . import tools
 from .gfigure import (
     GFigure,
+    log,
     get_twinx_axesstructures,
     get_pcolor_axesstructures,
 )
 
 __all__ = ['EquilibriumFigureV110922']
-
-log = tools.getGLogger('gdp')
 
 
 class EquilibriumFigureV110922(GFigure):
@@ -31,7 +30,7 @@ class EquilibriumFigureV110922(GFigure):
     '''
     __slots__ = []
     _FigGroup = 'equilibrium'
-    _FigInfo = dict() # TODO
+    _FigInfo = dict()  # TODO
 
     def __init__(self, dataobj, name,
                  group=_FigGroup, figurestyle=['gdpy3-notebook']):

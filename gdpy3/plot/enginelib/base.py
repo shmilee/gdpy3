@@ -12,7 +12,7 @@ from ...glogger import getGLogger
 
 __all__ = ['Engine']
 
-log = getGLogger('gdp')
+log = getGLogger('P')
 
 
 class Engine(object):

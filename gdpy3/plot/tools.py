@@ -12,7 +12,7 @@ __all__ = ['is_dictobj', 'in_dictobj',
            'fft', 'savgol_golay_filter', 'findflat', 'findgrowth',
            ]
 
-log = getGLogger('gdp')
+log = getGLogger('P')
 
 
 # 1. dictobj

@@ -12,7 +12,7 @@ from matplotlib.gridspec import GridSpec
 from .. import glogger
 from ..plot import enginelib
 
-glogger.getGLogger('gdp').handlers[0].setLevel(60)
+glogger.getGLogger('P').handlers[0].setLevel(60)
 
 fielddata = np.array([[np.sin(m / 20) * np.cos(n / 20) for m in range(100)]
                       for n in range(66)])

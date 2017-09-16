@@ -15,11 +15,9 @@ import types
 import numpy as np
 
 from . import tools
-from .gfigure import GFigure
+from .gfigure import GFigure, log
 
 __all__ = ['TrackParticleFigureV110922']
-
-log = tools.getGLogger('gdp')
 
 
 class TrackParticleFigureV110922(GFigure):

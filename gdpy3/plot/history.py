@@ -14,11 +14,9 @@ This module provides the :class:`HistoryFigureV110922`.
 import numpy as np
 
 from . import tools
-from .gfigure import GFigure, get_twinx_axesstructures
+from .gfigure import GFigure, log, get_twinx_axesstructures
 
 __all__ = ['HistoryFigureV110922']
-
-log = tools.getGLogger('gdp')
 
 
 class HistoryFigureV110922(GFigure):

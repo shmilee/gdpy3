@@ -17,7 +17,7 @@ from ..convert import load
 
 __all__ = ['pick', 'GCase']
 
-log = tools.getGLogger('gdp')
+log = tools.getGLogger('P')
 
 _FigGroupClassMap = {
     '110922': {
@@ -121,7 +121,7 @@ class GCase(object):
                         if pat.match(member) and member not in figstodo:
                             figstodo.append(member)
         if figstodo:
-            log.debug("Gfigures to enable:\n%s" % figstodo)
+            log.debug("Gfigures to enable: %s" % figstodo)
         for member in figstodo:
             if member in self.gfigure_enabled:
                 continue
@@ -166,7 +166,7 @@ class GCase(object):
                         if pat.match(member) and member not in figstodo:
                             figstodo.append(member)
         if figstodo:
-            log.debug("Gfigures to disable:\n%s" % figstodo)
+            log.debug("Gfigures to disable: %s" % figstodo)
         for member in figstodo:
             gf = self.__getitem__(member)
             log.info("Disable gfigure '%s' ..." % member)
