@@ -58,4 +58,12 @@ setup(
                   'plot/enginelib/mpl-stylelib/readme.txt']
     },
     data_files=[],
+    entry_points={
+        'console_scripts': [
+            'gdpy3-convert = gdpy3.main:script_convert',
+        ],
+        #'gui_scripts': [
+        #    'gdpy3-gui = gdpy3.gui:start',
+        #],
+    },
 )
