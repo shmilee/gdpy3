@@ -55,8 +55,9 @@ class TestRawLoader(unittest.TestCase):
 
     def test_rawloader_convert(self):
         case = RawLoader(casedir, Sid=True)
-        t = case.casedir
+        t = case.casedir, case.file
         with self.assertRaises(AttributeError):
-            t = case.file, case.cache
-        case._convert(self.tmpfile, description='... test desc Sid ...')
+            t = case.desc, case.cache
+        case._convert(savefile=self.tmpfile,
+                      description='... test desc Sid ...')
         self.assertTrue(os.path.isfile(self.tmpfile))

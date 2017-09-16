@@ -47,18 +47,18 @@ class RawLoader(NpzLoader):
     ----------
     casedir: str
         path of GTC .out files to open
-    gtcver: str
-        GTC code version, default is '110922'
     salt: str, a .out file name
         salt for the name of saved file, default 'gtc.out'
     extension: '.npz' or '.hdf5'
         extension of saved file, default '.npz'
+    gtcver: str
+        GTC code version, default is '110922'
     overwrite: bool
         overwrite existing saved file or not, default False
     Sid: bool
         If Sid is here(True), Buzz Lightyear will be destroyed,
-        so self.__init__ will stop after setting self.casedir.
-    kwargs: other parameters for self._convert
+        so self.__init__ will stop after setting self.casedir, self.file.
+    kwargs: other parameters for self._convert()
         ``description``, ``additionalpats``
 
     Raises
@@ -88,8 +88,8 @@ class RawLoader(NpzLoader):
     }
     _SnapPattern = re.compile(r'^snap\d{5}\.out$')
 
-    def __init__(self, casedir, gtcver='110922', salt='gtc.out',
-                 extension='.npz', overwrite=False, Sid=False, **kwargs):
+    def __init__(self, casedir, salt='gtc.out', extension='.npz',
+                 gtcver='110922', overwrite=False, Sid=False, **kwargs):
         if not os.path.isdir(casedir):
             raise IOError("Can't find directory '%s'!" % casedir)
         if not os.access(casedir, os.W_OK):
@@ -98,17 +98,6 @@ class RawLoader(NpzLoader):
             log.error("'%s' is not a GTC case directory!" % casedir)
             raise IOError("Can't find 'gtc.out' in '%s'!" % casedir)
         self.casedir = casedir
-
-        # Sid is here?
-        if bool(Sid):
-            return None
-
-        # gtcver
-        gtcver = str(gtcver)
-        if not gtcver in self._GTCFilesMap:
-            log.warn("GTC version '%s' not supported! Use '110922'." % gtcver)
-            gtcver = '110922'
-        log.info("Set the GTC version: '%s'." % gtcver)
         # salt
         salt = os.path.join(casedir, str(salt))
         if not os.path.isfile(salt):
@@ -136,13 +125,19 @@ class RawLoader(NpzLoader):
         # savefile
         savefile = 'gdpy3-pickled-data-%s%s' % (salt[:10], ext)
         savefile = os.path.join(casedir, savefile)
-        log.info("Pickled data file is %s." % savefile)
+        log.info("Default pickled data file is %s." % savefile)
+        self.file = savefile
+
+        # Sid is here?
+        if bool(Sid):
+            return None
+
         # overwrite
         overwrite = bool(overwrite)
         if not (overwrite is False and os.path.isfile(savefile)):
             # _convert
             try:
-                self._convert(savefile, gtcver=gtcver, **kwargs)
+                self._convert(gtcver=gtcver, **kwargs)
             except:
                 log.critical("Failed to create file %s." %
                              savefile, exc_info=1)
@@ -166,18 +161,18 @@ class RawLoader(NpzLoader):
     def _special_getitem(self, tempf, key):
         return self._special_parent._special_getitem(self, tempf, key)
 
-    def _convert(self, savefile, gtcver='110922', **kwargs):
+    def _convert(self, gtcver='110922', savefile=None, **kwargs):
         '''
         Convert GTC .out files to a .npz or .hdf5 file.
         Save the results in ``savefile``.
 
         Parameters
         ----------
-        savefile: path of the saved file
-            The extension may be '.npz' or '.hdf5.
-            If no one is matched, '.npz' will be adopted.
         gtcver: str
             GTC code version, default is '110922'
+        savefile: specified path of the saved file
+            The extension may be '.npz' or '.hdf5.
+            If no one is matched, '.npz' will be adopted.
         kwargs: other parameters
             ``description`` of the simulation case
             ``additionalpats`` for reading 'gtc.out'
@@ -191,14 +186,26 @@ class RawLoader(NpzLoader):
                 (casedir, gdpy3_version, time.asctime()))
         if 'description' in kwargs:
             desc = desc + '\n' + str(kwargs['description'])
-
-        saveext = os.path.splitext(savefile)[1]
-        if saveext not in ('.npz', '.hdf5'):
-            # fix Sid, prepare savefile, default filetype is '.npz'
-            log.warn("Filetype of savefile should be '.npz' or '.hdf5'! "
-                     "Use '.npz'.")
-            saveext = '.npz'
-            savefile = savefile + '.npz'
+        # gtcver
+        gtcver = str(gtcver)
+        if not gtcver in self._GTCFilesMap:
+            log.warn("GTC version '%s' not supported! Use '110922'." % gtcver)
+            gtcver = '110922'
+        log.info("Set the GTC version: '%s'." % gtcver)
+        GTCFilesMap = self._GTCFilesMap[gtcver]
+        # savefile
+        if not savefile:
+            savefile = self.file
+            saveext = os.path.splitext(savefile)[1]
+        else:
+            saveext = os.path.splitext(savefile)[1]
+            if saveext not in ('.npz', '.hdf5'):
+                # fix Sid, prepare savefile, default filetype is '.npz'
+                log.warn("Pickled data filetype must be '.npz' or '.hdf5'! "
+                         "Use '.npz'.")
+                saveext = '.npz'
+                savefile = savefile + '.npz'
+            log.info("Set pickled data file: %s." % savefile)
         try:
             if saveext == '.npz':
                 casesaver = NpzSaver(savefile)
@@ -210,15 +217,9 @@ class RawLoader(NpzLoader):
             log.error("Failed to initialize the saver!")
             raise
 
-        if not gtcver in self._GTCFilesMap:
-            # fix Sid, gtcver
-            log.warn("GTC version '%s' not supported! Use '110922'." % gtcver)
-            gtcver = '110922'
-        GTCFilesMap = self._GTCFilesMap[gtcver]
-
         # save all data
         if os.path.isfile(savefile):
-            log.warn("Remove file: '%s'!" % savefile)
+            log.warn("Remove previous file: %s!" % savefile)
             os.remove(savefile)
         casesaver.iopen()
         log.verbose("Saving '/description', '/version' to %s ..." % savefile)
@@ -267,7 +268,7 @@ class RawLoader(NpzLoader):
                  (casedir, savefile))
 
 
-def convert(casedir, savefile, **kwargs):
+def convert(casedir, savefile=None, **kwargs):
     '''
     Convert GTC .out files to a .npz or .hdf5 file.
 
@@ -275,11 +276,13 @@ def convert(casedir, savefile, **kwargs):
     ----------
     casedir: path of GTC .out files
     savefile: path of the saved file
-    kwargs: other parameters for RawLoader._convert
+    kwargs: other parameters for RawLoader.__init__()
+        ``salt``, ``extension``,
+        or for RawLoader._convert()
         ``gtcver``, ``description``, ``additionalpats``
     '''
-    case = RawLoader(casedir, Sid=True)
-    case._convert(savefile, **kwargs)
+    case = RawLoader(casedir, Sid=True, **kwargs)
+    case._convert(savefile=savefile, **kwargs)
 
 
 def load(path, **kwargs):
