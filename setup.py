@@ -61,6 +61,7 @@ setup(
     entry_points={
         'console_scripts': [
             'gdpy3-convert = gdpy3.main:script_convert',
+            'gdpy3-plot = gdpy3.main:script_plot',
         ],
         #'gui_scripts': [
         #    'gdpy3-gui = gdpy3.gui:start',
