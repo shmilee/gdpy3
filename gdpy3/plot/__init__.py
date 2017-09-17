@@ -246,6 +246,21 @@ class GCase(object):
                 filter(lambda k: True if key in k else False, result))
         return tuple(result)
 
+    def savefig(self, Name, fname, **kwargs):
+        '''
+        Save figure *Name*.
+        '''
+        gf = self.__getitem__(Name)
+        if not gf:
+            return
+        if Name not in self.gfigure_ploted:
+            if not self.plot(Name, show=False):
+                return
+        try:
+            gf.savefig(fname, **kwargs)
+        except Exception:
+            log.error("Failed to save gfigure '%s'." % Name, exc_info=1)
+
 
 def pick(path, default_enable=[], figurestyle=['gdpy3-notebook'], **kwargs):
     '''

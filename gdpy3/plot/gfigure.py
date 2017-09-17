@@ -222,6 +222,19 @@ class GFigure(object):
             self.plot(**kwargs)
         return self.nginp.show(self.figure)
 
+    def savefig(self, fname, **kwargs):
+        '''
+        Save the current figure.
+        '''
+        if not self.figure:
+            log.error("Figure %s is not plotted!" % self.Name)
+            return
+        if self.engine == 'matplotlib':
+            log.info("Save figure to %s ..." % fname)
+            self.figure.savefig(fname, **kwargs)
+        else:
+            log.warn("Engine %s doesn't support save method!" % self.engine)
+
 
 def get_twinx_axesstructures(X, YS, xlabel, title, twinx, **kwargs):
     '''
