@@ -1,7 +1,7 @@
 # Maintainer: shmilee <shmilee.zju@gmail.com>
 
 pkgname=gdpy3
-pkgver=0.1.8
+pkgver=0.2.1
 pkgrel=1
 pkgdesc="Gyrokinetic Toroidal Code Data Processing tools written in python3"
 url="https://github.com/shmilee/gdpy3.git"
@@ -11,16 +11,17 @@ depends=('python-setuptools' 'python-numpy' 'python-matplotlib')
 optdepends=('python-h5py: for hdf5 support'
             'python-scipy: for smooth support')
 makedepends=('git')
-source=("git+https://github.com/shmilee/gdpy3.git#tag=v$pkgver")
+source=("https://github.com/shmilee/$pkgname/archive/v$pkgver.tar.gz")
+#source=("$pkgname-$pkgver.tar.gz")
 sha512sums=('SKIP')
 
 build() {
-  cd $pkgname
+  cd $pkgname-$pkgver
   python setup.py build
 }
 
 package() {
-  cd $pkgname
+  cd $pkgname-$pkgver
   python setup.py install --root="$pkgdir"
   install -Dm644 LICENSE "$pkgdir"/usr/share/licenses/$pkgname/LICENSE.txt
 }
