@@ -52,7 +52,7 @@ gloggerConfig = {
             'formatter': 'detailed',
             'filename': os.path.join(tempfile.gettempdir(), 'gdpy3.log'),
             'maxBytes': 3 * 1024 * 1024,
-            'backupCount': 2,
+            'backupCount': 9,
         },
     },
     'loggers': {

@@ -233,7 +233,7 @@ class GCase(object):
         '''
         Get gfigure object by *Name*, synonym for :meth:`__getitem__`.
         '''
-        self.__getitem__(Name)
+        return self.__getitem__(Name)
 
     def find(self, *keys):
         '''
