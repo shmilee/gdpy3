@@ -3,8 +3,17 @@
 # Copyright (c) 2017 shmilee
 
 import os
-import gdpy3
+import importlib.util
 from setuptools import setup, find_packages
+
+# https://docs.python.org/3.6/library/importlib.html#importing-a-source-file-directly
+spec = importlib.util.spec_from_file_location('gdpy3', './src/__init__.py')
+gdpy3 = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(gdpy3)
+
+packages = ['gdpy3']
+subpackages = find_packages(where='src', exclude=('*tests',))
+packages.extend(['gdpy3.%s' % p for p in subpackages])
 
 setup(
     name='gdpy3',
@@ -18,14 +27,15 @@ setup(
     ).read(),
     author=gdpy3.__author__,
     author_email=gdpy3.__email__,
-    url='https://github.com/shmilee/gdpy3.git',
+    url=gdpy3.__uri__,
     license=gdpy3.__license__,
     keywords='GTC, matplotlib',
-    packages=find_packages(),
+    package_dir={'gdpy3': 'src'},
+    packages=packages,
     platforms=[
         'Linux',
         'MacOS X',
-        'Windows'
+        'Windows',
     ],
     classifiers=(
         'Development Status :: 3 - Alpha',
