@@ -4,6 +4,13 @@
 
 '''
 Gdpy3's logger module.
+
+* [G]dp: gdpy3
+* [L]oad: loaders
+* [S]ave: savers
+* [C]ore: processors
+* [E]xport: exporters
+* [P]lot: plotters
 '''
 
 import os
@@ -58,7 +65,13 @@ gloggerConfig = {
     'loggers': {
         # gdpy3
         'G': {
-            'level': 'DEBUG',
+            'level': 'DDEBUG',
+            'handlers': ['console', 'file'],
+            'propagate': False,
+        },
+        # gdpy3.savers
+        'S': {
+            'level': 'DDEBUG',
             'handlers': ['console', 'file'],
             'propagate': False,
         },
