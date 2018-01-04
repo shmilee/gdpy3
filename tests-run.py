@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 # Copyright (c) 2017 shmilee
@@ -9,7 +9,7 @@ import unittest
 from HTMLTestRunner import HTMLTestRunner
 
 if __name__ == "__main__":
-    start_dir = os.path.join(os.path.dirname(__file__), 'gdpy3')
+    start_dir = os.path.join(os.path.dirname(__file__), 'src')
     start_dir = os.path.dirname(__file__)
     print("Loader discover start_dir: '%s'" % start_dir)
     loader = unittest.TestLoader()
