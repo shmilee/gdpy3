@@ -69,6 +69,12 @@ gloggerConfig = {
             'handlers': ['console', 'file'],
             'propagate': False,
         },
+        # gdpy3.loaders
+        'L': {
+            'level': 'DDEBUG',
+            'handlers': ['console', 'file'],
+            'propagate': False,
+        },
         # gdpy3.savers
         'S': {
             'level': 'DDEBUG',
