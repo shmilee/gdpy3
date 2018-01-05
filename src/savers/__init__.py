@@ -2,27 +2,39 @@
 
 # Copyright (c) 2017 shmilee
 
+import os
+
 from ..glogger import getGLogger
 from .npzfile import NpzFileSaver
-from .base import BaseFileSaver
 
+__all__ = ['get_filesaver']
 log = getGLogger('S')
-saver_names = ['NpzFileSaver', 'Hdf5FileSaver']
+filesaver_names = ['NpzFileSaver', 'Hdf5FileSaver']
+filesaver_filetypes = ['.npz', '.hdf5']
 
+def get_filesaver(path):
+    '''
+    Given a saver path, return a saver instance.
+    Raises IOError if path not available.
 
-def get_saver(name):
+    Notes
+    -----
+    filetype not in *filesaver_filetypes* -> '.npz'
     '''
-    Given a saver name, return a saver class. Raises ValueError if not found.
-    '''
-    if name in saver_names:
-        if name == 'NpzFileSaver':
-            return NpzFileSaver
-        elif name == 'Hdf5FileSaver':
+
+    ext = os.path.splitext(path)[1]
+    if ext not in filesaver_filetypes:
+        log.warn("Saver filetype must be '.npz' or '.hdf5'! Use '.npz'.")
+        ext = '.npz'
+        path = path + ext
+    if os.path.exists(path):
+        raise IOError("Path '%s' exists!" % path)
+    else:
+        if ext  == '.npz':
+            saver = NpzFileSaver(path)
+        elif ext == '.hdf5':
             from .hdf5file import Hdf5FileSaver
-            return Hdf5FileSaver
+            saver = Hdf5FileSaver(path)
         else:
             raise ValueError('Save ha? Who am I? Why am I here?')
-    else:
-        raise ValueError('Unknown saver cls "%s"! Did you mean one of: "%s"?'
-                         % (name, ', '.join(saver_names)))
-
+    return saver
