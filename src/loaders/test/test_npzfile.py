@@ -24,13 +24,13 @@ class TestNpzFileLoader(unittest.TestCase):
         if os.path.isfile(self.tmpfile):
             os.remove(self.tmpfile)
 
-    def test_loader_init(self):
+    def test_npzloader_init(self):
         loader = self.NpzFileLoader(self.tmpfile)
         self.assertSetEqual(set(loader.datakeys), set(DATA.keys()))
         self.assertSetEqual(set(loader.datagroups), {'test'})
         self.assertMultiLineEqual(loader.description, 'test data')
 
-    def test_loader_get(self):
+    def test_npzloader_get(self):
         loader = self.NpzFileLoader(self.tmpfile)
         self.assertTrue(
                 numpy.array_equal(loader.get('test/array'), DATA['test/array']))

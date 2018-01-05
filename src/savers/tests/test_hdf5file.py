@@ -28,7 +28,7 @@ class TestHdf5FileSaver(unittest.TestCase):
         if os.path.isfile(self.tmpfile):
             os.remove(self.tmpfile)
 
-    def test_saver_iopen_close(self):
+    def test_hdf5saver_iopen_close(self):
         saver = self.Hdf5FileSaver(self.tmpfile)
         self.assertFalse(saver.fobj)
         saver.iopen()
@@ -36,7 +36,7 @@ class TestHdf5FileSaver(unittest.TestCase):
         saver.close()
         self.assertFalse(saver.fobj)
 
-    def test_saver_write(self):
+    def test_hdf5saver_write(self):
         saver = self.Hdf5FileSaver(self.tmpfile)
         self.assertFalse(saver.write('', {'ver': '1'}))
         saver.iopen()

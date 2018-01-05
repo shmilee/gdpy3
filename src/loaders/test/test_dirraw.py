@@ -34,7 +34,7 @@ class TestDirRawLoader(unittest.TestCase):
         if os.path.isdir(self.tmpdir):
             shutil.rmtree(self.tmpdir)
 
-    def test_loader_init(self):
+    def test_dirloader_init(self):
         with self.assertRaises(IOError):
             loader = self.DirRawLoader(self.tmpdir + 'BreakSuffix')
         loader = self.DirRawLoader(self.tmpdir)
@@ -42,7 +42,7 @@ class TestDirRawLoader(unittest.TestCase):
         loader = self.DirRawLoader(self.tmpdir, filenames_filter=lambda n: True if n.endswith('.out') else False)
         self.assertSetEqual(set(loader.filenames), {'f1.out', 'd1/f2.out'})
 
-    def test_loader_get(self):
+    def test_dirloader_get(self):
         loader = self.DirRawLoader(self.tmpdir)
         with loader.get('f1.out') as f1:
             self.assertEqual(f1.readlines(), ['test1'])

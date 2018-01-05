@@ -37,13 +37,13 @@ class TestHdf5FileLoader(unittest.TestCase):
         if os.path.isfile(self.tmpfile):
             os.remove(self.tmpfile)
 
-    def test_loader_init(self):
+    def test_hdf5loader_init(self):
         loader = self.Hdf5FileLoader(self.tmpfile)
         self.assertSetEqual(set(loader.datakeys), set(DATA.keys()))
         self.assertSetEqual(set(loader.datagroups), {'test'})
         self.assertMultiLineEqual(loader.description, 'test data')
 
-    def test_loader_get(self):
+    def test_hdf5loader_get(self):
         loader = self.Hdf5FileLoader(self.tmpfile)
         self.assertTrue(
                 numpy.array_equal(loader.get('test/array'), DATA['test/array']))

@@ -23,7 +23,7 @@ class TestNpzFileSaver(unittest.TestCase):
         if os.path.isfile(self.tmpfile):
             os.remove(self.tmpfile)
 
-    def test_saver_iopen_close(self):
+    def test_npzsaver_iopen_close(self):
         saver = self.NpzFileSaver(self.tmpfile)
         self.assertFalse(saver.fobj)
         saver.iopen()
@@ -31,7 +31,7 @@ class TestNpzFileSaver(unittest.TestCase):
         saver.close()
         self.assertFalse(saver.fobj)
 
-    def test_saver_write(self):
+    def test_npzsaver_write(self):
         saver = self.NpzFileSaver(self.tmpfile)
         self.assertFalse(saver.write('', {'ver': '1'}))
         saver.iopen()
