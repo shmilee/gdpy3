@@ -29,7 +29,7 @@ class TestTarRawLoader(unittest.TestCase):
             os.remove(self.tmpfile)
 
     def test_tarloader_init(self):
-        with self.assertRaises(IOError):
+        with self.assertRaises(ValueError):
             loader = self.TarRawLoader(self.tmpfile)
         loader = self.TarRawLoader(self.tmptar)
         self.assertSetEqual(set(loader.filenames), {'f1.ignore', 'f1.out', 'd1/f2.out', 'd1/d2/f3.out'})

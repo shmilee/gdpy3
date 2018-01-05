@@ -78,7 +78,7 @@ class BaseRawLoader(object):
         if os.path.exists(path) and os.access(path, os.R_OK):
             self.path = path
             if not self._special_check_path():
-                raise IOError("Path '%s' checking failed." % path)
+                raise ValueError("Path '%s' checking failed." % path)
         else:
             raise IOError("Failed to access path '%s'." % path)
         try:
