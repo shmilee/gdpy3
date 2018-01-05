@@ -7,6 +7,7 @@ Contains TarFile raw loader class.
 '''
 
 import os
+import io
 import tarfile
 
 from ..glogger import getGLogger
@@ -40,4 +41,6 @@ class TarRawLoader(BaseRawLoader):
             [n for n in tmpobj.getnames() if tmpobj.getmember(n).isfile()])
 
     def _special_getfile(self, tmpobj, key):
-        return tmpobj.extractfile(key)
+        # bytes -> str
+        # BufferedReader -> TextIOWrapper encoding='UTF-8'
+        return io.TextIOWrapper(tmpobj.extractfile(key))
