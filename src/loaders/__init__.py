@@ -6,9 +6,10 @@ import os
 
 from ..glogger import getGLogger
 from .npzfile import NpzFileLoader
-from .base import BaseFileLoader
+from .dirraw import DirRawLoader
 
 log = getGLogger('L')
+rawloader_names = ['DirRawLoader']
 fileloader_names = ['NpzFileLoader', 'Hdf5FileLoader']
 fileloader_filetypes = ['.npz', '.hdf5']
 
