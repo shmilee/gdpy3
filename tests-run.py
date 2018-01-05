@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2017 shmilee
+# Copyright (c) 2018 shmilee
 
 import os
 import unittest
