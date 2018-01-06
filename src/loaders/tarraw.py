@@ -16,6 +16,7 @@ from .base import BaseRawLoader
 __all__ = ['TarRawLoader']
 log = getGLogger('L')
 
+
 class TarRawLoader(BaseRawLoader):
     # https://docs.python.org/3/library/tarfile.html
     '''

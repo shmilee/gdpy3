@@ -14,6 +14,7 @@ from .base import BaseFileLoader
 __all__ = ['NpzFileLoader']
 log = getGLogger('L')
 
+
 class NpzFileLoader(BaseFileLoader):
     '''
     Load pickled data from ``.npz`` file. Return a dictionary-like object.

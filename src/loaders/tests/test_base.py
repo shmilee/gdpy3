@@ -12,14 +12,16 @@ from ..base import BaseRawLoader, BaseFileLoader
 
 class ImpBaseRawLoader(BaseRawLoader):
 
-    _D ={'f1': 1, 'd2/f2': 'two', 'd3/sd3/f3': 3}
+    _D = {'f1': 1, 'd2/f2': 'two', 'd3/sd3/f3': 3}
     __slots__ = ['_special_history']
 
     class _Fcls(object):
         def __init__(self, data):
             self.data = data
+
         def close(self):
             self.data = None
+
         def read(self):
             return self.data
 
@@ -60,14 +62,17 @@ class TestBaseRawLoader(unittest.TestCase):
             BaseRawLoader(self.tmpfile)
         with self.assertRaises(IOError):
             ImpBaseRawLoader(os.path.join(self.tmpfile, 'BreakSuffix'))
-        loader=ImpBaseRawLoader(self.tmpfile)
+        loader = ImpBaseRawLoader(self.tmpfile)
         self.assertEqual(loader.path, self.tmpfile)
-        self.assertSetEqual(set(loader.filenames), set(ImpBaseRawLoader._D.keys()))
-        self.assertListEqual(loader._special_history, ['check', 'open', 'close'])
+        self.assertSetEqual(set(loader.filenames),
+                            set(ImpBaseRawLoader._D.keys()))
+        self.assertListEqual(loader._special_history,
+                             ['check', 'open', 'close'])
 
     def test_rawloader_get(self):
-        loader=ImpBaseRawLoader(self.tmpfile)
-        self.assertTrue(isinstance(loader.get('f1'), contextlib._GeneratorContextManager))
+        loader = ImpBaseRawLoader(self.tmpfile)
+        self.assertTrue(isinstance(loader.get('f1'),
+                                   contextlib._GeneratorContextManager))
         with loader.get('d2/f2') as f2, loader.get('d3/sd3/f3') as f3:
             self.assertEqual(f2.read(), 'two')
             self.assertEqual(f3.read(), 3)
@@ -116,9 +121,9 @@ class TestBaseFileLoader(unittest.TestCase):
         loader = ImpBaseFileLoader(self.tmpfile)
         self.assertTrue(loader.file == self.tmpfile)
         self.assertSetEqual(
-                set(loader.datakeys), set(ImpBaseFileLoader._D.keys()))
+            set(loader.datakeys), set(ImpBaseFileLoader._D.keys()))
         self.assertSetEqual(
-                set(loader.datagroups), set(ImpBaseFileLoader._G))
+            set(loader.datagroups), set(ImpBaseFileLoader._G))
         self.assertMultiLineEqual(loader.description, 'desc')
         self.assertEqual(len(loader.cache), 0)
 

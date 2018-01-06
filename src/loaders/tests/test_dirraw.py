@@ -7,6 +7,7 @@ import unittest
 import tempfile
 import shutil
 
+
 class TestDirRawLoader(unittest.TestCase):
     '''
     Test class DirRawLoader
@@ -27,7 +28,7 @@ class TestDirRawLoader(unittest.TestCase):
         with open(os.path.join(self.tmpdir, 'd1', 'f2.out'), mode='w') as f2:
             f2.write('test2')
         with open(os.path.join(self.tmpdir, 'd1', 'd2', 'f3.out'),
-                mode='w') as f3:
+                  mode='w') as f3:
             f3.write('test3')
 
     def tearDown(self):
@@ -38,8 +39,11 @@ class TestDirRawLoader(unittest.TestCase):
         with self.assertRaises(IOError):
             loader = self.DirRawLoader(self.tmpdir + 'BreakSuffix')
         loader = self.DirRawLoader(self.tmpdir)
-        self.assertSetEqual(set(loader.filenames), {'f1.ignore', 'f1.out', 'd1/f2.out'})
-        loader = self.DirRawLoader(self.tmpdir, filenames_filter=lambda n: True if n.endswith('.out') else False)
+        self.assertSetEqual(set(loader.filenames),
+                            {'f1.ignore', 'f1.out', 'd1/f2.out'})
+        loader = self.DirRawLoader(
+            self.tmpdir,
+            filenames_filter=lambda n: True if n.endswith('.out') else False)
         self.assertSetEqual(set(loader.filenames), {'f1.out', 'd1/f2.out'})
 
     def test_dirloader_get(self):
@@ -50,4 +54,3 @@ class TestDirRawLoader(unittest.TestCase):
             self.assertEqual(f2.read(), 'test2')
         with self.assertRaises(ValueError):
             f2.read()
-

@@ -8,6 +8,7 @@ import tempfile
 
 from ..base import BaseFileSaver
 
+
 class TestBaseFileSaver(unittest.TestCase):
     '''
     Test class BaseFileSaver
@@ -35,12 +36,12 @@ class TestBaseFileSaver(unittest.TestCase):
 
     def test_filesaver_write(self):
         saver = BaseFileSaver(self.tmpfile)
-        with open(saver.file,mode='w') as saver.fobj:
+        with open(saver.file, mode='w') as saver.fobj:
             with self.assertRaises(NotImplementedError):
                 saver.write('g', {'t': 1})
 
     def test_filesaver_close(self):
         saver = BaseFileSaver(self.tmpfile)
-        with open(saver.file,mode='w') as saver.fobj:
+        with open(saver.file, mode='w') as saver.fobj:
             with self.assertRaises(NotImplementedError):
                 saver.close()

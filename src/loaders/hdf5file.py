@@ -6,7 +6,8 @@ import numpy
 try:
     import h5py
 except ImportError as exc:
-    raise ImportError('Hdf5FileLoader requires h5py(bindings for HDF5). But %s' % exc) from None
+    raise ImportError(
+        'Hdf5FileLoader requires h5py(bindings for HDF5). But %s' % exc) from None
 
 from ..glogger import getGLogger
 from .base import BaseFileLoader

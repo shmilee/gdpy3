@@ -12,6 +12,7 @@ log = getGLogger('S')
 filesaver_names = ['NpzFileSaver', 'Hdf5FileSaver']
 filesaver_filetypes = ['.npz', '.hdf5']
 
+
 def get_filesaver(path):
     '''
     Given a saver path, return a saver instance.
@@ -30,7 +31,7 @@ def get_filesaver(path):
     if os.path.exists(path):
         raise IOError("Path '%s' exists!" % path)
     else:
-        if ext  == '.npz':
+        if ext == '.npz':
             saver = NpzFileSaver(path)
         elif ext == '.hdf5':
             from .hdf5file import Hdf5FileSaver

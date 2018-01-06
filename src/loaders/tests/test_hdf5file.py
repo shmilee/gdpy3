@@ -14,6 +14,7 @@ except ImportError:
 
 from . import DATA
 
+
 @unittest.skipUnless(HAVE_H5PY, "requires h5py")
 class TestHdf5FileLoader(unittest.TestCase):
     '''
@@ -29,7 +30,7 @@ class TestHdf5FileLoader(unittest.TestCase):
             for key in DATA.keys():
                 if key.startswith('test/'):
                     fgrp.create_dataset(key.replace('test/', ''),
-                            data=DATA[key])
+                                        data=DATA[key])
                 else:
                     h5f.create_dataset(key, data=DATA[key])
 
@@ -46,5 +47,5 @@ class TestHdf5FileLoader(unittest.TestCase):
     def test_hdf5loader_get(self):
         loader = self.Hdf5FileLoader(self.tmpfile)
         self.assertTrue(
-                numpy.array_equal(loader.get('test/array'), DATA['test/array']))
+            numpy.array_equal(loader.get('test/array'), DATA['test/array']))
         self.assertEqual(loader.get('test/float'), 3.1415)

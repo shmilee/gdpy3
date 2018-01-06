@@ -44,4 +44,3 @@ class TestNpzFileSaver(unittest.TestCase):
         inkeys = {'ver', 'num', 'list', 'group/desc'}
         outkeys = set(npz.files)
         self.assertSetEqual(inkeys, outkeys)
-

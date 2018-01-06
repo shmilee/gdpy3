@@ -14,6 +14,7 @@ from .base import BaseRawLoader
 __all__ = ['DirRawLoader']
 log = getGLogger('L')
 
+
 class DirRawLoader(BaseRawLoader):
     '''
     Load raw data from a directory. Return a dictionary-like object.

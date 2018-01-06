@@ -9,4 +9,4 @@ DATA = {
     'test/array': numpy.random.rand(3, 2),
     'test/vector': numpy.random.rand(4),
     'test/float': 3.1415,
-    }
+}

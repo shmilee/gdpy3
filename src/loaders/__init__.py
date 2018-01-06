@@ -29,7 +29,8 @@ def get_rawloader(path, filenames_filter=None):
         if tarfile.is_tarfile(path):
             loader = TarRawLoader(path, filenames_filter=filenames_filter)
         else:
-            raise ValueError("Unsupported File '%s'! Try with an tar archive!" % path)
+            raise ValueError(
+                "Unsupported File '%s'! Try with an tar archive!" % path)
     else:
         raise IOError("Can't find path '%s'!" % path)
     return loader
@@ -49,7 +50,9 @@ def get_fileloader(path, groups_filter=None):
             from .hdf5file import Hdf5FileLoader
             loader = Hdf5FileLoader(path, groups_filter=groups_filter)
         else:
-            raise ValueError('Unsupported Filetype: "%s"! Did you mean one of: "%s"?' % (ext, ', '.join(fileloader_filetypes)))
+            raise ValueError('Unsupported Filetype: "%s"! '
+                             'Did you mean one of: "%s"?'
+                             % (ext, ', '.join(fileloader_filetypes)))
     else:
         raise IOError("Can't find path '%s'!" % path)
     return loader

@@ -9,6 +9,7 @@ import numpy
 
 from . import DATA
 
+
 class TestNpzFileLoader(unittest.TestCase):
     '''
     Test class NpzFileLoader
@@ -33,5 +34,5 @@ class TestNpzFileLoader(unittest.TestCase):
     def test_npzloader_get(self):
         loader = self.NpzFileLoader(self.tmpfile)
         self.assertTrue(
-                numpy.array_equal(loader.get('test/array'), DATA['test/array']))
+            numpy.array_equal(loader.get('test/array'), DATA['test/array']))
         self.assertEqual(loader.get('test/float'), 3.1415)

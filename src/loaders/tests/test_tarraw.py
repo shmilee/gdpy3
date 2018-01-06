@@ -9,6 +9,7 @@ import tarfile
 
 TARFILE = os.path.join(os.path.dirname(__file__), 'raw.tar.gz')
 
+
 @unittest.skipUnless(tarfile.is_tarfile(TARFILE),
                      "'%s' is not a tar archive!" % TARFILE)
 class TestTarRawLoader(unittest.TestCase):
@@ -32,7 +33,8 @@ class TestTarRawLoader(unittest.TestCase):
         with self.assertRaises(ValueError):
             loader = self.TarRawLoader(self.tmpfile)
         loader = self.TarRawLoader(self.tmptar)
-        self.assertSetEqual(set(loader.filenames), {'f1.ignore', 'f1.out', 'd1/f2.out', 'd1/d2/f3.out'})
+        self.assertSetEqual(set(loader.filenames),
+                            {'f1.ignore', 'f1.out', 'd1/f2.out', 'd1/d2/f3.out'})
 
     def test_tarloader_get(self):
         loader = self.TarRawLoader(self.tmptar)
