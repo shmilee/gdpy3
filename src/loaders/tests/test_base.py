@@ -142,3 +142,8 @@ class TestBaseFileLoader(unittest.TestCase):
     def test_fileloader_find(self):
         loader = ImpBaseFileLoader(self.tmpfile)
         self.assertEqual(loader.find('g', 4), ('g3/k4',))
+
+    def test_fileloader_is_in_this(self):
+        loader = ImpBaseFileLoader(self.tmpfile)
+        self.assertTrue(loader.is_in_this('k1', 'g2/k2', 'g3/k3'))
+        self.assertFalse(loader.is_in_this('k1', 'g2/k2', 'lost-key'))

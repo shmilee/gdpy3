@@ -6,11 +6,12 @@ import os
 import tarfile
 
 from ..glogger import getGLogger
+from .base import BaseRawLoader, BaseFileLoader
 from .dirraw import DirRawLoader
 from .tarraw import TarRawLoader
 from .npzfile import NpzFileLoader
 
-__all__ = ['get_rawloader', 'get_fileloader']
+__all__ = ['get_rawloader', 'is_rawloader', 'get_fileloader', 'is_fileloader']
 log = getGLogger('L')
 rawloader_names = ['DirRawLoader', 'TarRawLoader']
 fileloader_names = ['NpzFileLoader', 'Hdf5FileLoader']
@@ -36,6 +37,13 @@ def get_rawloader(path, filenames_filter=None):
     return loader
 
 
+def is_rawloader(obj):
+    '''
+    Return True if obj is a raw loader instance, else return False.
+    '''
+    return isinstance(obj, BaseRawLoader)
+
+
 def get_fileloader(path, groups_filter=None):
     '''
     Given a file path, return a file loader instance.
@@ -56,3 +64,10 @@ def get_fileloader(path, groups_filter=None):
     else:
         raise IOError("Can't find path '%s'!" % path)
     return loader
+
+
+def is_fileloader(obj):
+    '''
+    Return True if obj is a file loader instance, else return False.
+    '''
+    return isinstance(obj, BaseFileLoader)

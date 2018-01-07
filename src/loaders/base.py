@@ -286,5 +286,16 @@ class BaseFileLoader(object):
                 filter(lambda k: True if key in k else False, result))
         return tuple(result)
 
+    def is_in_this(self, *keys):
+        '''
+        Check if all the *keys* are in this loader.
+        '''
+        result = True
+        for key in keys:
+            if key not in self.datakeys:
+                log.warn("Key '%s' not in %s!" % (key, self.file))
+                result = False
+        return result
+
     def clear_cache(self):
         self.cache = {}
