@@ -12,6 +12,7 @@ log = getGLogger('P')
 plotter_names = ['MatplotlibPlotter']
 plotter_types = ['mpl::', 'matplotlib::']
 
+
 def get_plotter(name):
     '''
     Given a str *name*, return a plotter instance.
@@ -34,5 +35,5 @@ def get_plotter(name):
     else:
         raise ValueError('Invalid name: "%s"! '
                          'Name must start with one type of: "%s".'
-                         % (name,', '.join(plotter_types)))
+                         % (name, ', '.join(plotter_types)))
     return plotter
