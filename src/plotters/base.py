@@ -51,7 +51,7 @@ class BasePlotter(object):
     def _set_style(self, style):
         self._style = []
         for sty in style:
-            if sty in self.style_available:
+            if self._check_style(sty):
                 self._style.append(sty)
             else:
                 log.warn("Ignore style '%s': %s" % (sty, 'not available'))
