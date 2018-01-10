@@ -87,7 +87,7 @@ gloggerConfig = {
             'handlers': ['console', 'file'],
             'propagate': False,
         },
-        # gdpy3.plot
+        # gdpy3.plotters
         'P': {
             'level': 'DDEBUG',
             'handlers': ['console', 'file'],
