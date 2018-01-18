@@ -16,14 +16,14 @@ from . import DATA
 
 
 @unittest.skipUnless(HAVE_H5PY, "requires h5py")
-class TestHdf5FileLoader(unittest.TestCase):
+class TestHdf5PckLoader(unittest.TestCase):
     '''
-    Test class Hdf5FileLoader
+    Test class Hdf5PckLoader
     '''
 
     def setUp(self):
-        from ..hdf5file import Hdf5FileLoader
-        self.Hdf5FileLoader = Hdf5FileLoader
+        from ..hdf5file import Hdf5PckLoader
+        self.Hdf5PckLoader = Hdf5PckLoader
         self.tmpfile = tempfile.mktemp(suffix='-test.hdf5')
         with h5py.File(self.tmpfile, 'w-') as h5f:
             fgrp = h5f.create_group('test')
@@ -39,13 +39,13 @@ class TestHdf5FileLoader(unittest.TestCase):
             os.remove(self.tmpfile)
 
     def test_hdf5loader_init(self):
-        loader = self.Hdf5FileLoader(self.tmpfile)
+        loader = self.Hdf5PckLoader(self.tmpfile)
         self.assertSetEqual(set(loader.datakeys), set(DATA.keys()))
         self.assertSetEqual(set(loader.datagroups), {'test'})
         self.assertMultiLineEqual(loader.description, 'test data')
 
     def test_hdf5loader_get(self):
-        loader = self.Hdf5FileLoader(self.tmpfile)
+        loader = self.Hdf5PckLoader(self.tmpfile)
         self.assertTrue(
             numpy.array_equal(loader.get('test/array'), DATA['test/array']))
         self.assertEqual(loader.get('test/float'), 3.1415)

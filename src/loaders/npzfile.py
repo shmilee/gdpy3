@@ -3,19 +3,20 @@
 # Copyright (c) 2018 shmilee
 
 '''
-Contains NpzFile loader class.
+Contains Npz pickled file loader class.
 '''
 
 import numpy
+import zipfile
 
 from ..glogger import getGLogger
-from .base import BaseFileLoader
+from .base import BasePckLoader
 
-__all__ = ['NpzFileLoader']
+__all__ = ['NpzPckLoader']
 log = getGLogger('L')
 
 
-class NpzFileLoader(BaseFileLoader):
+class NpzPckLoader(BasePckLoader):
     '''
     Load pickled data from ``.npz`` file. Return a dictionary-like object.
 
@@ -29,16 +30,23 @@ class NpzFileLoader(BaseFileLoader):
     '''
     __slots__ = []
 
-    def _special_openfile(self):
-        return numpy.load(self.file)
+    def _special_check_path(self):
+        if zipfile.is_zipfile(self.path):
+            return True
+        else:
+            log.error("'%s' is not a ZIP file!" % self.path)
+            return False
 
-    def _special_closefile(self, tmpobj):
+    def _special_open(self):
+        return numpy.load(self.path)
+
+    def _special_close(self, tmpobj):
         tmpobj.close()
 
     def _special_getkeys(self, tmpobj):
         return tmpobj.files
 
-    def _special_getitem(self, tmpobj, key):
+    def _special_get(self, tmpobj, key):
         value = tmpobj[key]
         if value.size == 1:
             value = value.item()

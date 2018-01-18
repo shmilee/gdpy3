@@ -2,21 +2,24 @@
 
 # Copyright (c) 2018 shmilee
 
-import numpy
+'''
+Contains Hdf5 pickled file loader class.
+'''
+
 try:
     import h5py
 except ImportError as exc:
     raise ImportError(
-        'Hdf5FileLoader requires h5py(bindings for HDF5). But %s' % exc) from None
+        'Hdf5PckLoader requires h5py(bindings for HDF5). But %s' % exc) from None
 
 from ..glogger import getGLogger
-from .base import BaseFileLoader
+from .base import BasePckLoader
 
-__all__ = ['Hdf5FileLoader']
+__all__ = ['Hdf5PckLoader']
 log = getGLogger('L')
 
 
-class Hdf5FileLoader(BaseFileLoader):
+class Hdf5PckLoader(BasePckLoader):
     '''
     Load datasets from ``.hdf5`` file. Return a dictionary-like object.
 
@@ -32,10 +35,17 @@ class Hdf5FileLoader(BaseFileLoader):
     '''
     __slots__ = []
 
-    def _special_openfile(self):
-        return h5py.File(self.file, 'r')
+    def _special_check_path(self):
+        if h5py.is_hdf5(self.path):
+            return True
+        else:
+            log.error("'%s' is not a valid HDF5 file!" % self.path)
+            return False
 
-    def _special_closefile(self, tmpobj):
+    def _special_open(self):
+        return h5py.File(self.path, 'r')
+
+    def _special_close(self, tmpobj):
         tmpobj.close()
 
     def _special_getkeys(self, tmpobj):
@@ -45,5 +55,5 @@ class Hdf5FileLoader(BaseFileLoader):
             if isinstance(obj, h5py.Dataset) else None)
         return mykeys
 
-    def _special_getitem(self, tmpobj, key):
+    def _special_get(self, tmpobj, key):
         return tmpobj[key].value
