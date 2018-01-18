@@ -41,7 +41,7 @@ class TarRawLoader(BaseRawLoader):
         return sorted(
             [n for n in tmpobj.getnames() if tmpobj.getmember(n).isfile()])
 
-    def _special_getfile(self, tmpobj, key):
+    def _special_get(self, tmpobj, key):
         # bytes -> str
         # BufferedReader -> TextIOWrapper encoding='UTF-8'
         return io.TextIOWrapper(tmpobj.extractfile(key))

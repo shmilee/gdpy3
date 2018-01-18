@@ -51,5 +51,5 @@ class DirRawLoader(BaseRawLoader):
             filenames.extend([os.path.join(_root, f) for f in _files])
         return sorted(filenames)
 
-    def _special_getfile(self, tmpobj, key):
+    def _special_get(self, tmpobj, key):
         return open(os.path.join(self.path, key))
