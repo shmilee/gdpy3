@@ -12,41 +12,41 @@ import contextlib
 
 from ..glogger import getGLogger
 
-__all__ = ['BaseRawLoader', 'BaseFileLoader']
+__all__ = ['BaseLoader', 'BaseRawLoader', 'BasePckLoader']
 log = getGLogger('L')
 
 
-class BaseRawLoader(object):
+class BaseLoader(object):
     '''
-    Load raw data from a directory or archive file.
-    Return a dictionary-like object.
+    Base class of BaseRawLoader, BasePckLoader.
 
     Attributes
     ----------
     path: str
-        path of archive file or directory
-    filenames: tuple
-        filenames in the archive file or the directory
-
-    Parameters
-    ----------
-    path: str
-        path of file or directory
-    filenames_filter: function
-        a function to filter filenames, example:
-        lambda name: True if name.endswith('.out') else False
-
-    Notes
-    -----
-    1. Method *get()* must be used as with statement context managers.
-    2. File-like object which returned by *get()* must has close method,
-       and read, readline, or readlines.
     '''
-    __slots__ = ['path', 'filenames']
+    __slots__ = ['path']
+
+    def __init__(self, path):
+        if self._check_path_access(path):
+            self.path = path
+            if not self._special_check_path():
+                raise ValueError("Path '%s' checking failed." % path)
+        else:
+            raise IOError("Failed to access path '%s'." % path)
+
+    @staticmethod
+    def _check_path_access(path):
+        '''
+        Check for access to *path*.
+        '''
+        if os.path.exists(path) and os.access(path, os.R_OK):
+            return True
+        else:
+            return False
 
     def _special_check_path(self):
         '''
-        Check the directory or archive file. Return bool.
+        Recheck the path. Return bool.
         '''
         raise NotImplementedError()
 
@@ -64,23 +64,80 @@ class BaseRawLoader(object):
 
     def _special_getkeys(self, tmpobj):
         '''
-        Return filenames in path object.
+        Return all keys in path object.
         '''
         raise NotImplementedError()
 
-    def _special_getfile(self, tmpobj, key):
+    def _special_get(self, tmpobj, item):
         '''
-        Return file-like object of filename *key* in path object.
+        Return value object of key *item* in path object.
         '''
         raise NotImplementedError()
+
+    def keys(self):
+        '''Return loader keys.'''
+        raise NotImplementedError()
+
+    def find(self, *items):
+        '''
+        Find the loader keys which contain *items*.
+        '''
+        result = self.keys()
+        for i in items:
+            i = str(i)
+            result = tuple(
+                filter(lambda k: True if i in k else False, result))
+        return tuple(result)
+
+    def __contains__(self, item):
+        '''
+        Return true if item is in loader, false otherwise.
+        '''
+        return item in self.keys()
+
+    def all_in_loader(self, *items):
+        '''
+        Check if all the *items* are in this loader.
+        '''
+        loaderkeys = self.keys()
+        result = True
+        for i in items:
+            if i not in loaderkeys:
+                log.warn("Key '%s' not in %s!" % (i, self.path))
+                result = False
+        return result
+
+
+class BaseRawLoader(BaseLoader):
+    '''
+    Load raw data from a directory or archive file.
+    Return a dictionary-like object.
+
+    Attributes
+    ----------
+    path: str
+        path of directory or archive file
+    filenames: tuple
+        filenames in the directory or archive file
+
+    Parameters
+    ----------
+    path: str
+        path of directory or file
+    filenames_filter: function
+        a function to filter filenames, example:
+        lambda name: True if name.endswith('.out') else False
+
+    Notes
+    -----
+    1. Method *get()* must be used as with statement context managers.
+    2. File-like object which returned by *get()* must has close method,
+       and read, readline, or readlines.
+    '''
+    __slots__ = ['path', 'filenames']
 
     def __init__(self, path, filenames_filter=None):
-        if os.path.exists(path) and os.access(path, os.R_OK):
-            self.path = path
-            if not self._special_check_path():
-                raise ValueError("Path '%s' checking failed." % path)
-        else:
-            raise IOError("Failed to access path '%s'." % path)
+        super(BaseRawLoader, self).__init__(path)
         try:
             log.debug("Open path %s." % self.path)
             tmpobj = self._special_open()
@@ -112,7 +169,7 @@ class BaseRawLoader(object):
             log.debug("Open path %s." % self.path)
             tmpobj = self._special_open()
             log.debug("Getting file '%s' from %s ..." % (key, self.path))
-            fileobj = self._special_getfile(tmpobj, key)
+            fileobj = self._special_get(tmpobj, key)
             yield fileobj
         except (IOError, ValueError):
             log.critical("Failed to get '%s' from %s!" %
@@ -127,70 +184,44 @@ class BaseRawLoader(object):
                 self._special_close(tmpobj)
 
 
-class BaseFileLoader(object):
+class BasePckLoader(BaseLoader):
     '''
-    Load arrays data from a file. Return a dictionary-like object.
+    Load arrays data from a pickled(packaged) data file or cache.
+    Return a dictionary-like object.
 
     Attributes
     ----------
-    file: str
-        path of the file
+    path: str
+        path of the file or cache
     datakeys: tuple
-        keys in the file, contain group name
+        keys in the loader, contain group name
     datagroups: tuple
         groups of datakeys
     description: str or None
-        description of the file, if 'description' is in datakeys
+        description of the data, if 'description' is in datakeys
     desc: alias description
     cache: dict
         cached datakeys from file
 
     Parameters
     ----------
-    file: str
-        path of the file to open
+    path: str
+        path to open
     groups_filter: function
         a function to filter datakeys, used to get datagroups
         example, lambda key: True if key.endswith('/description') else False
     '''
-    __slots__ = ['file', 'datakeys', 'datagroups',
+    __slots__ = ['path', 'datakeys', 'datagroups',
                  'desc', 'description', 'cache']
 
-    def _special_openfile(self):
-        '''
-        Return pickled object from file.
-        '''
-        raise NotImplementedError()
-
-    def _special_closefile(self, tmpobj):
-        '''
-        Close pickled object.
-        '''
-        raise NotImplementedError()
-
-    def _special_getkeys(self, tmpobj):
-        '''
-        Return datakeys in pickled object.
-        '''
-        raise NotImplementedError()
-
-    def _special_getitem(self, tmpobj, key):
-        '''
-        Return value of *key* in pickled object.
-        '''
-        raise NotImplementedError()
-
-    def __init__(self, file, groups_filter=None):
-        if os.path.isfile(file):
-            self.file = file
-        else:
-            raise IOError("Failed to find file %s." % file)
+    def __init__(self, path, groups_filter=None):
+        super(BasePckLoader, self).__init__(path)
         try:
-            log.debug("Open file %s." % self.file)
-            tmpobj = self._special_openfile()
-            log.debug("Getting datakeys from %s ..." % self.file)
+            log.debug("Open path %s." % self.path)
+            tmpobj = self._special_open()
+            log.debug("Getting datakeys from %s ..." % self.path)
             self.datakeys = tuple(self._special_getkeys(tmpobj))
-            log.debug("Getting datagroups from %s ..." % self.file)
+            log.debug("Getting datagroups from %s ..." % self.path)
             if isinstance(groups_filter, types.FunctionType):
                 datagroups = set(os.path.dirname(k)
                                  for k in self.datakeys if groups_filter(k))
@@ -198,19 +229,19 @@ class BaseFileLoader(object):
                 datagroups = set(os.path.dirname(k) for k in self.datakeys)
                 datagroups.remove('')
             self.datagroups = tuple(sorted(datagroups))
-            log.debug("Getting description of %s ..." % self.file)
+            log.debug("Getting description of %s ..." % self.path)
             if 'description' in self.datakeys:
-                self.desc = str(self._special_getitem(tmpobj, 'description'))
+                self.desc = str(self._special_get(tmpobj, 'description'))
             else:
                 self.desc = None
             self.description = self.desc
         except (IOError, ValueError):
-            log.critical("Failed to read file %s." % self.file, exc_info=1)
+            log.critical("Failed to read path %s." % self.path, exc_info=1)
             raise
         finally:
             if 'tmpobj' in dir():
-                log.debug("Close file %s." % self.file)
-                self._special_closefile(tmpobj)
+                log.debug("Close path %s." % self.path)
+                self._special_close(tmpobj)
         self.cache = {}
 
     def keys(self):
@@ -224,23 +255,23 @@ class BaseFileLoader(object):
         Get value by ``key`.
         '''
         if key not in self.datakeys:
-            raise KeyError("%s is not in '%s'" % (key, self.file))
+            raise KeyError("%s is not in '%s'" % (key, self.path))
         if key in self.cache:
             return self.cache[key]
         try:
-            log.debug("Open file %s." % self.file)
-            tmpobj = self._special_openfile()
-            log.debug("Getting key '%s' from %s ..." % (key, self.file))
-            value = self._special_getitem(tmpobj, key)
+            log.debug("Open path %s." % self.path)
+            tmpobj = self._special_open()
+            log.debug("Getting key '%s' from %s ..." % (key, self.path))
+            value = self._special_get(tmpobj, key)
             self.cache[key] = value
         except (IOError, ValueError):
             log.critical("Failed to get '%s' from %s!" %
-                         (key, self.file), exc_info=1)
+                         (key, self.path), exc_info=1)
             raise
         finally:
             if 'tmpobj' in dir():
-                log.debug("Close file %s." % self.file)
-                self._special_closefile(tmpobj)
+                log.debug("Close path %s." % self.path)
+                self._special_close(tmpobj)
         return value
 
     __getitem__ = get
@@ -254,48 +285,26 @@ class BaseFileLoader(object):
         if len(idxtodo) == 0:
             return tuple(result)
         try:
-            log.debug("Open file %s." % self.file)
-            tmpobj = self._special_openfile()
+            log.debug("Open path %s." % self.path)
+            tmpobj = self._special_open()
             for i in idxtodo:
                 key = keys[i]
-                log.debug("Getting key '%s' from %s ..." % (key, self.file))
-                value = self._special_getitem(tmpobj, key)
+                log.debug("Getting key '%s' from %s ..." % (key, self.path))
+                value = self._special_get(tmpobj, key)
                 result[i] = value
                 self.cache[key] = value
         except (IOError, ValueError):
             if 'key' in dir():
                 log.critical("Failed to get '%s' from %s!" %
-                             (key, self.file), exc_info=1)
+                             (key, self.path), exc_info=1)
             else:
-                log.critical("Failed to open '%s'!" % self.file, exc_info=1)
+                log.critical("Failed to open '%s'!" % self.path, exc_info=1)
             raise
         finally:
             if 'tmpobj' in dir():
-                log.debug("Close file %s." % self.file)
-                self._special_closefile(tmpobj)
+                log.debug("Close path %s." % self.path)
+                self._special_close(tmpobj)
         return tuple(result)
-
-    def find(self, *keys):
-        '''
-        Find the datakeys which contain ``keys``
-        '''
-        result = self.datakeys
-        for key in keys:
-            key = str(key)
-            result = tuple(
-                filter(lambda k: True if key in k else False, result))
-        return tuple(result)
-
-    def is_in_this(self, *keys):
-        '''
-        Check if all the *keys* are in this loader.
-        '''
-        result = True
-        for key in keys:
-            if key not in self.datakeys:
-                log.warn("Key '%s' not in %s!" % (key, self.file))
-                result = False
-        return result
 
     def clear_cache(self):
         self.cache = {}

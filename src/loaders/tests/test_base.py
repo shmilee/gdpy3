@@ -7,7 +7,7 @@ import unittest
 import tempfile
 import contextlib
 
-from ..base import BaseRawLoader, BaseFileLoader
+from ..base import BaseRawLoader, BasePckLoader
 
 
 class ImpBaseRawLoader(BaseRawLoader):
@@ -39,7 +39,7 @@ class ImpBaseRawLoader(BaseRawLoader):
     def _special_getkeys(self, tmpobj):
         return self._D.keys()
 
-    def _special_getfile(self, tmpobj, key):
+    def _special_get(self, tmpobj, key):
         return self._Fcls(self._D[key])
 
 
@@ -80,28 +80,41 @@ class TestBaseRawLoader(unittest.TestCase):
             with loader.get('lost-key'):
                 pass
 
+    def test_rawloader_find(self):
+        loader = ImpBaseRawLoader(self.tmpfile)
+        self.assertEqual(loader.find('d', 2), ('d2/f2',))
 
-class ImpBaseFileLoader(BaseFileLoader):
+    def test_rawloader_contains(self):
+        loader = ImpBaseRawLoader(self.tmpfile)
+        self.assertTrue('f1' in loader)
+        self.assertTrue(loader.all_in_loader('f1', 'd2/f2'))
+        self.assertFalse(loader.all_in_loader('f1', 'd2/f2', 'f3'))
+
+
+class ImpBasePckLoader(BasePckLoader):
 
     _D = {'description': 'desc', 'k1': 1, 'g2/k2': 2, 'g3/k3': 3, 'g3/k4': 4}
     _G = ('g2', 'g3')
 
-    def _special_openfile(self):
+    def _special_check_path(self):
+        return os.path.isfile(self.path)
+
+    def _special_open(self):
         return True
 
-    def _special_closefile(self, tmpobj):
+    def _special_close(self, tmpobj):
         pass
 
     def _special_getkeys(self, tmpobj):
         return tuple(self._D.keys())
 
-    def _special_getitem(self, tmpobj, key):
+    def _special_get(self, tmpobj, key):
         return self._D[key]
 
 
-class TestBaseFileLoader(unittest.TestCase):
+class TestBasePckLoader(unittest.TestCase):
     '''
-    Test class BaseFileLoader
+    Test class BasePckLoader
     '''
 
     def setUp(self):
@@ -113,37 +126,37 @@ class TestBaseFileLoader(unittest.TestCase):
         if os.path.isfile(self.tmpfile):
             os.remove(self.tmpfile)
 
-    def test_fileloader_init(self):
+    def test_pckloader_init(self):
         with self.assertRaises(NotImplementedError):
-            BaseFileLoader(self.tmpfile)
+            BasePckLoader(self.tmpfile)
         with self.assertRaises(IOError):
-            ImpBaseFileLoader(os.path.join(self.tmpfile, 'BreakSuffix'))
-        loader = ImpBaseFileLoader(self.tmpfile)
-        self.assertTrue(loader.file == self.tmpfile)
+            ImpBasePckLoader(os.path.join(self.tmpfile, 'BreakSuffix'))
+        loader = ImpBasePckLoader(self.tmpfile)
+        self.assertTrue(loader.path == self.tmpfile)
         self.assertSetEqual(
-            set(loader.datakeys), set(ImpBaseFileLoader._D.keys()))
+            set(loader.datakeys), set(ImpBasePckLoader._D.keys()))
         self.assertSetEqual(
-            set(loader.datagroups), set(ImpBaseFileLoader._G))
+            set(loader.datagroups), set(ImpBasePckLoader._G))
         self.assertMultiLineEqual(loader.description, 'desc')
         self.assertEqual(len(loader.cache), 0)
 
-    def test_fileloader_get(self):
-        loader = ImpBaseFileLoader(self.tmpfile)
+    def test_pckloader_get(self):
+        loader = ImpBasePckLoader(self.tmpfile)
         self.assertEqual(loader.get('k1'), 1)
         self.assertEqual(loader['g2/k2'], 2)
         with self.assertRaises(KeyError):
             loader.get('lost-key')
 
-    def test_fileloader_get_many(self):
-        loader = ImpBaseFileLoader(self.tmpfile)
+    def test_pckloader_get_many(self):
+        loader = ImpBasePckLoader(self.tmpfile)
         self.assertEqual(loader.get_many('k1', 'g2/k2'), (1, 2))
         self.assertTrue('k1' in loader.cache)
 
-    def test_fileloader_find(self):
-        loader = ImpBaseFileLoader(self.tmpfile)
+    def test_pckloader_find(self):
+        loader = ImpBasePckLoader(self.tmpfile)
         self.assertEqual(loader.find('g', 4), ('g3/k4',))
 
-    def test_fileloader_is_in_this(self):
-        loader = ImpBaseFileLoader(self.tmpfile)
-        self.assertTrue(loader.is_in_this('k1', 'g2/k2', 'g3/k3'))
-        self.assertFalse(loader.is_in_this('k1', 'g2/k2', 'lost-key'))
+    def test_pckloader_contains(self):
+        loader = ImpBasePckLoader(self.tmpfile)
+        self.assertTrue(loader.all_in_loader('k1', 'g2/k2', 'g3/k3'))
+        self.assertFalse(loader.all_in_loader('k1', 'g2/k2', 'lost-key'))
