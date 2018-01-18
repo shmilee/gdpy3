@@ -3,35 +3,45 @@
 # Copyright (c) 2018 shmilee
 
 import os
-import tarfile
 
 from ..glogger import getGLogger
-from .base import BaseRawLoader, BaseFileLoader
-from .dirraw import DirRawLoader
-from .tarraw import TarRawLoader
-from .npzfile import NpzFileLoader
+from . import base
 
-__all__ = ['get_rawloader', 'is_rawloader', 'get_fileloader', 'is_fileloader']
+__all__ = ['get_rawloader', 'is_rawloader', 'get_pckloader', 'is_pckloader']
 log = getGLogger('L')
-rawloader_names = ['DirRawLoader', 'TarRawLoader']
-fileloader_names = ['NpzFileLoader', 'Hdf5FileLoader']
-fileloader_filetypes = ['.npz', '.hdf5']
+rawloader_names = ['DirRawLoader', 'TarRawLoader', 'SftpRawLoader']
+pckloader_names = ['NpzPckLoader', 'Hdf5PckLoader']
+pckloader_types = ['.npz', '.hdf5']
 
 
 def get_rawloader(path, filenames_filter=None):
     '''
     Given a path, return a raw loader instance.
-    Raises IOError if path not found, ValueError if filetype not supported.
+    Raises IOError if path not found, ValueError if path type not supported.
+
+    Notes
+    -----
+    *path* types:
+    1. local directory
+    2. tar archive file
+    3. directory in remote SSH server
+       format: 'sftp://username[:passwd]@host[:port]##remote/path'
     '''
 
     if os.path.isdir(path):
+        from .dirraw import DirRawLoader
         loader = DirRawLoader(path, filenames_filter=filenames_filter)
     elif os.path.isfile(path):
+        import tarfile
         if tarfile.is_tarfile(path):
+            from .tarraw import TarRawLoader
             loader = TarRawLoader(path, filenames_filter=filenames_filter)
         else:
             raise ValueError(
                 "Unsupported File '%s'! Try with an tar archive!" % path)
+    elif path.startswith('sftp://'):
+        from .sftpraw import SftpRawLoader
+        loader = SftpRawLoader(path, filenames_filter=filenames_filter)
     else:
         raise IOError("Can't find path '%s'!" % path)
     return loader
@@ -41,33 +51,34 @@ def is_rawloader(obj):
     '''
     Return True if obj is a raw loader instance, else return False.
     '''
-    return isinstance(obj, BaseRawLoader)
+    return isinstance(obj, base.BaseRawLoader)
 
 
-def get_fileloader(path, groups_filter=None):
+def get_pckloader(path, groups_filter=None):
     '''
-    Given a file path, return a file loader instance.
-    Raises IOError if path not found, ValueError if filetype not supported.
+    Given a file or cache path, return a pickled loader instance.
+    Raises IOError if path not found, ValueError if path type not supported.
     '''
 
     if os.path.isfile(path):
         ext = os.path.splitext(path)[1]
         if ext == '.npz':
-            loader = NpzFileLoader(path, groups_filter=groups_filter)
+            from .npzfile import NpzPckLoader
+            loader = NpzPckLoader(path, groups_filter=groups_filter)
         elif ext == '.hdf5':
-            from .hdf5file import Hdf5FileLoader
-            loader = Hdf5FileLoader(path, groups_filter=groups_filter)
+            from .hdf5file import Hdf5PckLoader
+            loader = Hdf5PckLoader(path, groups_filter=groups_filter)
         else:
             raise ValueError('Unsupported Filetype: "%s"! '
                              'Did you mean one of: "%s"?'
-                             % (ext, ', '.join(fileloader_filetypes)))
+                             % (ext, ', '.join(pckloader_types)))
     else:
         raise IOError("Can't find path '%s'!" % path)
     return loader
 
 
-def is_fileloader(obj):
+def is_pckloader(obj):
     '''
-    Return True if obj is a file loader instance, else return False.
+    Return True if obj is a pickled loader instance, else return False.
     '''
-    return isinstance(obj, BaseFileLoader)
+    return isinstance(obj, base.BasePckLoader)
