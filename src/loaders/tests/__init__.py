@@ -10,3 +10,6 @@ DATA = {
     'test/vector': numpy.random.rand(4),
     'test/float': 3.1415,
 }
+
+# SFTP_PATH = 'sftp://user[:passwd]@host[:port]##test/path'
+SFTP_PATH = None
