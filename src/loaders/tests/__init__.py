@@ -11,5 +11,14 @@ DATA = {
     'test/float': 3.1415,
 }
 
+DATA_C = {
+    'description': 'test data',
+    'test': {
+        'array': DATA['test/array'],
+        'vector': DATA['test/vector'],
+        'float': 3.1415,
+    },
+}
+
 # SFTP_PATH = 'sftp://user[:passwd]@host[:port]##test/path'
 SFTP_PATH = None
