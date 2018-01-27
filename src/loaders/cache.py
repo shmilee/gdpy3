@@ -30,8 +30,12 @@ class CachePckLoader(BasePckLoader):
         return True
 
     def _special_check_path(self):
-        self.path = 'dict.cache'
-        return True
+        if isinstance(self.path, dict):
+            self.path = 'dict.cache'
+            return True
+        else:
+            log.error("'%s' is not a dict!" % self.path)
+            return False
 
     def _special_open(self):
         return self._cache_dict
