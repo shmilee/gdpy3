@@ -227,7 +227,8 @@ class BasePckLoader(BaseLoader):
                                  for k in self.datakeys if groups_filter(k))
             else:
                 datagroups = set(os.path.dirname(k) for k in self.datakeys)
-                datagroups.remove('')
+                if '' in datagroups:
+                    datagroups.remove('')
             self.datagroups = tuple(sorted(datagroups))
             log.debug("Getting description of %s ..." % self.path)
             if 'description' in self.datakeys:
