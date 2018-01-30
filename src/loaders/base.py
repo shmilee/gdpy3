@@ -207,14 +207,20 @@ class BasePckLoader(BaseLoader):
     ----------
     path: str
         path to open
-    groups_filter: function
-        a function to filter datakeys, used to get datagroups
-        example, lambda key: True if key.endswith('/description') else False
+    datagroups_filter: function
+        a function to filter datagroups
+        example, lambda group: False if group in ['ex1', 'ex2'] else True
     '''
     __slots__ = ['path', 'datakeys', 'datagroups',
                  'desc', 'description', 'cache']
 
-    def __init__(self, path, groups_filter=None):
+    def _special_getgroups(self, tmpobj):
+        '''
+        Return all keys' groups in path object.
+        '''
+        return set(os.path.dirname(k) for k in self.datakeys)
+
+    def __init__(self, path, datagroups_filter=None):
         super(BasePckLoader, self).__init__(path)
         try:
             log.debug("Open path %s." % self.path)
@@ -222,13 +228,11 @@ class BasePckLoader(BaseLoader):
             log.debug("Getting datakeys from %s ..." % self.path)
             self.datakeys = tuple(self._special_getkeys(tmpobj))
             log.debug("Getting datagroups from %s ..." % self.path)
-            if isinstance(groups_filter, types.FunctionType):
-                datagroups = set(os.path.dirname(k)
-                                 for k in self.datakeys if groups_filter(k))
-            else:
-                datagroups = set(os.path.dirname(k) for k in self.datakeys)
-                if '' in datagroups:
-                    datagroups.remove('')
+            datagroups = list(self._special_getgroups(tmpobj))
+            if isinstance(datagroups_filter, types.FunctionType):
+                datagroups = list(filter(datagroups_filter, datagroups))
+            if '' in datagroups:
+                datagroups.remove('')
             self.datagroups = tuple(sorted(datagroups))
             log.debug("Getting description of %s ..." % self.path)
             if 'description' in self.datakeys:

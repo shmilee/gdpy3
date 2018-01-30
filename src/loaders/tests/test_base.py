@@ -139,6 +139,11 @@ class TestBasePckLoader(unittest.TestCase):
             set(loader.datagroups), set(ImpBasePckLoader._G))
         self.assertMultiLineEqual(loader.description, 'desc')
         self.assertEqual(len(loader.cache), 0)
+        loader = ImpBasePckLoader(
+            self.tmpfile,
+            datagroups_filter=lambda g: False if g == 'g2' else True)
+        self.assertSetEqual(
+            set(loader.datagroups), {'g3'})
 
     def test_pckloader_get(self):
         loader = ImpBasePckLoader(self.tmpfile)

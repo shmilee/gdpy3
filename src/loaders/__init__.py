@@ -54,7 +54,7 @@ def is_rawloader(obj):
     return isinstance(obj, base.BaseRawLoader)
 
 
-def get_pckloader(path, groups_filter=None):
+def get_pckloader(path, datagroups_filter=None):
     '''
     Given a file or cache path, return a pickled loader instance.
     Raises IOError if path not found, ValueError if path type not supported.
@@ -71,17 +71,17 @@ def get_pckloader(path, groups_filter=None):
         ext = os.path.splitext(path)[1]
         if ext == '.npz':
             from .npzfile import NpzPckLoader
-            loader = NpzPckLoader(path, groups_filter=groups_filter)
+            loader = NpzPckLoader(path, datagroups_filter=datagroups_filter)
         elif ext == '.hdf5':
             from .hdf5file import Hdf5PckLoader
-            loader = Hdf5PckLoader(path, groups_filter=groups_filter)
+            loader = Hdf5PckLoader(path, datagroups_filter=datagroups_filter)
         else:
             raise ValueError('Unsupported Filetype: "%s"! '
                              'Did you mean one of: "%s"?'
                              % (ext, ', '.join(pckloader_types[1:])))
     elif isinstance(path, dict):
         from .cache import CachePckLoader
-        loader = CachePckLoader(path, groups_filter=groups_filter)
+        loader = CachePckLoader(path, datagroups_filter=datagroups_filter)
     else:
         raise IOError("Can't find path '%s'!" % path)
     return loader

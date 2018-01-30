@@ -52,6 +52,9 @@ class CachePckLoader(BasePckLoader):
                 mykeys.append(k)
         return mykeys
 
+    def _special_getgroups(self, tmpobj):
+        return [k for k in tmpobj.keys() if isinstance(tmpobj[k], dict)]
+
     def _special_get(self, tmpobj, key):
         keyl = key.strip('/').split('/')
         if len(keyl) == 1:
