@@ -2,6 +2,35 @@
 
 # Copyright (c) 2018 shmilee
 
+'''
+This is the subpackage ``loaders`` of gdpy3.
+It contains two kinds of loaders.
+
+1. ``RawLoader``, get by :func:`get_rawloader`.
+   ``RawLoader`` has attributes
+   :attr:`base.BaseRawLoader.path``,
+   :attr:`base.BaseRawLoader.filenames`
+   and methods
+   :meth:`base.BaseRawLoader.keys`,
+   :meth:`base.BaseRawLoader.get`,
+   :meth:`base.BaseLoader.find`,
+   :meth:`base.BaseLoader.all_in_loader`.
+
+2. ``PckLoader``, get by :func:`get_pckloader`.
+   ``PckLoader`` has attributes
+   :attr:`base.BasePckLoader.path``,
+   :attr:`base.BasePckLoader.datakeys`,
+   :attr:`base.BasePckLoader.datagroups`,
+   :attr:`base.BasePckLoader.description`,
+   :attr:`base.BasePckLoader.cache`,
+   and methods
+   :meth:`base.BasePckLoader.keys`,
+   :meth:`base.BasePckLoader.get`,
+   :meth:`base.BasePckLoader.get_many`,
+   :meth:`base.BaseLoader.find`,
+   :meth:`base.BaseLoader.all_in_loader`.
+'''
+
 import os
 
 from ..glogger import getGLogger
@@ -57,7 +86,7 @@ def is_rawloader(obj):
 
 def get_pckloader(path, datagroups_filter=None):
     '''
-    Given a file or cache path, return a pickled loader instance.
+    Given a file path or dict cache, return a pickled loader instance.
     Raises IOError if path not found, ValueError if path type not supported.
 
     Notes
