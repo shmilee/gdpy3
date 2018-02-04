@@ -28,6 +28,7 @@ def get_rawloader(path, filenames_filter=None):
        format: 'sftp://username[:passwd]@host[:port]##remote/path'
     '''
 
+    path = str(path)
     if os.path.isdir(path):
         from .dirraw import DirRawLoader
         loader = DirRawLoader(path, filenames_filter=filenames_filter)
@@ -70,17 +71,17 @@ def get_pckloader(path, datagroups_filter=None):
     if isinstance(path, str) and os.path.isfile(path):
         ext = os.path.splitext(path)[1]
         if ext == '.npz':
-            from .npzfile import NpzPckLoader
+            from .npzpck import NpzPckLoader
             loader = NpzPckLoader(path, datagroups_filter=datagroups_filter)
         elif ext == '.hdf5':
-            from .hdf5file import Hdf5PckLoader
+            from .hdf5pck import Hdf5PckLoader
             loader = Hdf5PckLoader(path, datagroups_filter=datagroups_filter)
         else:
             raise ValueError('Unsupported Filetype: "%s"! '
                              'Did you mean one of: "%s"?'
                              % (ext, ', '.join(pckloader_types[1:])))
     elif isinstance(path, dict):
-        from .cache import CachePckLoader
+        from .cachepck import CachePckLoader
         loader = CachePckLoader(path, datagroups_filter=datagroups_filter)
     else:
         raise IOError("Can't find path '%s'!" % path)

@@ -16,7 +16,7 @@ class TestNpzPckLoader(unittest.TestCase):
     '''
 
     def setUp(self):
-        from ..npzfile import NpzPckLoader
+        from ..npzpck import NpzPckLoader
         self.NpzPckLoader = NpzPckLoader
         self.tmpfile = tempfile.mktemp(suffix='-test.npz')
         numpy.savez_compressed(self.tmpfile, **DATA)

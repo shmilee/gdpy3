@@ -14,7 +14,7 @@ class TestCachePckLoader(unittest.TestCase):
     '''
 
     def setUp(self):
-        from ..cache import CachePckLoader
+        from ..cachepck import CachePckLoader
         self.CachePckLoader = CachePckLoader
 
     def test_cacheloader_init(self):

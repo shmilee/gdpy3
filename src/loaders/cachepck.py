@@ -3,7 +3,7 @@
 # Copyright (c) 2018 shmilee
 
 '''
-Contains pickled cache loader class.
+Contains cache pickled dict loader class.
 '''
 
 from ..glogger import getGLogger

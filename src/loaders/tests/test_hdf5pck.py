@@ -22,7 +22,7 @@ class TestHdf5PckLoader(unittest.TestCase):
     '''
 
     def setUp(self):
-        from ..hdf5file import Hdf5PckLoader
+        from ..hdf5pck import Hdf5PckLoader
         self.Hdf5PckLoader = Hdf5PckLoader
         self.tmpfile = tempfile.mktemp(suffix='-test.hdf5')
         with h5py.File(self.tmpfile, 'w-') as h5f:
