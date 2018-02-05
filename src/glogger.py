@@ -38,7 +38,7 @@ gloggerConfig = {
         'detailed': {
             'class': 'logging.Formatter',
             #'format': '[%(asctime)s] [%(name)s] [%(module)-9s %(lineno)-3d] %(levelname)-7s %(message)s',
-            'format': '[%(asctime)s] [%(name)s] [%(module)-9s] %(levelname)-7s %(message)s',
+            'format': '[%(asctime)s] [%(name)s] [%(module)s] %(levelname)s %(message)s',
             'datefmt': '%Y-%m-%d %H:%M:%S',
         },
         'simple': {
