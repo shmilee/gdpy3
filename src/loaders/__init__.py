@@ -53,7 +53,8 @@ def get_rawloader(path, filenames_filter=None):
     *path* types:
     1. local directory
     2. tar archive file
-    3. directory in remote SSH server
+    3. zip archive file
+    4. directory in remote SSH server
        format: 'sftp://username[:passwd]@host[:port]##remote/path'
     '''
 
@@ -63,9 +64,13 @@ def get_rawloader(path, filenames_filter=None):
         loader = DirRawLoader(path, filenames_filter=filenames_filter)
     elif os.path.isfile(path):
         import tarfile
+        import zipfile
         if tarfile.is_tarfile(path):
             from .tarraw import TarRawLoader
             loader = TarRawLoader(path, filenames_filter=filenames_filter)
+        elif zipfile.is_zipfile(path):
+            from .zipraw import ZipRawLoader
+            loader = ZipRawLoader(path, filenames_filter=filenames_filter)
         else:
             raise ValueError(
                 "Unsupported File '%s'! Try with an tar archive!" % path)
