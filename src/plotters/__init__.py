@@ -2,6 +2,26 @@
 
 # Copyright (c) 2018 shmilee
 
+'''
+This is the subpackage ``plotters`` of gdpy3.
+``plotter``, get by :func:`get_plotter`, has attributes
+:attr:`base.BasePlotter.name``,
+:attr:`base.BasePlotter.style_available`,
+:attr:`base.BasePlotter.style``,
+:attr:`base.BasePlotter.figures``,
+:attr:`base.BasePlotter.example_axes``
+and methods
+:meth:`base.BasePlotter.check_style`,
+:meth:`base.BasePlotter.filter_style`,
+:meth:`base.BasePlotter.param_from_style`,
+:meth:`base.BasePlotter.add_axes`,
+:meth:`base.BasePlotter.create_figure`,
+:meth:`base.BasePlotter.get_figure`,
+:meth:`base.BasePlotter.show_figure`,
+:meth:`base.BasePlotter.close_figure`,
+:meth:`base.BasePlotter.save_figure`,
+'''
+
 import os
 
 from ..glogger import getGLogger
@@ -20,6 +40,11 @@ def get_plotter(name):
     The name must start with one type of ``plotter_types``,
     for example 'mpl::any-string-here'.
     Raises ValueError if name invalid or type not supported.
+
+    Notes
+    -----
+    plotter types:
+    1. 'mpl::' and 'matplotlib::' for :class:`mplplotter.MatplotlibPlotter`.
     '''
     sep = '::'
     name = str(name)
