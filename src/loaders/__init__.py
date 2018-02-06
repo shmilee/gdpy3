@@ -38,7 +38,9 @@ from . import base
 
 __all__ = ['get_rawloader', 'is_rawloader', 'get_pckloader', 'is_pckloader']
 log = getGLogger('L')
-rawloader_names = ['DirRawLoader', 'TarRawLoader', 'SftpRawLoader']
+rawloader_names = ['DirRawLoader', 'TarRawLoader', 'ZipRawLoader',
+                   'SftpRawLoader']
+rawloader_types = ['directory', 'tarfile', 'zipfile', 'sftp.directory']
 pckloader_names = ['CachePckLoader', 'NpzPckLoader', 'Hdf5PckLoader']
 pckloader_types = ['.cache', '.npz', '.hdf5']
 
@@ -59,7 +61,10 @@ def get_rawloader(path, filenames_filter=None):
     '''
 
     path = str(path)
-    if os.path.isdir(path):
+    if path.startswith('sftp://'):
+        from .sftpraw import SftpRawLoader
+        loader = SftpRawLoader(path, filenames_filter=filenames_filter)
+    elif os.path.isdir(path):
         from .dirraw import DirRawLoader
         loader = DirRawLoader(path, filenames_filter=filenames_filter)
     elif os.path.isfile(path):
@@ -72,11 +77,8 @@ def get_rawloader(path, filenames_filter=None):
             from .zipraw import ZipRawLoader
             loader = ZipRawLoader(path, filenames_filter=filenames_filter)
         else:
-            raise ValueError(
-                "Unsupported File '%s'! Try with an tar archive!" % path)
-    elif path.startswith('sftp://'):
-        from .sftpraw import SftpRawLoader
-        loader = SftpRawLoader(path, filenames_filter=filenames_filter)
+            raise ValueError('Unsupported File "%s"! Try with one of: "%s"!'
+                             % (path, ', '.join(rawloader_types[1:-1])))
     else:
         raise IOError("Can't find path '%s'!" % path)
     return loader
@@ -102,7 +104,10 @@ def get_pckloader(path, datagroups_filter=None):
     3. dict object
     '''
 
-    if isinstance(path, str) and os.path.isfile(path):
+    if isinstance(path, dict):
+        from .cachepck import CachePckLoader
+        loader = CachePckLoader(path, datagroups_filter=datagroups_filter)
+    elif isinstance(path, str) and os.path.isfile(path):
         ext = os.path.splitext(path)[1]
         if ext == '.npz':
             from .npzpck import NpzPckLoader
@@ -114,9 +119,6 @@ def get_pckloader(path, datagroups_filter=None):
             raise ValueError('Unsupported Filetype: "%s"! '
                              'Did you mean one of: "%s"?'
                              % (ext, ', '.join(pckloader_types[1:])))
-    elif isinstance(path, dict):
-        from .cachepck import CachePckLoader
-        loader = CachePckLoader(path, datagroups_filter=datagroups_filter)
     else:
         raise IOError("Can't find path '%s'!" % path)
     return loader
