@@ -64,8 +64,8 @@ setup(
         'ipynbtool': ['ipython[notebook]'],
     },
     package_data={
-        'gdpy3': ['plot/enginelib/mpl-stylelib/*.mplstyle',
-                  'plot/enginelib/mpl-stylelib/readme.txt']
+        'gdpy3.plotters': ['*-stylelib/gdpy3-*.*style',
+                           '*-stylelib/readme.txt'],
     },
     data_files=[],
     entry_points={
