@@ -24,10 +24,10 @@ class Hdf5PckSaver(BasePckSaver):
     _extension = '.hdf5'
 
     def _open_append(self):
-        return h5py.File(self.file, 'r+')
+        return h5py.File(self.path, 'r+')
 
     def _open_new(self):
-        return h5py.File(self.file, 'w-')
+        return h5py.File(self.path, 'w-')
 
     def _write(self, group, data):
         try:
@@ -54,6 +54,3 @@ class Hdf5PckSaver(BasePckSaver):
             self._storeobj.flush()
         except Exception:
             log.error("Failed to save data of '%s'!" % group, exc_info=1)
-
-    def _close(self):
-        self._storeobj.close()
