@@ -3,7 +3,7 @@
 # Copyright (c) 2018 shmilee
 
 '''
-Contains NpzFile saver class.
+Contains Npz pickled file saver class.
 '''
 
 import os
@@ -12,13 +12,13 @@ import zipfile
 import tempfile
 
 from ..glogger import getGLogger
-from .base import BaseFileSaver
+from .base import BasePckSaver
 
-__all__ = ['NpzFileSaver']
+__all__ = ['NpzPckSaver']
 log = getGLogger('S')
 
 
-class NpzFileSaver(BaseFileSaver):
+class NpzPckSaver(BasePckSaver):
     # https://docs.scipy.org/doc/numpy/reference/generated/numpy.savez_compressed.html
     # /usr/lib/python3.x/site-packages/numpy/lib/npyio.py, funtion _savez
     '''
@@ -29,14 +29,14 @@ class NpzFileSaver(BaseFileSaver):
 
     def _open_append(self):
         return numpy.lib.npyio.zipfile_factory(
-            self.file, mode="a", compression=zipfile.ZIP_DEFLATED)
+            self.path, mode="a", compression=zipfile.ZIP_DEFLATED)
 
     def _open_new(self):
         return numpy.lib.npyio.zipfile_factory(
-            self.file, mode="w", compression=zipfile.ZIP_DEFLATED)
+            self.path, mode="w", compression=zipfile.ZIP_DEFLATED)
 
     def _write(self, group, data):
-        file_dir, file_prefix = os.path.split(self.file)
+        file_dir, file_prefix = os.path.split(self.path)
         fd, tmpfile = tempfile.mkstemp(
             prefix=file_prefix, dir=file_dir, suffix='-numpy.npy')
         os.close(fd)
@@ -55,7 +55,7 @@ class NpzFileSaver(BaseFileSaver):
                     fid.close()
                     fid = None
                     log.ddebug("Writting %s ..." % fname)
-                    self.fobj.write(tmpfile, arcname=fname)
+                    self._storeobj.write(tmpfile, arcname=fname)
                 except Exception:
                     log.error("Failed to write %s." % fname, exc_info=1)
                 finally:
@@ -65,6 +65,3 @@ class NpzFileSaver(BaseFileSaver):
             log.error("Failed to save data of '%s'!" % group, exc_info=1)
         finally:
             os.remove(tmpfile)
-
-    def _close(self):
-        self.fobj.close()
