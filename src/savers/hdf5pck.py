@@ -6,17 +6,16 @@ import numpy
 try:
     import h5py
 except ImportError as exc:
-    raise ImportError(
-        'Hdf5FileSaver requires h5py(bindings for HDF5). But %s' % exc) from None
+    raise ImportError('Hdf5PckSaver requires h5py. But %s' % exc) from None
 
 from ..glogger import getGLogger
-from .base import BaseFileSaver
+from .base import BasePckSaver
 
-__all__ = ['Hdf5FileSaver']
+__all__ = ['Hdf5PckSaver']
 log = getGLogger('S')
 
 
-class Hdf5FileSaver(BaseFileSaver):
+class Hdf5PckSaver(BasePckSaver):
     # http://docs.h5py.org/en/latest/index.html
     '''
     Save dict data with a group name to a HDF5 file.
@@ -33,17 +32,17 @@ class Hdf5FileSaver(BaseFileSaver):
     def _write(self, group, data):
         try:
             if group in ('/', ''):
-                fgrp = self.fobj
+                fgrp = self._storeobj
                 for key in data.keys():
-                    if key in self.fobj:
+                    if key in self._storeobj:
                         log.ddebug("Delete dataset '/%s'." % key)
-                        self.fobj.__delitem__(key)
+                        self._storeobj.__delitem__(key)
             else:
-                if group in self.fobj:
+                if group in self._storeobj:
                     log.ddebug("Delete group '/%s'." % group)
-                    self.fobj.__delitem__(group)
+                    self._storeobj.__delitem__(group)
                 log.ddebug("Create group '/%s'." % group)
-                fgrp = self.fobj.create_group(group)
+                fgrp = self._storeobj.create_group(group)
             for key, val in data.items():
                 log.ddebug("Create dataset '%s/%s'." % (fgrp.name, key))
                 if isinstance(val, (list, numpy.ndarray)):
@@ -52,9 +51,9 @@ class Hdf5FileSaver(BaseFileSaver):
                                         compression_opts=9)
                 else:
                     fgrp.create_dataset(key, data=val)
-            self.fobj.flush()
+            self._storeobj.flush()
         except Exception:
             log.error("Failed to save data of '%s'!" % group, exc_info=1)
 
     def _close(self):
-        self.fobj.close()
+        self._storeobj.close()
