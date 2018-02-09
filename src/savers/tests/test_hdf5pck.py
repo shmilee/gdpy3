@@ -13,31 +13,31 @@ except ImportError:
 
 
 @unittest.skipUnless(HAVE_H5PY, "requires h5py")
-class TestHdf5FileSaver(unittest.TestCase):
+class TestHdf5PckSaver(unittest.TestCase):
     '''
-    Test class Hdf5FileSaver
+    Test class Hdf5PckSaver
     '''
 
     def setUp(self):
-        from ..hdf5file import Hdf5FileSaver
-        self.Hdf5FileSaver = Hdf5FileSaver
+        from ..hdf5pck import Hdf5PckSaver
+        self.PckSaver = Hdf5PckSaver
         self.tmp = tempfile.mktemp(suffix='-test')
-        self.tmpfile = self.tmp + Hdf5FileSaver._extension
+        self.tmpfile = self.tmp + Hdf5PckSaver._extension
 
     def tearDown(self):
         if os.path.isfile(self.tmpfile):
             os.remove(self.tmpfile)
 
     def test_hdf5saver_iopen_close(self):
-        saver = self.Hdf5FileSaver(self.tmpfile)
-        self.assertFalse(saver.fobj)
+        saver = self.PckSaver(self.tmpfile)
+        self.assertFalse(saver.status)
         saver.iopen()
-        self.assertTrue(saver.fobj)
+        self.assertTrue(saver.status)
         saver.close()
-        self.assertFalse(saver.fobj)
+        self.assertFalse(saver.status)
 
     def test_hdf5saver_write(self):
-        saver = self.Hdf5FileSaver(self.tmpfile)
+        saver = self.PckSaver(self.tmpfile)
         self.assertFalse(saver.write('', {'ver': '1'}))
         saver.iopen()
         self.assertFalse(saver.write('/', []))
@@ -45,10 +45,19 @@ class TestHdf5FileSaver(unittest.TestCase):
         self.assertTrue(saver.write('/', {'num': 100, 'list': [1, 2, 3]}))
         self.assertTrue(saver.write('group', {'desc': 'desc'}))
         saver.close()
-        hdf5 = h5py.File(saver.file, 'r')
+        hdf5 = h5py.File(saver.get_store(), 'r')
         inkeys = {'ver', 'num', 'list', 'group/desc'}
         outkeys = set()
         hdf5.visititems(
             lambda name, obj: outkeys.add(name)
             if isinstance(obj, h5py.Dataset) else None)
         self.assertSetEqual(inkeys, outkeys)
+
+    def test_hdf5saver_with(self):
+        saver = self.PckSaver(self.tmpfile)
+        self.assertFalse(saver.status)
+        with saver:
+            self.assertIsNotNone(saver._storeobj)
+            self.assertTrue(saver.status)
+        self.assertIsNone(saver._storeobj)
+        self.assertFalse(saver.status)
