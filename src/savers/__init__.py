@@ -3,6 +3,15 @@
 # Copyright (c) 2018 shmilee
 
 '''
+This is the subpackage ``savers`` of gdpy3.
+``PckSaver``, get by :func:`get_pcksaver`, has attributes
+:attr:`base.BasePckSaver.path``,
+:attr:`base.BasePckSaver.status`
+and methods
+:meth:`base.BasePckSaver.iopen`,
+:meth:`base.BasePckSaver.write`,
+:meth:`base.BasePckSaver.close`,
+:meth:`base.BasePckSaver.get_store`.
 '''
 
 import os
