@@ -2,40 +2,48 @@
 
 # Copyright (c) 2018 shmilee
 
+'''
+'''
+
 import os
 
 from ..glogger import getGLogger
-from .npzfile import NpzFileSaver
 
-__all__ = ['get_filesaver']
+__all__ = ['get_pcksaver']
 log = getGLogger('S')
-filesaver_names = ['NpzFileSaver', 'Hdf5FileSaver']
-filesaver_filetypes = ['.npz', '.hdf5']
+pcksaver_names = ['CachePckSaver', 'NpzPckSaver', 'Hdf5PckSaver']
+pcksaver_types = ['.cache', '.npz', '.hdf5']
 
 
-def get_filesaver(path):
+def get_pcksaver(path):
     '''
     Given a saver path, return a saver instance.
-    Raises IOError if path not available.
+    Raises ValueError if path type not supported.
 
     Notes
     -----
-    filetype not in *filesaver_filetypes* -> '.npz'
+    *path* types:
+    1. '.cache', dict cache name
+    2. '.npz', file path
+    3. '.hdf5', file path
     '''
-
+    path = str(path)
     ext = os.path.splitext(path)[1]
-    if ext not in filesaver_filetypes:
-        log.warn("Saver filetype must be '.npz' or '.hdf5'! Use '.npz'.")
+    if ext not in pcksaver_types:
+        log.warn("PckSaver type must be in '%s'! Use default '.npz'."
+                 % ', '.join(pcksaver_types))
         ext = '.npz'
         path = path + ext
-    if os.path.exists(path):
-        raise IOError("Path '%s' exists!" % path)
+
+    if ext == '.cache':
+        from .cachepck import CachePckSaver
+        saver = CachePckSaver(path)
+    elif ext == '.npz':
+        from .npzpck import NpzPckSaver
+        saver = NpzPckSaver(path)
+    elif ext == '.hdf5':
+        from .hdf5pck import Hdf5PckSaver
+        saver = Hdf5PckSaver(path)
     else:
-        if ext == '.npz':
-            saver = NpzFileSaver(path)
-        elif ext == '.hdf5':
-            from .hdf5file import Hdf5FileSaver
-            saver = Hdf5FileSaver(path)
-        else:
-            raise ValueError('Save ha? Who am I? Why am I here?')
+        raise ValueError('Save ha? Who am I? Why am I here?')
     return saver
