@@ -57,6 +57,7 @@ class BaseCore(object):
 
     @classmethod
     def match_files(cls, rawloader):
+        '''Return files matched with this class in *rawloader*.'''
         if not is_rawloader(rawloader):
             raise ValueError("Not a rawloader object!")
         files = []
@@ -68,6 +69,7 @@ class BaseCore(object):
 
     @classmethod
     def match_groups(cls, pckloader):
+        '''Return groups matched with this class in *pckloader*.'''
         if not is_pckloader(pckloader):
             raise ValueError("Not a pckloader object!")
         groups = []
@@ -77,13 +79,32 @@ class BaseCore(object):
         return groups
 
     @classmethod
+    def _check_filestr(cls, file):
+        '''If *file* match :attr:`filepatterns`'''
+        if not isinstance(file, str):
+            log.error("'file' should be str!")
+            return False
+        result = False
+        for pat in cls.filepatterns:
+            if re.match(pat, file):
+                result = True
+        if not result:
+            log.error("Invalid 'file' str: %s, its pattern: '%s'."
+                      % (file, cls.filepatterns))
+        return result
+
+    @classmethod
     def _check_groupstr(cls, group):
+        '''If *group* match :attr:`groupattern`'''
         if not isinstance(group, str):
-            raise ValueError("'group' should be str!")
-        if not re.match(cls.grouppattern, group):
-            raise ValueError("Invalid 'group' str, its pattern: '%s'."
-                             % cls.grouppattern)
-        return True
+            log.error("'group' should be str!")
+            return False
+        if re.match(cls.grouppattern, group):
+            return True
+        else:
+            log.error("Invalid 'group' str: %s, its pattern: '%s'."
+                      % (group, cls.grouppattern))
+            return False
 
     def set_dig_args(self, rawloader, file, group=None):
         '''Set :meth:`dig` arguments.'''
@@ -94,11 +115,22 @@ class BaseCore(object):
             if not isinstance(file, str):
                 raise ValueError("'file' should be str, not '%s'!"
                                  % type(file))
+            if file not in rawloader:
+                raise ValueError("'%s' is not in rawloader: %s!"
+                                 % (file, rawloader.path))
+            if not self._check_filestr(file):
+                raise ValueError("Invalid 'file' str: %s!" % file)
             self.file = file
         elif self.nfiles == '+':
             if not isinstance(file, list):
                 raise ValueError("'file' should be list, not '%s'!"
                                  % type(file))
+            for f in file:
+                if f not in rawloader:
+                    raise ValueError("'%s' is not in rawloader: %s!"
+                                     % (f, rawloader.path))
+                if not self._check_filestr(f):
+                    raise ValueError("Invalid 'file' str: %s!" % f)
             self.file = file
         else:
             pass
@@ -108,6 +140,8 @@ class BaseCore(object):
                     log.debug("'group': replace '%s' with '%s'!"
                               % (self.group, group))
                 self.group = group
+            else:
+                raise ValueError("Invalid 'group' str: %s!" % group)
         else:
             if self.nfiles == '?':
                 fs = [file]
@@ -117,15 +151,19 @@ class BaseCore(object):
                 for f in fs:
                     m = re.match(pat, f)
                     if m and 'group' in m.groupdict():
-                        group = m.groupdict()['group']
-                        if re.match(self.grouppattern, group):
+                        tmpgroup = m.groupdict()['group']
+                        if re.match(self.grouppattern, tmpgroup):
+                            group = tmpgroup
                             break
                 if group:
                     break
-            if self.group:
-                log.debug("'group': replace '%s' with '%s'!"
-                          % (self.group, group or ''))
-            self.group = group or ''
+            if group:
+                if self.group:
+                    log.debug("'group': replace '%s' with '%s'!"
+                              % (self.group, group))
+                self.group = group
+            else:
+                raise ValueError("Please set 'group' by yourself!")
         log.debug("Dig file: %s; group: %s." % (self.file, self.group))
 
     def dig(self):
@@ -138,3 +176,9 @@ class BaseCore(object):
             return
         log.debug('Dig raw data in %s ...' % self.file)
         return self._dig()
+
+    def set_cook_args(self, pckloader, group=None):
+        '''Set :meth:`dig` arguments.'''
+        if not is_rawloader(rawloader):
+            raise ValueError("Not a rawloader object!")
+        self.rawloader = rawloader
