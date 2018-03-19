@@ -43,6 +43,7 @@ class BaseCore(object):
     instructions = ['dig', 'cook']
     filepatterns = ['^(?P<group>file)\.ext$', '.*/(?P<group>file)\.ext$']
     grouppattern = '^group$'
+    figureclasses = []
 
     def __init__(self, nfiles='?'):
         self.rawloader = None
@@ -53,7 +54,7 @@ class BaseCore(object):
         self.nfiles = nfiles
         self.group = None
         self.pckloader = None
-        self.figurenums = None
+        self.figurenums = tuple(self.get_figurenums())
 
     @classmethod
     def match_files(cls, rawloader):
@@ -177,8 +178,133 @@ class BaseCore(object):
         log.debug('Dig raw data in %s ...' % self.file)
         return self._dig()
 
-    def set_cook_args(self, pckloader, group=None):
-        '''Set :meth:`dig` arguments.'''
-        if not is_rawloader(rawloader):
-            raise ValueError("Not a rawloader object!")
-        self.rawloader = rawloader
+    def set_cook_args(self, pckloader, group):
+        '''Set :meth:`cook` arguments.'''
+        if not is_pckloader(pckloader):
+            raise ValueError("Not a pckloader object!")
+        self.pckloader = pckloader
+        if self._check_groupstr(group):
+            if self.group:
+                log.debug("'group': replace '%s' with '%s'!"
+                          % (self.group, group))
+            else:
+                log.debug("Cook group: %s." % group)
+            self.group = group
+        else:
+            raise ValueError("Invalid 'group' str: %s!" % group)
+
+    @classmethod
+    def get_figurenums(cls):
+        result = []
+        for c in cls.figureclasses:
+            if c.figurenums:
+                result.extend(c.figurenums)
+        return sorted(result)
+
+    def cook(self, fignum, figkwargs={}):
+        '''
+        Read and calculate pck data. Return a :class:`BaseFigInfo` instance.
+        Use :meth:`see_figkwargs` to get
+        :meth:`BaseFigInfo.calculate` kwargs for the figinfo 'fignum'.
+        '''
+        if not self.pckloader or not self.group:
+            log.error(
+                "Please set 'pckloader', 'group' before cook data!")
+            return
+        if fignum not in self.figurenums:
+            log.error("%s not found in figurenums!" % fignum)
+            return
+        else:
+            figinfocls = None
+            for c in self.figureclasses:
+                if fignum in c.figurenums:
+                    figinfocls = c
+                    break
+        if figinfocls:
+            log.debug('Cook pck data for %s/%s ...' % (self.group, fignum))
+            figinfo = figinfocls(fignum, self.group)
+            try:
+                data = figinfo.get_data(self.pckloader)
+            except Exception:
+                log.error("figurenum %s/%s: can't get data!"
+                          % (self.group, fignum), exc_info=1)
+            try:
+                figinfo.calculate(data, **figkwargs)
+            except Exception:
+                log.error("figurenum %s/%s: can't calculate()!"
+                          % (self.group, fignum), exc_info=1)
+            return figinfo
+        else:
+            log.error("FigInfo class not found for figurenum: %s/%s!"
+                      % (self.group, fignum))
+            return
+
+    def see_figkwargs(self, fignum):
+        '''help(figinfo.calculate)'''
+        if fignum not in self.figurenums:
+            log.error("%s not found in figurenums!" % fignum)
+            return
+        else:
+            figinfocls = None
+            for c in self.figureclasses:
+                if fignum in c.figurenums:
+                    figinfocls = c
+                    break
+        if figinfocls:
+            help(figinfocls.calculate)
+        else:
+            log.error("FigInfo class not found for figurenum: %s/%s!"
+                      % (self.group, fignum))
+            return
+
+
+class BaseFigInfo(object):
+    '''
+    Base Figure Information class.
+
+    Attributes
+    ----------
+    fignum: str
+        name(label) of figure
+    group: str
+        group of figure
+    srckey: list
+        pck data keys needed in same core
+    extrakey: list
+        pck data keys needed in other core
+    calculation: dict
+        results of cooked data
+    template: dict
+        template for plotter
+        example: {plottertype: [additional_figstyle, *AxesStructures]}
+    '''
+    __slots__ = ['fignum', 'group',
+                 'srckey', 'extrakey', 'template', 'calculation']
+
+    def __init__(self, fignum, group, srckey, extrakey, template):
+        self.fignum = fignum
+        self.group = group
+        self.srckey = srckey
+        self.extrakey = extrakey
+        self.template = template
+        self.calculation = {}
+
+    def get_data(self, pckloader):
+        '''Use keys get pck data from *pckloader*, return a dict.'''
+        result = {}
+        srckey = ['%s/%s' % (self.group, k) for k in self.srckey]
+        result.update(zip(self.srckey, pckloader.get_many(*srckey)))
+        result.update(zip(self.extrakey, pckloader.get_many(*self.extrakey)))
+        return result
+
+    def calculate(self, data, **kwargs):
+        '''
+        Use *data* get by keys, return calculation.
+        '''
+        raise NotImplementedError()
+
+    def serve(self, plottertype='mpl::'):
+        '''
+        Assemble calculation and template.
+        '''
+        raise NotImplementedError()
