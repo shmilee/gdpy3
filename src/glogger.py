@@ -81,9 +81,9 @@ gloggerConfig = {
             'handlers': ['console', 'file'],
             'propagate': False,
         },
-        # gdpy3.convert
+        # gdpy3.processors
         'C': {
-            'level': 'VERBOSE',
+            'level': 'DDEBUG',
             'handlers': ['console', 'file'],
             'propagate': False,
         },
