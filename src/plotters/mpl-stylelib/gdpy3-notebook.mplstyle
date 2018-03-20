@@ -39,3 +39,5 @@ xtick.minor.width: 0.5
 ytick.minor.width: 0.5
 xtick.major.pad: 7
 ytick.major.pad: 7
+xtick.direction: in
+ytick.direction: in
