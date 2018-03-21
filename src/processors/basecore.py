@@ -3,7 +3,7 @@
 # Copyright (c) 2018 shmilee
 
 '''
-Contains core base class.
+Contains core base class and figure information base class.
 '''
 
 import os
@@ -11,8 +11,9 @@ import re
 
 from ..glogger import getGLogger
 from ..loaders import is_rawloader, is_pckloader
+from ..plotters import is_plotter
 
-__all__ = ['BaseCore']
+__all__ = ['BaseCore', 'BaseFigInfo']
 log = getGLogger('C')
 
 
@@ -231,7 +232,7 @@ class BaseCore(object):
             try:
                 figinfo.calculate(data, **figkwargs)
             except Exception:
-                log.error("figurenum %s/%s: can't calculate()!"
+                log.error("figurenum %s/%s: calculate() failed!"
                           % (self.group, fignum), exc_info=1)
             return figinfo
         else:
@@ -239,8 +240,11 @@ class BaseCore(object):
                       % (self.group, fignum))
             return
 
-    def see_figkwargs(self, fignum):
-        '''help(figinfo.calculate)'''
+    def see_figkwargs(self, fignum, see='help'):
+        '''
+        help(figinfo.calculate) or print(figinfo.calculate.__doc__)
+        *see*: str, 'help' or 'print'
+        '''
         if fignum not in self.figurenums:
             log.error("%s not found in figurenums!" % fignum)
             return
@@ -251,7 +255,10 @@ class BaseCore(object):
                     figinfocls = c
                     break
         if figinfocls:
-            help(figinfocls.calculate)
+            if see == 'help':
+                help(figinfocls.calculate)
+            else:
+                print(figinfocls.calculate.__doc__)
         else:
             log.error("FigInfo class not found for figurenum: %s/%s!"
                       % (self.group, fignum))
@@ -274,14 +281,18 @@ class BaseFigInfo(object):
         pck data keys needed in other core
     calculation: dict
         results of cooked data
-    template: dict
-        template for plotter
-        example: {plottertype: [additional_figstyle, *AxesStructures]}
+    template: str
+        name of 'bound template method of plotter'
     '''
     __slots__ = ['fignum', 'group',
                  'srckey', 'extrakey', 'template', 'calculation']
+    figurenums = []
+    numpattern = '^.*$'
 
     def __init__(self, fignum, group, srckey, extrakey, template):
+        if fignum not in self.figurenums:
+            raise ValueError("fignum: %s not found in class %s!"
+                             % (fignum, self.__class__.__name__))
         self.fignum = fignum
         self.group = group
         self.srckey = srckey
@@ -303,8 +314,21 @@ class BaseFigInfo(object):
         '''
         raise NotImplementedError()
 
-    def serve(self, plottertype='mpl::'):
+    def serve(self, plotter):
         '''
         Assemble calculation and template.
+        Return AxesStructures and add_style for plotter.
         '''
-        raise NotImplementedError()
+        if is_plotter(plotter):
+            try:
+                template_method = getattr(plotter, self.template)
+            except AttributeError:
+                log.error("Template %s not found in plotter %s!"
+                          % (self.template, plotter.name))
+                raise
+        else:
+            raise ValueError("Not a plotter object!")
+        return template_method(self.calculation)
+
+
+BaseCore.figureclasses = []  # [BaseFigInfo, ]
