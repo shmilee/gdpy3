@@ -6,10 +6,10 @@ import os
 import unittest
 import tempfile
 
-from ..base import BasePlotter
+from ..base import BasePlotter, BasePloTemplate
 
 
-class ImpBasePlotter(BasePlotter):
+class ImpBasePlotter(BasePlotter, BasePloTemplate):
     style_available = ['s1', 's2', 's99', 'gdpy3-test']
 
     def __init__(self, name):
@@ -47,6 +47,10 @@ class ImpBasePlotter(BasePlotter):
     def _save_figure(self, fig, fpath, **kwargs):
         with open(fpath, 'w') as f:
             f.write(fig['num'])
+
+    @staticmethod
+    def _template_twinx_axesstructures(*input_list):
+        return input_list, []
 
 
 class TestBasePlotter(unittest.TestCase):
@@ -119,3 +123,35 @@ class TestBasePlotter(unittest.TestCase):
         self.plotter.save_figure('test-f2', self.tmpfile)
         with open(self.tmpfile, 'r') as f:
             self.assertEqual(f.read(), 'test-f2')
+
+    def test_plotter_template_twinx_axesstructures(self):
+        fun = self.plotter.template_twinx_axesstructures
+        calculation = dict(
+            X=range(1, 100),
+            YINFO=[{
+                'left': [(range(100, 1, -1), 'dec'), (range(1, 10), 'inc')],
+                'right': [],
+            }],
+        )
+        result, add_style = fun(calculation)
+        self.assertListEqual([], result)
+        calculation['YINFO'] = [{
+            'left': [(range(100, 1, -1), 'dec'), (range(1, 100), 'inc')],
+            'right': [],
+        }, ]
+        result, add_style = fun(calculation)
+        self.assertListEqual(list(calculation['X']), list(result[0]))
+        self.assertIsNone(result[3])
+        calculation.update(dict(
+            hspace=0.1,
+            title='t',
+            xlabel='x',
+            xlim=[1, 50],
+            ylabel_rotation=20,
+        ))
+        result, add_style = fun(calculation)
+        self.assertEqual(calculation['hspace'], result[2])
+        self.assertEqual(calculation['title'], result[3])
+        self.assertEqual(calculation['xlabel'], result[4])
+        self.assertListEqual(calculation['xlim'], result[5])
+        self.assertEqual(calculation['ylabel_rotation'], result[6])

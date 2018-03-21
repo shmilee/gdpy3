@@ -164,3 +164,35 @@ class TestMatplotlibPlotter(unittest.TestCase):
         self.assertListEqual(self.plotter.figures, ['test-f2'])
         self.plotter.close_figure('all')
         self.assertListEqual(self.plotter.figures, [])
+
+    def test_mplplotter_template_twinx_axesstructures(self):
+        calculation = dict(
+            X=range(100),
+            YINFO=[{
+                'left': [(fielddata[20, :], 'time=20$\Delta t$'),
+                         (fielddata[2, :], 'time=5$\Delta t$')],
+                'right': [(fielddata[32, :], 'time=32$\Delta t$')],
+                #'rlegend': dict(loc='best'),
+                'lylabel': r'$\phi$',
+            }, {
+                'left': [(fielddata[40, :], 'time=40$\Delta t$')],
+                'right': [],
+                'lylabel': r'$\phi$',
+            }, {
+                'left': [(fielddata[60, :], 'time=60$\Delta t$')],
+                'right': [],
+                'lylabel': r'$\phi$',
+            },
+            ],
+            title='field data',
+            xlabel='R',
+            xlim=[0, 90],
+            ylabel_rotation=45,
+        )
+        result, add_style = self.plotter.template_twinx_axesstructures(
+            calculation)
+        self.plotter.create_figure('template-f1',
+                                   *result, add_style=add_style)
+        self.plotter.show_figure('template-f1')
+        input('[I]nterrupt, to see figure "%s".' % 'template-f1')
+        self.plotter.close_figure('template-f1')

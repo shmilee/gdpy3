@@ -13,7 +13,7 @@ import matplotlib.pyplot
 import mpl_toolkits.mplot3d
 
 from ..glogger import getGLogger
-from .base import BasePlotter
+from .base import BasePlotter, BasePloTemplate
 
 __all__ = ['MatplotlibPlotter']
 log = getGLogger('P')
@@ -34,7 +34,7 @@ _Mpl_Axes_Structure = '''
 '''
 
 
-class MatplotlibPlotter(BasePlotter):
+class MatplotlibPlotter(BasePlotter, BasePloTemplate):
     '''
     Use matplotlib to create figures.
     '''
@@ -164,3 +164,53 @@ class MatplotlibPlotter(BasePlotter):
     def _save_figure(self, fig, fpath, **kwargs):
         '''Save *fig* to *fpath*.'''
         fig.savefig(fpath, **kwargs)
+
+    @staticmethod
+    def _template_twinx_axesstructures(
+            X, YINFO,
+            hspace, title, xlabel, xlim, ylabel_rotation):
+        '''For :meth:`template_twinx_axesstructures`.'''
+        AxStrus = []
+        for row in range(len(YINFO)):
+            number = int("%s1%s" % (len(YINFO), row + 1))
+            log.debug("Getting Axes %s ..." % number)
+            layout = dict(xlim=xlim)
+            if row == 0 and title:
+                layout['title'] = title
+            if row == len(YINFO) - 1 and xlabel:
+                layout['xlabel'] = xlabel
+            else:
+                layout['xticklabels'] = []
+            data, i = [], 0
+            if len(YINFO[row]['left']) > 0:
+                for i, ln in enumerate(YINFO[row]['left'], 1):
+                    data.append([i, 'plot', (X, ln[0]), dict(label=ln[1])])
+                if 'llegend' in YINFO[row]:
+                    legendkw = YINFO[row]['llegend']
+                else:
+                    legendkw = dict(loc='upper left')
+                i = i + 1
+                data.append([i, 'legend', (), legendkw])
+                if 'lylabel' in YINFO[row]:
+                    i = i + 1
+                    data.append([i, 'set_ylabel', (YINFO[row]['lylabel'],),
+                                 dict(rotation=ylabel_rotation)])
+            if len(YINFO[row]['right']) > 0:
+                i = i + 1
+                data.append(
+                    [i, 'twinx', (), dict(nextcolor=len(YINFO[row]['left']))])
+                for i, ln in enumerate(YINFO[row]['right'], i + 1):
+                    data.append([i, 'plot', (X, ln[0]), dict(label=ln[1])])
+                if 'rlegend' in YINFO[row]:
+                    legendkw = YINFO[row]['rlegend']
+                else:
+                    legendkw = dict(loc='upper right')
+                i = i + 1
+                data.append([i, 'legend', (), legendkw])
+                if 'rylabel' in YINFO[row]:
+                    i = i + 1
+                    data.append([i, 'set_ylabel', (YINFO[row]['rylabel'],),
+                                 dict(rotation=ylabel_rotation)])
+                data.append([i + 1, 'set_xlim', xlim, {}])
+            AxStrus.append({'data': data, 'layout': [number, layout]})
+        return AxStrus, [{'figure.subplot.hspace': hspace}]

@@ -3,14 +3,15 @@
 # Copyright (c) 2018 shmilee
 
 '''
-Contains plotter base class.
+Contains plotter, plotemplate base class.
 '''
 
 import os
+import numpy
 
 from ..glogger import getGLogger
 
-__all__ = ['BasePlotter']
+__all__ = ['BasePlotter', 'BasePloTemplate']
 log = getGLogger('P')
 
 
@@ -256,3 +257,139 @@ class BasePlotter(object):
             self._save_figure(self._figureslib[num], fpath, **kwargs)
         else:
             log.error("Figure %s is not created!" % num)
+
+
+class BasePloTemplate(object):
+    '''
+    Some plot templates(methods)
+        Use *calculation* to get a list of axesstructure and add_style.
+
+    Attributes
+    ----------
+    template_available: tuple
+        all available templates
+    '''
+    __slots__ = []
+    template_available = [
+        'template_twinx_axesstructures',
+    ]
+
+    def template_twinx_axesstructures(self, calculation):
+        '''
+        Template
+        --------
+        .. code::
+
+                   title
+                 +--------+
+          ylabel | axes 1 | ylabel
+                 +--------+
+          ylabel | axes 2 | ylabel
+                 +--------+
+                   xlabel
+
+        Parameters
+        ----------
+        calculation['X']: list or numpy.ndarray, required
+            1 dimension array
+        calculation['YINFO']: list of dict, required
+            all info for the axes
+        calculation['hspace']: float, optional
+            height space between subplots, default 0.02
+        calculation['title']: str, optional
+            default None
+        calculation['xlabel']: str, optional
+            default None
+        calculation['xlim']: (`left`, `right`), optional
+            default [min(X), max(X)]
+        calculation['ylabel_rotation']: str or int, optional
+            default 'vertical'
+
+        Notes
+        -----
+        Form of *YINFO*.
+
+        .. code:: python
+
+            yinfo = [{
+                # axes 1
+                'left': [(ydata1, label1), (ydata2, label2)], # required
+                'right': [(ydata3, label3)], # required
+                'llegend': dict(loc='upper left'), # optional
+                'rlegend': dict(loc='upper right'), # optional
+                'lylabel': 'left ylabel', # optional
+                'rylabel': 'right ylabel', # optional
+            }, {
+                # axes 2
+                'left': [([1,...,9], 'line')], 'right': [],
+                'lylabel': 'Y2',
+            }]
+
+        yinfo[0]['left'][0]: len(ydata1) == len(X)
+        yinfo[1]['right']: can be empty list
+        yinfo[0]['llegend']: optional kwargs for legend
+        '''
+        # check
+        if not ('X' in calculation and 'YINFO' in calculation):
+            log.error("`X` and `YINFO` are required!")
+            return [], []
+        if isinstance(calculation['X'], (list, range, numpy.ndarray)):
+            X = calculation['X']
+        else:
+            log.error("`X` array must be array!")
+            return [], []
+        if not isinstance(calculation['YINFO'], list):
+            log.error("`YINFO` array must be list!")
+            return [], []
+        for i, ax in enumerate(calculation['YINFO'], 1):
+            if not (isinstance(ax, dict) and 'left' in ax and 'right' in ax):
+                log.error("Info of axes %d must be dict!"
+                          "Key 'left', 'right' must in it!" % i)
+                return [], []
+            for lr in ['left', 'right']:
+                for j, line in enumerate(ax[lr], 1):
+                    if not isinstance(line[0], (list, range, numpy.ndarray)):
+                        log.error(
+                            "Info of line %d in axes %d %s must be array!"
+                            % (j, i, lr))
+                        return [], []
+                    if len(line[0]) != len(X):
+                        log.error(
+                            "Invalid array length of line %d in axes %d %s!"
+                            % (j, i, lr))
+                        return [], []
+        YINFO = calculation['YINFO']
+        if 'hspace' in calculation:
+            hspace = float(calculation['hspace'])
+        else:
+            hspace = 0.02
+        if 'title' in calculation:
+            title = str(calculation['title'])
+        else:
+            title = None
+        if 'xlabel' in calculation:
+            xlabel = str(calculation['xlabel'])
+        else:
+            xlabel = None
+        if 'xlim' in calculation and len(calculation['xlim']) == 2:
+            xlim = calculation['xlim']
+        else:
+            xlim = [numpy.min(X), numpy.max(X)]
+        if ('ylabel_rotation' in calculation
+                and isinstance(calculation['ylabel_rotation'], (int, str))):
+            ylabel_rotation = calculation['ylabel_rotation']
+        else:
+            ylabel_rotation = 'vertical'
+        return self._template_twinx_axesstructures(
+            X, YINFO,
+            hspace, title, xlabel, xlim, ylabel_rotation)
+
+    @staticmethod
+    def _template_twinx_axesstructures(
+            X, YINFO,
+            hspace, title, xlabel, xlim, ylabel_rotation):
+        '''
+        For :meth:`template_twinx_axesstructures`.
+        Return [*axesstructures], add_style
+        '''
+        raise NotImplementedError()
