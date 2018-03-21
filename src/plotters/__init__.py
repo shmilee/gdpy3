@@ -25,6 +25,7 @@ and methods
 import os
 
 from ..glogger import getGLogger
+from . import base
 
 __all__ = ['get_plotter']
 log = getGLogger('P')
@@ -62,3 +63,10 @@ def get_plotter(name):
                          'Name must start with one type of: "%s".'
                          % (name, ', '.join(plotter_types)))
     return plotter
+
+
+def is_plotter(obj):
+    '''
+    Return True if obj is a plotter instance, else return False.
+    '''
+    return isinstance(obj, base.BasePlotter)
