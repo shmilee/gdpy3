@@ -262,7 +262,7 @@ class BasePlotter(object):
 class BasePloTemplate(object):
     '''
     Some plot templates(methods)
-        Use *calculation* to get a list of axesstructure and add_style.
+        Use *results* to get a list of axesstructure and add_style.
 
     Attributes
     ----------
@@ -271,10 +271,11 @@ class BasePloTemplate(object):
     '''
     __slots__ = []
     template_available = [
-        'template_twinx_axesstructures',
+        'template_sharex_twinx_axstructs',
+        'template_pcolor_axstructs',
     ]
 
-    def template_twinx_axesstructures(self, calculation):
+    def template_sharex_twinx_axstructs(self, results):
         '''
         Template
         --------
@@ -290,19 +291,19 @@ class BasePloTemplate(object):
 
         Parameters
         ----------
-        calculation['X']: list or numpy.ndarray, required
+        results['X']: list or numpy.ndarray, required
             1 dimension array
-        calculation['YINFO']: list of dict, required
+        results['YINFO']: list of dict, required
             all info for the axes
-        calculation['hspace']: float, optional
+        results['hspace']: float, optional
             height space between subplots, default 0.02
-        calculation['title']: str, optional
+        results['title']: str, optional
             default None
-        calculation['xlabel']: str, optional
+        results['xlabel']: str, optional
             default None
-        calculation['xlim']: (`left`, `right`), optional
+        results['xlim']: (`left`, `right`), optional
             default [min(X), max(X)]
-        calculation['ylabel_rotation']: str or int, optional
+        results['ylabel_rotation']: str or int, optional
             default 'vertical'
 
         Notes
@@ -330,18 +331,18 @@ class BasePloTemplate(object):
         yinfo[0]['llegend']: optional kwargs for legend
         '''
         # check
-        if not ('X' in calculation and 'YINFO' in calculation):
+        if not ('X' in results and 'YINFO' in results):
             log.error("`X` and `YINFO` are required!")
             return [], []
-        if isinstance(calculation['X'], (list, range, numpy.ndarray)):
-            X = calculation['X']
+        if isinstance(results['X'], (list, range, numpy.ndarray)):
+            X = results['X']
         else:
-            log.error("`X` array must be array!")
+            log.error("`X` must be array!")
             return [], []
-        if not isinstance(calculation['YINFO'], list):
+        if not isinstance(results['YINFO'], list):
             log.error("`YINFO` array must be list!")
             return [], []
-        for i, ax in enumerate(calculation['YINFO'], 1):
+        for i, ax in enumerate(results['YINFO'], 1):
             if not (isinstance(ax, dict) and 'left' in ax and 'right' in ax):
                 log.error("Info of axes %d must be dict!"
                           "Key 'left', 'right' must in it!" % i)
@@ -358,38 +359,137 @@ class BasePloTemplate(object):
                             "Invalid array length of line %d in axes %d %s!"
                             % (j, i, lr))
                         return [], []
-        YINFO = calculation['YINFO']
-        if 'hspace' in calculation:
-            hspace = float(calculation['hspace'])
-        else:
-            hspace = 0.02
-        if 'title' in calculation:
-            title = str(calculation['title'])
-        else:
-            title = None
-        if 'xlabel' in calculation:
-            xlabel = str(calculation['xlabel'])
-        else:
-            xlabel = None
-        if 'xlim' in calculation and len(calculation['xlim']) == 2:
-            xlim = calculation['xlim']
+        YINFO = results['YINFO']
+        hspace = float(results['hspace']) if 'hspace' in results else 0.02
+        title = str(results['title']) if 'title' in results else None
+        xlabel = str(results['xlabel']) if 'xlabel' in results else None
+        if 'xlim' in results and len(results['xlim']) == 2:
+            xlim = results['xlim']
         else:
             xlim = [numpy.min(X), numpy.max(X)]
-        if ('ylabel_rotation' in calculation
-                and isinstance(calculation['ylabel_rotation'], (int, str))):
-            ylabel_rotation = calculation['ylabel_rotation']
+        if ('ylabel_rotation' in results
+                and isinstance(results['ylabel_rotation'], (int, str))):
+            ylabel_rotation = results['ylabel_rotation']
         else:
             ylabel_rotation = 'vertical'
-        return self._template_twinx_axesstructures(
+        return self._template_sharex_twinx_axstructs(
             X, YINFO,
             hspace, title, xlabel, xlim, ylabel_rotation)
 
     @staticmethod
-    def _template_twinx_axesstructures(
+    def _template_sharex_twinx_axstructs(
             X, YINFO,
             hspace, title, xlabel, xlim, ylabel_rotation):
         '''
-        For :meth:`template_twinx_axesstructures`.
-        Return [*axesstructures], add_style
+        For :meth:`template_sharex_twinx_axstructs`.
+        Return [*AxStructs], add_style
         '''
+        raise NotImplementedError()
+
+    def template_pcolor_axstructs(self, results):
+        '''
+        Template
+        --------
+        .. code::
+
+                   title
+                 +--------+ +-+
+          ylabel | pcolor | |-|colorbar
+                 +--------+ +-+
+                   xlabel
+
+        Parameters
+        ----------
+        results['X']: 1 or 2 dimension numpy.ndarray, required
+        results['Y']: 1 or 2 dimension numpy.ndarray, required
+        results['Z']: 2 dimension numpy.ndarray, required
+            (len(Y), len(X)) == Z.shape or (X.shape == Y.shape == Z.shape)
+        results['plot_method']: str, optional
+            'pcolor', 'pcolormesh', 'contourf' or 'plot_surface'
+            default 'pcolor'
+        results['plot_method_args']: list, optional
+            args for *plot_method*, like levels for 'contourf'
+        results['plot_method_kwargs']: dict, optional
+            kwargs for *plot_method*,
+            like cmap for 'plot_surface', default in style
+        results['title']: str, optional
+        results['xlabel']: str, optional
+        results['ylabel']: str, optional
+        results['colorbar']: bool, optional
+            add colorbar or not, default True
+        results['grid_alpha']: float, optional
+            transparency of grid, use this when 'grid.alpha' has no effect
+        results['plot_surface_shadow']: list, optional
+            add contourf in a surface plot, ['x', 'y', 'z'], default []
+        '''
+        if not ('X' in results
+                and 'Y' in results and 'Z' in results):
+            log.error("`X`, 'Y' and `Z` are required!")
+            return [], []
+        for _x in ['X', 'Y', 'Z']:
+            if not isinstance(results[_x], numpy.ndarray):
+                log.error("`%s` array must be numpy.ndarray!" % _x)
+                return [], []
+        X = results['X']
+        Y = results['Y']
+        Z = results['Z']
+        if len(X.shape) == 1 and len(Y.shape) == 1:
+            # X, Y: 1 dimension
+            if (len(Y), len(X)) != Z.shape:
+                log.error("Invalid `X`, `Y` length or `Z` shape!")
+                return [], []
+            X, Y = np.meshgrid(X, Y)
+        elif len(X.shape) == 2 and len(Y.shape) == 2:
+            # X, Y: 2 dimension
+            if not (X.shape == Y.shape == Z.shape):
+                log.error("Invalid `X`, `Y` or `Z` shape!")
+                return [], []
+        else:
+            log.error("Invalid `X`, `Y` dimension!")
+            return [], []
+        if ('plot_method' in results
+                and results['plot_method'] in (
+                    'pcolor', 'pcolormesh', 'contourf', 'plot_surface')):
+            plot_method = results['plot_method']
+        else:
+            plot_method = 'pcolor'
+        if ('plot_method_args' in results
+                and isinstance(results['plot_method_args'], list)):
+            plot_method_args = results['plot_method_args']
+        else:
+            plot_method_args = []
+        if ('plot_method_kwargs' in results
+                and isinstance(results['plot_method_kwargs'], dict)):
+            plot_method_kwargs = results['plot_method_kwargs']
+        else:
+            plot_method_kwargs = {}
+        if 'cmap' not in plot_method_kwargs:
+            plot_method_kwargs['cmap'] = self.param_from_style('image.cmap')
+        title = str(results['title']) if 'title' in results else None
+        xlabel = str(results['xlabel']) if 'xlabel' in results else None
+        ylabel = str(results['ylabel']) if 'ylabel' in results else None
+        colorbar = bool(results['colorbar'] if 'colorbar' in results else 1)
+        if 'grid_alpha' in results:
+            grid_alpha = float(results['grid_alpha'])
+        else:
+            grid_alpha = None
+        if ('plot_surface_shadow' in results
+                and isinstance(results['plot_surface_shadow'], list)):
+            _sl, _sl_val = results['plot_surface_shadow'], ['x', 'y', 'z']
+            _sl = filter(lambda x: True if x in _sl_val else False, _sl)
+            plot_surface_shadow = list(_sl)
+        else:
+            plot_surface_shadow = []
+        log.ddebug("Some template pcolor parameters: %s" % [
+            plot_method, plot_method_args, plot_method_kwargs,
+            colorbar, grid_alpha, plot_surface_shadow])
+        return self._template_pcolor_axstructs(
+            X, Y, Z, plot_method, plot_method_args, plot_method_kwargs,
+            title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow)
+
+    @staticmethod
+    def _template_pcolor_axstructs(
+            X, Y, Z, plot_method, plot_method_args, plot_method_kwargs,
+            title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow):
+        '''For :meth:`template_pcolor_axstructs`.'''
         raise NotImplementedError()

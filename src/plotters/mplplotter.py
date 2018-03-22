@@ -166,10 +166,10 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
         fig.savefig(fpath, **kwargs)
 
     @staticmethod
-    def _template_twinx_axesstructures(
+    def _template_sharex_twinx_axstructs(
             X, YINFO,
             hspace, title, xlabel, xlim, ylabel_rotation):
-        '''For :meth:`template_twinx_axesstructures`.'''
+        '''For :meth:`template_sharex_twinx_axstructs`.'''
         AxStrus = []
         for row in range(len(YINFO)):
             number = int("%s1%s" % (len(YINFO), row + 1))
@@ -214,3 +214,40 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
                 data.append([i + 1, 'set_xlim', xlim, {}])
             AxStrus.append({'data': data, 'layout': [number, layout]})
         return AxStrus, [{'figure.subplot.hspace': hspace}]
+
+    @staticmethod
+    def _template_pcolor_axstructs(
+            X, Y, Z, plot_method, plot_method_args, plot_method_kwargs,
+            title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow):
+        '''For :meth:`template_pcolor_axstructs`.'''
+        import numpy as np
+        Zmax = max(abs(Z.max()), abs(Z.min()))
+        layoutkw, plotkw, plotarg, order, data = {}, {}, [], 1, []
+        if plot_method == 'plot_surface':
+            layoutkw = {'projection': '3d', 'zlim': [-Zmax, Zmax]}
+            plotkw.update(rstride=1, cstride=1, linewidth=1,
+                          antialiased=True, cmap='jet')
+            if plot_surface_shadow:
+                _offsetd = {'x': np.min(X), 'y': np.max(Y), 'z': -Zmax}
+                _limd = {'x': [np.min(X), np.max(X)],
+                         'y': [np.min(Y), np.max(Y)], 'z': [-Zmax, Zmax]}
+                for x in plot_surface_shadow:
+                    order += 1
+                    layoutkw['%slim' % x] = _limd[x]
+                    data.append([order, 'contourf', (X, Y, Z, 100),
+                                 dict(zdir=x, offset=_offsetd[x])])
+        if colorbar:
+            order += 1
+            data.append([order, 'revise',
+                         lambda fig, ax, art: fig.colorbar(art[1]), {}])
+        if grid_alpha is not None:
+            order += 1
+            data.append([order, 'grid', (), dict(alpha=grid_alpha)])
+        plotarg.extend(plot_method_args)
+        if not plot_method_args and plot_method == 'contourf':
+            plotarg.extend([100])
+        plotkw.update(vmin=-Zmax, vmax=Zmax)
+        plotkw.update(plot_method_kwargs)
+        data.insert(0,  [1, plot_method, [X, Y, Z] + plotarg, plotkw])
+        layoutkw.update(title=title, xlabel=xlabel, ylabel=ylabel)
+        return [{'data': data, 'layout': [111, layoutkw]}], []
