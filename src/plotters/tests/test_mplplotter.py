@@ -153,20 +153,20 @@ class TestMatplotlibPlotter(unittest.TestCase):
     def test_mplplotter_figure(self):
         self.plotter.create_figure('test-f1', add_style=['seaborn'])
         self.plotter.add_axes(self.plotter.get_figure('test-f1'), ax1)
-        self.plotter.show_figure('test-f1')
-        input('[I]nterrupt, to see figure "%s".' % 'test-f1')
-        self.plotter.create_figure('test-f2', ax1, ax2, ax3, ax4, ax5, ax6)
         for ext in ['.jpg', '.png', '.pdf']:
-            self.plotter.save_figure('test-f2', self.tmpfile + ext)
+            self.plotter.save_figure('test-f1', self.tmpfile + ext)
         input("[I]nterrupt, to see figure in %s." % self.tmpfile)
+        self.plotter.create_figure('test-f2', ax1, ax2, ax3, ax4, ax5, ax6)
+        self.plotter.show_figure('test-f2')
+        input('[I]nterrupt, to see figure "%s".' % 'test-f2')
         self.assertSetEqual(set(self.plotter.figures), {'test-f1', 'test-f2'})
         self.plotter.close_figure('test-f1')
         self.assertListEqual(self.plotter.figures, ['test-f2'])
         self.plotter.close_figure('all')
         self.assertListEqual(self.plotter.figures, [])
 
-    def test_mplplotter_template_twinx_axesstructures(self):
-        calculation = dict(
+    def test_mplplotter_template_sharex_twinx_axstructs(self):
+        results = dict(
             X=range(100),
             YINFO=[{
                 'left': [(fielddata[20, :], 'time=20$\Delta t$'),
@@ -189,10 +189,23 @@ class TestMatplotlibPlotter(unittest.TestCase):
             xlim=[0, 90],
             ylabel_rotation=45,
         )
-        result, add_style = self.plotter.template_twinx_axesstructures(
-            calculation)
-        self.plotter.create_figure('template-f1',
-                                   *result, add_style=add_style)
+        axstruct, sty = self.plotter.template_sharex_twinx_axstructs(results)
+        self.plotter.create_figure('template-f1', *axstruct, add_style=sty)
         self.plotter.show_figure('template-f1')
         input('[I]nterrupt, to see figure "%s".' % 'template-f1')
         self.plotter.close_figure('template-f1')
+
+    def test_mplplotter_template_pcolor_axstructs(self):
+        results = dict(
+            X=fieldx, Y=fieldy, Z=fielddata,
+            plot_method='plot_surface',
+            plot_method_kwargs=dict(rstride=1, cstride=1, linewidth=1,
+                                    antialiased=True, label='field'),
+            title='test field', xlabel='r', ylabel='time',
+            plot_surface_shadow=['x', 'z'],
+        )
+        axstruct, sty = self.plotter.template_pcolor_axstructs(results)
+        self.plotter.create_figure('template-f2', *axstruct, add_style=sty)
+        self.plotter.show_figure('template-f2')
+        input('[I]nterrupt, to see figure "%s".' % 'template-f2')
+        self.plotter.close_figure('template-f2')

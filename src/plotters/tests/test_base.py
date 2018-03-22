@@ -5,6 +5,7 @@
 import os
 import unittest
 import tempfile
+import numpy
 
 from ..base import BasePlotter, BasePloTemplate
 
@@ -49,7 +50,11 @@ class ImpBasePlotter(BasePlotter, BasePloTemplate):
             f.write(fig['num'])
 
     @staticmethod
-    def _template_twinx_axesstructures(*input_list):
+    def _template_sharex_twinx_axstructs(*input_list):
+        return input_list, []
+
+    @staticmethod
+    def _template_pcolor_axstructs(*input_list):
         return input_list, []
 
 
@@ -124,8 +129,8 @@ class TestBasePlotter(unittest.TestCase):
         with open(self.tmpfile, 'r') as f:
             self.assertEqual(f.read(), 'test-f2')
 
-    def test_plotter_template_twinx_axesstructures(self):
-        fun = self.plotter.template_twinx_axesstructures
+    def test_plotter_template_sharex_twinx_axstructs(self):
+        fun = self.plotter.template_sharex_twinx_axstructs
         calculation = dict(
             X=range(1, 100),
             YINFO=[{
@@ -133,15 +138,15 @@ class TestBasePlotter(unittest.TestCase):
                 'right': [],
             }],
         )
-        result, add_style = fun(calculation)
-        self.assertListEqual([], result)
+        axstruct, add_style = fun(calculation)
+        self.assertListEqual([], axstruct)
         calculation['YINFO'] = [{
             'left': [(range(100, 1, -1), 'dec'), (range(1, 100), 'inc')],
             'right': [],
         }, ]
-        result, add_style = fun(calculation)
-        self.assertListEqual(list(calculation['X']), list(result[0]))
-        self.assertIsNone(result[3])
+        axstruct, add_style = fun(calculation)
+        self.assertListEqual(list(calculation['X']), list(axstruct[0]))
+        self.assertIsNone(axstruct[3])
         calculation.update(dict(
             hspace=0.1,
             title='t',
@@ -149,9 +154,36 @@ class TestBasePlotter(unittest.TestCase):
             xlim=[1, 50],
             ylabel_rotation=20,
         ))
-        result, add_style = fun(calculation)
-        self.assertEqual(calculation['hspace'], result[2])
-        self.assertEqual(calculation['title'], result[3])
-        self.assertEqual(calculation['xlabel'], result[4])
-        self.assertListEqual(calculation['xlim'], result[5])
-        self.assertEqual(calculation['ylabel_rotation'], result[6])
+        axstruct, add_style = fun(calculation)
+        self.assertEqual(calculation['hspace'], axstruct[2])
+        self.assertEqual(calculation['title'], axstruct[3])
+        self.assertEqual(calculation['xlabel'], axstruct[4])
+        self.assertListEqual(calculation['xlim'], axstruct[5])
+        self.assertEqual(calculation['ylabel_rotation'], axstruct[6])
+
+    def test_plotter_template_pcolor_axstructs(self):
+        fun = self.plotter.template_pcolor_axstructs
+        calculation = dict(
+            X=numpy.array(range(3)),
+            Y=numpy.array(range(4)),
+            Z=numpy.eye(3, 4),
+        )
+        axstruct, add_style = fun(calculation)
+        self.assertListEqual([], axstruct)
+        calculation['Z'] = numpy.eye(4, 3)
+        axstruct, add_style = fun(calculation)
+        self.assertNotEqual([], axstruct)
+        X, Y = numpy.meshgrid(range(3), range(4))
+        calculation.update(X=X, Y=Y)
+        axstruct, add_style = fun(calculation)
+        self.assertNotEqual([], axstruct)
+        self.assertIsNone(axstruct[7])
+        calculation.update(
+            plot_method='contourf',
+            title='t', xlabel='x', ylabel='y',
+            plot_surface_shadow=['a', 'x', 'c', 'z'],
+        )
+        axstruct, add_style = fun(calculation)
+        self.assertEqual('contourf', axstruct[3])
+        self.assertIsNotNone(axstruct[7])
+        self.assertListEqual(['x', 'z'], axstruct[-1])
