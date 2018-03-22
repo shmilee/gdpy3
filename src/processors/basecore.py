@@ -289,10 +289,27 @@ class BaseFigInfo(object):
     figurenums = []
     numpattern = '^.*$'
 
-    def __init__(self, fignum, group, srckey, extrakey, template):
+    def _pre_check_get(self, fignum, *names):
+        '''
+        1. check fignum;
+        2. check *names* we needed in matched groupdict or not;
+        3. return the groupdict.
+        '''
         if fignum not in self.figurenums:
             raise ValueError("fignum: %s not found in class %s!"
                              % (fignum, self.__class__.__name__))
+        m = re.match(self.numpattern, fignum)
+        if not m:
+            raise ValueError("Can't get info of fignum %s in class %s!"
+                             % (fignum, self.__class__.__name__))
+        for k in names:
+            if k not in m.groupdict():
+                raise ValueError(
+                    "Can't get '%s' info of fignum %s in class %s!"
+                    % (k, fignum, self.__class__.__name__))
+        return m.groupdict()
+
+    def __init__(self, fignum, group, srckey, extrakey, template):
         self.fignum = fignum
         self.group = group
         self.srckey = srckey
@@ -328,7 +345,11 @@ class BaseFigInfo(object):
                 raise
         else:
             raise ValueError("Not a plotter object!")
-        return template_method(self.calculation)
+        return self._serve(plotter, *template_method(self.calculation))
+
+    def _serve(self, plotter, AxStrus, add_style):
+        '''patch assembled AxStrus, add_style'''
+        return AxStrus, add_style
 
 
 BaseCore.figureclasses = []  # [BaseFigInfo, ]
