@@ -438,7 +438,7 @@ class BasePloTemplate(object):
             if (len(Y), len(X)) != Z.shape:
                 log.error("Invalid `X`, `Y` length or `Z` shape!")
                 return [], []
-            X, Y = np.meshgrid(X, Y)
+            X, Y = numpy.meshgrid(X, Y)
         elif len(X.shape) == 2 and len(Y.shape) == 2:
             # X, Y: 2 dimension
             if not (X.shape == Y.shape == Z.shape):
