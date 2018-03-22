@@ -31,7 +31,7 @@ __all__ = ['get_plotter']
 log = getGLogger('P')
 
 plotter_names = ['MatplotlibPlotter']
-plotter_types = ['mpl::', 'matplotlib::']
+plotter_types = ['mpl::']
 
 
 def get_plotter(name):
@@ -45,13 +45,13 @@ def get_plotter(name):
     Notes
     -----
     plotter types:
-    1. 'mpl::' and 'matplotlib::' for :class:`mplplotter.MatplotlibPlotter`.
+    1. 'mpl::' for :class:`mplplotter.MatplotlibPlotter`.
     '''
     sep = '::'
     name = str(name)
     if name.find(sep) > 0:
         ptype = name.split(sep=sep)[0] + sep
-        if ptype in ('mpl::', 'matplotlib::'):
+        if ptype == 'mpl::':
             from .mplplotter import MatplotlibPlotter
             plotter = MatplotlibPlotter(name)
         else:
