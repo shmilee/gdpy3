@@ -50,6 +50,10 @@ class ImpBasePlotter(BasePlotter, BasePloTemplate):
             f.write(fig['num'])
 
     @staticmethod
+    def _template_line_axstructs(*input_list):
+        return input_list, []
+
+    @staticmethod
     def _template_pcolor_axstructs(*input_list):
         return input_list, []
 
@@ -128,6 +132,22 @@ class TestBasePlotter(unittest.TestCase):
         self.plotter.save_figure('test-f2', self.tmpfile)
         with open(self.tmpfile, 'r') as f:
             self.assertEqual(f.read(), 'test-f2')
+
+    def test_plotter_template_line_axstructs(self):
+        fun = self.plotter.template_line_axstructs
+        calculation = dict(
+            LINE=[
+                (range(10), range(10, 0, -1), 'dec'),
+                ([3, 6], [5, 7, 8], 'dot2'),
+                (numpy.array(range(20)), numpy.linspace(5, 7, 20)),
+            ],
+        )
+        axstruct, add_style = fun(calculation)
+        self.assertListEqual([], axstruct)
+        calculation['LINE'][1] = ([3, 6], [5, 7], 'dot2')
+        axstruct, add_style = fun(calculation)
+        self.assertNotEqual([], axstruct)
+        self.assertIsNone(axstruct[2])
 
     def test_plotter_template_pcolor_axstructs(self):
         fun = self.plotter.template_pcolor_axstructs

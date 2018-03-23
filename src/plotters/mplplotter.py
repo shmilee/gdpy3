@@ -166,6 +166,33 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
         fig.savefig(fpath, **kwargs)
 
     @staticmethod
+    def _template_line_axstructs(LINE, title, xlabel, ylabel, xlim,
+                                 ylabel_rotation, legend_kwargs):
+        '''For :meth:`template_line_axstructs`.'''
+        log.debug("Getting Axes %s ..." % 111)
+        data, layoutkw = [], {}
+        for i, ln in enumerate(LINE, 1):
+            if len(ln) == 3:
+                data.append([i, 'plot', (ln[0], ln[1]), dict(label=ln[2])])
+            elif len(ln) == 2:
+                data.append([i, 'plot', (ln[0], ln[1]), {}])
+        i = i + 1
+        data.append([i, 'legend', (), legend_kwargs])
+        if title:
+            layoutkw['title'] = title
+        if xlabel:
+            layoutkw['xlabel'] = xlabel
+        if ylabel:
+            if ylabel_rotation is None:
+                layoutkw['ylabel'] = ylabel
+            else:
+                data.append([i + 1, 'set_ylabel', (ylabel,),
+                             dict(rotation=ylabel_rotation)])
+        if xlim:
+            layoutkw['xlim'] = xlim
+        return [{'data': data, 'layout': [111, layoutkw]}], []
+
+    @staticmethod
     def _template_pcolor_axstructs(
             X, Y, Z, plot_method, plot_method_args, plot_method_kwargs,
             title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow):

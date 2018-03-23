@@ -271,9 +271,81 @@ class BasePloTemplate(object):
     '''
     __slots__ = []
     template_available = [
+        'template_line_axstructs',
         'template_pcolor_axstructs',
         'template_sharex_twinx_axstructs',
     ]
+
+    def template_line_axstructs(self, results):
+        '''
+        Template
+        --------
+        .. code::
+                   title
+                 +--------+
+          ylabel | Line2D |
+                 +--------+
+                   xlabel
+
+        Parameters
+        ----------
+        results['LINE']: list of tuple, required
+            all line info for the axes
+            example [(x1, y1, label1), (x2, y2, label2), (x3, y3)]
+            'x1', 'y1', list or numpy.ndarray, same length
+        results['title']: str, optional
+        results['xlabel']: str, optional
+        results['ylabel']: str, optional
+        results['xlim']: (`left`, `right`), optional
+        results['ylabel_rotation']: str or int, optional
+        results['legend_kwargs']: dict, optional
+            legend kwargs
+        '''
+        if not 'LINE' in results:
+            log.error("`LINE` are required!")
+            return [], []
+        if not isinstance(results['LINE'], list):
+            log.error("`LINE` array must be list!")
+            return [], []
+        for i, line in enumerate(results['LINE'], 1):
+            if len(line) in (2, 3):
+                for _x, _X in [(0, 'X'), (1, 'Y')]:
+                    if not isinstance(line[_x], (list, range, numpy.ndarray)):
+                        log.error("%s of line %d must be array!" % (_X, i))
+                        return [], []
+                if len(line[0]) != len(line[1]):
+                    log.error("Invalid length of x, y for line %d!" % i)
+                    return [], []
+            else:
+                log.error("Length of info for line %d must be 2 or 3!" % i)
+                return [], []
+        LINE = results['LINE']
+        title = str(results['title']) if 'title' in results else None
+        xlabel = str(results['xlabel']) if 'xlabel' in results else None
+        ylabel = str(results['ylabel']) if 'ylabel' in results else None
+        if 'xlim' in results and len(results['xlim']) == 2:
+            xlim = results['xlim']
+        else:
+            xlim = None
+        if ('ylabel_rotation' in results
+                and isinstance(results['ylabel_rotation'], (int, str))):
+            ylabel_rotation = results['ylabel_rotation']
+        else:
+            ylabel_rotation = None
+        if ('legend_kwargs' in results
+                and isinstance(results['legend_kwargs'], dict)):
+            legend_kwargs = results['legend_kwargs']
+        else:
+            legend_kwargs = {}
+        return self._template_line_axstructs(
+            LINE, title, xlabel, ylabel,
+            xlim, ylabel_rotation, legend_kwargs)
+
+    @staticmethod
+    def _template_line_axstructs(LINE, title, xlabel, ylabel, xlim,
+                                 ylabel_rotation, legend_kwargs):
+        '''For :meth:`template_line_axstructs`.'''
+        raise NotImplementedError()
 
     def template_pcolor_axstructs(self, results):
         '''

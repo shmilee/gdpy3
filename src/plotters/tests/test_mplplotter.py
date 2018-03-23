@@ -165,6 +165,22 @@ class TestMatplotlibPlotter(unittest.TestCase):
         self.plotter.close_figure('all')
         self.assertListEqual(self.plotter.figures, [])
 
+    def test_mplplotter_template_line_axstructs(self):
+        results = dict(
+            LINE=[
+                ([3, 6], [1.5, 1]),
+                (np.linspace(0, 9, 31), np.sin(np.linspace(0, 9, 31)), 'sin'),
+                (range(100), fielddata[30, :], 'field, time=30$\Delta t$'),
+            ],
+            title='test title', xlabel='X', ylabel='Y',
+            xlim=[0, 30], ylabel_rotation=45, legend_kwargs=dict(loc=0),
+        )
+        axstruct, sty = self.plotter.template_line_axstructs(results)
+        self.plotter.create_figure('template-f1', *axstruct, add_style=sty)
+        self.plotter.show_figure('template-f1')
+        input('[I]nterrupt, to see figure "%s".' % 'template-f1')
+        self.plotter.close_figure('template-f1')
+
     def test_mplplotter_template_pcolor_axstructs(self):
         results = dict(
             X=fieldx, Y=fieldy, Z=fielddata,
@@ -205,7 +221,7 @@ class TestMatplotlibPlotter(unittest.TestCase):
             ylabel_rotation=45,
         )
         axstruct, sty = self.plotter.template_sharex_twinx_axstructs(results)
-        self.plotter.create_figure('template-f1', *axstruct, add_style=sty)
-        self.plotter.show_figure('template-f1')
-        input('[I]nterrupt, to see figure "%s".' % 'template-f1')
-        self.plotter.close_figure('template-f1')
+        self.plotter.create_figure('template-f3', *axstruct, add_style=sty)
+        self.plotter.show_figure('template-f3')
+        input('[I]nterrupt, to see figure "%s".' % 'template-f3')
+        self.plotter.close_figure('template-f3')
