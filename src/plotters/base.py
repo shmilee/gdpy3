@@ -271,9 +271,117 @@ class BasePloTemplate(object):
     '''
     __slots__ = []
     template_available = [
-        'template_sharex_twinx_axstructs',
         'template_pcolor_axstructs',
+        'template_sharex_twinx_axstructs',
     ]
+
+    def template_pcolor_axstructs(self, results):
+        '''
+        Template
+        --------
+        .. code::
+
+                   title
+                 +--------+ +-+
+          ylabel | pcolor | |-|colorbar
+                 +--------+ +-+
+                   xlabel
+
+        Parameters
+        ----------
+        results['X']: 1 or 2 dimension numpy.ndarray, required
+        results['Y']: 1 or 2 dimension numpy.ndarray, required
+        results['Z']: 2 dimension numpy.ndarray, required
+            (len(Y), len(X)) == Z.shape or (X.shape == Y.shape == Z.shape)
+        results['plot_method']: str, optional
+            'pcolor', 'pcolormesh', 'contourf' or 'plot_surface'
+            default 'pcolor'
+        results['plot_method_args']: list, optional
+            args for *plot_method*, like levels for 'contourf'
+        results['plot_method_kwargs']: dict, optional
+            kwargs for *plot_method*,
+            like cmap for 'plot_surface', default in style
+        results['title']: str, optional
+        results['xlabel']: str, optional
+        results['ylabel']: str, optional
+        results['colorbar']: bool, optional
+            add colorbar or not, default True
+        results['grid_alpha']: float, optional
+            transparency of grid, use this when 'grid.alpha' has no effect
+        results['plot_surface_shadow']: list, optional
+            add contourf in a surface plot, ['x', 'y', 'z'], default []
+        '''
+        if not ('X' in results
+                and 'Y' in results and 'Z' in results):
+            log.error("`X`, 'Y' and `Z` are required!")
+            return [], []
+        for _x in ['X', 'Y', 'Z']:
+            if not isinstance(results[_x], numpy.ndarray):
+                log.error("`%s` array must be numpy.ndarray!" % _x)
+                return [], []
+        X = results['X']
+        Y = results['Y']
+        Z = results['Z']
+        if len(X.shape) == 1 and len(Y.shape) == 1:
+            # X, Y: 1 dimension
+            if (len(Y), len(X)) != Z.shape:
+                log.error("Invalid `X`, `Y` length or `Z` shape!")
+                return [], []
+            X, Y = numpy.meshgrid(X, Y)
+        elif len(X.shape) == 2 and len(Y.shape) == 2:
+            # X, Y: 2 dimension
+            if not (X.shape == Y.shape == Z.shape):
+                log.error("Invalid `X`, `Y` or `Z` shape!")
+                return [], []
+        else:
+            log.error("Invalid `X`, `Y` dimension!")
+            return [], []
+        if ('plot_method' in results
+                and results['plot_method'] in (
+                    'pcolor', 'pcolormesh', 'contourf', 'plot_surface')):
+            plot_method = results['plot_method']
+        else:
+            plot_method = 'pcolor'
+        if ('plot_method_args' in results
+                and isinstance(results['plot_method_args'], list)):
+            plot_method_args = results['plot_method_args']
+        else:
+            plot_method_args = []
+        if ('plot_method_kwargs' in results
+                and isinstance(results['plot_method_kwargs'], dict)):
+            plot_method_kwargs = results['plot_method_kwargs']
+        else:
+            plot_method_kwargs = {}
+        if 'cmap' not in plot_method_kwargs:
+            plot_method_kwargs['cmap'] = self.param_from_style('image.cmap')
+        title = str(results['title']) if 'title' in results else None
+        xlabel = str(results['xlabel']) if 'xlabel' in results else None
+        ylabel = str(results['ylabel']) if 'ylabel' in results else None
+        colorbar = bool(results['colorbar'] if 'colorbar' in results else 1)
+        if 'grid_alpha' in results:
+            grid_alpha = float(results['grid_alpha'])
+        else:
+            grid_alpha = None
+        if ('plot_surface_shadow' in results
+                and isinstance(results['plot_surface_shadow'], list)):
+            _sl, _sl_val = results['plot_surface_shadow'], ['x', 'y', 'z']
+            _sl = filter(lambda x: True if x in _sl_val else False, _sl)
+            plot_surface_shadow = list(_sl)
+        else:
+            plot_surface_shadow = []
+        log.ddebug("Some template pcolor parameters: %s" % [
+            plot_method, plot_method_args, plot_method_kwargs,
+            colorbar, grid_alpha, plot_surface_shadow])
+        return self._template_pcolor_axstructs(
+            X, Y, Z, plot_method, plot_method_args, plot_method_kwargs,
+            title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow)
+
+    @staticmethod
+    def _template_pcolor_axstructs(
+            X, Y, Z, plot_method, plot_method_args, plot_method_kwargs,
+            title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow):
+        '''For :meth:`template_pcolor_axstructs`.'''
+        raise NotImplementedError()
 
     def template_sharex_twinx_axstructs(self, results):
         '''
@@ -384,112 +492,4 @@ class BasePloTemplate(object):
         For :meth:`template_sharex_twinx_axstructs`.
         Return [*AxStructs], add_style
         '''
-        raise NotImplementedError()
-
-    def template_pcolor_axstructs(self, results):
-        '''
-        Template
-        --------
-        .. code::
-
-                   title
-                 +--------+ +-+
-          ylabel | pcolor | |-|colorbar
-                 +--------+ +-+
-                   xlabel
-
-        Parameters
-        ----------
-        results['X']: 1 or 2 dimension numpy.ndarray, required
-        results['Y']: 1 or 2 dimension numpy.ndarray, required
-        results['Z']: 2 dimension numpy.ndarray, required
-            (len(Y), len(X)) == Z.shape or (X.shape == Y.shape == Z.shape)
-        results['plot_method']: str, optional
-            'pcolor', 'pcolormesh', 'contourf' or 'plot_surface'
-            default 'pcolor'
-        results['plot_method_args']: list, optional
-            args for *plot_method*, like levels for 'contourf'
-        results['plot_method_kwargs']: dict, optional
-            kwargs for *plot_method*,
-            like cmap for 'plot_surface', default in style
-        results['title']: str, optional
-        results['xlabel']: str, optional
-        results['ylabel']: str, optional
-        results['colorbar']: bool, optional
-            add colorbar or not, default True
-        results['grid_alpha']: float, optional
-            transparency of grid, use this when 'grid.alpha' has no effect
-        results['plot_surface_shadow']: list, optional
-            add contourf in a surface plot, ['x', 'y', 'z'], default []
-        '''
-        if not ('X' in results
-                and 'Y' in results and 'Z' in results):
-            log.error("`X`, 'Y' and `Z` are required!")
-            return [], []
-        for _x in ['X', 'Y', 'Z']:
-            if not isinstance(results[_x], numpy.ndarray):
-                log.error("`%s` array must be numpy.ndarray!" % _x)
-                return [], []
-        X = results['X']
-        Y = results['Y']
-        Z = results['Z']
-        if len(X.shape) == 1 and len(Y.shape) == 1:
-            # X, Y: 1 dimension
-            if (len(Y), len(X)) != Z.shape:
-                log.error("Invalid `X`, `Y` length or `Z` shape!")
-                return [], []
-            X, Y = numpy.meshgrid(X, Y)
-        elif len(X.shape) == 2 and len(Y.shape) == 2:
-            # X, Y: 2 dimension
-            if not (X.shape == Y.shape == Z.shape):
-                log.error("Invalid `X`, `Y` or `Z` shape!")
-                return [], []
-        else:
-            log.error("Invalid `X`, `Y` dimension!")
-            return [], []
-        if ('plot_method' in results
-                and results['plot_method'] in (
-                    'pcolor', 'pcolormesh', 'contourf', 'plot_surface')):
-            plot_method = results['plot_method']
-        else:
-            plot_method = 'pcolor'
-        if ('plot_method_args' in results
-                and isinstance(results['plot_method_args'], list)):
-            plot_method_args = results['plot_method_args']
-        else:
-            plot_method_args = []
-        if ('plot_method_kwargs' in results
-                and isinstance(results['plot_method_kwargs'], dict)):
-            plot_method_kwargs = results['plot_method_kwargs']
-        else:
-            plot_method_kwargs = {}
-        if 'cmap' not in plot_method_kwargs:
-            plot_method_kwargs['cmap'] = self.param_from_style('image.cmap')
-        title = str(results['title']) if 'title' in results else None
-        xlabel = str(results['xlabel']) if 'xlabel' in results else None
-        ylabel = str(results['ylabel']) if 'ylabel' in results else None
-        colorbar = bool(results['colorbar'] if 'colorbar' in results else 1)
-        if 'grid_alpha' in results:
-            grid_alpha = float(results['grid_alpha'])
-        else:
-            grid_alpha = None
-        if ('plot_surface_shadow' in results
-                and isinstance(results['plot_surface_shadow'], list)):
-            _sl, _sl_val = results['plot_surface_shadow'], ['x', 'y', 'z']
-            _sl = filter(lambda x: True if x in _sl_val else False, _sl)
-            plot_surface_shadow = list(_sl)
-        else:
-            plot_surface_shadow = []
-        log.ddebug("Some template pcolor parameters: %s" % [
-            plot_method, plot_method_args, plot_method_kwargs,
-            colorbar, grid_alpha, plot_surface_shadow])
-        return self._template_pcolor_axstructs(
-            X, Y, Z, plot_method, plot_method_args, plot_method_kwargs,
-            title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow)
-
-    @staticmethod
-    def _template_pcolor_axstructs(
-            X, Y, Z, plot_method, plot_method_args, plot_method_kwargs,
-            title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow):
-        '''For :meth:`template_pcolor_axstructs`.'''
         raise NotImplementedError()

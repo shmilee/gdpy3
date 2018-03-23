@@ -165,6 +165,21 @@ class TestMatplotlibPlotter(unittest.TestCase):
         self.plotter.close_figure('all')
         self.assertListEqual(self.plotter.figures, [])
 
+    def test_mplplotter_template_pcolor_axstructs(self):
+        results = dict(
+            X=fieldx, Y=fieldy, Z=fielddata,
+            plot_method='plot_surface',
+            plot_method_kwargs=dict(rstride=1, cstride=1, linewidth=1,
+                                    antialiased=True, label='field'),
+            title='test field', xlabel='r', ylabel='time',
+            plot_surface_shadow=['x', 'z'],
+        )
+        axstruct, sty = self.plotter.template_pcolor_axstructs(results)
+        self.plotter.create_figure('template-f2', *axstruct, add_style=sty)
+        self.plotter.show_figure('template-f2')
+        input('[I]nterrupt, to see figure "%s".' % 'template-f2')
+        self.plotter.close_figure('template-f2')
+
     def test_mplplotter_template_sharex_twinx_axstructs(self):
         results = dict(
             X=range(100),
@@ -194,18 +209,3 @@ class TestMatplotlibPlotter(unittest.TestCase):
         self.plotter.show_figure('template-f1')
         input('[I]nterrupt, to see figure "%s".' % 'template-f1')
         self.plotter.close_figure('template-f1')
-
-    def test_mplplotter_template_pcolor_axstructs(self):
-        results = dict(
-            X=fieldx, Y=fieldy, Z=fielddata,
-            plot_method='plot_surface',
-            plot_method_kwargs=dict(rstride=1, cstride=1, linewidth=1,
-                                    antialiased=True, label='field'),
-            title='test field', xlabel='r', ylabel='time',
-            plot_surface_shadow=['x', 'z'],
-        )
-        axstruct, sty = self.plotter.template_pcolor_axstructs(results)
-        self.plotter.create_figure('template-f2', *axstruct, add_style=sty)
-        self.plotter.show_figure('template-f2')
-        input('[I]nterrupt, to see figure "%s".' % 'template-f2')
-        self.plotter.close_figure('template-f2')

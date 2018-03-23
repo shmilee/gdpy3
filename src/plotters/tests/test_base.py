@@ -50,11 +50,11 @@ class ImpBasePlotter(BasePlotter, BasePloTemplate):
             f.write(fig['num'])
 
     @staticmethod
-    def _template_sharex_twinx_axstructs(*input_list):
+    def _template_pcolor_axstructs(*input_list):
         return input_list, []
 
     @staticmethod
-    def _template_pcolor_axstructs(*input_list):
+    def _template_sharex_twinx_axstructs(*input_list):
         return input_list, []
 
 
@@ -129,6 +129,33 @@ class TestBasePlotter(unittest.TestCase):
         with open(self.tmpfile, 'r') as f:
             self.assertEqual(f.read(), 'test-f2')
 
+    def test_plotter_template_pcolor_axstructs(self):
+        fun = self.plotter.template_pcolor_axstructs
+        calculation = dict(
+            X=numpy.array(range(3)),
+            Y=numpy.array(range(4)),
+            Z=numpy.eye(3, 4),
+        )
+        axstruct, add_style = fun(calculation)
+        self.assertListEqual([], axstruct)
+        calculation['Z'] = numpy.eye(4, 3)
+        axstruct, add_style = fun(calculation)
+        self.assertNotEqual([], axstruct)
+        X, Y = numpy.meshgrid(range(3), range(4))
+        calculation.update(X=X, Y=Y)
+        axstruct, add_style = fun(calculation)
+        self.assertNotEqual([], axstruct)
+        self.assertIsNone(axstruct[7])
+        calculation.update(
+            plot_method='contourf',
+            title='t', xlabel='x', ylabel='y',
+            plot_surface_shadow=['a', 'x', 'c', 'z'],
+        )
+        axstruct, add_style = fun(calculation)
+        self.assertEqual('contourf', axstruct[3])
+        self.assertIsNotNone(axstruct[7])
+        self.assertListEqual(['x', 'z'], axstruct[-1])
+
     def test_plotter_template_sharex_twinx_axstructs(self):
         fun = self.plotter.template_sharex_twinx_axstructs
         calculation = dict(
@@ -160,30 +187,3 @@ class TestBasePlotter(unittest.TestCase):
         self.assertEqual(calculation['xlabel'], axstruct[4])
         self.assertListEqual(calculation['xlim'], axstruct[5])
         self.assertEqual(calculation['ylabel_rotation'], axstruct[6])
-
-    def test_plotter_template_pcolor_axstructs(self):
-        fun = self.plotter.template_pcolor_axstructs
-        calculation = dict(
-            X=numpy.array(range(3)),
-            Y=numpy.array(range(4)),
-            Z=numpy.eye(3, 4),
-        )
-        axstruct, add_style = fun(calculation)
-        self.assertListEqual([], axstruct)
-        calculation['Z'] = numpy.eye(4, 3)
-        axstruct, add_style = fun(calculation)
-        self.assertNotEqual([], axstruct)
-        X, Y = numpy.meshgrid(range(3), range(4))
-        calculation.update(X=X, Y=Y)
-        axstruct, add_style = fun(calculation)
-        self.assertNotEqual([], axstruct)
-        self.assertIsNone(axstruct[7])
-        calculation.update(
-            plot_method='contourf',
-            title='t', xlabel='x', ylabel='y',
-            plot_surface_shadow=['a', 'x', 'c', 'z'],
-        )
-        axstruct, add_style = fun(calculation)
-        self.assertEqual('contourf', axstruct[3])
-        self.assertIsNotNone(axstruct[7])
-        self.assertListEqual(['x', 'z'], axstruct[-1])
