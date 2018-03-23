@@ -213,7 +213,8 @@ class BaseCore(object):
                 "Please set 'pckloader', 'group' before cook data!")
             return
         if fignum not in self.figurenums:
-            log.error("%s not found in figurenums!" % fignum)
+            log.error("%s not found in figurenums of class %s!"
+                      % (fignum, self.__class__.__name__))
             return
         else:
             figinfocls = None
