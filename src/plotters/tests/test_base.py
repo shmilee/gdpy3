@@ -61,6 +61,10 @@ class ImpBasePlotter(BasePlotter, BasePloTemplate):
     def _template_sharex_twinx_axstructs(*input_list):
         return input_list, []
 
+    @staticmethod
+    def _template_z111p_axstructs(*input_list):
+        return input_list, []
+
 
 class TestBasePlotter(unittest.TestCase):
     '''
@@ -207,3 +211,23 @@ class TestBasePlotter(unittest.TestCase):
         self.assertEqual(calculation['xlabel'], axstruct[4])
         self.assertListEqual(calculation['xlim'], axstruct[5])
         self.assertEqual(calculation['ylabel_rotation'], axstruct[6])
+
+    def test_plotter_template_z111p_axstructs(self):
+        fun = self.plotter.template_z111p_axstructs
+        calculation = {
+            'zip_results': [(
+                'template_line_axstructs', 121,
+                dict(LINE=[(range(10), range(10, 0, -1), 'dec'),
+                           ([3, 6], [5, 7], 'dot2')],
+                     title='f1')
+            ), (
+                'template_pcolor_axstructs', 122,
+                dict(X=numpy.array(range(3)), Y=numpy.array(range(4)),
+                     Z=numpy.eye(4, 3))
+            )],
+            'suptitle': '2figs',
+        }
+        axstruct, add_style = fun(calculation)
+        self.assertListEqual(
+            calculation['zip_results'][0][2]['LINE'],
+            axstruct[0][0][0])

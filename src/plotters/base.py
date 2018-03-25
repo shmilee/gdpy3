@@ -274,6 +274,7 @@ class BasePloTemplate(object):
         'template_line_axstructs',
         'template_pcolor_axstructs',
         'template_sharex_twinx_axstructs',
+        'template_z111p_axstructs',
     ]
 
     def template_line_axstructs(self, results):
@@ -562,6 +563,60 @@ class BasePloTemplate(object):
             hspace, title, xlabel, xlim, ylabel_rotation):
         '''
         For :meth:`template_sharex_twinx_axstructs`.
+        Return [*AxStructs], add_style
+        '''
+        raise NotImplementedError()
+
+    def template_z111p_axstructs(self, results):
+        '''
+        Zip axes from other templates that return only one axes.
+
+        Parameters
+        ----------
+        results['zip_results']: list of tuple, required
+            [(name1, pos1, results1), (name2, pos2, results2)]
+            name1: template's name in :attr:`template_available`
+            pos1: new position, int 221, or [a,b,c,d] etc
+            results1: results for template name1
+        results['suptitle']: str, optional
+
+        Notes
+        -----
+        All *add_style* from other templates are ignored!
+        '''
+        if not 'zip_results' in results:
+            log.error("`zip_results` are required!")
+            return [], []
+        if not isinstance(results['zip_results'], list):
+            log.error("`zip_results` must be list!")
+            return [], []
+        zip_results = []
+        for i, _results in enumerate(results['zip_results'], 0):
+            if len(_results) != 3:
+                log.error("`zip_results[%d]`: invalid length!" % i)
+                continue
+            temp, pos, _res = _results
+            try:
+                template_method = getattr(self, temp)
+            except AttributeError:
+                log.error("`zip_results[%d]`: template %s not found!"
+                          % (i, temp))
+                continue
+            try:
+                _axs, _sty = template_method(_res)
+                zip_results.append((_axs[0], pos))
+            except Exception:
+                log.error("`zip_results[%d]`: failed to get AxStruct!" % i,
+                          exc_info=1)
+                continue
+        suptitle = str(results['suptitle']) if 'suptitle' in results else None
+        return self._template_z111p_axstructs(zip_results, suptitle)
+
+    @staticmethod
+    def _template_z111p_axstructs(zip_results, suptitle):
+        '''
+        For :meth:`template_z111p_axstructs`.
+        zip_results = [(AxStruct1, pos1), (AxStruct2, pos2)]
         Return [*AxStructs], add_style
         '''
         raise NotImplementedError()

@@ -234,7 +234,7 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
             X, YINFO,
             hspace, title, xlabel, xlim, ylabel_rotation):
         '''For :meth:`template_sharex_twinx_axstructs`.'''
-        AxStrus = []
+        AxStructs = []
         for row in range(len(YINFO)):
             number = int("%s1%s" % (len(YINFO), row + 1))
             log.debug("Getting Axes %s ..." % number)
@@ -276,5 +276,31 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
                     data.append([i, 'set_ylabel', (YINFO[row]['rylabel'],),
                                  dict(rotation=ylabel_rotation)])
                 data.append([i + 1, 'set_xlim', xlim, {}])
-            AxStrus.append({'data': data, 'layout': [number, layout]})
-        return AxStrus, [{'figure.subplot.hspace': hspace}]
+            AxStructs.append({'data': data, 'layout': [number, layout]})
+        return AxStructs, [{'figure.subplot.hspace': hspace}]
+
+    @staticmethod
+    def _template_z111p_axstructs(zip_results, suptitle):
+        '''
+        For :meth:`template_z111p_axstructs`.
+        '''
+        AxStructs = []
+        for i, _results in enumerate(zip_results, 0):
+            ax, pos = _results
+            if isinstance(pos, (int, list, matplotlib.gridspec.SubplotSpec)):
+                ax['layout'][0] = pos
+            else:
+                log.error("`zip_results[%d]`: invalid position!" % i)
+                continue
+            AxStructs.append(ax)
+        if not suptitle:
+            return AxStructs, []
+
+        try:
+            data = AxStructs[0]['data']
+
+            def addsuptitle(fig, ax, art): return fig.suptitle(suptitle)
+            data.append([len(data) + 1, 'revise', addsuptitle, dict()])
+        except Exception:
+            log.error("Failed to set suptitle: %s!" % suptitle)
+        return AxStructs, []
