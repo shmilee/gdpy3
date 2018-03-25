@@ -226,7 +226,12 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
         plotkw.update(vmin=-Zmax, vmax=Zmax)
         plotkw.update(plot_method_kwargs)
         data.insert(0,  [1, plot_method, [X, Y, Z] + plotarg, plotkw])
-        layoutkw.update(title=title, xlabel=xlabel, ylabel=ylabel)
+        if title:
+            layoutkw['title'] = title
+        if xlabel:
+            layoutkw['xlabel'] = xlabel
+        if ylabel:
+            layoutkw['ylabel'] = ylabel
         return [{'data': data, 'layout': [111, layoutkw]}], []
 
     @staticmethod
@@ -287,6 +292,7 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
         AxStructs = []
         for i, _results in enumerate(zip_results, 0):
             ax, pos = _results
+            log.debug("Getting Axes %s ..." % (pos,))
             if isinstance(pos, (int, list, matplotlib.gridspec.SubplotSpec)):
                 ax['layout'][0] = pos
             else:
