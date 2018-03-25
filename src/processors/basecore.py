@@ -230,6 +230,7 @@ class BaseCore(object):
             except Exception:
                 log.error("figurenum %s/%s: can't get data!"
                           % (self.group, fignum), exc_info=1)
+                return figinfo
             try:
                 figinfo.calculate(data, **figkwargs)
             except Exception:
