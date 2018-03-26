@@ -166,7 +166,7 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
         fig.savefig(fpath, **kwargs)
 
     @staticmethod
-    def _template_line_axstructs(LINE, title, xlabel, ylabel, xlim,
+    def _template_line_axstructs(LINE, title, xlabel, ylabel, xlim, ylim,
                                  ylabel_rotation, legend_kwargs):
         '''For :meth:`template_line_axstructs`.'''
         log.debug("Getting Axes %s ..." % 111)
@@ -190,6 +190,8 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
                              dict(rotation=ylabel_rotation)])
         if xlim:
             layoutkw['xlim'] = xlim
+        if ylim:
+            layoutkw['ylim'] = ylim
         return [{'data': data, 'layout': [111, layoutkw]}], []
 
     @staticmethod

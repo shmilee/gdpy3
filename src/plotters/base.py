@@ -298,6 +298,7 @@ class BasePloTemplate(object):
         results['xlabel']: str, optional
         results['ylabel']: str, optional
         results['xlim']: (`left`, `right`), optional
+        results['ylim']: (`up`, `down`), optional
         results['ylabel_rotation']: str or int, optional
         results['legend_kwargs']: dict, optional
             legend kwargs
@@ -328,6 +329,10 @@ class BasePloTemplate(object):
             xlim = results['xlim']
         else:
             xlim = None
+        if 'ylim' in results and len(results['ylim']) == 2:
+            ylim = results['ylim']
+        else:
+            ylim = None
         if ('ylabel_rotation' in results
                 and isinstance(results['ylabel_rotation'], (int, str))):
             ylabel_rotation = results['ylabel_rotation']
@@ -339,11 +344,11 @@ class BasePloTemplate(object):
         else:
             legend_kwargs = {}
         return self._template_line_axstructs(
-            LINE, title, xlabel, ylabel,
-            xlim, ylabel_rotation, legend_kwargs)
+            LINE, title, xlabel, ylabel, xlim, ylim,
+            ylabel_rotation, legend_kwargs)
 
     @staticmethod
-    def _template_line_axstructs(LINE, title, xlabel, ylabel, xlim,
+    def _template_line_axstructs(LINE, title, xlabel, ylabel, xlim, ylim,
                                  ylabel_rotation, legend_kwargs):
         '''For :meth:`template_line_axstructs`.'''
         raise NotImplementedError()
