@@ -110,6 +110,10 @@ class BaseCore(object):
 
     def set_dig_args(self, rawloader, file, group=None):
         '''Set :meth:`dig` arguments.'''
+        if 'dig' not in self.instructions:
+            log.error("Core %s: no '%s' instruction!"
+                      % (self.__class__.__name__, 'dig'))
+            return
         if not is_rawloader(rawloader):
             raise ValueError("Not a rawloader object!")
         self.rawloader = rawloader
@@ -181,6 +185,10 @@ class BaseCore(object):
 
     def set_cook_args(self, pckloader, group):
         '''Set :meth:`cook` arguments.'''
+        if 'cook' not in self.instructions:
+            log.error("Core %s: no '%s' instruction!"
+                      % (self.__class__.__name__, 'cook'))
+            return
         if not is_pckloader(pckloader):
             raise ValueError("Not a pckloader object!")
         self.pckloader = pckloader
