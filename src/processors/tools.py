@@ -1,45 +1,20 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2017 shmilee
+# Copyright (c) 2018 shmilee
+
+'''
+Some tools for Core.
+'''
 
 import numpy as np
 
 from ..glogger import getGLogger
-from ..convert import NpzLoader
 
-__all__ = ['is_dictobj', 'in_dictobj',
-           'max_subarray', 'fitline', 'argrelextrema',
+__all__ = ['max_subarray', 'fitline', 'argrelextrema',
            'fft', 'savgol_golay_filter', 'findflat', 'findgrowth',
            ]
+log = getGLogger('C')
 
-log = getGLogger('P')
-
-
-# 1. dictobj
-
-def is_dictobj(dictobj):
-    '''
-    Check if *dictobj* is a instance of :class:`gdpy3.convert.NpzLoader`.
-    '''
-    if isinstance(dictobj, NpzLoader):
-        return True
-    else:
-        return False
-
-
-def in_dictobj(dictobj, *keys):
-    '''
-    Check if all the *keys* are in *dictobj*.
-    '''
-    result = True
-    for key in keys:
-        if key not in dictobj.datakeys:
-            log.warn("Key '%s' not in %s!" % (key, dictobj.file))
-            result = False
-    return result
-
-
-# 2 . math, numpy, etc.
 
 def max_subarray(A):
     '''
