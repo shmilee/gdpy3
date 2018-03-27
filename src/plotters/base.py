@@ -51,6 +51,9 @@ class BasePlotter(object):
 
     def _set_style(self, style):
         self._style = []
+        if isinstance(style, str) or hasattr(style, 'keys'):
+            # single str or dict
+            style = [style]
         for sty in style:
             if self._check_style(sty):
                 self._style.append(sty)
