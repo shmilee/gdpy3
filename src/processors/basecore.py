@@ -362,4 +362,91 @@ class BaseFigInfo(object):
         return AxStrus, add_style
 
 
-BaseCore.figureclasses = []  # [BaseFigInfo, ]
+class BaseSharexTwinxFigInfo(BaseFigInfo):
+    '''Base class for figures use 'template_sharex_twinx_axstructs'.'''
+    __slots__ = []
+
+    def _get_srckey_extrakey(self, fignum):
+        # groupdict = self._pre_check_get(fignum, '?')
+        # return [], []
+        raise NotImplementedError()
+
+    def _get_data_X_Y_title_etc(self, data):
+        # return {'X': [], 'YINFO': [], 'title': '', ...}
+        raise NotImplementedError()
+
+    def __init__(self, fignum, group):
+        srckey, extrakey = self._get_srckey_extrakey(fignum)
+        super(BaseSharexTwinxFigInfo, self).__init__(
+            fignum, group, srckey, extrakey,
+            'template_sharex_twinx_axstructs')
+
+    def calculate(self, data, **kwargs):
+        '''
+        kwargs
+        ------
+        *hspace*: float
+            subplot.hspace, default 0.02
+        *xlim*: (`left`, `right`)
+            default [min(X), max(X)]
+        *ylabel_rotation*: str or int
+            default 'vertical'
+        '''
+        self.calculation.update(self._get_data_X_Y_title_etc(data))
+        if len(self.calculation['YINFO']) == 0:
+            log.warn("No data for fignum %s." % self.fignum)
+        debug_kw = {}
+        for k in ['hspace', 'xlim', 'ylabel_rotation']:
+            if k in kwargs:
+                self.calculation[k] = kwargs[k]
+            if k in self.calculation:
+                debug_kw[k] = self.calculation[k]
+        log.ddebug("Some kwargs accepted: %s" % debug_kw)
+
+
+class BasePcolorFigInfo(BaseFigInfo):
+    '''Base class for figures use 'template_pcolor_axstructs'.'''
+    __slots__ = []
+    default_plot_method = 'pcolor'
+
+    def _get_srckey_extrakey(self, fignum):
+        # groupdict = self._pre_check_get(fignum, '?')
+        # return [], []
+        raise NotImplementedError()
+
+    def _get_data_X_Y_Z_title_etc(self, data):
+        # return {'X': [], 'Y': [], 'Z': [], 'title': '', ...}
+        raise NotImplementedError()
+
+    def __init__(self, fignum, group):
+        srckey, extrakey = self._get_srckey_extrakey(fignum)
+        super(BasePcolorFigInfo, self).__init__(
+            fignum, group, srckey, extrakey, 'template_pcolor_axstructs')
+
+    def calculate(self, data, **kwargs):
+        '''
+        kwargs
+        ------
+        *kwargs* passed on to :meth:`plotter.template_pcolor_axstructs`
+        1. *plot_method*: default :attr:`default_plot_method`
+        2. *colorbar* : default True
+        3. other keyword arguments:
+            *plot_method_args*, *plot_method_kwargs*,
+            *grid_alpha*, *plot_surface_shadow*
+        '''
+        self.calculation.update(self._get_data_X_Y_Z_title_etc(data))
+        if len(self.calculation['Z']) == 0:
+            log.warn("No data for fignum %s." % self.fignum)
+        self.calculation['plot_method'] = self.default_plot_method
+        debug_kw = {}
+        for k in ['plot_method', 'plot_method_args',
+                  'plot_method_kwargs', 'colorbar',
+                  'grid_alpha', 'plot_surface_shadow']:
+            if k in kwargs:
+                self.calculation[k] = kwargs[k]
+            if k in self.calculation:
+                debug_kw[k] = self.calculation[k]
+        log.ddebug("Some kwargs accepted: %s" % debug_kw)
+
+
+BaseCore.figureclasses = []  # [BaseFigInfo, BaseSharexTwinxFigInfo]
