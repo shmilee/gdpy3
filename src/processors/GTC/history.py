@@ -75,15 +75,6 @@ class HistoryCoreV110922(BaseCore):
        Source: fieldtime, fieldmode: phi, a_para, fluid_ne
        The fieldtime 2d array is fieldtime[mfdiag,time].
        The fieldmode 2d array is fieldmode[modes,time].
-
-    Attributes
-    ----------
-    file: str
-        File path of GTC ``history.out`` to convert
-    group: str of data group
-    datakeys: tuple
-        data keys of physical quantities in ``history.out``
-    data: dict of converted data
     '''
     __slots__ = []
     filepatterns = ['^(?P<group>history)\.out$',
