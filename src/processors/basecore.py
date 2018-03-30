@@ -238,6 +238,8 @@ class BaseCore(object):
             log.error(
                 "Please set 'pckloader', 'group' before cook data!")
             return
+        if fignum.startswith('%s/' % self.group):
+            fignum = fignum[len(self.group) + 1:]
         if fignum not in self.figurenums:
             log.error("%s not found in figurenums of class %s!"
                       % (fignum, self.__class__.__name__))
