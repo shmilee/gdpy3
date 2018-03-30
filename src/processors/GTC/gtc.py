@@ -95,9 +95,9 @@ class GtcCoreV110922(BaseCore):
                     sd.update({key: val})
         log.debug("Filled datakeys: %s ..." % str(debugkeys))
 
-        # backup gtc.out
-        log.ddebug("Filling datakey: %s ..." % 'backup-gtcout')
-        with self.rawloader.get(self.file) as f:
-            sd.update({'backup-gtcout': numpy.fromfile(f)})
+        # backup gtc.out, broken with archive loader
+        # log.ddebug("Filling datakey: %s ..." % 'backup-gtcout')
+        # with self.rawloader.get(self.file) as f:
+        #     sd.update({'backup-gtcout': numpy.fromfile(f)})
 
         return sd
