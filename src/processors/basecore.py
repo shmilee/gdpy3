@@ -108,6 +108,24 @@ class BaseCore(object):
                       % (group, cls.grouppattern))
             return False
 
+    @staticmethod
+    def short_file(file):
+        '''short list of file names to a str.'''
+        if not isinstance(file, list):
+            return file
+        for f in file:
+            for i in range(1, len(f)):
+                sub = f[:-i]
+                for _f in file:
+                    if sub not in _f:
+                        sub = False
+                        break
+                if sub:
+                    break
+            if sub:
+                star = '*' * (len(f) - len(sub))
+                return '%s%s' % (sub, star)
+
     def set_dig_args(self, rawloader, file, group=None):
         '''Set :meth:`dig` arguments.'''
         if 'dig' not in self.instructions:
