@@ -382,6 +382,46 @@ class BaseFigInfo(object):
         return AxStrus, add_style
 
 
+class BaseLineFigInfo(BaseFigInfo):
+    '''Base class for figures use 'template_line_axstructs'.'''
+    __slots__ = []
+
+    def _get_srckey_extrakey(self, fignum):
+        # groupdict = self._pre_check_get(fignum, '?')
+        # return [], []
+        raise NotImplementedError()
+
+    def _get_data_LINE_title_etc(self, data):
+        # return {'LINE': [], 'title': '', ...}
+        raise NotImplementedError()
+
+    def __init__(self, fignum, group):
+        srckey, extrakey = self._get_srckey_extrakey(fignum)
+        super(BaseLineFigInfo, self).__init__(
+            fignum, group, srckey, extrakey,
+            'template_line_axstructs')
+
+    def calculate(self, data, **kwargs):
+        '''
+        kwargs
+        ------
+        *xlim*: (`left`, `right`)
+            default [min(X), max(X)]
+        *ylabel_rotation*: str or int
+            default 'vertical'
+        '''
+        self.calculation.update(self._get_data_LINE_title_etc(data))
+        if len(self.calculation['LINE']) == 0:
+            log.warn("No data for fignum %s." % self.fignum)
+        debug_kw = {}
+        for k in ['xlim', 'ylabel_rotation']:
+            if k in kwargs:
+                self.calculation[k] = kwargs[k]
+            if k in self.calculation:
+                debug_kw[k] = self.calculation[k]
+        log.ddebug("Some kwargs accepted: %s" % debug_kw)
+
+
 class BaseSharexTwinxFigInfo(BaseFigInfo):
     '''Base class for figures use 'template_sharex_twinx_axstructs'.'''
     __slots__ = []
