@@ -170,14 +170,16 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
                                  ylabel_rotation, legend_kwargs):
         '''For :meth:`template_line_axstructs`.'''
         log.debug("Getting Axes %s ..." % 111)
-        data, layoutkw = [], {}
+        data, layoutkw, addlegend = [], {}, False
         for i, ln in enumerate(LINE, 1):
             if len(ln) == 3:
                 data.append([i, 'plot', (ln[0], ln[1]), dict(label=ln[2])])
+                addlegend = True
             elif len(ln) == 2:
                 data.append([i, 'plot', (ln[0], ln[1]), {}])
-        i = i + 1
-        data.append([i, 'legend', (), legend_kwargs])
+        if addlegend:
+            i = i + 1
+            data.append([i, 'legend', (), legend_kwargs])
         if title:
             layoutkw['title'] = title
         if xlabel:
@@ -248,8 +250,9 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
             layout = dict(xlim=xlim)
             if row == 0 and title:
                 layout['title'] = title
-            if row == len(YINFO) - 1 and xlabel:
-                layout['xlabel'] = xlabel
+            if row == len(YINFO) - 1:
+                if xlabel:
+                    layout['xlabel'] = xlabel
             else:
                 layout['xticklabels'] = []
             data, i = [], 0
