@@ -7,6 +7,7 @@ Contains loader base class.
 '''
 
 import os
+import re
 import types
 import contextlib
 
@@ -88,6 +89,14 @@ class BaseLoader(object):
             result = tuple(
                 filter(lambda k: True if i in k else False, result))
         return tuple(result)
+
+    def refind(self, pattern):
+        '''
+         Find the loader keys which match the regular expression *pattern*.
+        '''
+        pat = re.compile(pattern)
+        return tuple(filter(
+            lambda k: True if re.match(pat, k) else False, self.keys()))
 
     def __contains__(self, item):
         '''

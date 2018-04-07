@@ -83,6 +83,7 @@ class TestBaseRawLoader(unittest.TestCase):
     def test_rawloader_find(self):
         loader = ImpBaseRawLoader(self.tmpfile)
         self.assertEqual(loader.find('d', 2), ('d2/f2',))
+        self.assertEqual(loader.refind('^d2.*'), ('d2/f2',))
 
     def test_rawloader_contains(self):
         loader = ImpBaseRawLoader(self.tmpfile)
@@ -160,6 +161,7 @@ class TestBasePckLoader(unittest.TestCase):
     def test_pckloader_find(self):
         loader = ImpBasePckLoader(self.tmpfile)
         self.assertEqual(loader.find('g', 4), ('g3/k4',))
+        self.assertEqual(loader.refind('^g.*4$'), ('g3/k4',))
 
     def test_pckloader_contains(self):
         loader = ImpBasePckLoader(self.tmpfile)
