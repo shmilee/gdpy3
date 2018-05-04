@@ -151,3 +151,7 @@ class BasePckSaver(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
+
+    def __repr__(self):
+        return '<{0}.{1} object at {2} for {3}>'.format(
+            self.__module__, type(self).__name__, hex(id(self)), self.path)

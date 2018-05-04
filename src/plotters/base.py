@@ -46,6 +46,10 @@ class BasePlotter(object):
         self.example_axes = example_axes
         self._figureslib = {}
 
+    def __repr__(self):
+        return '<{0}.{1} object at {2} named {3}>'.format(
+            self.__module__, type(self).__name__, hex(id(self)), self.name)
+
     def _get_style(self):
         return self._style
 
