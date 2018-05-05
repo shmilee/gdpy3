@@ -98,7 +98,7 @@ ax5 = {
         )
     ],
     'data': [
-        [1, 'hist', (dist, 50), dict(normed=1, label='H')],
+        [1, 'hist', (dist, 50), dict(density=1, label='H')],
         [2, 'legend', (), dict()],
     ],
     'axstyle': ['default'],
