@@ -284,6 +284,34 @@ class BasePloTemplate(object):
         'template_z111p_axstructs',
     ]
 
+    @staticmethod
+    def _get_my_optional_vals(results, *items):
+        '''
+        Get results[key] if key in results, return a list.
+        valid *items*: [(key, class or (cls1, cls2), default_val), ...]
+            class: str, int, float, list, dict, ...
+        '''
+        vals = []
+        for key, cls, default in items:
+            _val = results.get(key, default)
+            if not isinstance(_val, cls):
+                _val = default
+            vals.append(_val)
+        return vals
+
+    @staticmethod
+    def _get_my_points(results, *keys):
+        '''Get results[key] if key in results and is point, else None'''
+        points = []
+        for k in keys:
+            p = results.get(k, None)
+            if (p and len(p) == 2 and isinstance(p[0], (int, float))
+                    and isinstance(p[1], (int, float))):
+                points.append(p)
+            else:
+                points.append(None)
+        return points
+
     def template_line_axstructs(self, results):
         '''
         Template
@@ -329,27 +357,13 @@ class BasePloTemplate(object):
                 log.error("Length of info for line %d must be 2 or 3!" % i)
                 return [], []
         LINE = results['LINE']
-        title = str(results['title']) if 'title' in results else None
-        xlabel = str(results['xlabel']) if 'xlabel' in results else None
-        ylabel = str(results['ylabel']) if 'ylabel' in results else None
-        if 'xlim' in results and len(results['xlim']) == 2:
-            xlim = results['xlim']
-        else:
-            xlim = None
-        if 'ylim' in results and len(results['ylim']) == 2:
-            ylim = results['ylim']
-        else:
-            ylim = None
-        if ('ylabel_rotation' in results
-                and isinstance(results['ylabel_rotation'], (int, str))):
-            ylabel_rotation = results['ylabel_rotation']
-        else:
-            ylabel_rotation = None
-        if ('legend_kwargs' in results
-                and isinstance(results['legend_kwargs'], dict)):
-            legend_kwargs = results['legend_kwargs']
-        else:
-            legend_kwargs = {}
+        title, xlabel, ylabel = self._get_my_optional_vals(
+            results, ('title', str, None),
+            ('xlabel', str, None), ('ylabel', str, None))
+        xlim, ylim = self._get_my_points(results, 'xlim', 'ylim')
+        ylabel_rotation, legend_kwargs = self._get_my_optional_vals(
+            results, ('ylabel_rotation', (int, str), None),
+            ('legend_kwargs', dict, {}))
         return self._template_line_axstructs(
             LINE, title, xlabel, ylabel, xlim, ylim,
             ylabel_rotation, legend_kwargs)
@@ -421,39 +435,25 @@ class BasePloTemplate(object):
         else:
             log.error("Invalid `X`, `Y` dimension!")
             return [], []
-        if ('plot_method' in results
-                and results['plot_method'] in (
-                    'pcolor', 'pcolormesh', 'contourf', 'plot_surface')):
-            plot_method = results['plot_method']
-        else:
+        plot_method, plot_method_args, plot_method_kwargs = \
+            self._get_my_optional_vals(results,
+                                       ('plot_method', str, 'pcolor'),
+                                       ('plot_method_args', list, []),
+                                       ('plot_method_kwargs', dict, {}))
+        if plot_method not in ('pcolor', 'pcolormesh',
+                               'contourf', 'plot_surface'):
             plot_method = 'pcolor'
-        if ('plot_method_args' in results
-                and isinstance(results['plot_method_args'], list)):
-            plot_method_args = results['plot_method_args']
-        else:
-            plot_method_args = []
-        if ('plot_method_kwargs' in results
-                and isinstance(results['plot_method_kwargs'], dict)):
-            plot_method_kwargs = results['plot_method_kwargs']
-        else:
-            plot_method_kwargs = {}
         if 'cmap' not in plot_method_kwargs:
             plot_method_kwargs['cmap'] = self.param_from_style('image.cmap')
-        title = str(results['title']) if 'title' in results else None
-        xlabel = str(results['xlabel']) if 'xlabel' in results else None
-        ylabel = str(results['ylabel']) if 'ylabel' in results else None
-        colorbar = bool(results['colorbar'] if 'colorbar' in results else 1)
-        if 'grid_alpha' in results:
-            grid_alpha = float(results['grid_alpha'])
-        else:
-            grid_alpha = None
-        if ('plot_surface_shadow' in results
-                and isinstance(results['plot_surface_shadow'], list)):
-            _sl, _sl_val = results['plot_surface_shadow'], ['x', 'y', 'z']
-            _sl = filter(lambda x: True if x in _sl_val else False, _sl)
-            plot_surface_shadow = list(_sl)
-        else:
-            plot_surface_shadow = []
+        title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow = \
+            self._get_my_optional_vals(
+                results, ('title', str, None), ('xlabel', str, None),
+                ('ylabel', str, None), ('colorbar', bool, True),
+                ('grid_alpha', float, None), ('plot_surface_shadow', list, [])
+            )
+        plot_surface_shadow = list(filter(
+            lambda x: True if x in ['x', 'y', 'z'] else False,
+            plot_surface_shadow))
         log.ddebug("Some template pcolor parameters: %s" % [
             plot_method, plot_method_args, plot_method_kwargs,
             colorbar, grid_alpha, plot_surface_shadow])
@@ -553,18 +553,13 @@ class BasePloTemplate(object):
                             % (j, i, lr))
                         return [], []
         YINFO = results['YINFO']
-        hspace = float(results['hspace']) if 'hspace' in results else 0.02
-        title = str(results['title']) if 'title' in results else None
-        xlabel = str(results['xlabel']) if 'xlabel' in results else None
-        if 'xlim' in results and len(results['xlim']) == 2:
-            xlim = results['xlim']
-        else:
+        hspace, title, xlabel, ylabel_rotation = self._get_my_optional_vals(
+            results, ('hspace', float, 0.02), ('title', str, None),
+            ('xlabel', str, None), ('ylabel_rotation', (int, str), 'vertical')
+        )
+        xlim, = self._get_my_points(results, 'xlim')
+        if not xlim:
             xlim = [numpy.min(X), numpy.max(X)]
-        if ('ylabel_rotation' in results
-                and isinstance(results['ylabel_rotation'], (int, str))):
-            ylabel_rotation = results['ylabel_rotation']
-        else:
-            ylabel_rotation = 'vertical'
         return self._template_sharex_twinx_axstructs(
             X, YINFO,
             hspace, title, xlabel, xlim, ylabel_rotation)
@@ -621,7 +616,8 @@ class BasePloTemplate(object):
                 log.error("`zip_results[%d]`: failed to get AxStruct!" % i,
                           exc_info=1)
                 continue
-        suptitle = str(results['suptitle']) if 'suptitle' in results else None
+        suptitle, = self._get_my_optional_vals(
+            results, ('suptitle', str, None))
         return self._template_z111p_axstructs(zip_results, suptitle)
 
     @staticmethod
