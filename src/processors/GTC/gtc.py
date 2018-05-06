@@ -13,12 +13,12 @@ skip
 
 import re
 import numpy
-from ..basecore import BaseCore, log
+from ..core import DigCore, log
 
-__all__ = ['GtcCoreV110922']
+__all__ = ['GtcDigCoreV110922']
 
 
-class GtcCoreV110922(BaseCore):
+class GtcDigCoreV110922(DigCore):
     '''
     gtc.out parameters
 
@@ -28,15 +28,14 @@ class GtcCoreV110922(BaseCore):
     `numpy.ndarray.tostring(outdict['backup-gtcout']).decode()`
     '''
     __slots__ = []
-    instructions = ['dig']
-    filepatterns = ['^(?P<group>gtc)\.out$', '.*/(?P<group>gtc)\.out$']
-    grouppattern = '^gtc$'
-    _datakeys = ('get by function :meth:`_dig`',)
+    itemspattern = ['^(?P<section>gtc)\.out$', '.*/(?P<section>gtc)\.out$']
+    default_section = 'gtc'
+    _datakeys = ('get by function :meth:`_convert`',)
 
-    def _dig(self):
+    def _convert(self):
         '''Read 'gtc.out' parameters.'''
-        with self.rawloader.get(self.file) as f:
-            log.ddebug("Read file '%s'." % self.file)
+        with self.rawloader.get(self.files) as f:
+            log.ddebug("Read file '%s'." % self.files)
             outdata = f.readlines()
 
         sd = {}
