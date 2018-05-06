@@ -61,12 +61,12 @@ diagnosis.F90:194-203, ::
 '''
 
 import numpy
-from ..basecore import BaseCore, BasePcolorFigInfo, log
+from ..core import DigCore, LayCore, PcolorFigInfo, log
 
-__all__ = ['Data1dCoreV110922']
+__all__ = ['Data1dDigCoreV110922', 'Data1dLayCoreV110922']
 
 
-class Data1dCoreV110922(BaseCore):
+class Data1dDigCoreV110922(DigCore):
     '''
     Radial Time Data
 
@@ -78,8 +78,9 @@ class Data1dCoreV110922(BaseCore):
        The field 2d array is field[r,time].
     '''
     __slots__ = []
-    filepatterns = ['^(?P<group>data1d)\.out$', '.*/(?P<group>data1d)\.out$']
-    grouppattern = '^data1d$'
+    itemspattern = ['^(?P<section>data1d)\.out$',
+                    '.*/(?P<section>data1d)\.out$']
+    default_section = 'data1d'
     _datakeys = (
         # 1. diagnosis.F90:opendiag():739
         'ndstep', 'mpsi+1', 'nspecies', 'nhybrid',
@@ -95,10 +96,10 @@ class Data1dCoreV110922(BaseCore):
         # 7. fieldrms(0:mpsi,nfield)
         'fieldrms-phi', 'fieldrms-apara', 'fieldrms-fluidne')
 
-    def _dig(self):
+    def _convert(self):
         '''Read 'data1d.out'.'''
-        with self.rawloader.get(self.file) as f:
-            log.ddebug("Read file '%s'." % self.file)
+        with self.rawloader.get(self.files) as f:
+            log.ddebug("Read file '%s'." % self.files)
             outdata = f.readlines()
 
         sd = {}
@@ -176,7 +177,7 @@ class Data1dCoreV110922(BaseCore):
         return sd
 
 
-class FluxFigInfo(BasePcolorFigInfo):
+class FluxFigInfo(PcolorFigInfo):
     '''Figures of particle, energy and momentum flux of ion, electron, EP.'''
     __slots__ = ['particle', 'flux']
     figurenums = ['%s_%s_flux' % (p, f)
@@ -207,7 +208,7 @@ class FluxFigInfo(BasePcolorFigInfo):
                     xlabel=r'time($R_0/c_s$)', ylabel=r'$r$(mpsi)')
 
 
-class Field00FigInfo(BasePcolorFigInfo):
+class Field00FigInfo(PcolorFigInfo):
     '''Figures of phi, a_para, fluid_ne of field00'''
     __slots__ = ['flow']
     figurenums = ['zonal_%s' % f for f in ['flow', 'current', 'fluidne']]
@@ -229,7 +230,7 @@ class Field00FigInfo(BasePcolorFigInfo):
                     xlabel=r'time($R_0/c_s$)', ylabel=r'$r$(mpsi)')
 
 
-class FieldRMSFigInfo(BasePcolorFigInfo):
+class FieldRMSFigInfo(PcolorFigInfo):
     '''Figures of phi, a_para, fluid_ne of fieldrms'''
     __slots__ = ['field']
     figurenums = ['%s_rms' % f for f in ['phi', 'apara', 'fluidne']]
@@ -251,5 +252,11 @@ class FieldRMSFigInfo(BasePcolorFigInfo):
                     xlabel=r'time($R_0/c_s$)', ylabel=r'$r$(mpsi)')
 
 
-Data1dCoreV110922.figureclasses = [
-    FluxFigInfo, Field00FigInfo, FieldRMSFigInfo]
+class Data1dLayCoreV110922(LayCore):
+    '''
+    Radial Time Figures
+    '''
+    __slots__ = []
+    itemspattern = ['^(?P<section>data1d)$']
+    default_section = 'data1d'
+    figinfoclasses = [FluxFigInfo, Field00FigInfo, FieldRMSFigInfo]
