@@ -38,12 +38,12 @@ datax(mpsi/mskip+1,lst),dataz(mpsi/mskip+1,lst),data2d(mpsi/mskip+1,lst,5)
 '''
 
 import numpy
-from ..basecore import BaseCore, BaseFigInfo, BaseLineFigInfo, BasePcolorFigInfo, log
+from ..core import DigCore, LayCore, FigInfo, LineFigInfo, PcolorFigInfo, log
 
-__all__ = ['EquilibriumCoreV110922']
+__all__ = ['EquilibriumDigCoreV110922', 'EquilibriumLayCoreV110922']
 
 
-class EquilibriumCoreV110922(BaseCore):
+class EquilibriumDigCoreV110922(DigCore):
     '''
     Equilibrium data
 
@@ -68,9 +68,9 @@ class EquilibriumCoreV110922(BaseCore):
        'b-field', 'Jacobian', 'icurrent', 'zeta2phi', 'delb'.
     '''
     __slots__ = []
-    filepatterns = ['^(?P<group>equilibrium)\.out$',
-                    '.*/(?P<group>equilibrium)\.out$']
-    grouppattern = '^equilibrium$'
+    itemspattern = ['^(?P<section>equilibrium)\.out$',
+                    '.*/(?P<section>equilibrium)\.out$']
+    default_section = 'equilibrium'
     _datakeys = (
         # 1. first part, 1D
         'nplot-1d', 'nrad', '1d-data',
@@ -79,10 +79,10 @@ class EquilibriumCoreV110922(BaseCore):
         'mesh-points-on-X', 'mesh-points-on-Z',
         'b-field', 'Jacobian', 'icurrent', 'zeta2phi', 'delb')
 
-    def _dig(self):
+    def _convert(self):
         '''Read 'equilibrium.out'.'''
-        with self.rawloader.get(self.file) as f:
-            log.ddebug("Read file '%s'." % self.file)
+        with self.rawloader.get(self.files) as f:
+            log.ddebug("Read file '%s'." % self.files)
             outdata = f.readlines()
 
         sd = {}
@@ -114,7 +114,7 @@ class EquilibriumCoreV110922(BaseCore):
         return sd
 
 
-class Plot1DPsiFigInfo(BaseLineFigInfo):
+class Plot1DPsiFigInfo(LineFigInfo):
     '''Figures X -> psi of radius, Z_eff, E_r, rotation, shear ...'''
     __slots__ = ['d1']
     _misc = {
@@ -143,7 +143,7 @@ class Plot1DPsiFigInfo(BaseLineFigInfo):
                     xlabel='psi', xlim=[min(X), max(X)])
 
 
-class Plot1DrFigInfo(BaseLineFigInfo):
+class Plot1DrFigInfo(LineFigInfo):
     '''Figures X -> r of psi, radial grid'''
     __slots__ = ['d1']
     _misc = {'psi': dict(title='psi(r)', index=0),
@@ -164,7 +164,7 @@ class Plot1DrFigInfo(BaseLineFigInfo):
                     xlabel='r', xlim=[min(X), max(X)])
 
 
-class Plot1DPsirFigInfo(BaseFigInfo):
+class Plot1DPsirFigInfo(FigInfo):
     '''Figures X -> psi, r of q, shear, gcurrent, pressure, tor flux ...'''
     __slots__ = ['d1']
     _misc = {
@@ -178,11 +178,11 @@ class Plot1DPsirFigInfo(BaseFigInfo):
     figurenums = ['%s:psi-r' % d1 for d1 in _misc.keys()]
     numpattern = r'^(?P<d1>(?:%s)):psi-r$' % '|'.join(_misc.keys())
 
-    def __init__(self, fignum, group):
+    def __init__(self, fignum, scope, groups):
         groupdict = self._pre_check_get(fignum, 'd1')
         self.d1 = groupdict['d1']
         super(Plot1DPsirFigInfo, self).__init__(
-            fignum, group, ['nrad', '1d-data'], [],
+            fignum, scope, groups, ['nrad', '1d-data'], [],
             'template_z111p_axstructs')
 
     def calculate(self, data, **kwargs):
@@ -201,17 +201,17 @@ class Plot1DPsirFigInfo(BaseFigInfo):
         }
 
 
-class Plot1DParticleFigInfo(BaseFigInfo):
+class Plot1DParticleFigInfo(FigInfo):
     '''Figures of ion, electron, fastion T, n'''
     __slots__ = ['particle']
     figurenums = ['%s' % p for p in ['ion', 'electron', 'fastion']]
     numpattern = '^(?P<particle>(?:ion|electron|fastion))$'
 
-    def __init__(self, fignum, group):
+    def __init__(self, fignum, scope, groups):
         groupdict = self._pre_check_get(fignum, 'particle')
         self.particle = groupdict['particle']
         super(Plot1DParticleFigInfo, self).__init__(
-            fignum, group, ['nrad', '1d-data'], [],
+            fignum, scope, groups, ['nrad', '1d-data'], [],
             'template_z111p_axstructs')
 
     def calculate(self, data, **kwargs):
@@ -242,7 +242,7 @@ class Plot1DParticleFigInfo(BaseFigInfo):
         }
 
 
-class Plot1DErroFigInfo(BaseLineFigInfo):
+class Plot1DErroFigInfo(LineFigInfo):
     '''Figures X -> [0, pi/2], error of spline cos, sin'''
     __slots__ = ['d1']
     _misc = {'cos': dict(title='error of spline cos', index=28),
@@ -264,7 +264,7 @@ class Plot1DErroFigInfo(BaseLineFigInfo):
                     xlabel=r'$\theta$', xlim=[min(X), max(X)])
 
 
-class Plot2DFigInfo(BasePcolorFigInfo):
+class Plot2DFigInfo(PcolorFigInfo):
     '''Figures of b-field, Jacobian, icurrent, zeta2phi, delb'''
     __slots__ = ['d2']
     _misc = ['b-field', 'Jacobian', 'icurrent', 'zeta2phi', 'delb']
@@ -294,7 +294,7 @@ class Plot2DFigInfo(BasePcolorFigInfo):
         return AxStrus, add_style
 
 
-class Plot2DMeshFigInfo(BaseLineFigInfo):
+class Plot2DMeshFigInfo(LineFigInfo):
     '''Figure poloidal mesh'''
     __slots__ = []
     figurenums = ['poloidal_mesh']
@@ -313,7 +313,6 @@ class Plot2DMeshFigInfo(BaseLineFigInfo):
             x, y = X[i], Y[i]
             x, y = numpy.append(x, x[0]), numpy.append(y, y[0])
             LINE.append((x, y))
-            print(x, y)
         for i in range(lst):
             x, y = X[:, i], Y[:, i]
             LINE.append((x, y))
@@ -332,7 +331,7 @@ class Plot2DMeshFigInfo(BaseLineFigInfo):
         return AxStrus, add_style
 
 
-class Plot2DThetaFigInfo(BaseLineFigInfo):
+class Plot2DThetaFigInfo(LineFigInfo):
     '''Figures X -> theta of b-field, Jacobian, icurrent at psi=isp'''
     __slots__ = ['d2', 'isp']
     _misc = ['b-field', 'Jacobian', 'icurrent', 'gq_plus_I/BB']
@@ -384,7 +383,13 @@ class Plot2DThetaFigInfo(BaseLineFigInfo):
         super(Plot2DThetaFigInfo, self).calculate(data, **kwargs)
 
 
-EquilibriumCoreV110922.figureclasses = [
-    Plot1DPsiFigInfo, Plot1DrFigInfo, Plot1DPsirFigInfo,
-    Plot1DParticleFigInfo, Plot1DErroFigInfo,
-    Plot2DFigInfo, Plot2DMeshFigInfo, Plot2DThetaFigInfo]
+class EquilibriumLayCoreV110922(LayCore):
+    '''
+    Equilibrium Figures
+    '''
+    __slots__ = []
+    itemspattern = ['^(?P<section>equilibrium)$']
+    default_section = 'equilibrium'
+    figinfoclasses = [Plot1DPsiFigInfo, Plot1DrFigInfo, Plot1DPsirFigInfo,
+                      Plot1DParticleFigInfo, Plot1DErroFigInfo,
+                      Plot2DFigInfo, Plot2DMeshFigInfo, Plot2DThetaFigInfo]
