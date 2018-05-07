@@ -59,12 +59,12 @@ diagfast(mpdiag), pushf.F90:472-483
 
 import numpy as np
 from .. import tools
-from ..basecore import BaseCore, BaseFigInfo, BaseSharexTwinxFigInfo, log
+from ..core import DigCore, LayCore, FigInfo, SharexTwinxFigInfo, log
 
-__all__ = ['HistoryCoreV110922']
+__all__ = ['HistoryDigCoreV110922', 'HistoryLayCoreV110922']
 
 
-class HistoryCoreV110922(BaseCore):
+class HistoryDigCoreV110922(DigCore):
     '''
     History Data
 
@@ -77,9 +77,9 @@ class HistoryCoreV110922(BaseCore):
        The fieldmode 2d array is fieldmode[modes,time].
     '''
     __slots__ = []
-    filepatterns = ['^(?P<group>history)\.out$',
-                    '.*/(?P<group>history)\.out$']
-    grouppattern = '^history$'
+    itemspattern = ['^(?P<section>history)\.out$',
+                    '.*/(?P<section>history)\.out$']
+    default_section = 'history'
     _datakeys = (
         # 1. diagnosis.F90:opendiag():734-735
         'ndstep', 'nspecies', 'mpdiag', 'nfield', 'modes', 'mfdiag',
@@ -93,10 +93,10 @@ class HistoryCoreV110922(BaseCore):
         'fieldmode-apara-real', 'fieldmode-apara-imag',
         'fieldmode-fluidne-real', 'fieldmode-fluidne-imag')
 
-    def _dig(self):
+    def _convert(self):
         '''Read 'history.out'.'''
-        with self.rawloader.get(self.file) as f:
-            log.ddebug("Read file '%s'." % self.file)
+        with self.rawloader.get(self.files) as f:
+            log.ddebug("Read file '%s'." % self.files)
             outdata = f.readlines()
 
         sd = {}
@@ -161,7 +161,7 @@ class HistoryCoreV110922(BaseCore):
         return sd
 
 
-class ParticleFigInfo(BaseSharexTwinxFigInfo):
+class ParticleFigInfo(SharexTwinxFigInfo):
     '''Figures of ion, electron, fastion history'''
     __slots__ = ['particle', 'pf']
     figurenums = ['%s%s' % (p, pf)
@@ -204,7 +204,7 @@ class ParticleFigInfo(BaseSharexTwinxFigInfo):
                     xlabel=r'time($R_0/c_s$)', xlim=[0, np.max(X)])
 
 
-class FieldFigInfo(BaseSharexTwinxFigInfo):
+class FieldFigInfo(SharexTwinxFigInfo):
     '''Figures of phi, apara, fluidne history'''
     __slots__ = ['field']
     figurenums = ['field_%s' % f for f in ['phi', 'apara', 'fluidne']]
@@ -247,7 +247,7 @@ class FieldFigInfo(BaseSharexTwinxFigInfo):
                     xlabel=r'time($R_0/c_s$)', xlim=[0, np.max(X)])
 
 
-class ModeFigInfo(BaseFigInfo):
+class ModeFigInfo(FigInfo):
     '''Figures of field modes: phi, apara, fluidne, 1-8'''
     __slots__ = ['index', 'field']
     figurenums = ['mode%s_%s' % (i, f)
@@ -255,12 +255,12 @@ class ModeFigInfo(BaseFigInfo):
                   for f in ['phi', 'apara', 'fluidne']]
     numpattern = r'^mode(?P<index>\d)_(?P<field>(?:phi|apara|fluidne))$'
 
-    def __init__(self, fignum, group):
+    def __init__(self, fignum, scope, groups):
         groupdict = self._pre_check_get(fignum, 'index', 'field')
         self.index = int(groupdict['index'])
         self.field = groupdict['field']
         super(ModeFigInfo, self).__init__(
-            fignum, group,
+            fignum, scope, groups,
             ['ndstep', 'fieldmode-%s-real' % self.field,
              'fieldmode-%s-imag' % self.field, ],
             ['gtc/%s' % k for k in ['tstep', 'ndiag', 'nmodes', 'mmodes',
@@ -395,5 +395,11 @@ class ModeFigInfo(BaseFigInfo):
         self.calculation.update(omega3=omega3)
 
 
-HistoryCoreV110922.figureclasses = [
-    ParticleFigInfo, FieldFigInfo, ModeFigInfo]
+class HistoryLayCoreV110922(LayCore):
+    '''
+    History Figures
+    '''
+    __slots__ = []
+    itemspattern = ['^(?P<section>history)$']
+    default_section = 'history'
+    figinfoclasses = [ParticleFigInfo, FieldFigInfo, ModeFigInfo]
