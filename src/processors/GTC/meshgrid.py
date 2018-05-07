@@ -27,12 +27,12 @@ diagnosis.F90, subroutine diagnosis:37-50
 '''
 
 import numpy
-from ..basecore import BaseCore, log
+from ..core import DigCore, log
 
-__all__ = ['MeshgridCoreV110922']
+__all__ = ['MeshgridDigCoreV110922']
 
 
-class MeshgridCoreV110922(BaseCore):
+class MeshgridDigCoreV110922(DigCore):
     '''
     Meshgrid data
 
@@ -40,18 +40,17 @@ class MeshgridCoreV110922(BaseCore):
        Shape of the array data is (mpsi+1,).
     '''
     __slots__ = []
-    instructions = ['dig']
-    filepatterns = ['^(?P<group>meshgrid)\.out$',
-                    '.*/(?P<group>meshgrid)\.out$']
-    grouppattern = '^meshgrid$'
+    itemspattern = ['^(?P<section>meshgrid)\.out$',
+                    '.*/(?P<section>meshgrid)\.out$']
+    default_section = 'meshgrid'
     _datakeys = (
         'psimesh', 'sprpsi', 'qmesh',
         'kapatmti', 'kapatmte', 'kapatmni', 'kapatmne')
 
-    def _dig(self):
+    def _convert(self):
         '''Read 'meshgrid.out'.'''
-        with self.rawloader.get(self.file) as f:
-            log.ddebug("Read file '%s'." % self.file)
+        with self.rawloader.get(self.files) as f:
+            log.ddebug("Read file '%s'." % self.files)
             outdata = f.readlines()
 
         sd = {}
