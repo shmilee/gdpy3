@@ -36,15 +36,15 @@ field quantities: phi, a_para, fluidne.
 '''
 
 import numpy as np
-from ..basecore import (
-    BaseCore, BaseFigInfo, log,
-    BaseSharexTwinxFigInfo, BasePcolorFigInfo,
+from ..core import (
+    DigCore, LayCore, log,
+    FigInfo, SharexTwinxFigInfo, PcolorFigInfo
 )
 
-__all__ = ['SnapshotCoreV110922']
+__all__ = ['SnapshotDigCoreV110922', 'SnapshotLayCoreV110922']
 
 
-class SnapshotCoreV110922(BaseCore):
+class SnapshotDigCoreV110922(DigCore):
     '''
     Snapshot Data
 
@@ -64,9 +64,9 @@ class SnapshotCoreV110922(BaseCore):
        fluxdata 2d array is fluxdata[theta,zeta].
     '''
     __slots__ = []
-    filepatterns = ['^(?P<group>snap\d{5})\.out$',
-                    '.*/(?P<group>snap\d{5})\.out$']
-    grouppattern = '^snap\d{5}$'
+    itemspattern = ['^(?P<section>snap\d{5})\.out$',
+                    '.*/(?P<section>snap\d{5})\.out$']
+    default_section = 'snap99999'
     _datakeys = (
         # 1. parameters
         'nspecies', 'nfield', 'nvgrid', 'mpsi+1',
@@ -81,10 +81,10 @@ class SnapshotCoreV110922(BaseCore):
         # 5. fluxdata(0:mtgrid,mtoroidal,nfield)
         'fluxdata-phi', 'fluxdata-apara', 'fluxdata-fluidne')
 
-    def _dig(self):
+    def _convert(self):
         '''Read 'snap%05d.out' % istep.'''
-        with self.rawloader.get(self.file) as f:
-            log.ddebug("Read file '%s'." % self.file)
+        with self.rawloader.get(self.files) as f:
+            log.ddebug("Read file '%s'." % self.files)
             outdata = f.readlines()
 
         sd = {}
@@ -158,7 +158,7 @@ class SnapshotCoreV110922(BaseCore):
         return sd
 
 
-class ProfilePdfFigInfo(BaseSharexTwinxFigInfo):
+class ProfilePdfFigInfo(SharexTwinxFigInfo):
     '''Figures of ion, electron, fastion radial profiles and pdf.'''
     __slots__ = ['particle', 'pf']
     figurenums = ['%s_%s' % (p, pf)
@@ -203,7 +203,7 @@ class ProfilePdfFigInfo(BaseSharexTwinxFigInfo):
             }]
         else:
             YINFO = []
-        istep = int(self.group.replace('snap', ''))
+        istep = int(self.groups.replace('snap', ''))
         title = ('%s %s, istep=%d, time=%s$R_0/c_s$'
                  % (self.particle, self.pf, istep, istep * data['gtc/tstep']))
         xlabel = 'r (mpsi)' if self.pf == 'profile' else 'nvgrid'
@@ -211,7 +211,7 @@ class ProfilePdfFigInfo(BaseSharexTwinxFigInfo):
                     xlim=[0, np.max(X)])
 
 
-class FieldFluxPloidalFigInfo(BasePcolorFigInfo):
+class FieldFluxPloidalFigInfo(PcolorFigInfo):
     '''Figures of phi, a_para, fluidne on flux surface or ploidal plane.'''
     __slots__ = ['field', 'pf']
     figurenums = ['%s_%s' % (f, pf)
@@ -241,7 +241,7 @@ class FieldFluxPloidalFigInfo(BasePcolorFigInfo):
             X, Y = data['poloidata-x'], data['poloidata-z']
             Z = data['poloidata-%s' % self.field]
             xlabel, ylabel = r'$X(R_0)$', r'$Z(R_0)$'
-        istep = int(self.group.replace('snap', ''))
+        istep = int(self.groups.replace('snap', ''))
         pf = 'flux surface' if self.pf == 'flux' else 'ploidal plane'
         ttl = r'$%s$ on %s' % (self.field, pf)
         ttl = ttl.replace('phi', '\phi').replace('apara', 'A_{\parallel}')
@@ -261,17 +261,17 @@ class FieldFluxPloidalFigInfo(BasePcolorFigInfo):
         return AxStrus, add_style
 
 
-class FieldSpectrumFigInfo(BaseFigInfo):
+class FieldSpectrumFigInfo(FigInfo):
     '''Figures of field poloidal and parallel spectra.'''
     __slots__ = ['field']
     figurenums = ['%s_spectrum' % f for f in ['phi', 'apara', 'fluidne']]
     numpattern = r'^(?P<field>(?:phi|apara|fluidne))_spectrum$'
 
-    def __init__(self, fignum, group):
+    def __init__(self, fignum, scope, groups):
         groupdict = self._pre_check_get(fignum, 'field')
         self.field = groupdict['field']
         super(FieldSpectrumFigInfo, self).__init__(
-            fignum, group,
+            fignum, scope, groups,
             ['mtgrid+1', 'mtoroidal', 'fluxdata-%s' % self.field],
             ['gtc/tstep'], 'template_z111p_axstructs')
 
@@ -282,7 +282,7 @@ class FieldSpectrumFigInfo(BaseFigInfo):
         *mmode*, *pmode*: int
             set poloidal or parallel range
         '''
-        field, it = self.field, int(self.group.replace('snap', ''))
+        field, it = self.field, int(self.groups.replace('snap', ''))
         fstr = field.replace('phi', '\phi').replace('apara', 'A_{\parallel}')
         timestr = 'istep=%d, time=%s$R_0/c_s$' % (it, it * data['gtc/tstep'])
         mtgrid1, mtoroidal = data['mtgrid+1'], data['mtoroidal']
@@ -333,17 +333,17 @@ class FieldSpectrumFigInfo(BaseFigInfo):
         }
 
 
-class FieldProfileFigInfo(BaseFigInfo):
+class FieldProfileFigInfo(FigInfo):
     '''Figures of field and rms radius poloidal profile.'''
     __slots__ = ['field']
     figurenums = ['%s_profile' % f for f in ['phi', 'apara', 'fluidne']]
     numpattern = r'^(?P<field>(?:phi|apara|fluidne))_profile$'
 
-    def __init__(self, fignum, group):
+    def __init__(self, fignum, scope, groups):
         groupdict = self._pre_check_get(fignum, 'field')
         self.field = groupdict['field']
         super(FieldProfileFigInfo, self).__init__(
-            fignum, group,
+            fignum, scope, groups,
             ['mpsi+1', 'mtgrid+1', 'poloidata-%s' % self.field],
             ['gtc/tstep'], 'template_z111p_axstructs')
 
@@ -354,7 +354,7 @@ class FieldProfileFigInfo(BaseFigInfo):
         *itgrid*, *ipsi*: int
             set poloidal and radius cut
         '''
-        field, it = self.field, int(self.group.replace('snap', ''))
+        field, it = self.field, int(self.groups.replace('snap', ''))
         fstr = field.replace('phi', '\phi').replace('apara', 'A_{\parallel}')
         timestr = 'istep=%d, time=%s$R_0/c_s$' % (it, it * data['gtc/tstep'])
         mpsi1, mtgrid1 = data['mpsi+1'], data['mtgrid+1']
@@ -401,6 +401,12 @@ class FieldProfileFigInfo(BaseFigInfo):
         }
 
 
-SnapshotCoreV110922.figureclasses = [
-    ProfilePdfFigInfo, FieldFluxPloidalFigInfo,
-    FieldSpectrumFigInfo, FieldProfileFigInfo]
+class SnapshotLayCoreV110922(LayCore):
+    '''
+    Snapshot Figures
+    '''
+    __slots__ = []
+    itemspattern = ['^(?P<section>snap\d{5})$']
+    default_section = 'snap99999'
+    figinfoclasses = [ProfilePdfFigInfo, FieldFluxPloidalFigInfo,
+                      FieldSpectrumFigInfo, FieldProfileFigInfo]
