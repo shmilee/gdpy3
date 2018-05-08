@@ -28,12 +28,12 @@ tracking.F90, subroutine write_tracked_particles:270:278-289
 
 import types
 import numpy as np
-from ..basecore import BaseCore, BaseFigInfo, log
+from ..core import DigCore, LayCore, FigInfo, log
 
-__all__ = ['TrackParticleCoreV110922']
+__all__ = ['TrackParticleDigCoreV110922', 'TrackParticleLayCoreV110922']
 
 
-class TrackParticleCoreV110922(BaseCore):
+class TrackParticleDigCoreV110922(DigCore):
     '''
     Tracking Particle Data
 
@@ -43,24 +43,22 @@ class TrackParticleCoreV110922(BaseCore):
        istep, X, Z, zeta, rho_para, weight, sqrt(mu).
     '''
     __slots__ = []
-    filepatterns = ['^(?P<group>trackp)_dir/TRACKP\.\d{5}$',
-                    '.*/(?P<group>trackp)_dir/TRACKP\.\d{5}$']
-    grouppattern = '^trackp$'
-    _datakeys = ('get by function :meth:`_dig`',)
+    nitems = '+'
+    itemspattern = ['^(?P<section>trackp)_dir/TRACKP\.\d{5}$',
+                    '.*/(?P<section>trackp)_dir/TRACKP\.\d{5}$']
+    default_section = 'trackp'
+    _datakeys = ('get by function :meth:`_convert`',)
 
-    def __init__(self):
-        super(TrackParticleCoreV110922, self).__init__(nfiles='+')
-
-    def _dig(self):
+    def _convert(self):
         '''Read 'trackp_dir/TRACKP.%05d' % mype.'''
         ion = {}
         electron = {}
         fastion = {}
         Particles = [ion, electron, fastion]
         keyprefix = ['ion', 'electron', 'fastion']
-        for f in self.file:
+        for f in self.files:
             with self.rawloader.get(f) as fid:
-                log.ddebug("Read file '%s'." % fid.name)
+                log.ddebug("Read file '%s'." % f)
                 istep = fid.readline()
                 while istep:
                     nums = [int(n) for n in fid.readline().split()]
@@ -91,7 +89,7 @@ class TrackParticleCoreV110922(BaseCore):
         return sd
 
 
-class OrbitFigInfo(BaseFigInfo):
+class OrbitFigInfo(FigInfo):
     '''Figures for particle 2d or 3d orbit.'''
     __slots__ = ['dimension', 'species', 'pckloader']
     figurenums = ['orbit_%s_%s' % (dim, spec)
@@ -100,11 +98,12 @@ class OrbitFigInfo(BaseFigInfo):
     numpattern = r'^orbit_%s_%s$' % (r'(?P<dim>(?:2d|3d))',
                                      r'(?P<spec>(?:ion|electron|fastion))')
 
-    def __init__(self, fignum, group):
+    def __init__(self, fignum, scope, groups):
         groupdict = self._pre_check_get(fignum, 'dim', 'spec')
         self.dimension = groupdict['dim']
         self.species = groupdict['spec']
-        super(OrbitFigInfo, self).__init__(fignum, group, [], ['gtc/r0'], 0)
+        super(OrbitFigInfo, self).__init__(
+            fignum, scope, groups, [], ['gtc/r0'], 0)
 
     def get_data(self, pckloader):
         '''Save pckloader for :meth:`calculate`, then super().get_data.'''
@@ -170,6 +169,7 @@ class OrbitFigInfo(BaseFigInfo):
             try:
                 pdata = self.pckloader[particles[idx]]
                 pname = particles[idx].replace(trackp, '')
+                title = '(%d) %s' % (idx, pname)
                 R = pdata[:, 1] * r0
                 Z = pdata[:, 2] * r0
                 if self.dimension == '2d':
@@ -178,6 +178,7 @@ class OrbitFigInfo(BaseFigInfo):
                     else:
                         _caldr = False
                     lay, data = self.__cal_2d_orbit(R, Z, r0, pname, _caldr)
+                    lay['title'] = title
                     ax_cal[number] = dict(layoutkw=lay, data=data)
                 else:
                     zeta = pdata[:, 3]
@@ -185,7 +186,7 @@ class OrbitFigInfo(BaseFigInfo):
                     Y = R * np.sin(zeta)
                     Rlim = 1.05 * np.max(R)
                     scale = [-Rlim, Rlim]
-                    lay = dict(title=pname, projection='3d')
+                    lay = dict(title=title, projection='3d')
                     data = [
                         [1, 'plot', (X, Y, Z), dict(linewidth=1)],
                         [2, 'set_aspect', ('equal',), dict()],
@@ -204,7 +205,7 @@ class OrbitFigInfo(BaseFigInfo):
     def __cal_2d_orbit(self, R, Z, r0, pname, _caldr):
         rlim = 1.1 * max(abs(np.max(R) - r0), np.max(Z),
                          abs(r0 - np.min(R)), abs(np.min(Z)))
-        layoutkw = dict(title=pname, xlim=[r0 - rlim, r0 + rlim],
+        layoutkw = dict(xlim=[r0 - rlim, r0 + rlim],
                         ylim=[-rlim, rlim])
         data = [[1, 'plot', (R, Z), dict()],
                 [2, 'set_aspect', ('equal',), dict()]]
@@ -272,4 +273,11 @@ class OrbitFigInfo(BaseFigInfo):
         return AxStrus, []
 
 
-TrackParticleCoreV110922.figureclasses = [OrbitFigInfo]
+class TrackParticleLayCoreV110922(LayCore):
+    '''
+    Tracking Particle Figures
+    '''
+    __slots__ = []
+    itemspattern = ['^(?P<section>trackp)$']
+    default_section = 'trackp'
+    figinfoclasses = [OrbitFigInfo]
