@@ -3,33 +3,31 @@
 # Copyright (c) 2018 shmilee
 
 '''
-Residual zonal flow Core.
+Residual zonal flow Cores.
 '''
 
 import re
 import numpy as np
-from ..basecore import BaseCore, log
+from ..core import DigCore, LayCore, log
 from .data1d import Field00FigInfo
 from .. import tools
 
-__all__ = ['Data1dRZFCoreV110922']
+__all__ = ['Data1dRZFDigCoreV110922', 'Data1dRZFLayCoreV110922']
 
 
-class Data1dRZFCoreV110922(BaseCore):
+class Data1dRZFDigCoreV110922(DigCore):
     '''
     Residual zonal flow
     datakeys: gtc/zfkrrhoi, gtc/zfkrrho0, gtc/zfistep, gtc/zfkrdltr
-    fignum: data1d/residual_zonal_flow
     '''
     __slots__ = []
-    filepatterns = ['^(?P<group>gtc)\.out$', '[^/]+/(?P<group>gtc)\.out$']
-    grouppattern = '^(?:gtc|data1d)$'
-    _datakeys = ('set by _dig',)
+    itemspattern = ['^(?P<section>gtc)\.out$', '[^/]+/(?P<section>gtc)\.out$']
+    default_section = 'gtc'
 
-    def _dig(self):
+    def _convert(self):
         '''Read 'gtc.out'.'''
-        with self.rawloader.get(self.file) as f:
-            log.ddebug("Read file '%s'." % self.file)
+        with self.rawloader.get(self.files) as f:
+            log.ddebug("Read file '%s'." % self.files)
             outdata = f.read()
         sd = {}
         numpat = r'[-+]?\d+[\.]?\d*[eE]?[-+]?\d*'
@@ -54,8 +52,8 @@ class ResidualZFFigInfo(Field00FigInfo):
     figurenums = ['residual_zonal_flow']
     numpattern = r'^residual_zonal_(?P<flow>flow)$'
 
-    def __init__(self, fignum, group):
-        super(ResidualZFFigInfo, self).__init__(fignum, group)
+    def __init__(self, fignum, scope, groups):
+        super(ResidualZFFigInfo, self).__init__(fignum, scope, groups)
         self.extrakey = ['gtc/%s' % k for k in
                          ['tstep', 'ndiag', 'zfkrrhoi', 'zfkrrho0',
                           'zfistep', 'zfkrdltr', 'qiflux', 'rgiflux']]
@@ -73,9 +71,9 @@ class ResidualZFFigInfo(Field00FigInfo):
             *colorbar*, *grid_alpha*, *plot_surface_shadow*
         '''
         title = r'$\phi_{p00}, q=%.3f, \epsilon=%.3f$' % (
-                data['gtc/qiflux'], data['gtc/rgiflux'])
+            data['gtc/qiflux'], data['gtc/rgiflux'])
         title = r'%s, $k_r\rho_i=%.4f, k_r\rho_0=%.4f$' % (
-                title, data['gtc/zfkrrhoi'], data['gtc/zfkrrho0'])
+            title, data['gtc/zfkrrhoi'], data['gtc/zfkrrho0'])
         super(ResidualZFFigInfo, self).calculate(data, **kwargs)
         # 1
         ax1_calc = self.calculation
@@ -196,4 +194,12 @@ class ResidualZFFigInfo(Field00FigInfo):
         })
 
 
-Data1dRZFCoreV110922.figureclasses = [ResidualZFFigInfo]
+class Data1dRZFLayCoreV110922(LayCore):
+    '''
+    Residual zonal flow
+    fignum: data1d/residual_zonal_flow
+    '''
+    __slots__ = []
+    itemspattern = ['^(?P<section>data1d)$']
+    default_section = 'data1d'
+    figinfoclasses = [ResidualZFFigInfo]
