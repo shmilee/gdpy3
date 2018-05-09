@@ -289,8 +289,7 @@ class Plot2DFigInfo(PcolorFigInfo):
                 data = AxStrus[0]['data']
                 data.append([len(data) + 1, 'set_aspect', ('equal',), dict()])
             except Exception:
-                log.error(
-                    "Failed to patch fignum %s!" % self.fignum, exc_info=1)
+                log.error("Failed to patch %s!" % self.fullnum, exc_info=1)
         return AxStrus, add_style
 
 
@@ -326,8 +325,7 @@ class Plot2DMeshFigInfo(LineFigInfo):
                 data = AxStrus[0]['data']
                 data.append([len(data) + 1, 'set_aspect', ('equal',), dict()])
             except Exception:
-                log.error(
-                    "Failed to patch fignum %s!" % self.fignum, exc_info=1)
+                log.error("Failed to patch %s!" % self.fullnum, exc_info=1)
         return AxStrus, add_style
 
 

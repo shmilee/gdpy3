@@ -256,8 +256,7 @@ class FieldFluxPloidalFigInfo(PcolorFigInfo):
                 data = AxStrus[0]['data']
                 data.append([len(data) + 1, 'set_aspect', ('equal',), dict()])
             except Exception:
-                log.error(
-                    "Failed to patch fignum %s!" % self.fignum, exc_info=1)
+                log.error("Failed to patch %s!" % self.fullnum, exc_info=1)
         return AxStrus, add_style
 
 
@@ -288,10 +287,10 @@ class FieldSpectrumFigInfo(FigInfo):
         mtgrid1, mtoroidal = data['mtgrid+1'], data['mtoroidal']
         fluxdata = data['fluxdata-%s' % self.field]
         if fluxdata.size == 0:
-            log.warn("No data for fignum %s." % self.fignum)
+            log.warn("No data for %s." % self.fullnum)
             return
         if fluxdata.shape != (mtgrid1, mtoroidal):
-            log.error("Invalid fluxdata shape for fignum %s!" % self.fignum)
+            log.error("Invalid fluxdata shape!")
             return
         mtgrid = mtgrid1 - 1
         maxmmode = int(mtgrid / 2 + 1)
@@ -360,10 +359,10 @@ class FieldProfileFigInfo(FigInfo):
         mpsi1, mtgrid1 = data['mpsi+1'], data['mtgrid+1']
         pdata = data['poloidata-%s' % self.field]
         if pdata.size == 0:
-            log.warn("No data for fignum %s." % self.fignum)
+            log.warn("No data for %s." % self.fullnum)
             return
         if pdata.shape != (mtgrid1, mpsi1):
-            log.error("Invalid poloidata shape for fignum %s!" % self.fignum)
+            log.error("Invalid poloidata shape!")
             return
         itgrid = 0
         ipsi = (mpsi1 - 1) // 2

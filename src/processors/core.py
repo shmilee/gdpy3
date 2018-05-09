@@ -260,20 +260,20 @@ class LayCore(BaseCore):
         if not fic:
             log.error("%s: %s not found!" % (self.coreid, fignum))
             return
-        log.debug("%s: Cook pck data for %s/%s ..."
-                  % (self.coreid, self.scope, fignum))
         figinfo = fic(fignum, self.scope, self.groups)
+        log.info("%s: Cook pck data for %s ..."
+                 % (self.coreid, figinfo.fullnum))
         try:
             data = figinfo.get_data(self.pckloader)
         except Exception:
-            log.error("%s: can't get data for %s/%s!"
-                      % (self.coreid, self.scope, fignum), exc_info=1)
+            log.error("%s: can't get data for %s!"
+                      % (self.coreid, figinfo.fullnum), exc_info=1)
             return
         try:
             figinfo.calculate(data, **figkwargs)
         except Exception:
-            log.error("%s: can't calculate data for %s/%s!"
-                      % (self.coreid, self.scope, fignum), exc_info=1)
+            log.error("%s: can't calculate data for %s!"
+                      % (self.coreid, figinfo.fullnum), exc_info=1)
             return
         return figinfo
 
@@ -351,9 +351,10 @@ class FigInfo(object):
         self.template = template
         self.calculation = {}
 
-    def get_fullnum(self, suffix=''):
+    @property
+    def fullnum(self):
         '''Return full label.'''
-        return '%s/%s%s' % (self.scope, self.fignum, suffix)
+        return '%s/%s' % (self.scope, self.fignum)
 
     def get_data(self, pckloader):
         '''Use keys get pck data from *pckloader*, return a dict.'''
@@ -425,7 +426,7 @@ class LineFigInfo(FigInfo):
         '''
         self.calculation.update(self._get_data_LINE_title_etc(data))
         if len(self.calculation['LINE']) == 0:
-            log.warn("No data for fignum %s." % self.fignum)
+            log.warn("No data for %s." % self.fullnum)
         debug_kw = {}
         for k in ['xlim', 'ylabel_rotation']:
             if k in kwargs:
@@ -467,7 +468,7 @@ class SharexTwinxFigInfo(FigInfo):
         '''
         self.calculation.update(self._get_data_X_Y_title_etc(data))
         if len(self.calculation['YINFO']) == 0:
-            log.warn("No data for fignum %s." % self.fignum)
+            log.warn("No data for %s." % self.fullnum)
         debug_kw = {}
         for k in ['hspace', 'xlim', 'ylabel_rotation']:
             if k in kwargs:
@@ -510,7 +511,7 @@ class PcolorFigInfo(FigInfo):
         '''
         self.calculation.update(self._get_data_X_Y_Z_title_etc(data))
         if len(self.calculation['Z']) == 0:
-            log.warn("No data for fignum %s." % self.fignum)
+            log.warn("No data for %s." % self.fullnum)
         self.calculation['plot_method'] = self.default_plot_method
         debug_kw = {}
         for k in ['plot_method', 'plot_method_args',
