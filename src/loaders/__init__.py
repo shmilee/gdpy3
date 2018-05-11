@@ -14,6 +14,7 @@ It contains two kinds of loaders.
    :meth:`base.BaseRawLoader.keys`,
    :meth:`base.BaseRawLoader.get`,
    :meth:`base.BaseLoader.find`,
+   :meth:`base.BaseLoader.refind`,
    :meth:`base.BaseLoader.all_in_loader`.
 
 2. ``PckLoader``, get by :func:`get_pckloader`.
@@ -28,6 +29,7 @@ It contains two kinds of loaders.
    :meth:`base.BasePckLoader.get`,
    :meth:`base.BasePckLoader.get_many`,
    :meth:`base.BaseLoader.find`,
+   :meth:`base.BaseLoader.refind`,
    :meth:`base.BaseLoader.all_in_loader`.
 '''
 

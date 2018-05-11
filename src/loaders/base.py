@@ -92,7 +92,7 @@ class BaseLoader(object):
 
     def refind(self, pattern):
         '''
-         Find the loader keys which match the regular expression *pattern*.
+        Find the loader keys which match the regular expression *pattern*.
         '''
         pat = re.compile(pattern)
         return tuple(filter(

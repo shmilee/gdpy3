@@ -5,11 +5,11 @@
 '''
 This is the subpackage ``plotters`` of gdpy3.
 ``plotter``, get by :func:`get_plotter`, has attributes
-:attr:`base.BasePlotter.name``,
+:attr:`base.BasePlotter.name`,
 :attr:`base.BasePlotter.style_available`,
-:attr:`base.BasePlotter.style``,
-:attr:`base.BasePlotter.figures``,
-:attr:`base.BasePlotter.example_axes``
+:attr:`base.BasePlotter.style`,
+:attr:`base.BasePlotter.figures`,
+:attr:`base.BasePlotter.example_axes`
 and methods
 :meth:`base.BasePlotter.check_style`,
 :meth:`base.BasePlotter.filter_style`,
@@ -21,8 +21,6 @@ and methods
 :meth:`base.BasePlotter.close_figure`,
 :meth:`base.BasePlotter.save_figure`,
 '''
-
-import os
 
 from ..glogger import getGLogger
 from . import base
