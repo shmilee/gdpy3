@@ -6,6 +6,8 @@
 Contains processor base class.
 '''
 
+import re
+
 from ..glogger import getGLogger
 from ..loaders import is_rawloader, is_pckloader
 from ..savers import is_pcksaver
@@ -166,3 +168,11 @@ class Processor(object):
             log.error("%s: Figure %s not found!" % (self.name, figlabel))
             return
         return core.see_figkwargs(fignum, see)
+
+    def refind(self, pattern):
+        '''
+        Find the figlabels which match the regular expression *pattern*.
+        '''
+        pat = re.compile(pattern)
+        return tuple(filter(
+            lambda k: True if re.match(pat, k) else False, self.figurelabels))
