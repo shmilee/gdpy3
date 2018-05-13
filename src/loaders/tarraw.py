@@ -23,6 +23,7 @@ class TarRawLoader(BaseRawLoader):
     Load raw data from a tar archive. Return a dictionary-like object.
     '''
     __slots__ = []
+    loader_type = 'tarfile'
 
     def _special_check_path(self):
         if os.path.isfile(self.path) and tarfile.is_tarfile(self.path):

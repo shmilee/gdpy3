@@ -34,6 +34,7 @@ class Hdf5PckLoader(BasePckLoader):
     >>> h5file[datakey][...]
     '''
     __slots__ = []
+    loader_type = '.hdf5'
 
     def _special_check_path(self):
         if h5py.is_hdf5(self.path):

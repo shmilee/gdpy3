@@ -41,6 +41,7 @@ class SftpRawLoader(BaseRawLoader):
     '''
     __slots__ = ['user', '__passwd', 'host', 'port', 'rmt_path', 'transport']
     _sep = '/'  # unix sep
+    loader_type = 'sftp.directory'
 
     def _getpasswd(self):
         '''Prompt for a password.'''

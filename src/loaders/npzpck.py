@@ -29,6 +29,7 @@ class NpzPckLoader(BasePckLoader):
     >>> npzfile[datakey]
     '''
     __slots__ = []
+    loader_type = '.npz'
 
     def _special_check_path(self):
         if zipfile.is_zipfile(self.path):

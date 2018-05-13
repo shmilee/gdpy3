@@ -26,6 +26,7 @@ class BaseLoader(object):
     path: str
     '''
     __slots__ = ['path']
+    loader_type = 'base'
 
     def __init__(self, path):
         if self._check_path_access(path):

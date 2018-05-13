@@ -23,6 +23,7 @@ class ZipRawLoader(BaseRawLoader):
     Load raw data from a ZIP archive. Return a dictionary-like object.
     '''
     __slots__ = []
+    loader_type = 'zipfile'
 
     def _special_check_path(self):
         if os.path.isfile(self.path) and zipfile.is_zipfile(self.path):

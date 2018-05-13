@@ -24,6 +24,7 @@ class DirRawLoader(BaseRawLoader):
     Directory tree maxdepth is 2.
     '''
     __slots__ = []
+    loader_type = 'directory'
 
     def _special_check_path(self):
         if os.path.isdir(self.path):

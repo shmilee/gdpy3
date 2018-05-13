@@ -24,6 +24,7 @@ class CachePckLoader(BasePckLoader):
        invalid: (/k0, /g2/k6, /g2/k7/, /g2/k8/k9)
     '''
     __slots__ = ['_cache_dict']
+    loader_type = '.cache'
 
     def _check_path_access(self, path):
         self._cache_dict = path
