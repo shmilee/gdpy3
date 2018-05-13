@@ -91,7 +91,7 @@ class Processor(object):
         self._figurelabelslib = {}
         for core in self._laycores:
             self._figurelabelslib.update({
-                '%s/%s' % (core.scope, fnum): (core, fnum, 0)
+                '%s/%s' % (core.scope, fnum): (core, fnum, 0, '-', None)
                 for fnum in core.fignums})
 
     pckloader = property(_get_pckloader, _set_pckloader)
@@ -115,7 +115,7 @@ class Processor(object):
 
     plotter = property(_get_plotter, _set_plotter)
 
-    def convert(self, rawfilter=[]):
+    def convert(self):
         '''
         Convert raw data in rawloader, and save them in pcksaver.
         '''
@@ -129,28 +129,64 @@ class Processor(object):
             for core in self.digcores:
                 self.pcksaver.write(core.group, core.convert())
 
-    def plot(self, figlabel, show=True, figkwargs={}):
+    def get(self, figlabel, **kwargs):
         '''
-        Calculate pickled data, and plot the results.
-        Use :meth:`see_figkwargs` to get *figkwargs* for *figlabel*.
+        Get cooked figinfo object of *figlabel*.
+        Use :meth:`see_figkwargs` to get *kwargs* for *figlabel*.
         '''
         if not self.pckloader:
             log.error("%s: Need a pckloader object!" % self.name)
             return
-        if not self.plotter:
-            log.error("%s: Need a plotter object!" % self.name)
-            return
-        core, fignum, n = self._figurelabelslib.get(figlabel, (None, '', 0))
+        core, fignum, n, kstr, fobj = self._figurelabelslib.get(
+            figlabel, (None, '', 0, '-', None))
         if not core:
             log.error("%s: Figure %s not found!" % (self.name, figlabel))
             return
-        figinfo = core.cook(fignum, figkwargs=figkwargs)
-        if not figinfo:
+        _docstr_ = self.see_figkwargs(figlabel, see='return')
+        okstr = ','.join(['%s=%r' % (k, kwargs[k])
+                          for k in sorted(kwargs)
+                          if _docstr_.find('*%s*' % k) > 0])
+        log.ddebug("%s: Some kwargs accepted for %s: %s"
+                   % (self.name, figlabel, okstr))
+        if okstr == kstr:
+            # already cooked with kwargs
+            return fobj
+        fobj = core.cook(fignum, figkwargs=kwargs)
+        if fobj:
+            n += 1
+            self._figurelabelslib[figlabel] = (core, fignum, n, okstr, fobj)
+            return fobj
+        else:
             log.error("%s: Figure %s not cooked!" % (self.name, figlabel))
             return
+
+    def plot(self, figlabel, replot=False, show=True, **kwargs):
+        '''
+        Calculate pickled data, and plot the results.
+        Use :meth:`see_figkwargs` to get *kwargs* for *figlabel*.
+
+        Parameters
+        ----------
+        replot: bool
+            replot *figlabel* if it was already ploted
+        show: bool
+            display *figlabel* after it ploted
+        '''
+        if not self.plotter:
+            log.error("%s: Need a plotter object!" % self.name)
+            return
+        _, _, n0, _, _ = self._figurelabelslib.get(figlabel, (0, 0, 0, 0, 0))
+        fobj = self.get(figlabel, **kwargs)
+        if not fobj:
+            return
+        _, _, n1, _, _ = self._figurelabelslib.get(figlabel, (0, 0, 0, 0, 0))
+        if n0 < n1:
+            replot = True
         try:
-            axstrus, sty = figinfo.serve(self.plotter)
-            self.plotter.create_figure(figlabel, *axstrus, add_style=sty)
+            if replot or figlabel not in self.plotter.figures:
+                axstrus, sty = fobj.serve(self.plotter)
+                self.plotter.create_figure(
+                    figlabel, *axstrus, add_style=sty, replace=replot)
         except Exception:
             log.error("%s: Figure %s not plotted!"
                       % (self.name, figlabel),  exc_info=1)
@@ -160,10 +196,11 @@ class Processor(object):
 
     def see_figkwargs(self, figlabel, see='help'):
         '''
-        Get *figkwargs* for *figlabel*.
+        Get :meth:`get`, :meth:`plot` *kwargs* for *figlabel*.
         *see*: str, 'help', 'print' or 'return'
         '''
-        core, fignum, n = self._figurelabelslib.get(figlabel, (None, '', 0))
+        core, fignum, n, kstr, fobj = self._figurelabelslib.get(
+            figlabel, (None, '', 0, '-', None))
         if not core:
             log.error("%s: Figure %s not found!" % (self.name, figlabel))
             return

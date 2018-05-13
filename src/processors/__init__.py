@@ -15,6 +15,7 @@ This is the subpackage ``processors`` of gdpy3.
 :attr:`processor.Processor.figurelabels`
 and methods
 :meth:`processor.Processor.convert`,
+:meth:`processor.Processor.get`,
 :meth:`processor.Processor.plot`,
 :meth:`processor.Processor.see_figkwargs`,
 :meth:`processor.Processor.refind`.
