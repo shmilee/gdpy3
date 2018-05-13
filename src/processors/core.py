@@ -119,6 +119,7 @@ class BaseCore(object):
         if len(matched_items) == 0:
             log.debug("%s: No items matched in loader %s!"
                       % (cls.__name__, loader.path))
+            return []
         if cls.nitems == '?':
             return [cls(loader, items) for items in matched_items]
         else:
