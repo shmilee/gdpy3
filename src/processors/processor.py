@@ -44,6 +44,12 @@ class Processor(object):
         self.pckloader = pckloader
         self.plotter = plotter
 
+    def __repr__(self):
+        i = ('rawloader: %r, pcksaver: %r, pckloader: %r, plotter: %r'
+             % (self.rawloader, self.pcksaver, self.pckloader, self.plotter))
+        return '<{0}.{1} object at {2}, {3}>'.format(
+            self.__module__, type(self).__name__, hex(id(self)), i)
+
     @property
     def name(self):
         return "Processor %s" % type(self).__name__
