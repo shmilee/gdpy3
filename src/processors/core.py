@@ -97,7 +97,8 @@ class BaseCore(object):
         else:
             self.section = self.default_section
         log.debug("%s: loader, %s; items, %s; section, %s."
-                  % (self.coreid, loader.path, items, self.section))
+                  % (self.coreid, loader.path,
+                     self._short_items, self.section))
 
     def __repr__(self):
         return '<{0}.{1} object at {2} for {3} in {4}>'.format(
