@@ -24,14 +24,16 @@ and methods
 :meth:`processor.Processor.pick`.
 '''
 
-from ..glogger import getGLogger
 from . import processor
 
 __all__ = ['get_processor', 'is_processor']
-log = getGLogger('C')
 
 processor_names = ['GTCProcessorV110922']
 processor_types = ['GTC']
+alias_processor_names = {
+    'GTCV110922': 'GTCProcessorV110922',
+    'GTC110922': 'GTCProcessorV110922',
+}
 
 
 def get_processor(name, **kwargs):
@@ -40,14 +42,21 @@ def get_processor(name, **kwargs):
 
     Notes
     -----
-    1. valid processor names: :data:`processor_names`.
+    1. valid processor names:
+       :data:`processor_names`, :data:`alias_processor_names`.
     2. Raises ValueError if name invalid.
     3. *kwargs*: rawloader, pcksaver, pckloader, plotter
     '''
-    if name not in processor_names:
-        raise ValueError('Invalid name: "%s"! Did you mean one of: "%s"?'
-                         % (name, ', '.join(processor_names)))
-    if name == 'GTCProcessorV110922':
+    if name in processor_names:
+        pname = name
+    elif name in alias_processor_names:
+        pname = alias_processor_names[name]
+    else:
+        raise ValueError(
+            'Invalid name: "%s"! Did you mean one of "%s" or alias "%s"?'
+            % (name, ', '.join(processor_names),
+               ', '.join(alias_processor_names)))
+    if pname == 'GTCProcessorV110922':
         from .GTC import GTCProcessorV110922
         return GTCProcessorV110922(**kwargs)
     else:

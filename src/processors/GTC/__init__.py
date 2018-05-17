@@ -4,6 +4,13 @@
 
 '''
 GTC Processor V110922 and its cores.
+
+Notes
+-----
+GTC .out files should be named as:
+gtc.out, data1d.out, equilibrium.out, history.out, meshgrid.out,
+snap("%05d" % istep).out, trackp_dir/TRACKP.("%05d" % pe), etc.
+so they can be auto-detected.
 '''
 
 from . import (
@@ -39,3 +46,10 @@ class GTCProcessorV110922(Processor):
         trackparticle.TrackParticleLayCoreV110922,
         contrib_data1drzf.Data1dRZFLayCoreV110922,
     ]
+    pckversion = 'GTCV110922'
+    pcksaltname = 'gtc.out'
+
+    @property
+    def _rawdata_summary(self):
+        return "GTC '.out' files in %s '%s'" % (
+            self.rawloader.loader_type, self.rawloader.path)
