@@ -35,6 +35,7 @@ class Processor(object):
     digcores: digcore objects to convert raw data to pickled data
     laycores: laycore objects to cook pickled data to figinfo
     figurelabels: figure labels in this processor
+    figurelabels_plotted: figure labels plotted in this processor
 
     Notes
     -----
@@ -146,6 +147,14 @@ class Processor(object):
     @property
     def figurelabels(self):
         return sorted(self._figurelabelslib.keys())
+
+    @property
+    def figurelabels_plotted(self):
+        flp = []
+        for k, v in self._figurelabelslib.items():
+            if v[2] > 0:
+                flp.append((k, v[2]))
+        return sorted(flp)
 
     def _get_plotter(self):
         return self._plotter

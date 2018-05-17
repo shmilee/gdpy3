@@ -12,7 +12,8 @@ This is the subpackage ``processors`` of gdpy3.
 :attr:`processor.Processor.plotter`,
 :attr:`processor.Processor.digcores`,
 :attr:`processor.Processor.laycores`,
-:attr:`processor.Processor.figurelabels`
+:attr:`processor.Processor.figurelabels`,
+:attr:`processor.Processor.figurelabels_plotted`
 and methods
 :meth:`processor.Processor.set_prefer_pcksaver`,
 :meth:`processor.Processor.convert`,
