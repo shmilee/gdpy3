@@ -35,11 +35,9 @@ It contains two kinds of loaders.
 
 import os
 
-from ..glogger import getGLogger
 from . import base
 
 __all__ = ['get_rawloader', 'is_rawloader', 'get_pckloader', 'is_pckloader']
-log = getGLogger('L')
 rawloader_names = ['DirRawLoader', 'TarRawLoader', 'ZipRawLoader',
                    'SftpRawLoader']
 rawloader_types = ['directory', 'tarfile', 'zipfile', 'sftp.directory']

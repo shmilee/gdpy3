@@ -22,11 +22,9 @@ and methods
 :meth:`base.BasePlotter.save_figure`,
 '''
 
-from ..glogger import getGLogger
 from . import base
 
 __all__ = ['get_plotter']
-log = getGLogger('P')
 
 plotter_names = ['MatplotlibPlotter']
 plotter_types = ['mpl::']
