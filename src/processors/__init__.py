@@ -14,11 +14,13 @@ This is the subpackage ``processors`` of gdpy3.
 :attr:`processor.Processor.laycores`,
 :attr:`processor.Processor.figurelabels`
 and methods
+:meth:`processor.Processor.set_prefer_pcksaver`,
 :meth:`processor.Processor.convert`,
 :meth:`processor.Processor.get`,
 :meth:`processor.Processor.plot`,
 :meth:`processor.Processor.see_figkwargs`,
-:meth:`processor.Processor.refind`.
+:meth:`processor.Processor.refind`,
+:meth:`processor.Processor.pick`.
 '''
 
 from ..glogger import getGLogger

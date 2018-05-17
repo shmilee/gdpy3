@@ -6,12 +6,16 @@
 Contains processor base class.
 '''
 
+import os
 import re
+import time
+import hashlib
 
+from .. import __version__ as gdpy3_version
 from ..glogger import getGLogger
-from ..loaders import is_rawloader, is_pckloader
-from ..savers import is_pcksaver
-from ..plotters import is_plotter
+from ..loaders import is_rawloader, get_rawloader, is_pckloader, get_pckloader
+from ..savers import is_pcksaver, get_pcksaver
+from ..plotters import is_plotter, get_plotter
 
 __all__ = ['Processor']
 log = getGLogger('C')
@@ -31,11 +35,19 @@ class Processor(object):
     digcores: digcore objects to convert raw data to pickled data
     laycores: laycore objects to cook pickled data to figinfo
     figurelabels: figure labels in this processor
+
+    Notes
+    -----
+    1. `pckversion` means version of pck data.
+    2. `pcksaltname` means base name of salt file for `pcksaver.path`.
+       The `rawloader` must have and have only one salt file.
     '''
     __slots__ = ['_rawloader', '_pcksaver', '_pckloader', '_plotter',
                  '_digcores', '_laycores', '_figurelabelslib']
     DigCores = []
     LayCores = []
+    pckversion = 'P0'
+    pcksaltname = ''
 
     def __init__(self, rawloader=None, pcksaver=None,
                  pckloader=None, plotter=None):
@@ -57,9 +69,22 @@ class Processor(object):
     def _get_rawloader(self):
         return self._rawloader
 
+    def _check_rawloader(self, rawloader):
+        saltfiles = rawloader.refind('^(?:|.*/)%s$' % self.pcksaltname)
+        if len(saltfiles) == 0:
+            log.error("%s: Can't find '%s' in '%s'!"
+                      % (self.name, self.pcksaltname, rawloader.path))
+            return False
+        elif len(saltfiles) > 1:
+            log.error("%s: More than one '%s' found in '%s'!"
+                      % (self.name, self.pcksaltname, rawloader.path))
+            return False
+        else:
+            return saltfiles[0]
+
     def _set_rawloader(self, rawloader):
         self._digcores = []
-        if is_rawloader(rawloader):
+        if is_rawloader(rawloader) and self._check_rawloader(rawloader):
             self._rawloader = rawloader
             for dc in self.DigCores:
                 self._digcores.extend(dc.generate_cores(rawloader))
@@ -86,9 +111,21 @@ class Processor(object):
     def _get_pckloader(self):
         return self._pckloader
 
+    def _check_pckloader(self, pckloader):
+        if 'version' not in pckloader:
+            log.error("%s: Can't find 'version' in '%s'!"
+                      % (self.name, pckloader.path))
+            return False
+        version = pckloader.get('version')
+        if version != self.pckversion:
+            log.error("%s: Invalid 'version' '%s'! Did you mean '%s'?"
+                      % (self.name, version, self.pckversion))
+            return False
+        return True
+
     def _set_pckloader(self, pckloader):
         self._laycores = []
-        if is_pckloader(pckloader):
+        if is_pckloader(pckloader) and self._check_pckloader(pckloader):
             self._pckloader = pckloader
             for lc in self.LayCores:
                 self._laycores.extend(lc.generate_cores(pckloader))
@@ -121,7 +158,62 @@ class Processor(object):
 
     plotter = property(_get_plotter, _set_plotter)
 
-    def convert(self):
+    def set_prefer_pcksaver(self, savetype):
+        '''
+        Set preferable pcksaver beside raw data.
+
+        Parameters
+        ----------
+        savetype: str
+            extension of pcksaver.path
+        '''
+        if not self.rawloader:
+            log.error("%s: Need a rawloader object!" % self.name)
+            return
+        if self.rawloader.loader_type in ['directory', 'sftp.directory']:
+            prefix = os.path.join(self.rawloader.path, 'gdpy3-pickled-data')
+        elif self.rawloader.loader_type == 'tarfile':
+            prefix = self.rawloader.path[:self.rawloader.path.rfind('.tar')]
+        elif self.rawloader.loader_type == 'zipfile':
+            prefix = self.rawloader.path[:self.rawloader.path.rfind('.zip')]
+        else:
+            prefix = os.path.splitext(self.rawloader.path)[0]
+        saltfile = self.rawloader.refind('^(?:|.*/)%s$' % self.pcksaltname)[0]
+        if self.rawloader.loader_type in ['sftp.directory']:
+            salt = hashlib.sha1(saltfile.encode('utf-8')).hexdigest()
+        else:
+            try:
+                with self.rawloader.get(saltfile) as f:
+                    salt = hashlib.sha1(f.read().encode('utf-8')).hexdigest()
+            except Exception:
+                log.error("Failed to read salt file '%s'!" % saltfile)
+                salt = hashlib.sha1(saltfile.encode('utf-8')).hexdigest()
+        log.debug("Get salt string: '%s'." % salt)
+        if self.rawloader.loader_type in ['tarfile', 'zipfile']:
+            _check_w_path = os.path.dirname(self.rawloader.path)
+        else:
+            _check_w_path = self.rawloader.path
+        if os.access(_check_w_path, os.W_OK):
+            if savetype == '.cache':
+                log.debug("Use savetype '.cache' while %s is writable!"
+                          % _check_w_path)
+            if savetype not in ['.cache', '.npz', '.hdf5']:
+                log.warn("Use default savetype '.npz'.")
+                savetype = '.npz'
+        else:
+            log.debug("Use savetype '.cache' because %s isn't writable!"
+                      % _check_w_path)
+            savetype = '.cache'
+        savepath = '%s-%s%s' % (prefix, salt[:10], savetype)
+        log.info("Default pickled data path is '%s'." % savepath)
+        self.pcksaver = get_pcksaver(savepath)
+
+    @property
+    def _rawdata_summary(self):
+        return "Raw data files in %s '%s'" % (
+            self.rawloader.loader_type, self.rawloader.path)
+
+    def convert(self, add_desc=None):
         '''
         Convert raw data in rawloader, and save them in pcksaver.
         '''
@@ -131,9 +223,18 @@ class Processor(object):
         if not self.pcksaver:
             log.error("%s: Need a pcksaver object!" % self.name)
             return
+        summary = "Pck data converted from %s." % self._rawdata_summary
+        description = ("%s\nCreated by gdpy3 v%s.\nCreated on %s."
+                       % (summary, gdpy3_version, time.asctime()))
+        if add_desc:
+            description += '\n' + str(add_desc)
         with self.pcksaver:
+            self.pcksaver.write('/', {'description': description,
+                                      'version': self.pckversion})
             for core in self.digcores:
                 self.pcksaver.write(core.group, core.convert())
+        log.info("%s are converted to %s!"
+                 % (self._rawdata_summary, self.pcksaver.path))
 
     def get(self, figlabel, **kwargs):
         '''
@@ -219,3 +320,74 @@ class Processor(object):
         pat = re.compile(pattern)
         return tuple(filter(
             lambda k: True if re.match(pat, k) else False, self.figurelabels))
+
+    def pick(self, path, add_desc=None, filenames_filter=None,
+             savetype='.npz', overwrite=False, Sid=False,
+             datagroups_filter=None, add_plotter=True):
+        '''
+        Pick up raw data or pickled data in *path*,
+        set processor's rawloader, pcksaver and pckloader, plotter.
+
+        Parameters
+        ----------
+        path: str
+            path of raw data or pickled data to open
+        add_desc: str
+            additional description of raw data
+        filenames_filter: function
+            function to filter filenames in rawloader
+        savetype: '.cache', '.npz' or '.hdf5'
+            extension of pcksaver.path, default '.npz'
+            when pcksaver.path isn't writable, default '.cache'
+        overwrite: bool
+            overwrite existing pcksaver.path file or not, default False
+        Sid: bool
+            Sid only takes effect when *path* is raw data to open and
+            *savetype* is .npz or .hdf5. If Sid is True, only rawloader
+            and pcksaver will be set and converted if needed. Default False.
+        datagroups_filter: function
+            function to filter datagroups in pckloader
+        add_plotter: bool
+            set default plotter ('mpl::*path*') or not, default True
+        '''
+
+        self.__init__(rawloader=None, pcksaver=None,
+                      pckloader=None, plotter=None)
+        root, ext = os.path.splitext(path)
+        if ext in ['.npz', '.hdf5']:
+            # pckloader.path?
+            try:
+                self.pckloader = get_pckloader(
+                    path, datagroups_filter=datagroups_filter)
+            except Exception:
+                log.error("%s: Invalid pckloader path '%s'!"
+                          % (self.name, path), exc_info=1)
+                self.pckloader = None
+            else:
+                if add_plotter:
+                    self.plotter = get_plotter('mpl::%s' % path)
+        else:
+            # rawloader.path?
+            try:
+                self.rawloader = get_rawloader(
+                    path, filenames_filter=filenames_filter)
+            except Exception:
+                log.error("%s: Invalid rawloader path '%s'!"
+                          % (self.name, path), exc_info=1)
+                self.rawloader = None
+            else:
+                self.set_prefer_pcksaver(savetype)
+                if os.path.isfile(self.pcksaver.path):
+                    if overwrite:
+                        log.warn("Remove old pickled data file: %s!"
+                                 % self.pcksaver.path)
+                        os.remove(self.pcksaver.path)
+                        self.convert(add_desc=add_desc)
+                else:
+                    self.convert(add_desc=add_desc)
+                if not (Sid and self.pcksaver._extension in ['.npz', 'hdf5']):
+                    self.pckloader = get_pckloader(
+                        self.pcksaver.get_store(),
+                        datagroups_filter=datagroups_filter)
+                    if add_plotter:
+                        self.plotter = get_plotter('mpl::%s' % path)
