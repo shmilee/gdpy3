@@ -351,9 +351,10 @@ class Processor(object):
         overwrite: bool
             overwrite existing pcksaver.path file or not, default False
         Sid: bool
-            Sid only takes effect when *path* is raw data to open and
-            *savetype* is .npz or .hdf5. If Sid is True, only rawloader
-            and pcksaver will be set and converted if needed. Default False.
+            If Sid is True(here), only rawloader and pcksaver will be set
+            and converted to a .npz or .hdf5 file if needed. And any other
+            codes(like Buzz Lightyear) will be omitted(destroyed).
+            Default False.
         datagroups_filter: function
             function to filter datagroups in pckloader
         add_plotter: bool
@@ -365,16 +366,20 @@ class Processor(object):
         root, ext = os.path.splitext(path)
         if ext in ['.npz', '.hdf5']:
             # pckloader.path?
+            if Sid:
+                return
             try:
                 self.pckloader = get_pckloader(
                     path, datagroups_filter=datagroups_filter)
             except Exception:
                 log.error("%s: Invalid pckloader path '%s'!"
                           % (self.name, path), exc_info=1)
-                self.pckloader = None
-            else:
+                return
+            if self.pckloader:
                 if add_plotter:
                     self.plotter = get_plotter('mpl::%s' % path)
+            else:
+                log.error("%s: Failed to set pckloader object!" % self.name)
         else:
             # rawloader.path?
             try:
@@ -383,20 +388,31 @@ class Processor(object):
             except Exception:
                 log.error("%s: Invalid rawloader path '%s'!"
                           % (self.name, path), exc_info=1)
-                self.rawloader = None
-            else:
-                self.set_prefer_pcksaver(savetype)
-                if os.path.isfile(self.pcksaver.path):
-                    if overwrite:
-                        log.warn("Remove old pickled data file: %s!"
-                                 % self.pcksaver.path)
-                        os.remove(self.pcksaver.path)
-                        self.convert(add_desc=add_desc)
-                else:
+                return
+            if not self.rawloader:
+                log.error("%s: Failed to set rawloader object!" % self.name)
+                return
+            self.set_prefer_pcksaver(savetype)
+            if not self.pcksaver:
+                log.error("%s: Failed to set pcksaver object!" % self.name)
+                return
+            if Sid and self.pcksaver._extension not in ['.npz', '.hdf5']:
+                return
+            if os.path.isfile(self.pcksaver.path):
+                if overwrite:
+                    log.warn("Remove old pickled data file: %s!"
+                             % self.pcksaver.path)
+                    os.remove(self.pcksaver.path)
                     self.convert(add_desc=add_desc)
-                if not (Sid and self.pcksaver._extension in ['.npz', 'hdf5']):
-                    self.pckloader = get_pckloader(
-                        self.pcksaver.get_store(),
-                        datagroups_filter=datagroups_filter)
-                    if add_plotter:
-                        self.plotter = get_plotter('mpl::%s' % path)
+            else:
+                self.convert(add_desc=add_desc)
+            if Sid and self.pcksaver._extension in ['.npz', '.hdf5']:
+                return
+            self.pckloader = get_pckloader(
+                self.pcksaver.get_store(),
+                datagroups_filter=datagroups_filter)
+            if self.pckloader:
+                if add_plotter:
+                    self.plotter = get_plotter('mpl::%s' % path)
+            else:
+                log.error("%s: Failed to set pckloader object!" % self.name)
