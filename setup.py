@@ -59,9 +59,10 @@ setup(
         'matplotlib>=1.5.3',
     ],
     extras_require={
-        'hdf5': ['h5py>=2.6.0'],
-        'tools': ['scipy>=0.14.0'],
-        'ipynbtool': ['ipython[notebook]'],
+        'pck.hdf5': ['h5py>=2.6.0'],
+        'raw.ssh': ['paramiko>=2.4.1'],
+        'core.tools': ['scipy>=0.14.0'],
+        # 'gui.ipynb': ['ipython[notebook]'],
     },
     package_data={
         'gdpy3.plotters': ['*-stylelib/gdpy3-*.*style',
@@ -70,11 +71,10 @@ setup(
     data_files=[],
     entry_points={
         'console_scripts': [
-            'gdpy3-convert = gdpy3.main:script_convert',
-            'gdpy3-plot = gdpy3.main:script_plot',
+            'gdpy3 = gdpy3.cli:script_cli',
         ],
-        #'gui_scripts': [
-        #    'gdpy3-gui = gdpy3.gui:start',
-        #],
+        # 'gui_scripts': [
+        #    'gdpy3-gui = gdpy3.gui:script_gui',
+        # ],
     },
 )
