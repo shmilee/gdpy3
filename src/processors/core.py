@@ -263,8 +263,7 @@ class LayCore(BaseCore):
             log.error("%s: %s not found!" % (self.coreid, fignum))
             return
         figinfo = fic(fignum, self.scope, self.groups)
-        log.info("%s: Cook pck data for %s ..."
-                 % (self.coreid, figinfo.fullnum))
+        log.info("Cook pck data for %s ..." % figinfo.fullnum)
         try:
             data = figinfo.get_data(self.pckloader)
         except Exception:
