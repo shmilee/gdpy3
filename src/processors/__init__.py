@@ -24,15 +24,23 @@ and methods
 :meth:`processor.Processor.pick`.
 '''
 
+import os
+import importlib
+
 from . import processor
 
 __all__ = ['get_processor', 'is_processor']
 
-processor_names = ['GTCProcessorV110922']
-processor_types = ['GTC']
+_processorlib = {
+    'GTCProcessorV110922': 'GTC',
+    'GTCSHMILEERZF110922': 'GTC.SHMILEE',
+}
+processor_names = sorted(_processorlib.keys())
+processor_types = sorted(set(_processorlib.values()))
 alias_processor_names = {
     'GTCV110922': 'GTCProcessorV110922',
     'GTC110922': 'GTCProcessorV110922',
+    'GSRZF': 'GTCSHMILEERZF110922',
 }
 
 
@@ -56,11 +64,11 @@ def get_processor(name, **kwargs):
             'Invalid name: "%s"! Did you mean one of "%s" or alias "%s"?'
             % (name, ', '.join(processor_names),
                ', '.join(alias_processor_names)))
-    if pname == 'GTCProcessorV110922':
-        from .GTC import GTCProcessorV110922
-        return GTCProcessorV110922(**kwargs)
-    else:
-        pass
+    ptype = _processorlib.get(pname)
+    ppack = importlib.import_module(
+        '%s.%s' % (__name__, ptype),
+        ptype.replace('.', os.path.sep))
+    return getattr(ppack, pname)(**kwargs)
 
 
 def is_processor(obj):

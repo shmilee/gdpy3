@@ -21,9 +21,10 @@ from . import (
     meshgrid,
     snapshot,
     trackparticle,
-    contrib_data1drzf,
 )
 from ..processor import Processor
+
+__all__ = ['GTCProcessorV110922']
 
 
 class GTCProcessorV110922(Processor):
@@ -36,7 +37,6 @@ class GTCProcessorV110922(Processor):
         meshgrid.MeshgridDigCoreV110922,
         snapshot.SnapshotDigCoreV110922,
         trackparticle.TrackParticleDigCoreV110922,
-        contrib_data1drzf.Data1dRZFDigCoreV110922,
     ]
     LayCores = [
         data1d.Data1dLayCoreV110922,
@@ -44,7 +44,6 @@ class GTCProcessorV110922(Processor):
         history.HistoryLayCoreV110922,
         snapshot.SnapshotLayCoreV110922,
         trackparticle.TrackParticleLayCoreV110922,
-        contrib_data1drzf.Data1dRZFLayCoreV110922,
     ]
     pckversion = 'GTCV110922'
     pcksaltname = 'gtc.out'

@@ -8,28 +8,26 @@ Residual zonal flow Cores.
 
 import re
 import numpy as np
-from ..core import DigCore, LayCore, log
-from .data1d import Field00FigInfo
-from .. import tools
+from ..gtc import GtcDigCoreV110922, log
+from ..data1d import Field00FigInfo, Data1dLayCoreV110922
+from ... import tools
 
-__all__ = ['Data1dRZFDigCoreV110922', 'Data1dRZFLayCoreV110922']
+__all__ = ['RZFGtcDigCoreV110922', 'RZFData1dLayCoreV110922']
 
 
-class Data1dRZFDigCoreV110922(DigCore):
+class RZFGtcDigCoreV110922(GtcDigCoreV110922):
     '''
     Residual zonal flow
-    datakeys: gtc/zfkrrhoi, gtc/zfkrrho0, gtc/zfistep, gtc/zfkrdltr
+    add datakeys: gtc/zfkrrhoi, gtc/zfkrrho0, gtc/zfistep, gtc/zfkrdltr
     '''
     __slots__ = []
-    itemspattern = ['^(?P<section>gtc)\.out$', '[^/]+/(?P<section>gtc)\.out$']
-    default_section = 'gtc'
 
     def _convert(self):
         '''Read 'gtc.out'.'''
+        sd = super(RZFGtcDigCoreV110922, self)._convert()
         with self.rawloader.get(self.files) as f:
             log.ddebug("Read file '%s'." % self.files)
             outdata = f.read()
-        sd = {}
         numpat = r'[-+]?\d+[\.]?\d*[eE]?[-+]?\d*'
         # only residual zonal flow(zf) case, second occurence match
         pat = (r'\*{6}\s+k_r\*rhoi=\s*?(?P<zfkrrhoi>' + numpat + r'?)\s*?,'
@@ -194,12 +192,10 @@ class ResidualZFFigInfo(Field00FigInfo):
         })
 
 
-class Data1dRZFLayCoreV110922(LayCore):
+class RZFData1dLayCoreV110922(Data1dLayCoreV110922):
     '''
     Residual zonal flow
-    fignum: data1d/residual_zonal_flow
+    add fignum: data1d/residual_zonal_flow
     '''
     __slots__ = []
-    itemspattern = ['^(?P<section>data1d)$']
-    default_section = 'data1d'
-    figinfoclasses = [ResidualZFFigInfo]
+    figinfoclasses = Data1dLayCoreV110922.figinfoclasses + [ResidualZFFigInfo]
