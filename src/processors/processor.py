@@ -198,6 +198,7 @@ class Processor(object):
                 log.error("Failed to read salt file '%s'!" % saltfile)
                 salt = hashlib.sha1(saltfile.encode('utf-8')).hexdigest()
         log.debug("Get salt string: '%s'." % salt)
+        psalt = hashlib.sha1(type(self).__name__.encode('utf-8')).hexdigest()
         if self.rawloader.loader_type in ['tarfile', 'zipfile']:
             _check_w_path = os.path.dirname(self.rawloader.path)
         else:
@@ -213,7 +214,7 @@ class Processor(object):
             log.debug("Use savetype '.cache' because %s isn't writable!"
                       % _check_w_path)
             savetype = '.cache'
-        savepath = '%s-%s%s' % (prefix, salt[:10], savetype)
+        savepath = '%s-%s%s' % (prefix, salt[:10] + psalt[:2], savetype)
         log.info("Default pickled data path is '%s'." % savepath)
         self.pcksaver = get_pcksaver(savepath)
 
