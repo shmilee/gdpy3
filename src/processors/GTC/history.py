@@ -271,8 +271,8 @@ class ModeFigInfo(FigInfo):
         '''
         kwargs
         ------
-        *region_start*, *region_end*: int
-            in tstep unit, set growth region
+        *growth_region*: [start, end]
+            set growth region, in tstep unit(int)
         '''
         index = self.index - 1
         field = self.field
@@ -305,12 +305,14 @@ class ModeFigInfo(FigInfo):
         else:
             # all zeros
             logya = ya
-        # find growth region1
-        if ('region_start' in kwargs and 'region_end' in kwargs
-                and isinstance(kwargs['region_start'], int)
-                and isinstance(kwargs['region_end'], int)
-                and kwargs['region_start'] < kwargs['region_end'] < ndstep):
-            reg1, reg2 = kwargs['region_start'], kwargs['region_end']
+        # find growth region
+        growth_region = kwargs.get('growth_region', None)
+        if (growth_region and isinstance(growth_region, (list, tuple))
+                and len(growth_region) == 2
+                and isinstance(growth_region[0], int)
+                and isinstance(growth_region[1], int)
+                and growth_region[0] < growth_region[1] < ndstep):
+            reg1, reg2 = growth_region
             region_len = reg2 - reg1
         else:
             reg1, region_len = tools.findgrowth(logya, 1e-4)
@@ -324,6 +326,7 @@ class ModeFigInfo(FigInfo):
             time[reg1:reg2], logya[reg1:reg2], 1,
             info='[%s,%s] growth region' % (time[reg1], time[reg2 - 1]))
         growth = result[0][0]
+        log.parm("Get growth rate: %.6f" % growth)
         ax2_calc = dict(
             LINE=[
                 (time, logya),
@@ -384,7 +387,7 @@ class ModeFigInfo(FigInfo):
         _tf, _af, _pf = tools.fft(dt, sgn)
         index = np.argmax(_pf)
         omega3 = _tf[index]
-        log.parm("Get frequency: %s, %s" % (index, _tf[index]))
+        log.parm("Get frequency: %s, %.6f" % (index, omega3))
         ax4_calc = dict(
             LINE=[(_tf, _pf, 'power spectral'),
                   ([omega3], [_pf[index]], r'$\omega_{pmax}=%.6f$' % omega3)],
@@ -393,6 +396,12 @@ class ModeFigInfo(FigInfo):
         self.calculation['zip_results'].append(
             ('template_line_axstructs', 224, ax4_calc))
         self.calculation.update(omega3=omega3)
+
+        self.layout['growth_region'] = dict(
+            widget='IntRangeSlider',
+            rangee=(0, ndstep, 1),
+            value=[reg1, reg2],
+            description='growth region:')
 
 
 class HistoryLayCoreV110922(LayCore):
