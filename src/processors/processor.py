@@ -36,7 +36,7 @@ class Processor(object):
     laycores: laycore objects to cook pickled data to figinfo
     layout: layout of all figure labels
     figurelabels: figure labels in this processor
-    figurelabels_plotted: figure labels plotted in this processor
+    figurelabels_cooked: figure labels cooked in this processor
 
     Notes
     -----
@@ -159,7 +159,7 @@ class Processor(object):
         return sorted(self._figurelabelslib.keys())
 
     @property
-    def figurelabels_plotted(self):
+    def figurelabels_cooked(self):
         flp = []
         for k, v in self._figurelabelslib.items():
             if v[2] > 0:
