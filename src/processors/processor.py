@@ -34,6 +34,7 @@ class Processor(object):
     plotter: plotter object to plot figures
     digcores: digcore objects to convert raw data to pickled data
     laycores: laycore objects to cook pickled data to figinfo
+    layout: layout of all figure labels
     figurelabels: figure labels in this processor
     figurelabels_plotted: figure labels plotted in this processor
 
@@ -44,7 +45,7 @@ class Processor(object):
        The `rawloader` must have and have only one salt file.
     '''
     __slots__ = ['_rawloader', '_pcksaver', '_pckloader', '_plotter',
-                 '_digcores', '_laycores', '_figurelabelslib']
+                 '_digcores', '_laycores', '_layout', '_figurelabelslib']
     DigCores = []
     LayCores = []
     pckversion = 'P0'
@@ -133,16 +134,25 @@ class Processor(object):
         else:
             self._pckloader = None
         self._figurelabelslib = {}
+        self._layout = {}
         for core in self._laycores:
             self._figurelabelslib.update({
                 '%s/%s' % (core.scope, fnum): (core, fnum, 0, '-', None)
                 for fnum in core.fignums})
+            if core.scope in self._layout:
+                self._layout[core.scope].extend(core.fignums)
+            else:
+                self._layout[core.scope] = core.fignums
 
     pckloader = property(_get_pckloader, _set_pckloader)
 
     @property
     def laycores(self):
         return self._laycores
+
+    @property
+    def layout(self):
+        return self._layout
 
     @property
     def figurelabels(self):
