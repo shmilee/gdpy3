@@ -315,11 +315,13 @@ class FigInfo(object):
         pck data keys needed not in *groups*
     calculation: dict
         results of cooked data
+    layout: dict
+        options used to get kwargs for :meth:`calculate`
     template: str
         name of 'bound template method of plotter'
     '''
-    __slots__ = ['fignum', 'scope', 'groups',
-                 'srckey', 'extrakey', 'template', 'calculation']
+    __slots__ = ['fignum', 'scope', 'groups', 'srckey', 'extrakey',
+                 'calculation', 'layout', 'template']
     figurenums = []
     numpattern = '^.*$'
 
@@ -349,8 +351,9 @@ class FigInfo(object):
         self.groups = groups
         self.srckey = srckey
         self.extrakey = extrakey
-        self.template = template
         self.calculation = {}
+        self.layout = {}
+        self.template = template
 
     @property
     def fullnum(self):
@@ -372,9 +375,32 @@ class FigInfo(object):
 
     def calculate(self, data, **kwargs):
         '''
-        Use *data* get by keys, return calculation.
+        Use *data* get by keys, return calculation and layout.
         '''
         raise NotImplementedError()
+
+    def _set_layout(self, key):
+        '''Some common layout widgets.'''
+        if key == 'xlim':
+            xlim = self.calculation.get('xlim', False)
+            if xlim:
+                self.layout['xlim'] = dict(
+                    widget='FloatRangeSlider',
+                    rangee=xlim + [min(0.1, (xlim[1] - xlim[0]) / 10)],
+                    value=xlim,
+                    description='xlim:')
+        elif key == 'ylabel_rotation':
+            self.layout['ylabel_rotation'] = dict(
+                widget='IntSlider',
+                rangee=(0, 360, 1),
+                value=90,
+                description='ylabel rotation:')
+        elif key == 'hspace':
+            self.layout['hspace'] = dict(
+                widget='FloatSlider',
+                rangee=(0, 0.5, 0.01),
+                value=0.02,
+                description='hspace:')
 
     def serve(self, plotter):
         '''
@@ -435,6 +461,8 @@ class LineFigInfo(FigInfo):
             if k in self.calculation:
                 debug_kw[k] = self.calculation[k]
         log.ddebug("Some kwargs accepted: %s" % debug_kw)
+        self._set_layout('xlim')
+        self._set_layout('ylabel_rotation')
 
 
 class SharexTwinxFigInfo(FigInfo):
@@ -477,6 +505,9 @@ class SharexTwinxFigInfo(FigInfo):
             if k in self.calculation:
                 debug_kw[k] = self.calculation[k]
         log.ddebug("Some kwargs accepted: %s" % debug_kw)
+        self._set_layout('hspace')
+        self._set_layout('xlim')
+        self._set_layout('ylabel_rotation')
 
 
 class PcolorFigInfo(FigInfo):
