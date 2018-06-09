@@ -7,8 +7,10 @@ Contains ipynb UI class.
 '''
 
 import ipywidgets
-from IPython.display import display
+from IPython.display import display, HTML
 from ..processors import get_processor, processor_names
+
+__all__ = ['IpynbUI', 'ScrollTool']
 
 
 class IpynbUI(object):
@@ -153,3 +155,39 @@ class IpynbUI(object):
     @property
     def log(self):
         return display(self.widgets['terminal'])
+
+
+class ScrollTool(object):
+    '''
+    ScrollTool.bar: scroll-head, scroll-hidecode, scroll-bottom
+    '''
+    __slots__ = ['html']
+    _replace_keys_ = ['scroll_head_title', 'scroll_bottom_title',
+                      'scroll_showcode_title', 'scroll_hidecode_title']
+
+    def __init__(self):
+        import os
+        import locale
+        import configparser
+        lang = locale.getlocale()[0]
+        config = configparser.ConfigParser(default_section='en_US')
+        datapath = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), 'ipynb_data')
+        configfile = config.read(os.path.join(datapath, 'locale'))
+        with open(os.path.join(datapath, 'scroll_bar.css')) as fcss, \
+                open(os.path.join(datapath, 'scroll_bar.html')) as fhtml, \
+                open(os.path.join(datapath, 'scroll_bar.js')) as fjs:
+            css, html, js = fcss.read(), fhtml.read(), fjs.read()
+            for k in self._replace_keys_:
+                if lang in config and k in config[lang]:
+                    v = config[lang][k]
+                else:
+                    v = config['en_US'][k]
+                css = css.replace('{{ %s }}' % k, v)
+                html = html.replace('{{ %s }}' % k, v)
+                js = js.replace('{{ %s }}' % k, v)
+            self.html = HTML('%s\n%s\n%s' % (css, html, js))
+
+    @property
+    def bar(self):
+        return display(self.html)

@@ -1,0 +1,11 @@
+[en_US]
+scroll_head_title = scroll to top
+scroll_bottom_title = scroll to bottom
+scroll_showcode_title = show code cell
+scroll_hidecode_title = hide code cell
+
+[zh_CN]
+scroll_head_title = 返回顶部
+scroll_bottom_title = 回到底部
+scroll_showcode_title = 显示代码
+scroll_hidecode_title = 隐藏代码
