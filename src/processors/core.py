@@ -554,3 +554,23 @@ class PcolorFigInfo(FigInfo):
             if k in self.calculation:
                 debug_kw[k] = self.calculation[k]
         log.ddebug("Some kwargs accepted: %s" % debug_kw)
+
+        self.layout['plot_method'] = dict(
+            widget='Dropdown',
+            options=['pcolor', 'pcolormesh', 'contourf', 'plot_surface'],
+            value=self.calculation['plot_method'],
+            description='plot method:')
+        self.layout['plot_surface_shadow'] = dict(
+            widget='SelectMultiple',
+            options=['x', 'y', 'z'],
+            value=[],
+            description='plot surface shadow:')
+        self.layout['colorbar'] = dict(
+            widget='Checkbox',
+            value=True,
+            description='colorbar')
+        self.layout['grid_alpha'] = dict(
+            widget='FloatSlider',
+            rangee=(0, 1, 0.1),
+            value=0.5,
+            description='grid alpha:')
