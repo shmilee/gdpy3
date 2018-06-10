@@ -62,11 +62,12 @@ setup(
         'pck.hdf5': ['h5py>=2.6.0'],
         'raw.ssh': ['paramiko>=2.4.1'],
         'core.tools': ['scipy>=0.14.0'],
-        # 'gui.ipynb': ['ipython[notebook]'],
+        'gui.ipynb': ['ipython[notebook]', 'ipywidgets'],
     },
     package_data={
         'gdpy3.plotters': ['*-stylelib/gdpy3-*.*style',
                            '*-stylelib/readme.txt'],
+        'gdpy3.GUI': ['ipynb_data/*'],
     },
     data_files=[],
     entry_points={
