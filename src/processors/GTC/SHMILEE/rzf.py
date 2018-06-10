@@ -62,8 +62,8 @@ class ResidualZFFigInfo(Field00FigInfo):
         kwargs
         ------
         *kwargs* of residual zonal flow:
-            *reregion_start*, *region_end*: int
-                in tstep unit, set residual region.
+            *residual_region*: [start, end]
+            set residual region, in tstep unit(int)
         *kwargs* passed on to :meth:`plotter.template_pcolor_axstructs`:
             *plot_method*, *plot_method_args*, *plot_method_kwargs*,
             *colorbar*, *grid_alpha*, *plot_surface_shadow*
@@ -103,11 +103,13 @@ class ResidualZFFigInfo(Field00FigInfo):
         time = np.arange(istep, Z1.size) * tunit
         Z1, Z2 = Z1[istep:] / abs(Z1[istep]), Z2[istep:] / abs(Z2[istep])
         # find residual region
-        if ('region_start' in kwargs and 'region_end' in kwargs
-                and isinstance(kwargs['region_start'], int)
-                and isinstance(kwargs['region_end'], int)
-                and kwargs['region_start'] < kwargs['region_end'] < Z1.size):
-            idx1, len1 = kwargs['region_start'], kwargs['region_end']
+        residual_region = kwargs.get('residual_region', None)
+        if (residual_region and isinstance(residual_region, (list, tuple))
+                and len(residual_region) == 2
+                and isinstance(residual_region[0], int)
+                and isinstance(residual_region[1], int)
+                and residual_region[0] < residual_region[1] < Z1.size):
+            idx1, len1 = residual_region
             len1 = len1 - idx1
             idx2, len2 = idx1, len1
         else:
@@ -135,6 +137,11 @@ class ResidualZFFigInfo(Field00FigInfo):
             title=r'normalized $\phi_{p00}$',
             xlim=[time[0], time[-1] + tunit], xlabel=r'time($R_0/c_s$)',
         )
+        self.layout['residual_region'] = dict(
+            widget='IntRangeSlider',
+            rangee=(0, Z1.size - 1, 1),
+            value=[idx1, idx1 + len1 - 1],
+            description='residual region:')
         # 3 gamma
         logZ1 = np.log(abs(tools.savgol_golay_filter(Z1 - res1, 47, 3)))
         logZ2 = np.log(abs(tools.savgol_golay_filter(Z2 - res2, 47, 3)))

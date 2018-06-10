@@ -295,16 +295,23 @@ class FieldSpectrumFigInfo(FigInfo):
         mtgrid = mtgrid1 - 1
         maxmmode = int(mtgrid / 2 + 1)
         maxpmode = int(mtoroidal / 2 + 1)
-        mmode = mtgrid // 5
-        pmode = mtoroidal // 3
-        if ('mmode' in kwargs and isinstance(kwargs['mmode'], (int, float))
-                and int(kwargs['mmode']) <= maxmmode):
-            mmode = int(kwargs['mmode'])
-        if ('pmode' in kwargs and isinstance(kwargs['pmode'], (int, float))
-                and int(kwargs['pmode']) <= maxpmode):
-            pmode = int(kwargs['pmode'])
+        mmode, pmode = kwargs.get('mmode', None), kwargs.get('pmode', None)
+        if not(isinstance(mmode, int) and mmode <= maxmmode):
+            mmode = mtgrid // 5
+        if not(isinstance(pmode, int) and pmode <= maxpmode):
+            pmode = mtoroidal // 3
         log.parm("Poloidal and parallel range: m=%s, p=%s. Maximal m=%s, p=%s"
                  % (mmode, pmode, maxmmode, maxpmode))
+        self.layout['mmode'] = dict(
+            widget='IntSlider',
+            rangee=(1, maxmmode, 1),
+            value=mmode,
+            description='mmode:')
+        self.layout['pmode'] = dict(
+            widget='IntSlider',
+            rangee=(1, maxpmode, 1),
+            value=pmode,
+            description='pmode:')
         X1, Y1 = np.arange(1, mmode + 1), np.zeros(mmode)
         X2, Y2 = np.arange(1, pmode + 1), np.zeros(pmode)
         for i in range(mtoroidal):
@@ -364,17 +371,24 @@ class FieldProfileFigInfo(FigInfo):
         if pdata.shape != (mtgrid1, mpsi1):
             log.error("Invalid poloidata shape!")
             return
-        itgrid = 0
-        ipsi = (mpsi1 - 1) // 2
-        if ('itgrid' in kwargs and isinstance(kwargs['itgrid'], int)
-                and kwargs['itgrid'] < mtgrid1):
-            itgrid = kwargs['itgrid']
-        if ('ipsi' in kwargs and isinstance(kwargs['ipsi'], int)
-                and kwargs['ipsi'] < mpsi1):
-            ipsi = kwargs['ipsi']
+        itgrid, ipsi = kwargs.get('itgrid', None), kwargs.get('ipsi', None)
+        if not(isinstance(itgrid, int) and itgrid < mtgrid1):
+            itgrid = 0
+        if not(isinstance(ipsi, int) and ipsi < mpsi1):
+            ipsi = (mpsi1 - 1) // 2
         log.parm("Poloidal and radius cut: itgrid=%s, ipsi=%s. "
                  "Maximal itgrid=%s, ipsi=%s."
                  % (itgrid, ipsi, mtgrid1 - 1, mpsi1 - 1))
+        self.layout['itgrid'] = dict(
+            widget='IntSlider',
+            rangee=(0, mtgrid1 - 1, 1),
+            value=itgrid,
+            description='itgrid:')
+        self.layout['ipsi'] = dict(
+            widget='IntSlider',
+            rangee=(0, mpsi1 - 1, 1),
+            value=ipsi,
+            description='ipsi:')
         X1, Y11 = np.arange(0, mpsi1), pdata[itgrid, :]
         X2 = np.arange(0, mtgrid1) / mtgrid1 * 2 * np.pi
         Y21 = pdata[:, ipsi]

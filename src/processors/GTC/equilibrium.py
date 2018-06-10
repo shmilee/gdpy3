@@ -379,6 +379,11 @@ class Plot2DThetaFigInfo(LineFigInfo):
         log.parm("fix: psi=isp=%d. Maximal isp=%d."
                  % (self.isp, data['mpsi-over-mskip+1'] - 1))
         super(Plot2DThetaFigInfo, self).calculate(data, **kwargs)
+        self.layout['isp'] = dict(
+            widget='IntSlider',
+            rangee=(0, data['mpsi-over-mskip+1'] - 1, 1),
+            value=self.isp,
+            description='psi=isp:')
 
 
 class EquilibriumLayCoreV110922(LayCore):
