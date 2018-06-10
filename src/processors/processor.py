@@ -319,7 +319,7 @@ class Processor(object):
                       % (self.name, figlabel),  exc_info=1)
         else:
             if show:
-                self.plotter.show_figure(figlabel)
+                return self.plotter.show_figure(figlabel)
 
     def see_figkwargs(self, figlabel, see='help'):
         '''
