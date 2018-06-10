@@ -96,11 +96,20 @@ class IpynbUI(object):
             self.widgets['panel'].clear_output(wait=True)
             with self.widgets['panel']:
                 w = list(self.panel_widgets.values())
+
+                def observer(change):
+                    self.widgets['plot'].button_style = 'primary'
+                for wi in w:
+                    wi.observe(observer, 'value')
                 w = [ipywidgets.HBox(w[i:i+2]) for i in range(0, len(w), 2)]
                 display(ipywidgets.VBox(w))
 
     def get_panel_widgets(self, layout):
         controls = {}
+        common_kw = dict(
+            style={'description_width': 'initial'},
+            layout=ipywidgets.Layout(width='40%', margin='1% 2% auto 2%'),
+            disabled=False)
         for k, v in layout.items():
             if v['widget'] in (
                     'IntSlider', 'FloatSlider',
@@ -111,10 +120,20 @@ class IpynbUI(object):
                     max=v['rangee'][1],
                     step=v['rangee'][2],
                     description=v['description'],
-                    style={'description_width': 'initial'},
-                    layout=ipywidgets.Layout(width='50%'),
-                    disabled=False, continuous_update=False,
-                    orientation='horizontal', readout=True)
+                    continuous_update=False,
+                    orientation='horizontal', readout=True,
+                    **common_kw)
+            elif v['widget'] in ('Dropdown', 'SelectMultiple'):
+                controls[k] = getattr(ipywidgets, v['widget'])(
+                    options=v['options'],
+                    value=v['value'],
+                    description=v['description'],
+                    **common_kw)
+            elif v['widget'] in ('Checkbox',):
+                controls[k] = getattr(ipywidgets, v['widget'])(
+                    value=v['value'],
+                    description=v['description'],
+                    **common_kw)
             else:
                 pass
         return controls
