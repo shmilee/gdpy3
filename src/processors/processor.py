@@ -270,17 +270,28 @@ class Processor(object):
             log.error("%s: Figure %s not found!" % (self.name, figlabel))
             return
         _docstr_ = self.see_figkwargs(figlabel, see='return')
-        okstr = ','.join(['%s=%r' % (k, kwargs[k])
-                          for k in sorted(kwargs)
-                          if _docstr_.find('*%s*' % k) > 0])
+        okstr = ','.join(sorted([
+            '%s=%r' % (k, list(v) if isinstance(v, tuple) else v)
+            for k, v in kwargs.items() if _docstr_.find('*%s*' % k) > 0]))
         log.ddebug("%s: Some kwargs accepted for %s: %s"
                    % (self.name, figlabel, okstr))
+        if okstr == '' and kstr.startswith('DEFAULT'):
+            # already cooked with default kwargs
+            return fobj
+        kstr = re.sub('^DEFAULT(?:,|)', '', kstr, 1)
         if okstr == kstr:
             # already cooked with kwargs
             return fobj
         fobj = core.cook(fignum, figkwargs=kwargs)
         if fobj:
             n += 1
+            if not kwargs or okstr == '':
+                # empty kwargs -> default kwargs(layout)
+                oklist = ['%s=%r' % (
+                    k, list(v['value'])
+                    if isinstance(v['value'], tuple) else v['value'])
+                    for k, v in fobj.layout.items()]
+                okstr = ','.join(['DEFAULT'] + sorted(oklist))
             self._figurelabelslib[figlabel] = (core, fignum, n, okstr, fobj)
             return fobj
         else:
