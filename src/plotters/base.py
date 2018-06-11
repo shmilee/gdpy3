@@ -251,6 +251,9 @@ class BasePlotter(object):
                 self._close_figure(fig)
             del fig
 
+    def __del__(self):
+        self.close_figure('all')
+
     def _save_figure(self, fig, fpath, **kwargs):
         '''Save figure object *fig*.'''
         raise NotImplementedError()
