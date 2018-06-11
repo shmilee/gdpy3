@@ -384,9 +384,10 @@ class FigInfo(object):
         if key == 'xlim':
             xlim = self.calculation.get('xlim', False)
             if xlim:
+                xlim = [float(xlim[0]), float(xlim[1])]
                 self.layout['xlim'] = dict(
                     widget='FloatRangeSlider',
-                    rangee=list(xlim) + [min(0.1, (xlim[1] - xlim[0]) / 10)],
+                    rangee=xlim + [min(0.1, (xlim[1] - xlim[0]) / 10)],
                     value=xlim,
                     description='xlim:')
         elif key == 'ylabel_rotation':
