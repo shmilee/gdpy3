@@ -123,13 +123,14 @@ class OrbitFigInfo(FigInfo):
         kwargs
         ------
         particle 2d, 3d orbit kwargs:
-            skey: key function for `sorted`,
-                  or str 'increase', 'in-', 'decrease', 'de-', 'random',
-                  default 'increase'.
-            index: list of selected sorted particles in pckloader,
-                   len(index) must be 9, default range(9).
-            caldr: list of ions to calculate delta R in 2d orbit,
-                   default [].
+            *skey*: key function for `sorted`,
+                or str 'increase', 'in-', 'decrease', 'de-', 'random',
+                default 'increase'.
+            *index_start*: int
+                select sorted particles in pckloader, default 0
+                index = range(index_start, index_start + 9)
+            *cal_dr*: bool
+                calculate delta R of trapped ions in 2d orbit, default False.
         '''
         r0 = data['gtc/r0']
         trackp = 'trackp/%s-' % self.species
@@ -137,6 +138,21 @@ class OrbitFigInfo(FigInfo):
         total = len(particles)
         log.parm("Total number of tracked %s particles: %d."
                  % (self.species, total))
+        self.layout['skey'] = dict(
+            widget='Dropdown',
+            options=['increase', 'decrease', 'random'],
+            value='increase',
+            description='sort particles:')
+        self.layout['index_start'] = dict(
+            widget='IntSlider',
+            rangee=(0, total - 1, 1),
+            value=0,
+            description='particles index start:')
+        if self.dimension == '2d' and self.species == 'ion':
+            self.layout['cal_dr'] = dict(
+                widget='Checkbox',
+                value=False,
+                description='show $\Delta R$ of trapped ion')
         # sorted key function
         skey = kwargs['skey'] if 'skey' in kwargs else 'increase'
         if isinstance(skey, types.FunctionType):
@@ -147,20 +163,12 @@ class OrbitFigInfo(FigInfo):
                 skey = 'increase'
             particles = sorted(particles, key=self.sortfuns[skey])
         # index of sorted particles
-        if 'index' in kwargs and isinstance(kwargs['index'], (range, list)):
-            if len(kwargs['index']) == 9:
-                index = kwargs['index']
-            else:
-                log.warn("Too many(few) indices, slicing [:9].")
-                index = kwargs['index'][:9]
-        else:
-            index = range(9)
-        if 'caldr' in kwargs and isinstance(kwargs['caldr'], (range, list)):
-            caldr = kwargs['caldr']
-        else:
-            caldr = []
+        index_start = kwargs.get('index_start', None)
+        if not(isinstance(index_start, int) and 0 <= index_start < total):
+            index_start = 0
+        cal_dr = bool(kwargs.get('cal_dr', False))
         ax_cal = {}
-        for n, idx in enumerate(index):
+        for n, idx in enumerate(range(index_start, index_start + 9)):
             number = int("33%s" % str(n + 1))
             log.debug("calculating Axes %d ..." % number)
             if idx + 1 > total:
@@ -173,13 +181,17 @@ class OrbitFigInfo(FigInfo):
                 R = pdata[:, 1] * r0
                 Z = pdata[:, 2] * r0
                 if self.dimension == '2d':
-                    if self.species == 'ion' and idx in caldr:
-                        _caldr = True
-                    else:
-                        _caldr = False
-                    lay, data = self.__cal_2d_orbit(R, Z, r0, pname, _caldr)
-                    lay['title'] = title
-                    ax_cal[number] = dict(layoutkw=lay, data=data)
+                    rlim = 1.1 * max(abs(np.max(R) - r0), np.max(Z),
+                                     abs(r0 - np.min(R)), abs(np.min(Z)))
+                    layoutkw = dict(xlim=[r0 - rlim, r0 + rlim],
+                                    ylim=[-rlim, rlim],
+                                    title=title)
+                    data = [[1, 'plot', (R, Z), dict()],
+                            [2, 'set_aspect', ('equal',), dict()]]
+                    if cal_dr and self.species == 'ion':
+                        data = self.__trapped_ion_dr(
+                            R, Z, r0, pname, rlim) or data
+                    ax_cal[number] = dict(layoutkw=layoutkw, data=data)
                 else:
                     zeta = pdata[:, 3]
                     X = R * np.cos(zeta)
@@ -202,45 +214,39 @@ class OrbitFigInfo(FigInfo):
         self.calculation['suptitle'] = "%s orbits of %s (9/%d)" % (
             self.dimension.upper(), self.species, total)
 
-    def __cal_2d_orbit(self, R, Z, r0, pname, _caldr):
-        rlim = 1.1 * max(abs(np.max(R) - r0), np.max(Z),
-                         abs(r0 - np.min(R)), abs(np.min(Z)))
-        layoutkw = dict(xlim=[r0 - rlim, r0 + rlim],
-                        ylim=[-rlim, rlim])
-        data = [[1, 'plot', (R, Z), dict()],
-                [2, 'set_aspect', ('equal',), dict()]]
-        if _caldr:
-            # find dr = |R1-R2| while z=0
-            fR = []
-            for t in range(0, len(R) - 1):
-                if Z[t] * Z[t + 1] < 0:
-                    fR.append((R[t] + R[t + 1]) / 2)
-            R1 = sum(fR[::2]) / len(fR[::2])
-            R2 = sum(fR[1::2]) / len(fR[1::2])
-            dr = abs(R1 - R2)
-            # theta M
-            mpoints = np.array(sorted(zip(R, Z), key=lambda p: p[0])[:4])
-            minR = np.average(mpoints[:, 0])
-            minZ = np.average(np.abs(mpoints[:, 1]))
-            minvec = [minR - r0, minZ]
-            costhetaM = np.inner([r0, 0], minvec) / r0 / \
-                np.sqrt(np.inner(minvec, minvec))
-            thetaM = np.arccos(costhetaM) * 180 / np.pi
-            self.calculation.update(
-                {'%s-dr' % pname: dr, '%s-theta' % pname: thetaM})
-            data = [[1, 'plot', (R, Z),
-                     dict(label='$\Delta R$ = %.3f' % dr)],
-                    [2, 'plot', ([R1, R1], [-0.6 * rlim, 0.6 * rlim]),
-                     dict(label='R=%.3f' % R1)],
-                    [3, 'plot', ([R2, R2], [-0.6 * rlim, 0.6 * rlim]),
-                     dict(label='R=%.3f' % R2)],
-                    [4, 'plot', ([r0, r0 + rlim], [0, 0], 'k'), {}],
-                    [5, 'plot', ([r0, minR], [0, minZ]), {}],
-                    [6, 'text', (r0 + 1, 0 + 1,
-                                 r'$\theta$ = %.2f' % thetaM), {}],
-                    [7, 'legend', (), dict()],
-                    [8, 'set_aspect', ('equal',), dict()]]
-        return layoutkw, data
+    def __trapped_ion_dr(self, R, Z, r0, pname, rlim):
+        # find dr = |R1-R2| while z=0
+        # TODO, check trapped
+        fR = []
+        for t in range(0, len(R) - 1):
+            if Z[t] * Z[t + 1] < 0:
+                fR.append((R[t] + R[t + 1]) / 2)
+        R1 = sum(fR[::2]) / len(fR[::2])
+        R2 = sum(fR[1::2]) / len(fR[1::2])
+        dr = abs(R1 - R2)
+        # theta M
+        mpoints = np.array(sorted(zip(R, Z), key=lambda p: p[0])[:4])
+        minR = np.average(mpoints[:, 0])
+        minZ = np.average(np.abs(mpoints[:, 1]))
+        minvec = [minR - r0, minZ]
+        costhetaM = np.inner([r0, 0], minvec) / r0 / \
+            np.sqrt(np.inner(minvec, minvec))
+        thetaM = np.arccos(costhetaM) * 180 / np.pi
+        self.calculation.update(
+            {'%s-dr' % pname: dr, '%s-theta' % pname: thetaM})
+        data = [[1, 'plot', (R, Z),
+                 dict(label='$\Delta R$ = %.3f' % dr)],
+                [2, 'plot', ([R1, R1], [-0.6 * rlim, 0.6 * rlim]),
+                 dict(label='R=%.3f' % R1)],
+                [3, 'plot', ([R2, R2], [-0.6 * rlim, 0.6 * rlim]),
+                 dict(label='R=%.3f' % R2)],
+                [4, 'plot', ([r0, r0 + rlim], [0, 0], 'k'), {}],
+                [5, 'plot', ([r0, minR], [0, minZ]), {}],
+                [6, 'text', (r0 + 1, 0 + 1,
+                             r'$\theta$ = %.2f' % thetaM), {}],
+                [7, 'legend', (), dict()],
+                [8, 'set_aspect', ('equal',), dict()]]
+        return data
 
     def serve(self, plotter):
         if not plotter.name.startswith('mpl::'):
