@@ -34,21 +34,21 @@ _Mpl_Axes_Structure = '''
 '''
 
 
+def _get_mplstyle_library(path):
+    available = matplotlib.style.available.copy()
+    for path, name in matplotlib.style.core.iter_style_files(path):
+        available.append(name)
+    return available
+
+
 class MatplotlibPlotter(BasePlotter, BasePloTemplate):
     '''
     Use matplotlib to create figures.
     '''
     __slots__ = []
-
-    def __get_mplstyle_library(path):
-        available = matplotlib.style.available.copy()
-        for path, name in matplotlib.style.core.iter_style_files(path):
-            available.append(name)
-        return available
-
-    __STYLE_LIBPATH = os.path.join(
+    _STYLE_LIBPATH = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), 'mpl-stylelib')
-    style_available = __get_mplstyle_library(__STYLE_LIBPATH)
+    style_available = _get_mplstyle_library(_STYLE_LIBPATH)
 
     def __init__(self, name):
         super(MatplotlibPlotter, self).__init__(
@@ -68,7 +68,7 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
 
     def _filter_style(self, sty):
         '''Change *sty* str to absolute path.'''
-        return os.path.join(self.__STYLE_LIBPATH, sty + '.mplstyle')
+        return os.path.join(self._STYLE_LIBPATH, sty + '.mplstyle')
 
     def _param_from_style(self, param):
         if param in matplotlib.rcParams:
@@ -165,9 +165,8 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
         '''Save *fig* to *fpath*.'''
         fig.savefig(fpath, **kwargs)
 
-    @staticmethod
-    def _template_line_axstructs(LINE, title, xlabel, ylabel, xlim, ylim,
-                                 ylabel_rotation, legend_kwargs):
+    def _template_line_axstructs(self, LINE, title, xlabel, ylabel,
+                                 xlim, ylim, ylabel_rotation, legend_kwargs):
         '''For :meth:`template_line_axstructs`.'''
         log.debug("Getting Axes %s ..." % 111)
         data, layoutkw, addlegend = [], {}, False
@@ -196,9 +195,8 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
             layoutkw['ylim'] = ylim
         return [{'data': data, 'layout': [111, layoutkw]}], []
 
-    @staticmethod
     def _template_pcolor_axstructs(
-            X, Y, Z, plot_method, plot_method_args, plot_method_kwargs,
+            self, X, Y, Z, plot_method, plot_method_args, plot_method_kwargs,
             title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow):
         '''For :meth:`template_pcolor_axstructs`.'''
         import numpy as np
@@ -206,8 +204,8 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
         layoutkw, plotkw, plotarg, order, data = {}, {}, [], 1, []
         if plot_method == 'plot_surface':
             layoutkw = {'projection': '3d', 'zlim': [-Zmax, Zmax]}
-            plotkw.update(rstride=1, cstride=1, linewidth=1,
-                          antialiased=True, cmap='jet')
+            plotkw.update(rstride=1, cstride=1, linewidth=1, antialiased=True,
+                          cmap=self.param_from_style('image.cmap'))
             if plot_surface_shadow:
                 _offsetd = {'x': np.min(X), 'y': np.max(Y), 'z': -Zmax}
                 _limd = {'x': [np.min(X), np.max(X)],
@@ -238,9 +236,8 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
             layoutkw['ylabel'] = ylabel
         return [{'data': data, 'layout': [111, layoutkw]}], []
 
-    @staticmethod
     def _template_sharex_twinx_axstructs(
-            X, YINFO,
+            self, X, YINFO,
             hspace, title, xlabel, xlim, ylabel_rotation):
         '''For :meth:`template_sharex_twinx_axstructs`.'''
         AxStructs = []
@@ -289,8 +286,7 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
             AxStructs.append({'data': data, 'layout': [number, layout]})
         return AxStructs, [{'figure.subplot.hspace': hspace}]
 
-    @staticmethod
-    def _template_z111p_axstructs(zip_results, suptitle):
+    def _template_z111p_axstructs(self, zip_results, suptitle):
         '''
         For :meth:`template_z111p_axstructs`.
         '''

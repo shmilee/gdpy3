@@ -58,7 +58,7 @@ class MeshgridDigCoreV110922(DigCore):
         outdata = outdata[:len(outdata) // 7 * 7]
         if len(outdata) % 7 != 0:
             log.warning("Missing some raw data in '%s'! Guess the shape '%s'."
-                        % (self.file, shape))
+                        % (self.files, shape))
 
         log.debug("Filling datakeys: %s ..." % str(self._datakeys[:]))
         outdata = numpy.array([float(n.strip()) for n in outdata])

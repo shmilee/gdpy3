@@ -191,8 +191,7 @@ class TestMatplotlibPlotter(unittest.TestCase):
         self.assertListEqual(
             self.plotter.filter_style(['seaborn', 'gdpy3-notebook']),
             ['seaborn', os.path.join(
-                self.plotter._MatplotlibPlotter__STYLE_LIBPATH,
-                'gdpy3-notebook.mplstyle')])
+                self.plotter._STYLE_LIBPATH, 'gdpy3-notebook.mplstyle')])
         self.assertEqual(self.plotter.param_from_style('image.cmap'), 'jet')
         self.assertFalse(self.plotter.param_from_style('image.cmapNone'))
         self.plotter.style = ['gdpy3-notebook', {'image.cmap': 'hot'}]

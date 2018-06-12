@@ -19,7 +19,7 @@ import os
 from ..glogger import getGLogger
 from . import base
 
-__all__ = ['get_pcksaver' 'is_pcksaver']
+__all__ = ['get_pcksaver', 'is_pcksaver']
 log = getGLogger('S')
 pcksaver_names = ['CachePckSaver', 'NpzPckSaver', 'Hdf5PckSaver']
 pcksaver_types = ['.cache', '.npz', '.hdf5']

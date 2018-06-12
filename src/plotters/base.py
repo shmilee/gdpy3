@@ -6,7 +6,6 @@
 Contains plotter, plotemplate base class.
 '''
 
-import os
 import numpy
 
 from ..glogger import getGLogger
@@ -193,6 +192,7 @@ class BasePlotter(object):
                 self.close_figure(num)
             else:
                 return self.get_figure(num)
+        log.info("Plotting figure %s ..." % num)
         figstyle = self.style.copy()
         if add_style and isinstance(add_style, list):
             figstyle.extend(self.check_style(add_style))
@@ -368,12 +368,11 @@ class BasePloTemplate(object):
             results, ('ylabel_rotation', (int, str), None),
             ('legend_kwargs', dict, {}))
         return self._template_line_axstructs(
-            LINE, title, xlabel, ylabel, xlim, ylim,
-            ylabel_rotation, legend_kwargs)
+            LINE, title, xlabel, ylabel,
+            xlim, ylim, ylabel_rotation, legend_kwargs)
 
-    @staticmethod
-    def _template_line_axstructs(LINE, title, xlabel, ylabel, xlim, ylim,
-                                 ylabel_rotation, legend_kwargs):
+    def _template_line_axstructs(self, LINE, title, xlabel, ylabel,
+                                 xlim, ylim, ylabel_rotation, legend_kwargs):
         '''For :meth:`template_line_axstructs`.'''
         raise NotImplementedError()
 
@@ -446,8 +445,6 @@ class BasePloTemplate(object):
         if plot_method not in ('pcolor', 'pcolormesh',
                                'contourf', 'plot_surface'):
             plot_method = 'pcolor'
-        if 'cmap' not in plot_method_kwargs:
-            plot_method_kwargs['cmap'] = self.param_from_style('image.cmap')
         title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow = \
             self._get_my_optional_vals(
                 results, ('title', str, None), ('xlabel', str, None),
@@ -464,9 +461,8 @@ class BasePloTemplate(object):
             X, Y, Z, plot_method, plot_method_args, plot_method_kwargs,
             title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow)
 
-    @staticmethod
     def _template_pcolor_axstructs(
-            X, Y, Z, plot_method, plot_method_args, plot_method_kwargs,
+            self, X, Y, Z, plot_method, plot_method_args, plot_method_kwargs,
             title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow):
         '''For :meth:`template_pcolor_axstructs`.'''
         raise NotImplementedError()
@@ -567,9 +563,8 @@ class BasePloTemplate(object):
             X, YINFO,
             hspace, title, xlabel, xlim, ylabel_rotation)
 
-    @staticmethod
     def _template_sharex_twinx_axstructs(
-            X, YINFO,
+            self, X, YINFO,
             hspace, title, xlabel, xlim, ylabel_rotation):
         '''
         For :meth:`template_sharex_twinx_axstructs`.
@@ -623,8 +618,7 @@ class BasePloTemplate(object):
             results, ('suptitle', str, None))
         return self._template_z111p_axstructs(zip_results, suptitle)
 
-    @staticmethod
-    def _template_z111p_axstructs(zip_results, suptitle):
+    def _template_z111p_axstructs(self, zip_results, suptitle):
         '''
         For :meth:`template_z111p_axstructs`.
         zip_results = [(AxStruct1, pos1), (AxStruct2, pos2)]

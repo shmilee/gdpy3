@@ -6,7 +6,6 @@
 Contains SFTP directory raw loader class.
 '''
 
-import os
 import io
 import stat
 import getpass

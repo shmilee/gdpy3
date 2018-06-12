@@ -66,8 +66,7 @@ def get_processor(name, **kwargs):
                ', '.join(alias_processor_names)))
     ptype = _processorlib.get(pname)
     ppack = importlib.import_module(
-        '%s.%s' % (__name__, ptype),
-        ptype.replace('.', os.path.sep))
+        '%s.%s' % (__name__, ptype), ptype.replace('.', os.path.sep))
     return getattr(ppack, pname)(**kwargs)
 
 

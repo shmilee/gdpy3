@@ -2,7 +2,6 @@
 
 # Copyright (c) 2018 shmilee
 
-import os
 import unittest
 
 from . import SFTP_PATH
