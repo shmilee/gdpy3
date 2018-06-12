@@ -140,7 +140,7 @@ temp_sharextwinxresults = dict(
         'left': [(fielddata[20, :], 'time=20$\Delta t$'),
                  (fielddata[2, :], 'time=5$\Delta t$')],
         'right': [(fielddata[32, :], 'time=32$\Delta t$')],
-        #'rlegend': dict(loc='best'),
+        # 'rlegend': dict(loc='best'),
         'lylabel': r'$\phi$',
     }, {
         'left': [(fielddata[40, :], 'time=40$\Delta t$')],

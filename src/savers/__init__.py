@@ -40,8 +40,8 @@ def get_pcksaver(path):
     path = str(path)
     ext = os.path.splitext(path)[1]
     if ext not in pcksaver_types:
-        log.warn("PckSaver type must be in '%s'! Use default '.npz'."
-                 % ', '.join(pcksaver_types))
+        log.warning("PckSaver type must be in '%s'! Use default '.npz'."
+                    % ', '.join(pcksaver_types))
         ext = '.npz'
         path = path + ext
 

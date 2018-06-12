@@ -77,7 +77,7 @@ class BaseCore(object):
 
     @property
     def coreid(self):
-        return "Core %s" % type(self).__name__
+        return type(self).__name__
 
     def __init__(self, loader, items):
         self.loader = loader
@@ -454,14 +454,14 @@ class LineFigInfo(FigInfo):
         '''
         self.calculation.update(self._get_data_LINE_title_etc(data))
         if len(self.calculation['LINE']) == 0:
-            log.warn("No data for %s." % self.fullnum)
+            log.warning("No data for %s." % self.fullnum)
         debug_kw = {}
         for k in ['xlim', 'ylabel_rotation']:
             if k in kwargs:
                 self.calculation[k] = kwargs[k]
             if k in self.calculation:
                 debug_kw[k] = self.calculation[k]
-        log.ddebug("Some kwargs accepted: %s" % debug_kw)
+        log.debug("Some kwargs accepted: %s" % debug_kw)
         self._set_layout('xlim')
         self._set_layout('ylabel_rotation')
 
@@ -498,14 +498,14 @@ class SharexTwinxFigInfo(FigInfo):
         '''
         self.calculation.update(self._get_data_X_Y_title_etc(data))
         if len(self.calculation['YINFO']) == 0:
-            log.warn("No data for %s." % self.fullnum)
+            log.warning("No data for %s." % self.fullnum)
         debug_kw = {}
         for k in ['hspace', 'xlim', 'ylabel_rotation']:
             if k in kwargs:
                 self.calculation[k] = kwargs[k]
             if k in self.calculation:
                 debug_kw[k] = self.calculation[k]
-        log.ddebug("Some kwargs accepted: %s" % debug_kw)
+        log.debug("Some kwargs accepted: %s" % debug_kw)
         self._set_layout('hspace')
         self._set_layout('xlim')
         self._set_layout('ylabel_rotation')
@@ -544,7 +544,7 @@ class PcolorFigInfo(FigInfo):
         '''
         self.calculation.update(self._get_data_X_Y_Z_title_etc(data))
         if len(self.calculation['Z']) == 0:
-            log.warn("No data for %s." % self.fullnum)
+            log.warning("No data for %s." % self.fullnum)
         self.calculation['plot_method'] = self.default_plot_method
         debug_kw = {}
         for k in ['plot_method', 'plot_method_args',
@@ -554,7 +554,7 @@ class PcolorFigInfo(FigInfo):
                 self.calculation[k] = kwargs[k]
             if k in self.calculation:
                 debug_kw[k] = self.calculation[k]
-        log.ddebug("Some kwargs accepted: %s" % debug_kw)
+        log.debug("Some kwargs accepted: %s" % debug_kw)
 
         self.layout['plot_method'] = dict(
             widget='Dropdown',

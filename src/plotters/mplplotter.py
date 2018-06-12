@@ -92,7 +92,7 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
         with matplotlib.style.context(self.filter_style(axstyle)):
             # use layout
             try:
-                log.ddebug("Adding axes %s ..." % layout[0])
+                log.debug("Adding axes %s ..." % layout[0])
                 if isinstance(layout[0], list):
                     ax = fig.add_axes(layout[0], **layout[1])
                 else:
@@ -104,12 +104,12 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
             axesdict, artistdict = {0: ax}, {}
             for index, axfunc, fargs, fkwargs in data:
                 if axfunc in ('twinx', 'twiny'):
-                    log.ddebug("Creating twin axes %s: %s ..."
-                               % (index, axfunc))
+                    log.debug("Creating twin axes %s: %s ..."
+                              % (index, axfunc))
                     try:
                         ax = getattr(ax, axfunc)()
                         if index in axesdict:
-                            log.warn("Duplicate index %s!" % index)
+                            log.warning("Duplicate index %s!" % index)
                         axesdict[index] = ax
                         if 'nextcolor' in fkwargs:
                             for i in range(fkwargs['nextcolor']):
@@ -119,18 +119,18 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
                         log.error("Failed to create axes %s!"
                                   % index, exc_info=1)
                 elif axfunc == 'revise':
-                    log.ddebug("Revising axes %s ..." % layout[0])
+                    log.debug("Revising axes %s ..." % layout[0])
                     try:
                         fargs(fig, axesdict, artistdict, **fkwargs)
                     except Exception:
                         log.error("Failed to revise axes %s!"
                                   % layout[0], exc_info=1)
                 else:
-                    log.ddebug("Adding artist %s: %s ..." % (index, axfunc))
+                    log.debug("Adding artist %s: %s ..." % (index, axfunc))
                     try:
                         art = getattr(ax, axfunc)(*fargs, **fkwargs)
                         if index in artistdict:
-                            log.warn("Duplicate index %s!" % index)
+                            log.warning("Duplicate index %s!" % index)
                         artistdict[index] = art
                     except Exception:
                         log.error("Failed to add artist %s!"
@@ -141,7 +141,7 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
         with matplotlib.style.context(self.filter_style(figstyle)):
             fig = matplotlib.pyplot.figure(num=num)
             for i, axstructure in enumerate(axesstructures, 1):
-                log.ddebug("Picking AxesStructure %d ..." % i)
+                log.debug("Picking AxesStructure %d ..." % i)
                 self.add_axes(fig, axstructure)
         return fig
 

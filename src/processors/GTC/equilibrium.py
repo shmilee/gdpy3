@@ -82,7 +82,7 @@ class EquilibriumDigCoreV110922(DigCore):
     def _convert(self):
         '''Read 'equilibrium.out'.'''
         with self.rawloader.get(self.files) as f:
-            log.ddebug("Read file '%s'." % self.files)
+            log.debug("Read file '%s'." % self.files)
             outdata = f.readlines()
 
         sd = {}

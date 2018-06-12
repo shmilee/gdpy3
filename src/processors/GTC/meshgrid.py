@@ -50,15 +50,15 @@ class MeshgridDigCoreV110922(DigCore):
     def _convert(self):
         '''Read 'meshgrid.out'.'''
         with self.rawloader.get(self.files) as f:
-            log.ddebug("Read file '%s'." % self.files)
+            log.debug("Read file '%s'." % self.files)
             outdata = f.readlines()
 
         sd = {}
         shape = (7, len(outdata) // 7)
         outdata = outdata[:len(outdata) // 7 * 7]
         if len(outdata) % 7 != 0:
-            log.warn("Missing some raw data in '%s'! Guess the shape '%s'."
-                     % (self.file, shape))
+            log.warning("Missing some raw data in '%s'! Guess the shape '%s'."
+                        % (self.file, shape))
 
         log.debug("Filling datakeys: %s ..." % str(self._datakeys[:]))
         outdata = numpy.array([float(n.strip()) for n in outdata])

@@ -84,7 +84,7 @@ class SnapshotDigCoreV110922(DigCore):
     def _convert(self):
         '''Read 'snap%05d.out' % istep.'''
         with self.rawloader.get(self.files) as f:
-            log.ddebug("Read file '%s'." % self.files)
+            log.debug("Read file '%s'." % self.files)
             outdata = f.readlines()
 
         sd = {}
@@ -287,7 +287,7 @@ class FieldSpectrumFigInfo(FigInfo):
         mtgrid1, mtoroidal = data['mtgrid+1'], data['mtoroidal']
         fluxdata = data['fluxdata-%s' % self.field]
         if fluxdata.size == 0:
-            log.warn("No data for %s." % self.fullnum)
+            log.warning("No data for %s." % self.fullnum)
             return
         if fluxdata.shape != (mtgrid1, mtoroidal):
             log.error("Invalid fluxdata shape!")
@@ -366,7 +366,7 @@ class FieldProfileFigInfo(FigInfo):
         mpsi1, mtgrid1 = data['mpsi+1'], data['mtgrid+1']
         pdata = data['poloidata-%s' % self.field]
         if pdata.size == 0:
-            log.warn("No data for %s." % self.fullnum)
+            log.warning("No data for %s." % self.fullnum)
             return
         if pdata.shape != (mtgrid1, mpsi1):
             log.error("Invalid poloidata shape!")

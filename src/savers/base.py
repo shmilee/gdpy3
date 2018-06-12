@@ -86,8 +86,8 @@ class BasePckSaver(object):
             raise IOError("Can't access path '%s'!" % self.path)
         _p, ext = os.path.splitext(self.path)
         if ext != self._extension:
-            log.warn("Path's extension should be '%s', not '%s'!"
-                     % (self._extension, ext))
+            log.warning("Path's extension should be '%s', not '%s'!"
+                        % (self._extension, ext))
             self.path = _p + self._extension
 
     def iopen(self):
@@ -96,7 +96,7 @@ class BasePckSaver(object):
         Open *path* if exists, create otherwise.
         '''
         if self.status:
-            log.warn("The store object has been initialized.")
+            log.warning("The store object has been initialized.")
             return
         path = self.path
         if self._check_path_exists():

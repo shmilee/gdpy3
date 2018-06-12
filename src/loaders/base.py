@@ -113,7 +113,7 @@ class BaseLoader(object):
         result = True
         for i in items:
             if i not in loaderkeys:
-                log.warn("Key '%s' not in %s!" % (i, self.path))
+                log.warning("Key '%s' not in %s!" % (i, self.path))
                 result = False
         return result
 
@@ -161,7 +161,7 @@ class BaseRawLoader(BaseLoader):
                 filenames = [k for k in filenames if filenames_filter(k)]
             self.filenames = tuple(sorted(filenames))
         except (IOError, ValueError):
-            log.critical("Failed to read path %s." % self.path, exc_info=1)
+            log.error("Failed to read path %s." % self.path, exc_info=1)
             raise
         finally:
             if 'tmpobj' in dir():
@@ -186,8 +186,8 @@ class BaseRawLoader(BaseLoader):
             fileobj = self._special_get(tmpobj, key)
             yield fileobj
         except (IOError, ValueError):
-            log.critical("Failed to get '%s' from %s!" %
-                         (key, self.path), exc_info=1)
+            log.error("Failed to get '%s' from %s!" %
+                      (key, self.path), exc_info=1)
             raise
         finally:
             if 'fileobj' in dir():
@@ -255,7 +255,7 @@ class BasePckLoader(BaseLoader):
                 self.desc = None
             self.description = self.desc
         except (IOError, ValueError):
-            log.critical("Failed to read path %s." % self.path, exc_info=1)
+            log.error("Failed to read path %s." % self.path, exc_info=1)
             raise
         finally:
             if 'tmpobj' in dir():
@@ -284,8 +284,8 @@ class BasePckLoader(BaseLoader):
             value = self._special_get(tmpobj, key)
             self.cache[key] = value
         except (IOError, ValueError):
-            log.critical("Failed to get '%s' from %s!" %
-                         (key, self.path), exc_info=1)
+            log.error("Failed to get '%s' from %s!" %
+                      (key, self.path), exc_info=1)
             raise
         finally:
             if 'tmpobj' in dir():
@@ -314,10 +314,10 @@ class BasePckLoader(BaseLoader):
                 self.cache[key] = value
         except (IOError, ValueError):
             if 'key' in dir():
-                log.critical("Failed to get '%s' from %s!" %
-                             (key, self.path), exc_info=1)
+                log.error("Failed to get '%s' from %s!" %
+                          (key, self.path), exc_info=1)
             else:
-                log.critical("Failed to open '%s'!" % self.path, exc_info=1)
+                log.error("Failed to open '%s'!" % self.path, exc_info=1)
             raise
         finally:
             if 'tmpobj' in dir():

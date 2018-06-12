@@ -40,7 +40,7 @@ class NpzPckSaver(BasePckSaver):
         fd, tmpfile = tempfile.mkstemp(
             prefix=file_prefix, dir=file_dir, suffix='-numpy.npy')
         os.close(fd)
-        log.ddebug("Using tempfile: %s" % tmpfile)
+        log.debug("Using tempfile: %s" % tmpfile)
         try:
             for key, val in data.items():
                 if group in ('/', ''):
@@ -54,7 +54,7 @@ class NpzPckSaver(BasePckSaver):
                                                  pickle_kwargs=None)
                     fid.close()
                     fid = None
-                    log.ddebug("Writting %s ..." % fname)
+                    log.debug("Writting %s ..." % fname)
                     self._storeobj.write(tmpfile, arcname=fname)
                 except Exception:
                     log.error("Failed to write %s." % fname, exc_info=1)

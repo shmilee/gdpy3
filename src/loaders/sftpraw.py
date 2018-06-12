@@ -86,7 +86,8 @@ class SftpRawLoader(BaseRawLoader):
 
     def _special_open(self):
         if not self.transport.is_alive():
-            log.warn("Sftp transport not alive, reconnect '%s'!" % self.path)
+            log.warning("Sftp transport not alive, reconnect '%s'!"
+                        % self.path)
             try:
                 self.transport.close()
                 self.transport = paramiko.Transport((self.host, self.port))

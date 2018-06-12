@@ -35,16 +35,16 @@ class Hdf5PckSaver(BasePckSaver):
                 fgrp = self._storeobj
                 for key in data.keys():
                     if key in self._storeobj:
-                        log.ddebug("Delete dataset '/%s'." % key)
+                        log.debug("Delete dataset '/%s'." % key)
                         self._storeobj.__delitem__(key)
             else:
                 if group in self._storeobj:
-                    log.ddebug("Delete group '/%s'." % group)
+                    log.debug("Delete group '/%s'." % group)
                     self._storeobj.__delitem__(group)
-                log.ddebug("Create group '/%s'." % group)
+                log.debug("Create group '/%s'." % group)
                 fgrp = self._storeobj.create_group(group)
             for key, val in data.items():
-                log.ddebug("Create dataset '%s/%s'." % (fgrp.name, key))
+                log.debug("Create dataset '%s/%s'." % (fgrp.name, key))
                 if isinstance(val, (list, numpy.ndarray)):
                     fgrp.create_dataset(key, data=val, chunks=True,
                                         compression='gzip',

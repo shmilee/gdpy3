@@ -35,7 +35,7 @@ class GtcDigCoreV110922(DigCore):
     def _convert(self):
         '''Read 'gtc.out' parameters.'''
         with self.rawloader.get(self.files) as f:
-            log.ddebug("Read file '%s'." % self.files)
+            log.debug("Read file '%s'." % self.files)
             outdata = f.readlines()
 
         sd = {}
@@ -53,7 +53,7 @@ class GtcDigCoreV110922(DigCore):
                     val = float(val)
                     # if int(val) - val == 0:
                     #    val = int(val)
-                log.ddebug("Filling datakey: %s=%s ..." % (key.lower(), val))
+                log.debug("Filling datakey: %s=%s ..." % (key.lower(), val))
                 sd.update({key.lower(): val})
         log.debug("Filled datakeys: %s ..." % str(tuple(sd.keys())))
 
@@ -89,13 +89,13 @@ class GtcDigCoreV110922(DigCore):
                         val = int(val)
                     else:
                         val = float(val)
-                    log.ddebug("Filling datakey: %s=%s ..." % (key, val))
+                    log.debug("Filling datakey: %s=%s ..." % (key, val))
                     debugkeys.append(key)
                     sd.update({key: val})
         log.debug("Filled datakeys: %s ..." % str(debugkeys))
 
         # backup gtc.out, broken with archive loader
-        # log.ddebug("Filling datakey: %s ..." % 'backup-gtcout')
+        # log.debug("Filling datakey: %s ..." % 'backup-gtcout')
         # with self.rawloader.get(self.file) as f:
         #     sd.update({'backup-gtcout': numpy.fromfile(f)})
 

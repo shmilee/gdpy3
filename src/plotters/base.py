@@ -62,7 +62,7 @@ class BasePlotter(object):
             if self._check_style(sty):
                 self._style.append(sty)
             else:
-                log.warn("Ignore style '%s': %s" % (sty, 'not available'))
+                log.warning("Ignore style '%s': %s" % (sty, 'not available'))
 
     style = property(_get_style, _set_style)
 
@@ -152,7 +152,7 @@ class BasePlotter(object):
                 log.error("AxesStructure['axstyle'] must be list. Not %s. "
                           % type(axstructure['axstyle'])
                           + "Ignore 'axstyle' setting!")
-        log.ddebug("Axes Style: %s" % str(axstyle))
+        log.debug("Axes Style: %s" % str(axstyle))
         return self._add_axes(fig, axstructure['data'], layout, axstyle)
 
     def _create_figure(self, num, axesstructures, figstyle):
@@ -189,14 +189,14 @@ class BasePlotter(object):
         '''
         if num in self._figureslib:
             if replace:
-                log.warn("Figure %s was created. Closing it!" % num)
+                log.warning("Figure %s was created. Closing it!" % num)
                 self.close_figure(num)
             else:
                 return self.get_figure(num)
         figstyle = self.style.copy()
         if add_style and isinstance(add_style, list):
             figstyle.extend(self.check_style(add_style))
-        log.ddebug("Figure Style: %s" % str(figstyle))
+        log.debug("Figure Style: %s" % str(figstyle))
         figure = self._create_figure(num, axesstructures, figstyle)
         if figure:
             self._figureslib[num] = figure
@@ -457,7 +457,7 @@ class BasePloTemplate(object):
         plot_surface_shadow = list(filter(
             lambda x: True if x in ['x', 'y', 'z'] else False,
             plot_surface_shadow))
-        log.ddebug("Some template pcolor parameters: %s" % [
+        log.debug("Some template pcolor parameters: %s" % [
             plot_method, plot_method_args, plot_method_kwargs,
             colorbar, grid_alpha, plot_surface_shadow])
         return self._template_pcolor_axstructs(

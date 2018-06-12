@@ -27,7 +27,7 @@ class Processor(object):
 
     Attributes
     ----------
-    name: name of this processor
+    name: class name of this processor
     rawloader: rawloader object to get raw data
     pcksaver: pcksaver object to save pickled data
     pckloader: pckloader object to get pickled data
@@ -66,7 +66,7 @@ class Processor(object):
 
     @property
     def name(self):
-        return "Processor %s" % type(self).__name__
+        return type(self).__name__
 
     def _get_rawloader(self):
         return self._rawloader
@@ -218,7 +218,7 @@ class Processor(object):
                 log.debug("Use savetype '.cache' while %s is writable!"
                           % _check_w_path)
             if savetype not in ['.cache', '.npz', '.hdf5']:
-                log.warn("Use default savetype '.npz'.")
+                log.warning("Use default savetype '.npz'.")
                 savetype = '.npz'
         else:
             log.debug("Use savetype '.cache' because %s isn't writable!"
@@ -273,8 +273,8 @@ class Processor(object):
         okstr = ','.join(sorted([
             '%s=%r' % (k, list(v) if isinstance(v, tuple) else v)
             for k, v in kwargs.items() if _docstr_.find('*%s*' % k) > 0]))
-        log.ddebug("%s: Some kwargs accepted for %s: %s"
-                   % (self.name, figlabel, okstr))
+        log.debug("%s: Some kwargs accepted for %s: %s"
+                  % (self.name, figlabel, okstr))
         if okstr == '' and kstr.startswith('DEFAULT'):
             # already cooked with default kwargs
             return fobj
@@ -422,8 +422,8 @@ class Processor(object):
                 return
             if os.path.isfile(self.pcksaver.path):
                 if overwrite:
-                    log.warn("Remove old pickled data file: %s!"
-                             % self.pcksaver.path)
+                    log.warning("Remove old pickled data file: %s!"
+                                % self.pcksaver.path)
                     os.remove(self.pcksaver.path)
                     self.convert(add_desc=add_desc)
             else:

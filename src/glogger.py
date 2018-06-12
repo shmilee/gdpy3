@@ -19,28 +19,13 @@ import getpass
 import logging
 import logging.config
 
-# levels
-PARAMETER = 25
-VERBOSE = 15
-DDEBUG = 5
-
-_levelToName = {
-    PARAMETER: 'PARAMETER',
-    VERBOSE: 'VERBOSE',
-    DDEBUG: 'DDEBUG',
-}
-
-for _k, _v in _levelToName.items():
-    logging.addLevelName(_k, _v)
-
 gloggerConfig = {
     'version': 1,
     'formatters': {
         'detailed': {
             'class': 'logging.Formatter',
-            #'format': '[%(asctime)s] [%(name)s] [%(module)-9s %(lineno)-3d] %(levelname)-7s %(message)s',
-            'format': '[%(asctime)s] [%(name)s] [%(module)s] %(levelname)s %(message)s',
-            'datefmt': '%Y-%m-%d %H:%M:%S',
+            'format': '%(asctime)s - %(name)s:%(module)s:%(lineno)d:%(levelname)s - %(message)s',
+            'datefmt': '%m-%d %H:%M:%S',
         },
         'simple': {
             'class': 'logging.Formatter',
@@ -56,7 +41,7 @@ gloggerConfig = {
         },
         'file': {
             'class': 'logging.handlers.RotatingFileHandler',
-            'level': 'DDEBUG',
+            'level': 'DEBUG',
             'formatter': 'detailed',
             'filename': os.path.join(
                 tempfile.gettempdir(),
@@ -69,31 +54,31 @@ gloggerConfig = {
     'loggers': {
         # gdpy3
         'G': {
-            'level': 'DDEBUG',
+            'level': 'DEBUG',
             'handlers': ['console', 'file'],
             'propagate': False,
         },
         # gdpy3.loaders
         'L': {
-            'level': 'DDEBUG',
+            'level': 'DEBUG',
             'handlers': ['console', 'file'],
             'propagate': False,
         },
         # gdpy3.savers
         'S': {
-            'level': 'DDEBUG',
+            'level': 'DEBUG',
             'handlers': ['console', 'file'],
             'propagate': False,
         },
         # gdpy3.processors
         'C': {
-            'level': 'DDEBUG',
+            'level': 'DEBUG',
             'handlers': ['console', 'file'],
             'propagate': False,
         },
         # gdpy3.plotters
         'P': {
-            'level': 'DDEBUG',
+            'level': 'DEBUG',
             'handlers': ['console', 'file'],
             'propagate': False,
         },
@@ -106,35 +91,14 @@ class GLogger(logging.Logger):
     Modify the logging.Logger class for gdpy3.
     '''
 
-    def parameter(self, msg, *args, **kwargs):
+    def parm(self, msg, *args, **kwargs):
         """
-        Log 'msg % args' with severity 'PARAMETER'.
+        Log 'msg % args' with severity 'INFO'.
+        Add 'Parameter,' before the *msg*.
         """
-        if self.isEnabledFor(PARAMETER):
-            self._log(PARAMETER, msg, args, **kwargs)
-
-    parm = parameter
-
-    def verbose(self, msg, *args, **kwargs):
-        """
-        Log 'msg % args' with severity 'VERBOSE'.
-        """
-        if self.isEnabledFor(VERBOSE):
-            self._log(VERBOSE, msg, args, **kwargs)
-
-    vrbs = verbose
-
-    def ddebug(self, msg, *args, **kwargs):
-        """
-        Log 'msg % args' with severity 'DDEBUG'.
-        """
-        if self.isEnabledFor(DDEBUG):
-            self._log(DDEBUG, msg, args, **kwargs)
-
-    ddbg = ddebug
-
-    def warn(self, msg, *args, **kwargs):
-        self.warning(msg, *args, **kwargs)
+        msg = '%s, %s' % ('Parameter', msg)
+        if self.isEnabledFor(logging.INFO):
+            self._log(logging.INFO, msg, args, **kwargs)
 
 
 def getGLogger(name):

@@ -58,7 +58,7 @@ class TrackParticleDigCoreV110922(DigCore):
         keyprefix = ['ion', 'electron', 'fastion']
         for f in self.files:
             with self.rawloader.get(f) as fid:
-                log.ddebug("Read file '%s'." % f)
+                log.debug("Read file '%s'." % f)
                 istep = fid.readline()
                 while istep:
                     nums = [int(n) for n in fid.readline().split()]
@@ -159,7 +159,7 @@ class OrbitFigInfo(FigInfo):
             particles = sorted(particles, key=skey)
         else:
             if skey not in self.sortfuns:
-                log.warn("Invalid `sorted` key for tracked particles.")
+                log.warning("Invalid `sorted` key for tracked particles.")
                 skey = 'increase'
             particles = sorted(particles, key=self.sortfuns[skey])
         # index of sorted particles

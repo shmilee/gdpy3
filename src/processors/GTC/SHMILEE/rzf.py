@@ -26,7 +26,7 @@ class RZFGtcDigCoreV110922(GtcDigCoreV110922):
         '''Read 'gtc.out'.'''
         sd = super(RZFGtcDigCoreV110922, self)._convert()
         with self.rawloader.get(self.files) as f:
-            log.ddebug("Read file '%s'." % self.files)
+            log.debug("Read file '%s'." % self.files)
             outdata = f.read()
         numpat = r'[-+]?\d+[\.]?\d*[eE]?[-+]?\d*'
         # only residual zonal flow(zf) case, second occurence match
@@ -89,7 +89,7 @@ class ResidualZFFigInfo(Field00FigInfo):
         tunit = data['gtc/tstep'] * data['gtc/ndiag']
         index = tools.argrelextrema(Z.sum(axis=1))
         if index.size < 3:
-            log.warn("Lines of peak less than 3!")
+            log.warning("Lines of peak less than 3!")
             return
         i = int(len(index) / 2)
         iZ1, iZ2 = index[i], index[i + 1]
@@ -99,7 +99,8 @@ class ResidualZFFigInfo(Field00FigInfo):
             if Z1[i] != 0:
                 break
         if i != istep:
-            log.warn("Find nozero in '%s', before istep: '%s'!" % (i, istep))
+            log.warning("Find nozero in '%s', before istep: '%s'!"
+                        % (i, istep))
         time = np.arange(istep, Z1.size) * tunit
         Z1, Z2 = Z1[istep:] / abs(Z1[istep]), Z2[istep:] / abs(Z2[istep])
         # find residual region
