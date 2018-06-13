@@ -16,6 +16,7 @@ Gdpy3's logger module.
 import os
 import tempfile
 import getpass
+import time
 import logging
 import logging.config
 
@@ -45,7 +46,7 @@ gloggerConfig = {
             'formatter': 'detailed',
             'filename': os.path.join(
                 tempfile.gettempdir(),
-                'gdpy3-%s.log' % getpass.getuser()
+                'gdpy3-%s-%s.log' % (getpass.getuser(), time.strftime('%Y'))
             ),
             'maxBytes': 3 * 1024 * 1024,
             'backupCount': 9,
