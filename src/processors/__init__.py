@@ -12,8 +12,9 @@ This is the subpackage ``processors`` of gdpy3.
 :attr:`processor.Processor.plotter`,
 :attr:`processor.Processor.digcores`,
 :attr:`processor.Processor.laycores`,
+:attr:`processor.Processor.layout`,
 :attr:`processor.Processor.figurelabels`,
-:attr:`processor.Processor.figurelabels_plotted`
+:attr:`processor.Processor.figurelabels_cooked`
 and methods
 :meth:`processor.Processor.set_prefer_pcksaver`,
 :meth:`processor.Processor.convert`,
@@ -25,6 +26,7 @@ and methods
 '''
 
 import os
+import inspect
 import importlib
 
 from . import processor
@@ -53,7 +55,7 @@ def get_processor(name, **kwargs):
     1. valid processor names:
        :data:`processor_names`, :data:`alias_processor_names`.
     2. Raises ValueError if name invalid.
-    3. *kwargs*: rawloader, pcksaver, pckloader, plotter
+    3. *kwargs*: parameters passed to :meth:`processor.Processor.pick`.
     '''
     if name in processor_names:
         pname = name
@@ -67,7 +69,15 @@ def get_processor(name, **kwargs):
     ptype = _processorlib.get(pname)
     ppack = importlib.import_module(
         '%s.%s' % (__name__, ptype), ptype.replace('.', os.path.sep))
-    return getattr(ppack, pname)(**kwargs)
+    gdp = getattr(ppack, pname)()
+    if kwargs:
+        sig = inspect.signature(gdp.pick)
+        for k in list(kwargs.keys()):
+            if k not in sig.parameters:
+                remove = kwargs.pop(k, None)
+        if kwargs:
+            gdp.pick(**kwargs)
+    return gdp
 
 
 def is_processor(obj):
