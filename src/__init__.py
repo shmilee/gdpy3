@@ -10,4 +10,7 @@ __status__ = "alpha"
 __license__ = "MIT"
 __email__ = "shmilee.zju@gmail.com"
 __uri__ = "https://github.com/shmilee/gdpy3.git"
-__all__ = []
+__all__ = ['get_plotter', 'get_processor']
+
+from .plotters import get_plotter
+from .processors import get_processor
