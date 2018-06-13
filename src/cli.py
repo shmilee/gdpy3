@@ -15,7 +15,7 @@ from .glogger import getGLogger
 from .processors import processor_names, alias_processor_names, get_processor
 from . import __version__ as gdpy3_version
 
-__all__ = []
+__all__ = ['script_cli']
 
 log = getGLogger('G')
 
