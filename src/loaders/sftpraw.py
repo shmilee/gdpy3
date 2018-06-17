@@ -8,7 +8,6 @@ Contains SFTP directory raw loader class.
 
 import io
 import stat
-import getpass
 import urllib.parse
 try:
     import paramiko
@@ -17,6 +16,7 @@ except ImportError as exc:
         'SftpRawLoader requires paramiko. But %s' % exc) from None
 
 from ..glogger import getGLogger
+from ..getpasswd import GetPasswd
 from .base import BaseRawLoader
 
 __all__ = ['SftpRawLoader']
@@ -31,8 +31,8 @@ class SftpRawLoader(BaseRawLoader):
     Parameters
     ----------
     path: str
-        format: 'sftp://username[:passwd]@host[:port]##remote/path'
-        example: 'sftp://Bob:123456@192.168.1.10:2233##test/case/'
+        format: 'sftp://username@host[:port]##remote/path'
+        example: 'sftp://Bob@192.168.1.10:2233##test/case/'
 
     Notes
     -----
@@ -41,11 +41,6 @@ class SftpRawLoader(BaseRawLoader):
     __slots__ = ['user', '__passwd', 'host', 'port', 'rmt_path', 'transport']
     _sep = '/'  # unix sep
     loader_type = 'sftp.directory'
-
-    def _getpasswd(self):
-        '''Prompt for a password.'''
-        return getpass.getpass('Password for "%s@%s": '
-                               % (self.user, self.host))
 
     def _check_path_access(self, path):
         '''Check for access to remote *path*.'''
@@ -60,7 +55,8 @@ class SftpRawLoader(BaseRawLoader):
         self.host = u.hostname
         self.port = u.port or 22
         self.rmt_path = tpath[1]
-        self.__passwd = u.password or self._getpasswd()
+        self.__passwd = GetPasswd.getpasswd(
+            prompt='Password for "%s@%s": ' % (self.user, self.host))
         try:
             self.transport = paramiko.Transport((self.host, self.port))
             self.transport.connect(username=self.user, password=self.__passwd)
