@@ -4,4 +4,4 @@
 
 if __name__ == "__main__":
     from .cli import *
-    script_cli()
+    cli_script()

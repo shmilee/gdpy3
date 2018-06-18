@@ -15,7 +15,7 @@ from .glogger import getGLogger
 from .processors import processor_names, alias_processor_names, get_processor
 from . import __version__ as gdpy3_version
 
-__all__ = ['script_cli']
+__all__ = ['cli_script']
 
 log = getGLogger('G')
 
@@ -124,7 +124,7 @@ def get_parser():
     return {'top': top, 'convert': convert, 'plot': plot}
 
 
-def script_cli():
+def cli_script():
     '''Entry point for gdpy3'''
     parserlib = get_parser()
     args = parserlib['top'].parse_args()
