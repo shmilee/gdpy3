@@ -33,6 +33,11 @@ class GTkApp(object):
             if no path given, first ask a sftp path or not
         '''
         root = tkinter.Tk(className='gdpy3-gui')
+        img = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'icon', 'main_128.gif')
+        root.tk.call('wm', 'iconphoto', root._w, tkinter.PhotoImage(file=img))
+        root.protocol("WM_DELETE_WINDOW", root.destroy)
         style = ttk.Style()
         font = ('Microsoft YaHei', 10)
         width = 0
@@ -119,7 +124,6 @@ class GTkApp(object):
             with open(self.recent_path, 'w') as recf:
                 recf.write(self.path)
         self.root.title('gdpy3 - %s' % self.path)
-        self.root.protocol("WM_DELETE_WINDOW", self.root.destroy)
         self.root.mainloop()
 
     def center(self, win):
@@ -157,10 +161,13 @@ class GTkApp(object):
             messagebox.showwarning(message='Select processor first!')
 
     def after_filter(self, *args):
-        self.figlabels.set(self.processor.refind(self.figlabel_filter.get()))
-        self.figlistbox.selection_clear(0, END)
-        # reset panel
-        # close fig windows
+        if self.processor:
+            self.figlabels.set(self.processor.refind(
+                self.figlabel_filter.get()))
+            self.figlistbox.selection_clear(0, END)
+            # reset panel
+        else:
+            messagebox.showwarning(message='Pick processor first!')
 
     def after_plot(self):
         if self.figlistbox.curselection():
