@@ -71,10 +71,10 @@ setup(
     data_files=[],
     entry_points={
         'console_scripts': [
-            'gdpy3 = gdpy3.cli:script_cli',
+            'gdpy3 = gdpy3.cli:cli_script',
         ],
-        # 'gui_scripts': [
-        #    'gdpy3-gui = gdpy3.gui:script_gui',
-        # ],
+        'gui_scripts': [
+            'gdpy3-gui = gdpy3.GUI:gui_script',
+        ],
     },
 )

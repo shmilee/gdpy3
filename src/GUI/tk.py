@@ -23,7 +23,7 @@ class GTkApp(object):
     recent_path = os.path.join(tempfile.gettempdir(),
                                'gdpy3_%s_recent_path' % getpass.getuser())
 
-    def __init__(self, path=None, ask_sftp=True):
+    def __init__(self, path=None, ask_sftp=False):
         '''
         Parameters
         ----------
