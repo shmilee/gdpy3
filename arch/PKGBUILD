@@ -15,9 +15,10 @@ optdepends=('python-h5py: for saving and loading hdf5 support'
             'python-ipykernel: for GUI in Jupyter Notebook'
             'python-ipywidgets: for GUI in Jupyter Notebook')
 makedepends=('git')
-source=("https://github.com/shmilee/$pkgname/archive/v$pkgver.tar.gz")
-#source=("$pkgname-$pkgver.tar.gz")
-sha512sums=('SKIP')
+source=("https://github.com/shmilee/$pkgname/archive/v$pkgver.tar.gz" "gdpy3.desktop")
+#source=("$pkgname-$pkgver.tar.gz" "gdpy3.desktop")
+sha512sums=('SKIP'
+            'a10239135e6ba9ed9b8064cc17712c6b2ac6cd2141f51d63c0a7ac829ec206a023814779d0b04bdd082d8d6c8ed7a76ef7bcbe2b5612dcc4db50afeecdd22437')
 
 build() {
   cd $pkgname-$pkgver
@@ -28,4 +29,6 @@ package() {
   cd $pkgname-$pkgver
   python setup.py install --root="$pkgdir"
   install -Dm644 LICENSE "$pkgdir"/usr/share/licenses/$pkgname/LICENSE.txt
+  install -Dm644 src/GUI/icon/main_128.png "$pkgdir"/usr/share/icons/hicolor/128x128/apps/gdpy3.png
+  install -Dm644 ../gdpy3.desktop "$pkgdir"/usr/share/applications/gdpy3.desktop
 }
