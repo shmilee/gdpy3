@@ -33,10 +33,10 @@ class GTkApp(object):
             if no path given, first ask a sftp path or not
         '''
         root = tkinter.Tk(className='gdpy3-gui')
-        img = os.path.join(
+        img = tkinter.PhotoImage(file=os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            'icon', 'main_128.gif')
-        root.tk.call('wm', 'iconphoto', root._w, tkinter.PhotoImage(file=img))
+            'icon', 'main_128.gif'))
+        root.tk.call('wm', 'iconphoto', root._w, "-default", img)
         root.protocol("WM_DELETE_WINDOW", root.destroy)
         style = ttk.Style()
         font = ('Microsoft YaHei', 10)
@@ -177,7 +177,8 @@ class GTkApp(object):
                 if self.windows.get(figlabel, None) is None:
                     self.windows[figlabel] = MplFigWindow(
                         self.processor.plotter.get_figure(figlabel), figlabel,
-                        len(self.windows), self.path, master=self.root)
+                        len(self.windows), self.path, master=self.root,
+                        class_='gdpy3-gui')
                 else:
                     self.windows.get(figlabel).wm_deiconify()
             else:
