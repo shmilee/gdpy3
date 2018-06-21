@@ -9,6 +9,7 @@ import getpass
 import tkinter
 from tkinter import ttk, simpledialog, filedialog, messagebox
 from tkinter.constants import *
+from distutils.version import LooseVersion
 
 from .. import __version__ as gdpy3_version
 from ..processors import get_processor, processor_names
@@ -208,16 +209,18 @@ class MplFigWindow(tkinter.Toplevel):
     def __init__(self, fig, figlabel, index, path, master=None, cnf={}, **kw):
         super(MplFigWindow, self).__init__(master=master, cnf=cnf, **kw)
         import matplotlib
-        from matplotlib.backends.backend_tkagg import (
-            FigureCanvasTkAgg, NavigationToolbar2Tk)
+        import matplotlib.backends.backend_tkagg as tkagg
+        if LooseVersion(matplotlib.__version__) <= LooseVersion('2.1.2'):
+            # print('Recommand matplotlib>=2.2.0')
+            tkagg.NavigationToolbar2Tk = tkagg.NavigationToolbar2TkAgg
         from matplotlib.backend_bases import key_press_handler
         # matplotlib.use('TkAgg', warn=False, force=True)
         self.title('%s - %d - %s' % (figlabel, index, path))
         if fig:
-            canvas = FigureCanvasTkAgg(fig, master=self)
+            canvas = tkagg.FigureCanvasTkAgg(fig, master=self)
             canvas.draw()
             # canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
-            toolbar = NavigationToolbar2Tk(canvas, self)
+            toolbar = tkagg.NavigationToolbar2Tk(canvas, self)
             toolbar.update()
             canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
 

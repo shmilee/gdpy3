@@ -55,7 +55,7 @@ setup(
     ),
     install_requires=[
         'numpy>=1.10.0',
-        'matplotlib>=2.2.0',
+        'matplotlib>=1.5.3',
     ],
     extras_require={
         'pck.hdf5': ['h5py>=2.6.0'],
