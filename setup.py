@@ -3,13 +3,14 @@
 # Copyright (c) 2018 shmilee
 
 import os
-import importlib.util
 from setuptools import setup, find_packages
 
-# https://docs.python.org/3.6/library/importlib.html#importing-a-source-file-directly
-spec = importlib.util.spec_from_file_location('gdpy3', './src/__init__.py')
-gdpy3 = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(gdpy3)
+here = os.path.abspath(os.path.dirname(__file__))
+about = {}
+with open(os.path.join(here, 'src', '__about__.py'), encoding='utf-8') as f:
+    exec(f.read(), about)
+with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
+    long_description = '\n' + f.read()
 
 packages = ['gdpy3']
 subpackages = find_packages(where='src', exclude=('*tests',))
@@ -17,18 +18,14 @@ packages.extend(['gdpy3.%s' % p for p in subpackages])
 
 setup(
     name='gdpy3',
-    version=gdpy3.__version__,
-    description=gdpy3.__doc__,
-    long_description=open(
-        os.path.join(
-            os.path.dirname(__file__),
-            'README.rst'
-        )
-    ).read(),
-    author=gdpy3.__author__,
-    author_email=gdpy3.__email__,
-    url=gdpy3.__uri__,
-    license=gdpy3.__license__,
+    version=about['__version__'],
+    description=about['__description__'],
+    long_description=long_description,
+    long_description_content_type='text/x-rst',
+    author=about['__author__'],
+    author_email=about['__email__'],
+    url=about['__url__'],
+    license=about['__license__'],
     keywords='GTC, matplotlib',
     package_dir={'gdpy3': 'src'},
     packages=packages,

@@ -2,15 +2,16 @@
 
 # Copyright (c) 2018 shmilee
 
-__name__ = "gdpy3"
-__doc__ = "Gyrokinetic Toroidal Code Data Processing tools written in python3"
-__author__ = "shmilee"
-__version__ = "0.3.6"
-__status__ = "alpha"
-__license__ = "MIT"
-__email__ = "shmilee.zju@gmail.com"
-__uri__ = "https://github.com/shmilee/gdpy3.git"
-__all__ = ['get_plotter', 'get_processor']
+from .__about__ import __description__, __url__, __version__, __status__
+from .__about__ import __author__, __email__, __license__, __copyright__
 
+__doc__ = __description__
+__all__ = [
+    'get_rawloader', 'get_pckloader', 'get_pcksaver',
+    'get_plotter', 'get_processor',
+]
+
+from .loaders import get_rawloader, get_pckloader
+from .savers import get_pcksaver
 from .plotters import get_plotter
 from .processors import get_processor
