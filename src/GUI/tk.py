@@ -43,7 +43,7 @@ class GTkApp(object):
         font = ('Microsoft YaHei', 10)
         width = 0
         style.configure('.', font=font)
-        main = tkinter.Frame(root, relief=RIDGE, borderwidth=2)
+        main = ttk.Frame(root, relief=RIDGE, borderwidth=2)
         main.pack(fill=BOTH, expand=1)
         # 1
         w_frame_proc = ttk.Labelframe(main, text='1. Processor:', width=width)
@@ -79,31 +79,68 @@ class GTkApp(object):
         w_frame_fig.grid(row=1, column=0, padx=10, pady=5, sticky=W+E)
         # 3
         w_frame_panel = ttk.Labelframe(main, text='3. Panel:', width=width)
+        # 3 - VerticalScrolledFrame
+        w_kw_out_frame = ttk.Frame(w_frame_panel)
+        w_kw_scrollbar = ttk.Scrollbar(w_kw_out_frame, orient=VERTICAL)
+        w_kw_scrollbar.pack(fill=Y, side=RIGHT, expand=0)
+        w_kw_canvas = tkinter.Canvas(
+            w_kw_out_frame, bd=0, highlightthickness=0,
+            yscrollcommand=w_kw_scrollbar.set, width=0, height=160)
+        w_kw_canvas.pack(side=LEFT, fill=BOTH, anchor=W, expand=1)
+        w_kw_scrollbar.config(command=w_kw_canvas.yview)
+        w_kw_canvas.xview_moveto(0)
+        w_kw_canvas.yview_moveto(0)
+        w_kw_in_frame = ttk.Frame(w_kw_canvas)
+        w_kw_canvas.create_window(0, 0, window=w_kw_in_frame, anchor=NW)
+
+        def _configure_canvas_interiorframe(event):
+            w_kw_canvas.update_idletasks()
+            w_kw_canvas.configure(scrollregion=w_kw_canvas.bbox("all"))
+        w_kw_in_frame.bind('<Configure>', _configure_canvas_interiorframe)
+
+        def _on_mousewheel(event):
+            number = 0
+            # Linux wheel event: event.delta = 0, event.num = 4 or 5
+            # Windows wheel event: event.delta = -120 or 120 ?
+            if event.num == 5 or event.delta == -120:
+                number = 1  # down
+            if event.num == 4 or event.delta == 120:
+                number = -1  # up
+            # print(number)
+            w_kw_canvas.yview_scroll(number, "units")
+        w_kw_canvas.bind("<MouseWheel>", _on_mousewheel)
+        w_kw_canvas.bind("<Button-4>", _on_mousewheel)
+        w_kw_canvas.bind("<Button-5>", _on_mousewheel)
+        w_kw_out_frame.pack(in_=w_frame_panel, side=TOP,
+                            expand=1, fill=X, padx=5, pady=5)
         w_plot = ttk.Button(
-            w_frame_panel, text='Plot', width=0, command=self.after_plot)
-        w_plot.pack(in_=w_frame_panel, side=RIGHT, padx=5, pady=5)
+            w_frame_panel, text='Plot', width=8, command=self.after_plot)
+        w_plot.pack(in_=w_frame_panel, side=BOTTOM, anchor=E, padx=5, pady=5)
         w_frame_panel.grid(row=2, column=0, padx=10, pady=5, sticky=W+E)
-        # bottom
+        # 4 - bottom
         w_info = tkinter.Label(
             main, relief=RIDGE, borderwidth=1, anchor=E, font=(font[0], 8),
             text="Version %s\t© %s shmilee\t" % (
                 gdpy3_version, time.strftime('%Y')))
         w_info.grid(row=3, column=0, sticky=W+E)
-        # for share
+        # X - for share
         self.root = root
         self.center(root)
         self.processor_name = w_str_proc
         self.figlabel_filter = w_str_filter
         self.figlabels = w_list_fig
         self.figlistbox = w_listbox_fig
+        self.figkwframe = w_kw_in_frame
         self.path = path
         self.processor = None
-        self.windows = {}
-        # event
+        self.figkwslib = {}  # all figure kwargs widgets, key is figlabel
+        self.figkws = {}  # kwargs widgets mapped in panel
+        self.windows = {}  # all plotted figure windows, key is figlabel
+        # X - events
         w_select_proc.bind("<<ComboboxSelected>>", self.after_processor_name)
         w_entry_filter.bind("<Return>", self.after_filter)
         w_listbox_fig.bind("<<ListboxSelect>>", self.after_figlabel)
-        # start
+        # X - start
         if not self.path and ask_sftp:
             self.path = simpledialog.askstring(
                 "Input sftp path",
@@ -135,6 +172,18 @@ class GTkApp(object):
         y = (win.winfo_screenheight() // 2) - (height // 2)
         win.geometry('{}x{}+{}+{}'.format(width, height, x, y))
 
+    def reset_panel(self, clear_lib=False):
+        for n, w in self.figkws.items():
+            w.grid_forget()
+            w.pack_forget()
+            w.place_forget()
+        self.figkws = {}
+        if clear_lib:
+            for figlabel in self.figkwslib:
+                for n, w in self.figkwslib[figlabel].items():
+                    w.destroy()
+            self.figkwslib = {}
+
     def after_pick(self):
         if self.processor_name.get():
             gdp = get_processor(self.processor_name.get())
@@ -155,6 +204,7 @@ class GTkApp(object):
                 self.figlabels.set(gdp.figurelabels)
                 self.figlistbox.selection_clear(0, END)
                 # reset panel
+                self.reset_panel(clear_lib=True)
                 # close fig windows
             else:
                 messagebox.showerror(message='Failed to get processor!')
@@ -167,6 +217,7 @@ class GTkApp(object):
                 self.figlabel_filter.get()))
             self.figlistbox.selection_clear(0, END)
             # reset panel
+            self.reset_panel()
         else:
             messagebox.showwarning(message='Pick processor first!')
 
@@ -193,12 +244,27 @@ class GTkApp(object):
         self.figlabels.set([])
         self.figlistbox.selection_clear(0, END)
         # reset panel
+        self.reset_panel(clear_lib=True)
         # close fig windows
 
     def after_figlabel(self, event):
         if self.figlistbox.curselection():
             figlabel = self.figlabels.get()[self.figlistbox.curselection()[0]]
             # update panel
+            self.reset_panel()
+            if figlabel in self.figkwslib:
+                print("Use old widgets")
+                for n, w in self.figkwslib[figlabel].items():
+                    w.pack()
+            else:
+                print("Gen new widgets")
+                self.figkwslib[figlabel] = {}
+                for i in range(len(figlabel)):  # TODO
+                    self.figkwslib[figlabel][i] = ttk.Button(
+                        self.figkwframe, text="Button " + str(i))
+                    self.figkwslib[figlabel][i].pack()
+            self.figkws = self.figkwslib[figlabel]
+            print(self.figkws[len(figlabel) - 1])
 
 
 class MplFigWindow(tkinter.Toplevel):
