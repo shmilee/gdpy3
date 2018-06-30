@@ -139,7 +139,9 @@ class GTkApp(object):
         self.processor = None
         self.figkwslib = {}  # all figure kwargs widgets, key is figlabel
         self.figkws = {}  # kwargs widgets mapped in panel
-        self.windows = {}  # all plotted figure windows, key is figlabel
+        self.figwindows = dict(
+            index={'next_index': 0},
+            toplevel={})  # all plotted figure windows, key is figlabel
         # X - events
         w_select_proc.bind("<<ComboboxSelected>>", self.after_processor_name)
         w_entry_filter.bind("<Return>", self.after_filter)
@@ -188,6 +190,16 @@ class GTkApp(object):
                     w.destroy()
             self.figkwslib = {}
 
+    def close_figwindows(self, destroy=False):
+        for n, w in self.figwindows['toplevel'].items():
+            w.wm_withdraw()
+        if destroy:
+            for n, w in self.figwindows['toplevel'].items():
+                w.destroy()
+            self.figwindows = dict(
+                index={'next_index': 0},
+                toplevel={})
+
     def after_pick(self):
         if self.processor_name.get():
             gdp = get_processor(self.processor_name.get())
@@ -207,9 +219,10 @@ class GTkApp(object):
                 self.figlabel_filter.set('^.*/.*$')
                 self.figlabels.set(gdp.figurelabels)
                 self.figlistbox.selection_clear(0, END)
-                # reset panel
+                # reset panel, clear kw widgets
                 self.reset_panel(clear_lib=True)
-                # close fig windows
+                # close and destroy fig windows
+                self.close_figwindows(destroy=True)
             else:
                 messagebox.showerror(message='Failed to get processor!')
         else:
@@ -226,30 +239,75 @@ class GTkApp(object):
             messagebox.showwarning(message='Pick processor first!')
 
     def after_plot(self):
-        if self.figlistbox.curselection():
-            figlabel = self.figlabels.get()[self.figlistbox.curselection()[0]]
-            self.processor.plot(figlabel, show=False)
-            if self.processor.plotter.name.startswith('mpl::'):
-                if self.windows.get(figlabel, None) is None:
-                    self.windows[figlabel] = MplFigWindow(
-                        self.processor.plotter.get_figure(figlabel), figlabel,
-                        len(self.windows), self.path, master=self.root,
-                        class_='gdpy3-gui')
-                else:
-                    self.windows.get(figlabel).wm_deiconify()
-            else:
-                messagebox.showerror(message='%s not supported with Tk!'
-                                     % self.processor.plotter.name)
-        else:
+        if not self.processor.plotter.name.startswith('mpl::'):
+            messagebox.showerror(message='%s not supported with Tk!'
+                                 % self.processor.plotter.name)
+            return
+        if not self.figlistbox.curselection():
             messagebox.showwarning(message='Select a figure first!')
+            return
+        figlabel = self.figlabels.get()[self.figlistbox.curselection()[0]]
+        figkwargs = {k: v.value for k, v in self.figkws.items()}
+        _, _, n0, _, _ = self.processor._figurelabelslib.get(
+            figlabel, (0, 0, 0, 0, 0))
+        self.processor.plot(figlabel, show=False, **figkwargs)
+        _, _, n1, _, _ = self.processor._figurelabelslib.get(
+            figlabel, (0, 0, 0, 0, 0))
+        figure = self.processor.plotter.get_figure(figlabel)
+        if figure:
+            if n0 == n1 and figlabel in self.figwindows['toplevel']:
+                # print('Raise old figure window.')
+                self.figwindows['toplevel'].get(figlabel).wm_deiconify()
+            else:
+                # print('Get new figure window.')
+                if figlabel in self.figwindows['toplevel']:
+                    self.figwindows['toplevel'].pop(figlabel).destroy()
+                if figlabel in self.figwindows['index']:
+                    _old_index = self.figwindows['index'].pop(figlabel)
+                index = self.figwindows['index']['next_index']
+                self.figwindows['index']['next_index'] = index + 1
+                toplevel = MplFigWindow(figure, figlabel, index, self.path,
+                                        master=self.root, class_='gdpy3-gui')
+                self.figwindows['index'][figlabel] = index
+                self.figwindows['toplevel'][figlabel] = toplevel
 
     def after_processor_name(self, event):
         self.figlabel_filter.set('^.*/.*$')
         self.figlabels.set([])
         self.figlistbox.selection_clear(0, END)
         # reset panel
-        self.reset_panel(clear_lib=True)
+        self.reset_panel()
         # close fig windows
+        self.close_figwindows()
+
+    def get_figkws_widgets(self, layout):
+        controls = {}
+        for k, v in layout.items():
+            if v['widget'] in (
+                    'IntSlider', 'FloatSlider',
+                    'IntRangeSlider', 'FloatRangeSlider'):
+                # width = 8 if v['widget'].startswith('Float') else 0
+                controls[k] = LabeledSpinBoxs(
+                    self.figkwframe,
+                    v['description'],
+                    v['rangee'],
+                    v['value'],
+                    state='readonly', width=0)
+            elif v['widget'] in ('Dropdown', 'SelectMultiple'):
+                controls[k] = LabeledListbox(
+                    self.figkwframe,
+                    v['description'],
+                    v['options'],
+                    v['value'],
+                    width=0, height=0)
+            elif v['widget'] in ('Checkbox',):
+                controls[k] = Checkbox(
+                    self.figkwframe,
+                    v['description'],
+                    v['value'])
+            else:
+                pass
+        return controls
 
     def after_figlabel(self, event):
         if self.figlistbox.curselection():
@@ -257,32 +315,18 @@ class GTkApp(object):
             # update panel
             self.reset_panel()
             if figlabel in self.figkwslib:
-                print("Use old widgets")
-                for n, w in self.figkwslib[figlabel].items():
-                    w.pack(anchor=W, padx=5, pady=5)
+                # print("Use old widgets")
+                self.figkws = self.figkwslib[figlabel]
             else:
-                print("Gen new widgets")
-                self.figkwslib[figlabel] = {}
-                for i in range(len(figlabel)):  # TODO
-                    if i == 0:
-                        self.figkwslib[figlabel][i] = LabeledSpinBoxs(
-                            self.figkwframe,
-                            'Xlim:', (0, 1, 0.02), [0.6, 0.8],
-                            state='readonly', width=6)
-                    elif i == 1:
-                        self.figkwslib[figlabel][i] = Checkbox(
-                            self.figkwframe, 'Cal_Dr', False)
-                    elif i == 2:
-                        self.figkwslib[figlabel][i] = LabeledListbox(
-                            self.figkwframe,
-                            'Plotmeth:', ['pcolor', 'pcolormesh', 'contourf'],
-                            'pcolormesh', width=0, height=0)
-                    else:
-                        self.figkwslib[figlabel][i] = ttk.Button(
-                            self.figkwframe, text="Button " + str(i))
-                    self.figkwslib[figlabel][i].pack(anchor=W, padx=5, pady=5)
-            self.figkws = self.figkwslib[figlabel]
-            print(self.figkws[1])
+                # print("Gen new widgets")
+                figinfo = self.processor.get(figlabel)
+                if figinfo:
+                    self.figkws = self.get_figkws_widgets(figinfo.layout)
+                else:
+                    self.figkws = {}
+                self.figkwslib[figlabel] = self.figkws
+            for n, w in self.figkws.items():
+                w.pack(anchor=W, padx=5, pady=5)
 
 
 class LabeledSpinBoxs(ttk.Frame):
