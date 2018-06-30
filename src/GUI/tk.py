@@ -48,9 +48,10 @@ class GTkApp(object):
         # 1
         w_frame_proc = ttk.Labelframe(main, text='1. Processor:', width=width)
         w_str_proc = tkinter.StringVar()
-        w_select_proc = tkinter.ttk.Combobox(
+        w_select_proc = ttk.Combobox(
             w_frame_proc, values=processor_names, font=font,
             textvariable=w_str_proc, state='readonly')
+        w_str_proc.set(processor_names[0])
         w_select_proc.grid(in_=w_frame_proc, row=0, column=0, padx=5, pady=5)
         w_pick = ttk.Button(
             w_frame_proc, text="Pick", width=0, command=self.after_pick)
@@ -67,7 +68,7 @@ class GTkApp(object):
         w_filter.grid(in_=w_frame_fig, row=0, column=1, padx=5, pady=5)
         w_list_fig = tkinter.Variable(value=[])
         w_listbox_fig = tkinter.Listbox(
-            w_frame_fig, selectmode=SINGLE, font=font,
+            w_frame_fig, selectmode=SINGLE, exportselection=0, font=font,
             listvariable=w_list_fig, state='normal')
         w_scrollbar_fig = ttk.Scrollbar(
             w_frame_fig, orient="vertical", command=w_listbox_fig.yview)
@@ -111,6 +112,9 @@ class GTkApp(object):
         w_kw_canvas.bind("<MouseWheel>", _on_mousewheel)
         w_kw_canvas.bind("<Button-4>", _on_mousewheel)
         w_kw_canvas.bind("<Button-5>", _on_mousewheel)
+        w_kw_in_frame.bind("<MouseWheel>", _on_mousewheel)
+        w_kw_in_frame.bind("<Button-4>", _on_mousewheel)
+        w_kw_in_frame.bind("<Button-5>", _on_mousewheel)
         w_kw_out_frame.pack(in_=w_frame_panel, side=TOP,
                             expand=1, fill=X, padx=5, pady=5)
         w_plot = ttk.Button(
@@ -255,22 +259,152 @@ class GTkApp(object):
             if figlabel in self.figkwslib:
                 print("Use old widgets")
                 for n, w in self.figkwslib[figlabel].items():
-                    w.pack()
+                    w.pack(anchor=W, padx=5, pady=5)
             else:
                 print("Gen new widgets")
                 self.figkwslib[figlabel] = {}
                 for i in range(len(figlabel)):  # TODO
-                    self.figkwslib[figlabel][i] = ttk.Button(
-                        self.figkwframe, text="Button " + str(i))
-                    self.figkwslib[figlabel][i].pack()
+                    if i == 0:
+                        self.figkwslib[figlabel][i] = LabeledSpinBoxs(
+                            self.figkwframe,
+                            'Xlim:', (0, 1, 0.02), [0.6, 0.8],
+                            state='readonly', width=6)
+                    elif i == 1:
+                        self.figkwslib[figlabel][i] = Checkbox(
+                            self.figkwframe, 'Cal_Dr', False)
+                    elif i == 2:
+                        self.figkwslib[figlabel][i] = LabeledListbox(
+                            self.figkwframe,
+                            'Plotmeth:', ['pcolor', 'pcolormesh', 'contourf'],
+                            'pcolormesh', width=0, height=0)
+                    else:
+                        self.figkwslib[figlabel][i] = ttk.Button(
+                            self.figkwframe, text="Button " + str(i))
+                    self.figkwslib[figlabel][i].pack(anchor=W, padx=5, pady=5)
             self.figkws = self.figkwslib[figlabel]
-            print(self.figkws[len(figlabel) - 1])
+            print(self.figkws[1])
+
+
+class LabeledSpinBoxs(ttk.Frame):
+    '''
+    Spinbox widgets with a Label widget indicating their description.
+
+    Parameters
+    ----------
+    desc: str
+        description
+    rangee: tuple
+        (from_, to, step)
+    init_val: one or more int or float numbers
+        initial value, num or [num1, num2, ...]
+        If N>1 numbers given, N Spinboxs will be generated.
+    cnf, kw: options for Spinbox
+    '''
+
+    def __init__(self, master, desc, rangee, init_val=None, cnf={}, **kw):
+        super(LabeledSpinBoxs, self).__init__(master, borderwidth=1)
+        self.label = ttk.Label(self, text=desc)
+        from_, to, step = rangee
+        for _k in ['from_', 'to', 'textvariable']:
+            _ignore = kw.pop(_k, None)
+        if init_val is None:
+            init_val = from_
+        if isinstance(init_val, (int, float)):
+            init_val = [init_val]
+        self.variables = []
+        self.spinboxs = []
+        for i_val in init_val:
+            if isinstance(step, int) and isinstance(i_val, int):
+                self.variables.append(tkinter.IntVar(self))
+            elif isinstance(step, float) and isinstance(i_val, float):
+                self.variables.append(tkinter.DoubleVar(self))
+            else:
+                raise ValueError("Only int, float number supported!")
+            self.variables[-1].set(i_val)
+            self.spinboxs.append(tkinter.Spinbox(
+                self, cnf=cnf,
+                from_=from_, to=to, increment=step,
+                textvariable=self.variables[-1], **kw))
+        # arrange in line
+        self.label.pack(side=LEFT, padx=2)
+        for sb in self.spinboxs:
+            sb.pack(side=LEFT, padx=2)
+
+    @property
+    def value(self):
+        if len(self.variables) == 1:
+            return self.variables[0].get()
+        else:
+            return [v.get() for v in self.variables]
+
+
+class LabeledListbox(ttk.Frame):
+    '''
+    A Listbox widget with a Label widget indicating its description.
+
+    Parameters
+    ----------
+    desc: str
+        description
+    items: list
+        items to select
+    init_val: initial value, default None
+        If init_val is list, selectmode of Listbox will be MULTIPLE,
+        otherwise, SINGLE.
+    cnf, kw: options for Listbox
+    '''
+
+    def __init__(self, master, desc, items, init_val=None, cnf={}, **kw):
+        super(LabeledListbox, self).__init__(master, borderwidth=1)
+        self.label = ttk.Label(self, text=desc)
+        self.label.pack(side=LEFT, anchor=NW, padx=2)
+        self._variable = tkinter.Variable(self, value=items)
+        for _k in ['listvariable', 'exportselection', 'selectmode']:
+            _ignore = kw.pop(_k, None)
+        if isinstance(init_val, list):
+            self._selectmode = MULTIPLE
+        else:
+            self._selectmode = SINGLE
+        self.listbox = tkinter.Listbox(
+            self, cnf={}, listvariable=self._variable,
+            exportselection=0, selectmode=self._selectmode, **kw)
+        self.listbox.selection_clear(0, END)
+        if init_val:
+            if not isinstance(init_val, list):
+                init_val = [init_val]
+            for i_val in init_val:
+                if i_val in items:
+                    self.listbox.selection_set(items.index(i_val))
+        self.listbox.pack(side=LEFT, padx=2)
+
+    @property
+    def value(self):
+        items = self._variable.get()
+        selection = self.listbox.curselection()
+        if self._selectmode == MULTIPLE:
+            return [items[i] for i in selection]
+        else:
+            return items[selection[0]]
+
+
+class Checkbox(ttk.Checkbutton):
+    '''Ttk Checkbutton widget, add w.value support.'''
+
+    def __init__(self, master, desc, init_val=False, **kw):
+        self._variable = tkinter.BooleanVar(master, value=init_val)
+        for _k in ['offvalue', 'onvalue', 'text', 'variable']:
+            _ignore = kw.pop(_k, None)
+        super(Checkbox, self).__init__(
+            master, offvalue=False, onvalue=True,
+            text=desc, variable=self._variable, **kw)
+
+    @property
+    def value(self):
+        return self._variable.get()
 
 
 class MplFigWindow(tkinter.Toplevel):
-    '''
-    Embed a Matplotlib figure to Tkinter GUI.
-    '''
+    '''Embed a Matplotlib figure to Tkinter GUI.'''
 
     def __init__(self, fig, figlabel, index, path, master=None, cnf={}, **kw):
         super(MplFigWindow, self).__init__(master=master, cnf=cnf, **kw)
