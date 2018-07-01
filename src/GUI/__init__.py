@@ -5,9 +5,11 @@
 '''
 This subpackage provides GUI support for gdpy3, entry points of gui_scripts.
 '''
-
+import os
 import sys
+import ctypes
 import argparse
+from ..__about__ import __version__, __author__
 
 __all__ = ['gui_script']
 
@@ -38,6 +40,11 @@ def gui_script():
     if args.help:
         parser.print_help()
         sys.exit()
+
+    AppID = '%s.%s.v%s' % (__author__, __name__, __version__)
+    if os.name == 'nt':
+        # AppUserModelID for Windows7 ... Windows10
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(AppID)
 
     if args.backend == 'tk':
         from .tk import GTkApp
