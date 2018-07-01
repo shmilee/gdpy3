@@ -25,7 +25,6 @@ and methods
 :meth:`processor.Processor.pick`.
 '''
 
-import os
 import inspect
 import importlib
 
@@ -67,8 +66,7 @@ def get_processor(name, **kwargs):
             % (name, ', '.join(processor_names),
                ', '.join(alias_processor_names)))
     ptype = _processorlib.get(pname)
-    ppack = importlib.import_module(
-        '%s.%s' % (__name__, ptype), ptype.replace('.', os.path.sep))
+    ppack = importlib.import_module('.%s' % ptype, package=__name__)
     gdp = getattr(ppack, pname)()
     if kwargs:
         sig = inspect.signature(gdp.pick)
