@@ -239,12 +239,12 @@ class GTkApp(object):
             messagebox.showwarning(message='Pick processor first!')
 
     def after_plot(self):
+        if not self.figlistbox.curselection():
+            messagebox.showwarning(message='Select a figure first!')
+            return
         if not self.processor.plotter.name.startswith('mpl::'):
             messagebox.showerror(message='%s not supported with Tk!'
                                  % self.processor.plotter.name)
-            return
-        if not self.figlistbox.curselection():
-            messagebox.showwarning(message='Select a figure first!')
             return
         figlabel = self.figlabels.get()[self.figlistbox.curselection()[0]]
         figkwargs = {k: v.value for k, v in self.figkws.items()}
