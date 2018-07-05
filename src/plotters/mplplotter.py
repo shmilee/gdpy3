@@ -13,6 +13,7 @@ import matplotlib.pyplot
 import mpl_toolkits.mplot3d
 
 from ..glogger import getGLogger
+from ..__about__ import __data_path__
 from .base import BasePlotter, BasePloTemplate
 
 __all__ = ['MatplotlibPlotter']
@@ -46,8 +47,7 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
     Use matplotlib to create figures.
     '''
     __slots__ = []
-    _STYLE_LIBPATH = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), 'mpl-stylelib')
+    _STYLE_LIBPATH = os.path.join(__data_path__, 'mpl-stylelib')
     style_available = _get_mplstyle_library(_STYLE_LIBPATH)
 
     def __init__(self, name):
