@@ -8,6 +8,8 @@ Contains ipynb UI class.
 
 import ipywidgets
 from IPython.display import display, HTML
+
+from ..__about__ import __data_path__
 from ..processors import get_processor, processor_names
 
 __all__ = ['IpynbUI', 'ScrollTool']
@@ -190,8 +192,7 @@ class ScrollTool(object):
         import configparser
         lang = locale.getlocale()[0]
         config = configparser.ConfigParser(default_section='en_US')
-        datapath = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), 'ipynb_data')
+        datapath = os.path.join(__data_path__, 'ipynb_scrollbar')
         configfile = config.read(os.path.join(datapath, 'locale'))
         with open(os.path.join(datapath, 'scroll_bar.css')) as fcss, \
                 open(os.path.join(datapath, 'scroll_bar.html')) as fhtml, \
