@@ -8,7 +8,9 @@ from setuptools import setup, find_packages
 here = os.path.abspath(os.path.dirname(__file__))
 about = {}
 with open(os.path.join(here, 'src', '__about__.py'), encoding='utf-8') as f:
+    about['__file__'] = f.name
     exec(f.read(), about)
+data_dir = os.path.basename(about['__data_path__'])
 with open(os.path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = '\n' + f.read()
 
@@ -61,9 +63,12 @@ setup(
         'gui.ipynb': ['ipython[notebook]', 'ipywidgets'],
     },
     package_data={
-        'gdpy3.plotters': ['*-stylelib/gdpy3-*.*style',
-                           '*-stylelib/readme.txt'],
-        'gdpy3.GUI': ['icon/*', 'ipynb_data/*'],
+        'gdpy3': ['%s/%s' % (data_dir, f) for f in [
+            '*-stylelib/gdpy3-*.*style',
+            '*-stylelib/readme.txt',
+            'icon/*',
+            'ipynb_scrollbar/*'
+        ]],
     },
     data_files=[],
     entry_points={
