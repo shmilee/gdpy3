@@ -41,3 +41,4 @@ def _get_data_path(name):
 
 
 __data_path__ = _get_data_path('gdpy3-data')
+__icon_name__ = 'gdpy3_128'

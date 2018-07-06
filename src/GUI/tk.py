@@ -12,7 +12,7 @@ from tkinter.constants import *
 from distutils.version import LooseVersion
 
 from .. import __version__ as gdpy3_version
-from ..__about__ import __data_path__
+from ..__about__ import __data_path__, __icon_name__
 from ..processors import get_processor, processor_names
 
 __all__ = ['GTkApp']
@@ -36,7 +36,7 @@ class GTkApp(object):
         '''
         root = tkinter.Tk(className='gdpy3-gui')
         img = tkinter.PhotoImage(file=os.path.join(
-            __data_path__, 'icon', 'main_128.gif'))
+            __data_path__, 'icon', '%s.gif' % __icon_name__))
         root.tk.call('wm', 'iconphoto', root._w, "-default", img)
         root.protocol("WM_DELETE_WINDOW", root.destroy)
         style = ttk.Style()
@@ -130,6 +130,7 @@ class GTkApp(object):
         # X - for share
         self.root = root
         self.center(root)
+        self.img = img
         self.processor_name = w_str_proc
         self.figlabel_filter = w_str_filter
         self.figlabels = w_list_fig
