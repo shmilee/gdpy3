@@ -453,29 +453,46 @@ class MplFigWindow(tkinter.Toplevel):
 
     def __init__(self, fig, figlabel, index, path, master=None, cnf={}, **kw):
         super(MplFigWindow, self).__init__(master=master, cnf=cnf, **kw)
-        import matplotlib
-        import matplotlib.backends.backend_tkagg as tkagg
-        if LooseVersion(matplotlib.__version__) <= LooseVersion('2.1.2'):
-            # print('Recommand matplotlib>=2.2.0')
-            tkagg.NavigationToolbar2Tk = tkagg.NavigationToolbar2TkAgg
-        from matplotlib.backend_bases import key_press_handler
-        # matplotlib.use('TkAgg', warn=False, force=True)
         self.title('%s - %d - %s' % (figlabel, index, path))
-        if fig:
-            canvas = tkagg.FigureCanvasTkAgg(fig, master=self)
-            canvas.draw()
-            # canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
-            toolbar = tkagg.NavigationToolbar2Tk(canvas, self)
-            toolbar.update()
-            canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
-
-            def on_key_event(event):
-                key_press_handler(event, canvas, toolbar)
-            canvas.mpl_connect('key_press_event', on_key_event)
-
         x = int(0.05 * self.winfo_screenwidth())
         y = int(0.1 * self.winfo_screenheight())
         w = int(0.45 * self.winfo_screenwidth())
         h = int(0.8 * self.winfo_screenheight())
         self.geometry('{}x{}+{}+{}'.format(w, h, x + index % 2 * w, y))
         self.protocol("WM_DELETE_WINDOW", self.wm_withdraw)
+
+        import matplotlib
+        # matplotlib.use('TkAgg', warn=False, force=True)
+        import matplotlib.backends.backend_tkagg as tkagg
+        if LooseVersion(matplotlib.__version__) <= LooseVersion('2.1.2'):
+            # print('Recommand matplotlib>=2.2.0')
+            tkagg.NavigationToolbar2Tk = tkagg.NavigationToolbar2TkAgg
+
+        self.figure_label = figlabel
+        self.figure_backend = tkagg
+        self.figure_canvas = None
+        self.figure_toolbar = None
+        self.figure_update(fig)
+
+    def figure_on_key_event(self, event):
+        from matplotlib.backend_bases import key_press_handler
+        key_press_handler(event, self.figure_canvas, self.figure_toolbar)
+
+    def figure_update(self, fig):
+        if self.figure_canvas:
+            self.figure_canvas.get_tk_widget().destroy()
+        if self.figure_toolbar:
+            self.figure_toolbar.destroy()
+        if fig:
+            canvas = self.figure_backend.FigureCanvasTkAgg(fig, master=self)
+            canvas.draw()
+            toolbar = self.figure_backend.NavigationToolbar2Tk(canvas, self)
+            toolbar.update()
+            canvas.mpl_connect('key_press_event', self.figure_on_key_event)
+            canvas.get_tk_widget().pack(side=TOP, fill=BOTH, expand=1)
+            # toolbar.pack()
+            self.figure_canvas = canvas
+            self.figure_toolbar = toolbar
+        else:
+            self.figure_canvas = None
+            self.figure_toolbar = None
