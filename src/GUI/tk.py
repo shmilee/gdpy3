@@ -493,6 +493,13 @@ class MplFigWindow(tkinter.Toplevel):
             # toolbar.pack()
             self.figure_canvas = canvas
             self.figure_toolbar = toolbar
+
+            # monkey patch default filename
+            # see: FigureCanvasBase.get_default_filename()
+            #      FigureCanvasBase.get_window_title()
+            label = self.figure_label.replace('/', '-').replace(':', '_')
+            tstr = time.strftime('%Y%m%d')
+            canvas.get_window_title = lambda: '%s-%s' % (label, tstr)
         else:
             self.figure_canvas = None
             self.figure_toolbar = None
