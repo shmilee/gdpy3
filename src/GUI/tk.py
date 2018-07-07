@@ -140,9 +140,8 @@ class GTkApp(object):
         self.processor = None
         self.figkwslib = {}  # all figure kwargs widgets, key is figlabel
         self.figkws = {}  # kwargs widgets mapped in panel
-        self.figwindows = dict(
-            index={'next_index': 0},
-            toplevel={})  # all plotted figure windows, key is figlabel
+        self.figwindows = {}  # all plotted figure windows, key is figlabel
+        self.next_figwindows_index = 0
         # X - events
         w_select_proc.bind("<<ComboboxSelected>>", self.after_processor_name)
         w_entry_filter.bind("<Return>", self.after_filter)
@@ -192,14 +191,13 @@ class GTkApp(object):
             self.figkwslib = {}
 
     def close_figwindows(self, destroy=False):
-        for n, w in self.figwindows['toplevel'].items():
+        for n, w in self.figwindows.items():
             w.wm_withdraw()
         if destroy:
-            for n, w in self.figwindows['toplevel'].items():
+            for n, w in self.figwindows.items():
                 w.destroy()
-            self.figwindows = dict(
-                index={'next_index': 0},
-                toplevel={})
+            self.figwindows = {}
+            self.next_figwindows_index = 0
 
     def after_pick(self):
         if self.processor_name.get():
@@ -255,22 +253,20 @@ class GTkApp(object):
         _, _, n1, _, _ = self.processor._figurelabelslib.get(
             figlabel, (0, 0, 0, 0, 0))
         figure = self.processor.plotter.get_figure(figlabel)
-        if figure:
-            if n0 == n1 and figlabel in self.figwindows['toplevel']:
-                # print('Raise old figure window.')
-                self.figwindows['toplevel'].get(figlabel).wm_deiconify()
+        if figlabel in self.figwindows:
+            if n0 == n1:
+                print('Raise old figure window.')
+                self.figwindows[figlabel].wm_deiconify()
             else:
-                # print('Get new figure window.')
-                if figlabel in self.figwindows['toplevel']:
-                    self.figwindows['toplevel'].pop(figlabel).destroy()
-                if figlabel in self.figwindows['index']:
-                    _old_index = self.figwindows['index'].pop(figlabel)
-                index = self.figwindows['index']['next_index']
-                self.figwindows['index']['next_index'] = index + 1
-                toplevel = MplFigWindow(figure, figlabel, index, self.path,
-                                        master=self.root, class_='gdpy3-gui')
-                self.figwindows['index'][figlabel] = index
-                self.figwindows['toplevel'][figlabel] = toplevel
+                print('Update old figure window.')
+                self.figwindows[figlabel].figure_update(figure)
+        else:
+            print('Get new figure window.')
+            index = self.next_figwindows_index
+            self.next_figwindows_index += 1
+            self.figwindows[figlabel] = MplFigWindow(
+                figure, figlabel, index, self.path,
+                master=self.root, class_='gdpy3-gui')
 
     def after_processor_name(self, event):
         self.figlabel_filter.set('^.*/.*$')
