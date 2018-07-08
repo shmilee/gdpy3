@@ -450,11 +450,6 @@ class MplFigWindow(tkinter.Toplevel):
     def __init__(self, fig, figlabel, index, path, master=None, cnf={}, **kw):
         super(MplFigWindow, self).__init__(master=master, cnf=cnf, **kw)
         self.title('%s - %d - %s' % (figlabel, index, path))
-        x = int(0.05 * self.winfo_screenwidth())
-        y = int(0.1 * self.winfo_screenheight())
-        w = int(0.45 * self.winfo_screenwidth())
-        h = int(0.8 * self.winfo_screenheight())
-        self.geometry('{}x{}+{}+{}'.format(w, h, x + index % 2 * w, y))
         self.protocol("WM_DELETE_WINDOW", self.wm_withdraw)
 
         import matplotlib
@@ -469,6 +464,12 @@ class MplFigWindow(tkinter.Toplevel):
         self.figure_canvas = None
         self.figure_toolbar = None
         self.figure_update(fig)
+
+        x = int(0.05 * self.winfo_screenwidth())
+        y = int(0.1 * self.winfo_screenheight())
+        w = int(0.45 * self.winfo_screenwidth())
+        h = int(0.8 * self.winfo_screenheight())
+        self.geometry('{}x{}+{}+{}'.format(w, h, x + index % 2 * w, y))
 
     def figure_on_key_event(self, event):
         from matplotlib.backend_bases import key_press_handler
