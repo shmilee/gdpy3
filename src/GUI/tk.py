@@ -13,9 +13,11 @@ from distutils.version import LooseVersion
 
 from .. import __version__ as gdpy3_version
 from ..__about__ import __data_path__, __icon_name__
+from ..glogger import getGLogger
 from ..processors import get_processor, processor_names
 
 __all__ = ['GTkApp']
+log = getGLogger('G')
 
 
 class GTkApp(object):
@@ -45,6 +47,7 @@ class GTkApp(object):
         style.configure('.', font=font)
         main = ttk.Frame(root, relief=RIDGE, borderwidth=2)
         main.pack(fill=BOTH, expand=1)
+        log.debug('Main frame packed.')
         # 1
         w_frame_proc = ttk.Labelframe(main, text='1. Processor:', width=width)
         w_str_proc = tkinter.StringVar()
@@ -107,7 +110,8 @@ class GTkApp(object):
                 number = 1  # down
             if event.num == 4 or event.delta == 120:
                 number = -1  # up
-            # print(number)
+            log.debug('Wheel event: num %d, delta %d -> %d'
+                      % (event.num, event.delta, number))
             w_kw_canvas.yview_scroll(number, "units")
         w_kw_canvas.bind("<MouseWheel>", _on_mousewheel)
         w_kw_canvas.bind("<Button-4>", _on_mousewheel)
@@ -127,6 +131,7 @@ class GTkApp(object):
             text="Version %s\t© %s shmilee\t" % (
                 gdpy3_version, time.strftime('%Y')))
         w_info.grid(row=3, column=0, sticky=W+E)
+        log.debug('Main frame filled.')
         # X - for share
         self.root = root
         self.center(root)
@@ -168,6 +173,7 @@ class GTkApp(object):
             with open(self.recent_path, 'w') as recf:
                 recf.write(self.path)
         self.root.title('gdpy3 - %s' % self.path)
+        log.info('Start Tk mainloop.')
         self.root.mainloop()
 
     def center(self, win):
@@ -247,6 +253,7 @@ class GTkApp(object):
             return
         figlabel = self.figlabels.get()[self.figlistbox.curselection()[0]]
         figkwargs = {k: v.value for k, v in self.figkws.items()}
+        log.debug('Collect figkwargs: %s' % figkwargs)
         _, _, n0, _, _ = self.processor._figurelabelslib.get(
             figlabel, (0, 0, 0, 0, 0))
         self.processor.plot(figlabel, show=False, **figkwargs)
@@ -255,13 +262,13 @@ class GTkApp(object):
         figure = self.processor.plotter.get_figure(figlabel)
         if figlabel in self.figwindows:
             if n0 == n1:
-                print('Raise old figure window.')
+                log.debug('Raise old figure window.')
                 self.figwindows[figlabel].wm_deiconify()
             else:
-                print('Update old figure window.')
+                log.debug('Update old figure window.')
                 self.figwindows[figlabel].figure_update(figure)
         else:
-            print('Get new figure window.')
+            log.debug('Get new figure window.')
             index = self.next_figwindows_index
             self.next_figwindows_index += 1
             self.figwindows[figlabel] = MplFigWindow(
@@ -312,10 +319,10 @@ class GTkApp(object):
             # update panel
             self.reset_panel()
             if figlabel in self.figkwslib:
-                # print("Use old widgets")
+                log.debug("Use old widgets")
                 self.figkws = self.figkwslib[figlabel]
             else:
-                # print("Gen new widgets")
+                log.debug("Gen new widgets")
                 figinfo = self.processor.get(figlabel)
                 if figinfo:
                     self.figkws = self.get_figkws_widgets(figinfo.layout)
@@ -456,7 +463,7 @@ class MplFigWindow(tkinter.Toplevel):
         # matplotlib.use('TkAgg', warn=False, force=True)
         import matplotlib.backends.backend_tkagg as tkagg
         if LooseVersion(matplotlib.__version__) <= LooseVersion('2.1.2'):
-            # print('Recommand matplotlib>=2.2.0')
+            log.debug('Recommand matplotlib>=2.2.0')
             tkagg.NavigationToolbar2Tk = tkagg.NavigationToolbar2TkAgg
 
         self.figure_label = figlabel

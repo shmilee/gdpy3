@@ -10,8 +10,10 @@ import sys
 import ctypes
 import argparse
 from ..__about__ import __version__, __author__
+from ..glogger import getGLogger
 
 __all__ = ['gui_script']
+log = getGLogger('G')
 
 
 def gui_script():
@@ -36,14 +38,15 @@ def gui_script():
                         help='Show this help message and exit')
 
     args = parser.parse_args()
+    log.debug('Accept args: %s' % args)
 
     if args.help:
         parser.print_help()
         sys.exit()
 
-    AppID = '%s.%s.v%s' % (__author__, __name__, __version__)
     if os.name == 'nt':
-        # AppUserModelID for Windows7 ... Windows10
+        AppID = 'io.%s.%s.v%s' % (__author__, __name__, __version__)
+        log.debug('Set AppUserModelID %s for Windows.' % AppID)
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(AppID)
 
     if args.backend == 'tk':
