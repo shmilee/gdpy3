@@ -20,6 +20,10 @@ import time
 import logging
 import logging.config
 
+logfile = os.path.join(
+    tempfile.gettempdir(),
+    'gdpy3-%s-%s.log' % (getpass.getuser(), time.strftime('%Y')))
+
 gloggerConfig = {
     'version': 1,
     'formatters': {
@@ -44,10 +48,7 @@ gloggerConfig = {
             'class': 'logging.handlers.RotatingFileHandler',
             'level': 'DEBUG',
             'formatter': 'detailed',
-            'filename': os.path.join(
-                tempfile.gettempdir(),
-                'gdpy3-%s-%s.log' % (getpass.getuser(), time.strftime('%Y'))
-            ),
+            'filename': logfile,
             'maxBytes': 3 * 1024 * 1024,
             'backupCount': 9,
         },
@@ -110,5 +111,3 @@ def getGLogger(name):
 
 logging.setLoggerClass(GLogger)
 logging.config.dictConfig(gloggerConfig)
-getGLogger('G').info(
-    'Logfile: %s' % gloggerConfig['handlers']['file']['filename'])

@@ -11,7 +11,7 @@ import sys
 import time
 import argparse
 
-from .glogger import getGLogger
+from .glogger import logfile, getGLogger
 from .processors import processor_names, alias_processor_names, get_processor
 from . import __version__ as gdpy3_version
 
@@ -30,6 +30,7 @@ def get_parser_top():
     parser = argparse.ArgumentParser(
         prog='gdpy3',
         description="A tiny script that converts and plots data.",
+        epilog="For more log details, please see: %s" % logfile,
         add_help=False,
     )
     subparsers = parser.add_subparsers(title='subcommands', dest='subcmd')

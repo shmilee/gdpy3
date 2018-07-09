@@ -10,7 +10,7 @@ import sys
 import ctypes
 import argparse
 from ..__about__ import __version__, __author__
-from ..glogger import getGLogger
+from ..glogger import logfile, getGLogger
 
 __all__ = ['gui_script']
 log = getGLogger('G')
@@ -21,6 +21,7 @@ def gui_script():
     parser = argparse.ArgumentParser(
         prog='gdpy3-gui',
         description="A tiny application that converts and plots data.",
+        epilog="For more log details, please see: %s" % logfile,
         add_help=False,
     )
     arggrp = parser.add_argument_group('arguments')
