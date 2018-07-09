@@ -156,7 +156,7 @@ class GTkApp(object):
             self.path = self.ask_case_path(ask_sftp=ask_sftp)
         if self.path and not self.path.startswith('sftp://'):
             try:
-                with open(self.recent, 'w') as rf:
+                with open(self.recent, 'w', encoding='utf-8') as rf:
                     rf.write(self.path)
             except Exception:
                 log.debug('Error of saving recent path.', exc_info=1)
@@ -189,7 +189,7 @@ class GTkApp(object):
             if os.path.isfile(self.recent):
                 # read, get valid recent initialdir
                 try:
-                    with open(self.recent, 'r') as rf:
+                    with open(self.recent, 'r', encoding='utf-8') as rf:
                         old_dir = os.path.dirname(rf.readline())
                         for _ in range(N * 2):
                             if os.path.isdir(old_dir):
