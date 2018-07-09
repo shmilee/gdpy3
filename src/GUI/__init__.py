@@ -33,7 +33,8 @@ def gui_script():
                         choices=['tk'],
                         help="Set GUI backend, (default:  %(default)s)")
     optgrp.add_argument('--ask_sftp', action='store_true',
-                        help='If no casepath given, first ask a sftp path')
+                        help='If no casepath given, '
+                             'ask for a sftp directory, not local path.')
     optgrp.add_argument('-h', '--help', action='store_true',
                         help='Show this help message and exit')
 

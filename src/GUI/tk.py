@@ -24,8 +24,8 @@ class GTkApp(object):
     '''
     GUI(Graphical User Interface) made by tkinter.
     '''
-    recent_path = os.path.join(tempfile.gettempdir(),
-                               'gdpy3_%s_recent_path' % getpass.getuser())
+    recent = os.path.join(
+        tempfile.gettempdir(), 'gdpy3-%s-recent' % getpass.getuser())
 
     def __init__(self, path=None, ask_sftp=False):
         '''
@@ -34,7 +34,7 @@ class GTkApp(object):
         path: str
             case path
         ask_sftp: bool
-            if no path given, first ask a sftp path or not
+            if no path given, ask for a sftp(not local) path.
         '''
         root = tkinter.Tk(className='gdpy3-gui')
         img = tkinter.PhotoImage(file=os.path.join(
@@ -152,26 +152,14 @@ class GTkApp(object):
         w_entry_filter.bind("<Return>", self.after_filter)
         w_listbox_fig.bind("<<ListboxSelect>>", self.after_figlabel)
         # X - start
-        if not self.path and ask_sftp:
-            self.path = simpledialog.askstring(
-                "Input sftp path",
-                "Directory in SSH server, format: "
-                "'sftp://username@host[:port]##remote/path'",
-                parent=root)
         if not self.path:
-            if os.path.isfile(self.recent_path):
-                with open(self.recent_path, 'r') as recf:
-                    old_path = recf.readline().strip()
-                    while not self.path:
-                        self.path = filedialog.askopenfilename(
-                            parent=self.root,
-                            initialdir=os.path.dirname(old_path))
-            else:
-                while not self.path:
-                    self.path = filedialog.askopenfilename(parent=root)
-        if not self.path.startswith('sftp://'):
-            with open(self.recent_path, 'w') as recf:
-                recf.write(self.path)
+            self.path = self.ask_case_path(ask_sftp=ask_sftp)
+        if self.path and not self.path.startswith('sftp://'):
+            try:
+                with open(self.recent, 'w') as rf:
+                    rf.write(self.path)
+            except Exception:
+                log.debug('Error of saving recent path.', exc_info=1)
         self.root.title('gdpy3 - %s' % self.path)
         log.info('Start Tk mainloop.')
         self.root.mainloop()
@@ -183,6 +171,40 @@ class GTkApp(object):
         x = (win.winfo_screenwidth() // 2) - (width // 2)
         y = (win.winfo_screenheight() // 2) - (height // 2)
         win.geometry('{}x{}+{}+{}'.format(width, height, x, y))
+
+    def ask_case_path(self, ask_sftp):
+        N, path = 3, None
+        if ask_sftp:
+            for _ in range(N):
+                path = simpledialog.askstring(
+                    "Input sftp path",
+                    "Directory in SSH server, format: "
+                    "'sftp://username@host[:port]##remote/path'",
+                    initialvalue='sftp://',
+                    parent=self.root)
+                if path:
+                    return path
+        else:
+            initialdir = None
+            if os.path.isfile(self.recent):
+                # read, get valid recent initialdir
+                try:
+                    with open(self.recent, 'r') as rf:
+                        old_dir = os.path.dirname(rf.readline())
+                        for _ in range(N * 2):
+                            if os.path.isdir(old_dir):
+                                initialdir = old_dir
+                                break
+                            else:
+                                old_dir = os.path.dirname(old_dir)
+                except Exception:
+                    log.debug('Error of getting initialdir.', exc_info=1)
+            for _ in range(N):
+                path = filedialog.askopenfilename(
+                    parent=self.root, initialdir=initialdir)
+                if path:
+                    return path
+        return ''
 
     def reset_panel(self, clear_lib=False):
         for n, w in self.figkws.items():
@@ -211,8 +233,7 @@ class GTkApp(object):
             if self.path.startswith('sftp://'):
                 def _passwd_CALLBACK(prompt):
                     return simpledialog.askstring(
-                        "Input Password", "SSH Server Password: ",
-                        show='*', parent=self.root)
+                        "Input Password", prompt, show='*', parent=self.root)
                 from ..getpasswd import GetPasswd
                 GetPasswd.CALLBACK = _passwd_CALLBACK
             if self.path.endswith(gdp.pcksaltname):
