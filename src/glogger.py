@@ -110,3 +110,5 @@ def getGLogger(name):
 
 logging.setLoggerClass(GLogger)
 logging.config.dictConfig(gloggerConfig)
+getGLogger('G').info(
+    'Logfile: %s' % gloggerConfig['handlers']['file']['filename'])
