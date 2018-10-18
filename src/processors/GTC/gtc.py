@@ -68,6 +68,7 @@ class GtcDigCoreV110922(DigCore):
             r'a_minor=\s*?(?P<a_minor>' + numpat + r'?)\s+$',
             r'\s*?nmodes=(?P<nmodes>(\s*?\d+)+)\s*$',
             r'\s*?mmodes=(?P<mmodes>(\s*?\d+)+)\s*$',
+            # TODO me,trapped fraction
             r'TIME USAGE \(in SEC\):$\s*.+$\s*total\s*$\s*(?P<cputime>(\s*?'
             + numpat + r'){8})\s*$',
             r'Program starts at DATE=(?P<start_date>' + numpat + r'?)'
@@ -89,6 +90,40 @@ class GtcDigCoreV110922(DigCore):
                         val = int(val)
                     else:
                         val = float(val)
+                    log.debug("Filling datakey: %s=%s ..." % (key, val))
+                    debugkeys.append(key)
+                    sd.update({key: val})
+        log.debug("Filled datakeys: %s ..." % str(debugkeys))
+
+        # search array parameters
+        arraypats = [
+            r'nue_eff=\s*?' + numpat + r'?\s+?nui_eff=\s*?' + numpat + r'?$'
+            + r'(?P<arr1>.*)$'
+            + r'\s*?rg0=\s*?' + numpat + r'?\s+?rg1=\s*?' + numpat + r'?\s+?',
+            r'a_minor=\s*?' + numpat + r'?\s+$'
+            + r'(?P<arr2>.*)$'
+            + r'\s*?nmodes=(\s*?\d+)+\s*$',
+            r'poisson solver=(\s*?' + numpat + r'){4}\s*$'
+            + r'(?P<arr3>.*)$'
+            + r'\s*CPU TIME USAGE \(in SEC\):$',
+        ]
+        debugkeys = []
+        for pat in arraypats:
+            mdata = re.search(re.compile(
+                pat, re.MULTILINE | re.DOTALL), outdata)
+            if mdata:
+                for key, val in mdata.groupdict().items():
+                    if key in ('arr3',):
+                        val = val.strip().split('\n')
+                        val = numpy.array([
+                            [float(n) for n in li.split()]
+                            for li in val
+                            if not li.startswith(' write to restart_dir')
+                        ])
+                    else:
+                        val = val.strip().split('\n')
+                        val = numpy.array(
+                            [[float(n) for n in li.split()] for li in val])
                     log.debug("Filling datakey: %s=%s ..." % (key, val))
                     debugkeys.append(key)
                     sd.update({key: val})
