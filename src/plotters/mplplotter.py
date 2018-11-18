@@ -29,7 +29,7 @@ _Mpl_Axes_Structure = '''
         # def revise_func(fig, axesdict, artistdict, **kw)
         [9, 'revise', revise_func, {'kw'}],
     ],
-    'layout': ['int, gridspec, list', {'add_subplot, add_axes kwargs'}],
+    'layout': ['int, gridspec, tuple, list', {'add_subplot, add_axes kwargs'}],
     'axstyle': [{'axes.grid': True}],
 }
 '''
@@ -82,23 +82,29 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
         '''
         Add axes to *fig*: `matplotlib.figure.Figure` instance
         '''
-        # recheck layout
-        if not isinstance(
-                layout[0], (int, list, matplotlib.gridspec.SubplotSpec)):
-            log.error("AxesStructure['layout'][0] must be a int, list, or "
-                      "matplotlib.gridspec.SubplotSpec. Ignore this axes.")
-            return
         # begin with axstyle
         with matplotlib.style.context(self.filter_style(axstyle)):
             # use layout
+            axpos, axkws = layout
             try:
-                log.debug("Adding axes %s ..." % layout[0])
-                if isinstance(layout[0], list):
-                    ax = fig.add_axes(layout[0], **layout[1])
+                log.debug("Adding axes %s ..." % (axpos,))
+                if isinstance(axpos, (int, matplotlib.gridspec.SubplotSpec)):
+                    ax = fig.add_subplot(axpos, **axkws)
+                elif isinstance(axpos, (tuple, list)):
+                    if len(axpos) == 3:
+                        ax = fig.add_subplot(*axpos, **axkws)
+                    elif len(axpos) == 4:
+                        ax = fig.add_axes(axpos, **axkws)
+                    else:
+                        log.error("Ignore this axes: position tuple or list "
+                                  "should have 3 integers or 4 floats.")
+                        return
                 else:
-                    ax = fig.add_subplot(layout[0], **layout[1])
+                    log.error("Ignore this axes: position must be int, tuple"
+                              ", list, or matplotlib.gridspec.SubplotSpec")
+                    return
             except Exception:
-                log.error("Failed to add axes %s!" % layout[0], exc_info=1)
+                log.error("Failed to add axes %s!" % (axpos,), exc_info=1)
                 return
             # use data
             axesdict, artistdict = {0: ax}, {}
@@ -119,12 +125,12 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
                         log.error("Failed to create axes %s!"
                                   % index, exc_info=1)
                 elif axfunc == 'revise':
-                    log.debug("Revising axes %s ..." % layout[0])
+                    log.debug("Revising axes %s ..." % (axpos,))
                     try:
                         fargs(fig, axesdict, artistdict, **fkwargs)
                     except Exception:
                         log.error("Failed to revise axes %s!"
-                                  % layout[0], exc_info=1)
+                                  % (axpos,), exc_info=1)
                 else:
                     log.debug("Adding artist %s: %s ..." % (index, axfunc))
                     try:
