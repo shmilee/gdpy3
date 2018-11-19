@@ -364,12 +364,14 @@ class FigInfo(object):
         '''Use keys get pck data from *pckloader*, return a dict.'''
         result = {}
         if isinstance(self.groups, str):
-            groups = [self.groups]
-        srckey = ['%s/%s' % (g, k) for g in groups for k in self.srckey]
-        result.update(zip(srckey, pckloader.get_many(*srckey)))
-        if isinstance(self.groups, str):
-            result.update(
-                {k: result['%s/%s' % (self.groups, k)] for k in self.srckey})
+            srckey = ['%s/%s' % (self.groups, k) for k in self.srckey]
+            srcval = pckloader.get_many(*srckey)
+            result.update(zip(srckey, srcval))
+            result.update(zip(self.srckey, srcval))
+        else:
+            srckey = ['%s/%s' % (g, k)
+                      for g in self.groups for k in self.srckey]
+            result.update(zip(srckey, pckloader.get_many(*srckey)))
         result.update(zip(self.extrakey, pckloader.get_many(*self.extrakey)))
         return result
 
