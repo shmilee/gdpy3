@@ -2,7 +2,7 @@
 
 pkgname=gdpy3
 pkgver=0.4.1
-pkgrel=1
+pkgrel=2
 pkgdesc="Gyrokinetic Toroidal Code Data Processing tools written in python3"
 url="https://github.com/shmilee/gdpy3.git"
 arch=('any')
@@ -15,10 +15,10 @@ optdepends=('python-h5py: for saving and loading hdf5 support'
             'python-ipykernel: for GUI in Jupyter Notebook'
             'python-ipywidgets: for GUI in Jupyter Notebook')
 makedepends=('git')
-source=("https://github.com/shmilee/$pkgname/archive/v$pkgver.tar.gz" "gdpy3.desktop")
-#source=("$pkgname-$pkgver.tar.gz" "gdpy3.desktop")
+source=("https://github.com/shmilee/$pkgname/archive/v$pkgver.tar.gz" "gdpy3.desktop" "gdpy3-data.xml")
 sha512sums=('SKIP'
-            'a10239135e6ba9ed9b8064cc17712c6b2ac6cd2141f51d63c0a7ac829ec206a023814779d0b04bdd082d8d6c8ed7a76ef7bcbe2b5612dcc4db50afeecdd22437')
+            'a10239135e6ba9ed9b8064cc17712c6b2ac6cd2141f51d63c0a7ac829ec206a023814779d0b04bdd082d8d6c8ed7a76ef7bcbe2b5612dcc4db50afeecdd22437'
+            'e5e1d62b4660cb85c8b75cf34521bb26c49a9893e8ade0903c5b1fdba5a28d65bd62e553dfa13b56e64414267b50385345bd6e8f1e3bcc831e3feda9f91bbe22')
 
 build() {
   cd $pkgname-$pkgver
@@ -33,4 +33,5 @@ package() {
   icon_path=$(python -c "$pycmd")
   install -Dm644 "$icon_path" "$pkgdir"/usr/share/icons/hicolor/128x128/apps/gdpy3.png
   install -Dm644 ../gdpy3.desktop "$pkgdir"/usr/share/applications/gdpy3.desktop
+  install -Dm644 ../gdpy3-data.xml "$pkgdir"/usr/share/mime/packages/gdpy3-data.xml
 }

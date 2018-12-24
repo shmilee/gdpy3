@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+    <mime-type type="application/x-npz">
+        <sub-class-of type="application/zip"/>
+        <comment>NumPy Zipped Data</comment>
+        <comment xml:lang="zh_CN">Numpy 存储数据</comment>
+        <generic-icon name="package-x-generic"/>
+        <glob pattern="*.npz"/>
+    </mime-type>
+</mime-info>
