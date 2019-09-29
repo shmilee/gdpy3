@@ -7,6 +7,7 @@ import time
 import tempfile
 import getpass
 import tkinter
+import screeninfo
 from tkinter import ttk, simpledialog, filedialog, messagebox
 from tkinter.constants import *
 from distutils.version import LooseVersion
@@ -134,7 +135,9 @@ class GTkApp(object):
         log.debug('Main frame filled.')
         # X - for share
         self.root = root
-        self.center(root)
+        self.monitor = sorted(
+            screeninfo.get_monitors(), key=lambda m: m.width, reverse=True)[0]
+        self.center(root, self.monitor)
         self.img = img
         self.processor_name = w_str_proc
         self.figlabel_filter = w_str_filter
@@ -161,15 +164,15 @@ class GTkApp(object):
             except Exception:
                 log.debug('Error of saving recent path.', exc_info=1)
         self.root.title('gdpy3 - %s' % self.path)
-        log.info('Start Tk mainloop.')
+        log.info('Start Tk mainloop on monitor %s.' % self.monitor.name)
         self.root.mainloop()
 
-    def center(self, win):
+    def center(self, win, monitor):
         win.update_idletasks()
         width = win.winfo_width()
         height = win.winfo_height()
-        x = (win.winfo_screenwidth() // 2) - (width // 2)
-        y = (win.winfo_screenheight() // 2) - (height // 2)
+        x = monitor.x + (monitor.width // 2) - (width // 2)
+        y = monitor.y + (monitor.height // 2) - (height // 2)
         win.geometry('{}x{}+{}+{}'.format(width, height, x, y))
 
     def ask_case_path(self, ask_sftp):
@@ -293,8 +296,7 @@ class GTkApp(object):
             index = self.next_figwindows_index
             self.next_figwindows_index += 1
             self.figwindows[figlabel] = MplFigWindow(
-                figure, figlabel, index, self.path,
-                master=self.root, class_='gdpy3-gui')
+                figure, figlabel, index, self, class_='gdpy3-gui')
 
     def after_processor_name(self, event):
         self.figlabel_filter.set('^.*/.*$')
@@ -475,9 +477,9 @@ class Checkbox(ttk.Checkbutton):
 class MplFigWindow(tkinter.Toplevel):
     '''Embed a Matplotlib figure to Tkinter GUI.'''
 
-    def __init__(self, fig, figlabel, index, path, master=None, cnf={}, **kw):
-        super(MplFigWindow, self).__init__(master=master, cnf=cnf, **kw)
-        self.title('%s - %d - %s' % (figlabel, index, path))
+    def __init__(self, fig, figlabel, index, app, cnf={}, **kw):
+        super(MplFigWindow, self).__init__(master=app.root, cnf=cnf, **kw)
+        self.title('%s - %d - %s' % (figlabel, index, app.path))
         self.protocol("WM_DELETE_WINDOW", self.wm_withdraw)
 
         import matplotlib
@@ -492,12 +494,14 @@ class MplFigWindow(tkinter.Toplevel):
         self.figure_canvas = None
         self.figure_toolbar = None
         self.figure_update(fig)
+        self.left_right(app.monitor, right=index % 2)
 
-        x = int(0.05 * self.winfo_screenwidth())
-        y = int(0.1 * self.winfo_screenheight())
-        w = int(0.45 * self.winfo_screenwidth())
-        h = int(0.8 * self.winfo_screenheight())
-        self.geometry('{}x{}+{}+{}'.format(w, h, x + index % 2 * w, y))
+    def left_right(self, monitor, right=1):
+        width = int(0.45 * monitor.width)
+        height = int(0.8 * monitor.height)
+        x = monitor.x + int(0.05 * monitor.width) + right * width
+        y = monitor.y + int(0.1 * monitor.height)
+        self.geometry('{}x{}+{}+{}'.format(width, height, x, y))
 
     def figure_on_key_event(self, event):
         from matplotlib.backend_bases import key_press_handler
