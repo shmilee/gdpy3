@@ -35,6 +35,7 @@ __all__ = ['get_processor', 'is_processor']
 _processorlib = {
     'GTCProcessorV110922': 'GTC',
     'GTCSHMILEERZF110922': 'GTC.SHMILEE',
+    'GTCSHMILEEPHIZETAV3': 'GTC.SHMILEE'
 }
 processor_names = sorted(_processorlib.keys())
 processor_types = sorted(set(_processorlib.values()))
@@ -42,6 +43,7 @@ alias_processor_names = {
     'GTCV110922': 'GTCProcessorV110922',
     'GTC110922': 'GTCProcessorV110922',
     'GSRZF': 'GTCSHMILEERZF110922',
+    'GSISOTOPE': 'GTCSHMILEEPHIZETAV3',
 }
 
 
