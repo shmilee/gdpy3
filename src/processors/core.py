@@ -27,83 +27,35 @@ class BaseCore(object):
     loader: rawloader or pckloader ...
     items: files or groups ...
     '''
-    __slots__ = ['loader', 'items', 'section']
+    __slots__ = ['loader', 'section', 'items', 'short_items']
     nitems = '?' or '+'
     itemspattern = ['^(?P<section>item)$']
     default_section = ''
 
     @classmethod
-    def _check_itemstr(cls, item):
-        '''Check if string *item* match with :attr:`itemspattern`.'''
-        for pat in cls.itemspattern:
-            if re.match(pat, item):
-                return True
-        return False
-
-    @classmethod
     def match_items(cls, all_items):
         '''
-        Return items matched with :attr:`itemspattern` in list *all_items*.
+        Return {section: items} matched with :attr:`itemspattern`
+        in list *all_items*.
         '''
-        return [it for it in all_items if cls._check_itemstr(it)]
-
-    @classmethod
-    def _find_items_section(cls, items):
-        '''
-        Find list *items* group accessible by 'section'
-        in first match to :attr:`itemspattern`.
-        '''
+        res = {}
         for pat in cls.itemspattern:
-            for it in items:
+            for it in all_items:
                 m = re.match(pat, it)
                 if m and 'section' in m.groupdict():
-                    return m.groupdict()['section']
-        return None
-
-    @property
-    def _short_items(self):
-        '''
-        When :attr:`items` is list, replace any decimal digit in it with '*'.
-        Return a short string of unique items.
-        '''
-        if self.nitems == '?':
-            return self.items
+                    sect = m.groupdict()['section']
+                    if sect in res:
+                        res[sect].append(it)
+                    else:
+                        res[sect] = [it]
+        if cls.nitems == '?':
+            for sect in res:
+                assert len(res[sect]) == 1
+                res[sect] = res[sect][0]
         else:
-            result = list({re.sub('\d', '*', it) for it in self.items})
-            if len(result) == 1:
-                return result[0]
-            else:
-                return str(result)
-
-    @property
-    def coreid(self):
-        return type(self).__name__
-
-    def __init__(self, loader, items):
-        self.loader = loader
-        if self.nitems == '?':
-            if not isinstance(items, str):
-                raise ValueError("%s: items should be str, not '%s'!"
-                                 % (self.coreid, type(items)))
-        else:
-            if not isinstance(items, list):
-                raise ValueError("%s: items should be list, not '%s'!"
-                                 % (self.coreid, type(items)))
-        self.items = items
-        _check_items = [items] if self.nitems == '?' else items
-        section = self._find_items_section(_check_items)
-        if section:
-            self.section = section
-        else:
-            self.section = self.default_section
-        log.debug("%s: loader, %s; items, %s; section, %s."
-                  % (self.coreid, loader.path,
-                     self._short_items, self.section))
-
-    def __repr__(self):
-        return '<{0}.{1} object at {2} for {3} in {4}>'.format(
-            self.__module__, type(self).__name__, hex(id(self)),
-            self._short_items, self.loader.path)
+            for sect in res:
+                assert len(res[sect]) > 1
+        return res
 
     @classmethod
     def generate_cores(cls, loader, all_items):
@@ -121,10 +73,51 @@ class BaseCore(object):
             log.debug("%s: No items matched in loader %s!"
                       % (cls.__name__, loader.path))
             return []
-        if cls.nitems == '?':
-            return [cls(loader, items) for items in matched_items]
+        return [cls(loader, section, matched_items[section])
+                    for section in matched_items]
+
+    @property
+    def coreid(self):
+        return type(self).__name__
+
+    def __init__(self, loader, section, items):
+        self.loader = loader
+        self.section = section
+        if self.nitems == '?':
+            if not isinstance(items, str):
+                raise ValueError("%s: items should be str, not '%s'!"
+                                 % (self.coreid, type(items)))
         else:
-            return [cls(loader, matched_items)]
+            if not isinstance(items, list):
+                raise ValueError("%s: items should be list, not '%s'!"
+                                 % (self.coreid, type(items)))
+        self.items = items
+        self.short_items = self.get_short_items()
+        log.debug("%s: loader, %s; items, %s; section, %s."
+                  % (self.coreid, loader.path,
+                     self.short_items, self.section))
+
+    def __repr__(self):
+        return '<{0}.{1} object at {2} for {3} in {4}>'.format(
+            self.__module__, type(self).__name__, hex(id(self)),
+            self.short_items, self.loader.path)
+
+    def get_short_items(self):
+        '''
+        When :attr:`items` is list, replace any decimal digit in it with '*'.
+        Return a short string of unique items.
+        '''
+        if self.nitems == '?':
+            return self.items
+        else:
+            # preserve section
+            items = [re.sub(self.section, '#SECT#', it) for it in self.items]
+            items = list({re.sub('\d', '*', it) for it in items})
+            result = [re.sub('#SECT#', self.section, it) for it in items]
+            if len(result) == 1:
+                return result[0]
+            else:
+                return str(result)
 
 
 class DigCore(BaseCore):
@@ -136,7 +129,7 @@ class DigCore(BaseCore):
     nitems: '?' or '+', default '?'
         '?', take only one file; '+', more than one
     itemspattern: list
-        regular expressions for files, need group name `(?P<sectionp>file)`
+        regular expressions for files, need group name `(?P<section>file)`
     rawloader: rawloader object to get raw data
     files: str or list
         file name(s) of raw data
@@ -162,10 +155,10 @@ class DigCore(BaseCore):
     def group(self):
         return self.section
 
-    def __init__(self, rawloader, files):
+    def __init__(self, rawloader, group, files):
         if not is_rawloader(rawloader):
             raise ValueError("%s: Not a rawloader object!" % self.coreid)
-        super(DigCore, self).__init__(rawloader, files)
+        super(DigCore, self).__init__(rawloader, group, files)
 
     @classmethod
     def generate_cores(cls, rawloader):
@@ -179,7 +172,7 @@ class DigCore(BaseCore):
 
     def convert(self):
         '''Read raw data, convert them. Return a dict.'''
-        path = '%s: %s' % (self.rawloader.path, self._short_items)
+        path = '%s: %s' % (self.rawloader.path, self.short_items)
         try:
             log.info('Converting raw data in %s ...' % path)
             return self._convert()
@@ -226,10 +219,10 @@ class LayCore(BaseCore):
     def scope(self):
         return self.section
 
-    def __init__(self, pckloader, groups):
+    def __init__(self, pckloader, scope, groups):
         if not is_pckloader(pckloader):
             raise ValueError("%s: Not a pckloader object!" % self.coreid)
-        super(LayCore, self).__init__(pckloader, groups)
+        super(LayCore, self).__init__(pckloader, scope, groups)
         self._fignumslib = {fnum: (fic, 0) for fic in self.figinfoclasses
                             for fnum in fic.figurenums}
 
