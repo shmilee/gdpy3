@@ -2,6 +2,8 @@
 
 # Copyright (c) 2019 shmilee
 
+import os
+
 VERSION = (0, 4, 1)
 
 __description__ = "Gyrokinetic Toroidal Code Data Processing tools written in python3"
@@ -16,7 +18,6 @@ __copyright__ = 'Copyright (c) 2019 shmilee'
 
 def _get_data_path(name):
     '''Get the path to *name*.'''
-    import os
     import sys
 
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), name)
@@ -42,3 +43,4 @@ def _get_data_path(name):
 
 __data_path__ = _get_data_path('gdpy3-data')
 __icon_name__ = 'gdpy3_128'
+__icon_path__ = os.path.join(__data_path__, 'icon', '%s.png' % __icon_name__)
