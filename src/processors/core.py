@@ -74,7 +74,7 @@ class BaseCore(object):
                       % (cls.__name__, loader.path))
             return []
         return [cls(loader, section, matched_items[section])
-                    for section in matched_items]
+                for section in matched_items]
 
     @property
     def coreid(self):
@@ -172,7 +172,7 @@ class DigCore(BaseCore):
 
     def convert(self):
         '''Read raw data, convert them. Return a dict.'''
-        path = '%s: %s' % (self.rawloader.path, self.short_items)
+        path = self.rawloader.key_location(self.short_items)
         try:
             log.info('Converting raw data in %s ...' % path)
             return self._convert()

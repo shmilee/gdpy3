@@ -116,3 +116,6 @@ class SftpRawLoader(BaseRawLoader):
         # paramiko.SFTP.open, SSH treats all files as binary
         return io.TextIOWrapper(
             tmpobj.open(self._sep.join([self.rmt_path, key]), 'r'))
+
+    def key_location(self, key):
+        return self._sep.join([self.path, key])

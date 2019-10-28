@@ -197,6 +197,9 @@ class BaseRawLoader(BaseLoader):
                 log.debug("Close path %s." % self.path)
                 self._special_close(tmpobj)
 
+    def key_location(self, key):
+        return '%s: %s' % (self.path, key)
+
 
 class BasePckLoader(BaseLoader):
     '''
