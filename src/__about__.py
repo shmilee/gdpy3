@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2018 shmilee
+# Copyright (c) 2019 shmilee
 
 VERSION = (0, 4, 1)
 
@@ -11,7 +11,7 @@ __status__ = "alpha"
 __author__ = "shmilee"
 __email__ = "shmilee.zju@gmail.com"
 __license__ = "MIT"
-__copyright__ = 'Copyright (c) 2018 shmilee'
+__copyright__ = 'Copyright (c) 2019 shmilee'
 
 
 def _get_data_path(name):

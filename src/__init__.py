@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2018 shmilee
+# Copyright (c) 2019 shmilee
 
 from .__about__ import __description__, __url__, __version__, __status__
 from .__about__ import __author__, __email__, __license__, __copyright__

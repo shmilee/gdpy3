@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2018 shmilee
+# Copyright (c) 2019 shmilee
 
 '''
 Contains Npz pickled file loader class.

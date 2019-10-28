@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2018 shmilee
+# Copyright (c) 2019 shmilee
 
 from PyInstaller.utils.hooks import collect_submodules, exec_statement
 
