@@ -12,6 +12,7 @@ from ..glogger import getGLogger
 
 __all__ = ['max_subarray', 'fitline', 'argrelextrema',
            'fft', 'savgol_golay_filter', 'findflat', 'findgrowth',
+           'correlation',
            ]
 log = getGLogger('C')
 
@@ -186,3 +187,35 @@ def findgrowth(X, lowerlimit):
         if sum(Xg[_start:_start + _len]) == _len:
             break
     return _start, _len
+
+
+def correlation(data, r0, r1, c0, c1, dr, dc):
+    '''
+    correlation length
+    autocorrelation time
+    xiao2010, POP, 17, 022302
+
+    r0, r1, c0, c1: select data[r0:r1, c0:c1]
+    dr, dc: correlation matrix size
+    '''
+    tau = np.zeros((dr, dc))
+    for i in range(dr):
+        for j in range(dc):
+            #tmptau, tmpinten0, tmpinten1 = 0, 0, 0
+            # for m in range(c0, c1-j):
+            #    for n in range(r0, r1-i):
+            #        tmptau = tmptau + data[n,m]*data[n+i,m+j]
+            #        tmpinten0 = tmpinten0 + data[n,m]*data[n,m]
+            #        tmpinten1 = tmpinten1 + data[n+i,m+j]*data[n+i,m+j]
+            #tau[i,j] = tmptau/np.sqrt(tmpinten0*tmpinten1)
+            tmp = np.multiply(data[r0:r1-i, c0:c1-j], data[r0+i:r1, c0+j:c1])
+            tmptau = np.sum(tmp)
+            tmp = np.multiply(data[r0:r1-i, c0:c1-j], data[r0:r1-i, c0:c1-j])
+            tmpinten0 = np.sum(tmp)
+            tmp = np.multiply(data[r0+i:r1, c0+j:c1], data[r0+i:r1, c0+j:c1])
+            tmpinten1 = np.sum(tmp)
+            tau[i, j] = tmptau/np.sqrt(tmpinten0*tmpinten1)
+        log.info('correlation row %d/%d' % (i+1, dr))
+        # print('row %d: %s' % (i, tau[i, :]))
+        # print(tau[i,:])
+    return tau
