@@ -234,8 +234,8 @@ class FieldFluxPloidalFigInfo(PcolorFigInfo):
         if self.pf == 'flux':
             Z = data['fluxdata-%s' % self.field]
             y, x = Z.shape if Z.size > 0 else (0, 0)
-            X = np.arange(0, x) / x * 2 * np.pi
-            Y = np.arange(0, y) / y * 2 * np.pi
+            X = np.around(np.arange(0, x) / x * 2 * np.pi, decimals=3)
+            Y = np.around(np.arange(0, y) / y * 2 * np.pi, decimals=3)
             xlabel, ylabel = r'$\zeta$', r'$\theta$'
         else:
             X, Y = data['poloidata-x'], data['poloidata-z']
