@@ -544,34 +544,35 @@ class PcolorFigInfo(FigInfo):
         self.calculation.update(self._get_data_X_Y_Z_title_etc(data))
         # cutoff
         X, Y = self.calculation['X'], self.calculation['Y']
-        if 'cutoff_x' in kwargs:
-            x0, x1 = kwargs.pop('cutoff_x')
-            x0 = np.searchsorted(X, x0, side='left')
-            x1 = np.searchsorted(X, x1, side='right')
-        else:
-            x0, x1 = 0, X.size
-        if 'cutoff_y' in kwargs:
-            y0, y1 = kwargs.pop('cutoff_y')
-            y0 = np.searchsorted(Y, y0, side='left')
-            y1 = np.searchsorted(Y, y1, side='right')
-        else:
-            y0, y1 = 0, Y.size
-        # update
-        self.calculation['X'] = X[x0:x1]
-        self.calculation['Y'] = Y[y0:y1]
-        self.calculation['Z'] = self.calculation['Z'][y0:y1, x0:x1]
-        x0, x1, x_1 = float(X[0]), float(X[1]), float(X[-1])
-        y0, y1, y_1 = float(Y[0]), float(Y[1]), float(Y[-1])
-        self.layout['cutoff_x'] = dict(
-                    widget='FloatRangeSlider',
-                    rangee=[x0, x_1, x1 - x0],
-                    value=[x0, x_1],
-                    description='cutoff X:')
-        self.layout['cutoff_y'] = dict(
-                    widget='FloatRangeSlider',
-                    rangee=[y0, y_1, y1 - y0],
-                    value=[y0, y_1],
-                    description='cutoff Y:')
+        if len(X.shape) == 1:
+            if 'cutoff_x' in kwargs:
+                x0, x1 = kwargs.pop('cutoff_x')
+                x0 = np.searchsorted(X, x0, side='left')
+                x1 = np.searchsorted(X, x1, side='right')
+            else:
+                x0, x1 = 0, X.size
+            if 'cutoff_y' in kwargs:
+                y0, y1 = kwargs.pop('cutoff_y')
+                y0 = np.searchsorted(Y, y0, side='left')
+                y1 = np.searchsorted(Y, y1, side='right')
+            else:
+                y0, y1 = 0, Y.size
+            # update
+            self.calculation['X'] = X[x0:x1]
+            self.calculation['Y'] = Y[y0:y1]
+            self.calculation['Z'] = self.calculation['Z'][y0:y1, x0:x1]
+            x0, x1, x_1 = round(float(X[0]), 3), round(float(X[1]), 3), round(float(X[-1]), 3)
+            y0, y1, y_1 = round(float(Y[0]), 3), round(float(Y[1]), 3), round(float(Y[-1]), 3)
+            self.layout['cutoff_x'] = dict(
+                        widget='FloatRangeSlider',
+                        rangee=[x0, x_1, x1 - x0],
+                        value=[x0, x_1],
+                        description='cutoff X:')
+            self.layout['cutoff_y'] = dict(
+                        widget='FloatRangeSlider',
+                        rangee=[y0, y_1, y1 - y0],
+                        value=[y0, y_1],
+                        description='cutoff Y:')
 
         if len(self.calculation['Z']) == 0:
             log.warning("No data for %s." % self.fullnum)
