@@ -27,6 +27,7 @@ snapshot.F90, subroutine snap_phi_zeta_psi(j_list)
 
 import numpy as np
 from ...core import DigCore, LayCore, FigInfo, PcolorFigInfo, log
+from ... import tools
 
 __all__ = ['SnapPhiZetaPsiDigCoreV3', 'SnapPhiZetaPsiLayCoreV3']
 
@@ -109,6 +110,76 @@ class PhiZetaPsiFigInfo(PcolorFigInfo):
         return dict(X=X, Y=Y, Z=Z, title=title, xlabel=xlabel, ylabel=ylabel)
 
 
+class _PhiCorrelationFigInfo(PcolorFigInfo):
+    '''Figures of phi correlation (d_zeta, d_psi). nj=4'''
+    __slots__ = ['theta']
+    figurenums = ['phi-correlation_%03d' % (90*j+90) for j in range(4)]
+    numpattern = '^phi-correlation_(?P<theta>\d{3})$'
+    default_plot_method = 'contourf'
+
+    def _get_srckey_extrakey(self, fignum):
+        groupdict = self._pre_check_get(fignum, 'theta')
+        self.theta = int(groupdict['theta'])
+        return ['nj', 'j_list', 'phi_zeta_psi_%03d' % self.theta], ['gtc/tstep']
+
+    def _get_data_X_Y_Z_title_etc(self, data):
+        Z = data['phi_zeta_psi_%03d' % self.theta]
+        y, x = Z.shape if Z.size > 0 else (0, 0)
+        # if Z size is so big, cal corr will be very slow
+        max_x, max_y = 400, 1500
+        step_x, step_y = [int(_) for _ in np.round([x/max_x,y/max_y])]
+        Zdata = Z[::step_y, ::step_x]
+        ny, nx = Zdata.shape
+        tau = tools.correlation(Zdata,
+                                0, ny, int(0.1*nx), int(0.9*nx), 50, 150)
+        X = np.arange(0, 150) * step_x
+        Y = np.arange(0, 50) * step_y / y * 2 * np.pi
+        xlabel, ylabel = r'$d\psi$(mpsi)', r'$d\zeta$'
+        istep = int(self.groups.replace('snap', ''))
+        title = (r'$\phi Correlation(d\zeta, d\psi), \theta=%d^\circ$, istep=%d, time=%s$R_0/c_s$'
+                 % (self.theta, istep, istep * data['gtc/tstep']))
+        return dict(X=X, Y=Y, Z=tau, title=title, xlabel=xlabel, ylabel=ylabel)
+
+
+class PhiCorrelationFigInfo(_PhiCorrelationFigInfo):
+    def __init__(self, fignum, scope, groups):
+        super(PhiCorrelationFigInfo, self).__init__(fignum, scope, groups)
+        self.template = 'template_z111p_axstructs'
+
+    def calculate(self, data, **kwargs):
+        '''
+        kwargs
+        ------
+        *kwargs* of phi correlation (d_zeta, d_psi):
+        *kwargs* passed on to :meth:`plotter.template_pcolor_axstructs`:
+            *plot_method*, *plot_method_args*, *plot_method_kwargs*,
+            *colorbar*, *grid_alpha*, *plot_surface_shadow*
+        '''
+        super(PhiCorrelationFigInfo, self).calculate(data, **kwargs)
+        ax1_calc = self.calculation
+        self.calculation = {
+            'zip_results': [('template_pcolor_axstructs', 211, ax1_calc)],
+        }
+        if len(ax1_calc['Z']) == 0:
+            return
+        # 2
+        Ym = ax1_calc['Z'].max(axis=0)
+        eidx = np.searchsorted(-Ym, -1/np.e)
+        X = ax1_calc['X']
+        Lpsi = X[eidx]
+        ax2_calc = dict(
+            LINE=[
+                (X, Ym, r'$C_r(\Delta \psi)$'),
+                ([X[0], X[-1]], [1/np.e, 1/np.e], '1/e'),
+            ],
+            title=r'$\phi$ Correlation$(d\psi)$, C(%s)=1/e' % Lpsi,
+            xlim=[X[0],X[-1]],
+            ylim=[0 if Ym.min() > 0 else Ym.min(), 1],
+        )
+        self.calculation['zip_results'].append(('template_line_axstructs', 212, ax2_calc))
+        self.calculation['Lpsi'] = Lpsi
+
+
 class SnapPhiZetaPsiLayCoreV3(LayCore):
     '''
     Snapshot phi(zeta,psi) Figures
@@ -116,4 +187,4 @@ class SnapPhiZetaPsiLayCoreV3(LayCore):
     __slot__ = []
     itemspattern = ['^(?P<section>snap\d{5})$']
     default_section = 'snap99999'
-    figinfoclasses = [PhiZetaPsiFigInfo]
+    figinfoclasses = [PhiZetaPsiFigInfo, PhiCorrelationFigInfo]
