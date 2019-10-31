@@ -390,6 +390,7 @@ class LabeledSpinBoxs(ttk.Frame):
             elif isinstance(step, float) and isinstance(i_val, float):
                 self.variables.append(tkinter.DoubleVar(self))
             else:
+                log.error('type error: var %s, step %s ' % (type(i_val), type(step)))
                 raise ValueError("Only int, float number supported!")
             self.variables[-1].set(i_val)
             self.spinboxs.append(tkinter.Spinbox(
