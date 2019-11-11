@@ -26,10 +26,9 @@ class Hdf5PckLoader(BasePckLoader):
     Notes
     -----
     Q: How to read data from .hdf5 file?
-    A: h5file[datakey].value
+    A: h5file[datakey][()]
     >>> h5file = h5py.File('/tmp/test.hdf5', 'r')
     >>> datakey = 'group/key'
-    >>> h5file[datakey].value
     >>> h5file[datakey][()]
     >>> h5file[datakey][...]
     '''
@@ -65,4 +64,4 @@ class Hdf5PckLoader(BasePckLoader):
     #    return mygroups
 
     def _special_get(self, tmpobj, key):
-        return tmpobj[key].value
+        return tmpobj[key][()]
