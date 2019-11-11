@@ -38,9 +38,10 @@ class TestCachePckSaver(unittest.TestCase):
         self.assertTrue(saver.write('', {'ver': '1'}))
         self.assertTrue(saver.write('/', {'num': 100, 'list': [1, 2, 3]}))
         self.assertTrue(saver.write('group', {'desc': 'desc'}))
+        self.assertTrue(saver.write('grp/sub', {'n': 1}))
         saver.close()
         store = saver.get_store()
-        inkeys = {'ver', 'num', 'list', 'group/desc'}
+        inkeys = {'ver', 'num', 'list', 'group/desc', 'grp/sub/n'}
         outkeys = set()
         for k in store.keys():
             if isinstance(store[k], dict):

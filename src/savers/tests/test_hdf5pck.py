@@ -44,9 +44,10 @@ class TestHdf5PckSaver(unittest.TestCase):
         self.assertTrue(saver.write('', {'ver': '1'}))
         self.assertTrue(saver.write('/', {'num': 100, 'list': [1, 2, 3]}))
         self.assertTrue(saver.write('group', {'desc': 'desc'}))
+        self.assertTrue(saver.write('grp/sub', {'n': 1}))
         saver.close()
         hdf5 = h5py.File(saver.get_store(), 'r')
-        inkeys = {'ver', 'num', 'list', 'group/desc'}
+        inkeys = {'ver', 'num', 'list', 'group/desc', 'grp/sub/n'}
         outkeys = set()
         hdf5.visititems(
             lambda name, obj: outkeys.add(name)
