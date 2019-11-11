@@ -94,8 +94,9 @@ class TestBaseRawLoader(unittest.TestCase):
 
 class ImpBasePckLoader(BasePckLoader):
 
-    _D = {'description': 'desc', 'k1': 1, 'g2/k2': 2, 'g3/k3': 3, 'g3/k4': 4}
-    _G = ('g2', 'g3')
+    _D = {'description': 'desc', 'k1': 1, 'g2/k2': 2,
+          'g3/k3': 3, 'g3/k33': 33, 'g4/sg4/k4': 4}
+    _G = ('g2', 'g3', 'g4/sg4')
 
     def _special_check_path(self):
         return os.path.isfile(self.path)
@@ -144,12 +145,13 @@ class TestBasePckLoader(unittest.TestCase):
             self.tmpfile,
             datagroups_filter=lambda g: False if g == 'g2' else True)
         self.assertSetEqual(
-            set(loader.datagroups), {'g3'})
+            set(loader.datagroups), {'g3', 'g4/sg4'})
 
     def test_pckloader_get(self):
         loader = ImpBasePckLoader(self.tmpfile)
         self.assertEqual(loader.get('k1'), 1)
         self.assertEqual(loader['g2/k2'], 2)
+        self.assertEqual(loader.get('g4/sg4/k4'), 4)
         with self.assertRaises(KeyError):
             loader.get('lost-key')
 
@@ -160,10 +162,10 @@ class TestBasePckLoader(unittest.TestCase):
 
     def test_pckloader_find(self):
         loader = ImpBasePckLoader(self.tmpfile)
-        self.assertEqual(loader.find('g', 4), ('g3/k4',))
-        self.assertEqual(loader.refind('^g.*4$'), ('g3/k4',))
+        self.assertEqual(loader.find('g', 33), ('g3/k33',))
+        self.assertEqual(loader.refind('^g.*4$'), ('g4/sg4/k4',))
 
     def test_pckloader_contains(self):
         loader = ImpBasePckLoader(self.tmpfile)
-        self.assertTrue(loader.all_in_loader('k1', 'g2/k2', 'g3/k3'))
+        self.assertTrue(loader.all_in_loader('k1', 'g2/k2', 'g4/sg4/k4'))
         self.assertFalse(loader.all_in_loader('k1', 'g2/k2', 'lost-key'))

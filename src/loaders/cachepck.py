@@ -20,7 +20,7 @@ class CachePckLoader(BasePckLoader):
     Notes
     -----
     1. *path*: a name of cache loader, is 'dict.cache'.
-    2. keys: (k1, k2, g1/k3, g1/k4, g2/k5).
+    2. keys: (k1, k2, g1/k3, g1/k4, g2/k5, g3/sg3/k6).
        invalid: (/k0, /g2/k6, /g2/k7/, /g2/k8/k9)
     '''
     __slots__ = ['_cache_dict']
@@ -57,10 +57,10 @@ class CachePckLoader(BasePckLoader):
         return [k for k in tmpobj.keys() if isinstance(tmpobj[k], dict)]
 
     def _special_get(self, tmpobj, key):
-        keyl = key.strip('/').split('/')
-        if len(keyl) == 1:
+        gstop = key.rfind('/')
+        if gstop == -1:
             return tmpobj[key]
-        elif len(keyl) == 2:
-            return tmpobj[keyl[0]][keyl[1]]
+        elif gstop > 0:
+            return tmpobj[key[:gstop]][key[gstop+1:]]
         else:
             raise ValueError('Wrong key "%s"!' % key)
