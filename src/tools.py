@@ -8,7 +8,7 @@ Some tools for Core.
 
 import numpy as np
 
-from ..glogger import getGLogger
+from .glogger import getGLogger
 
 __all__ = ['max_subarray', 'fitline', 'argrelextrema',
            'fft', 'savgol_golay_filter', 'findflat', 'findgrowth',
