@@ -24,6 +24,12 @@ logfile = os.path.join(
     tempfile.gettempdir(),
     'gdpy3-%s-%s.log' % (getpass.getuser(), time.strftime('%Y')))
 
+logger_common_config = {
+    'level': 'DEBUG',
+    'handlers': ['console', 'file'],
+    'propagate': False,
+}
+
 gloggerConfig = {
     'version': 1,
     'formatters': {
@@ -54,36 +60,14 @@ gloggerConfig = {
         },
     },
     'loggers': {
-        # gdpy3
-        'G': {
-            'level': 'DEBUG',
-            'handlers': ['console', 'file'],
-            'propagate': False,
-        },
-        # gdpy3.loaders
-        'L': {
-            'level': 'DEBUG',
-            'handlers': ['console', 'file'],
-            'propagate': False,
-        },
-        # gdpy3.savers
-        'S': {
-            'level': 'DEBUG',
-            'handlers': ['console', 'file'],
-            'propagate': False,
-        },
+        'G': logger_common_config,  # gdpy3
+        'L': logger_common_config,  # gdpy3.loaders
+        'S': logger_common_config,  # gdpy3.savers
+        'C': logger_common_config,  # gdpy3.cores.converter
+        'D': logger_common_config,  # gdpy3.cores.digger
+        'E': logger_common_config,  # gdpy3.cores.exporter
         # gdpy3.processors
-        'C': {
-            'level': 'DEBUG',
-            'handlers': ['console', 'file'],
-            'propagate': False,
-        },
-        # gdpy3.plotters
-        'P': {
-            'level': 'DEBUG',
-            'handlers': ['console', 'file'],
-            'propagate': False,
-        },
+        'P': logger_common_config,  # gdpy3.plotters
     },
 }
 
