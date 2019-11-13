@@ -104,10 +104,7 @@ class BaseCore(object):
             log.debug("%s: No items matched in loader %s!"
                       % (cls.__name__, loader.path))
             return []
-        if cls.commonpattern:
-            common = cls.match_common(all_items)
-        else:
-            common = None
+        common = cls.match_common(all_items)
         if duplicate:
             return [[cls(loader, section, matched_items[section], common)
                      for _ in duplicate]
