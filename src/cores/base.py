@@ -88,7 +88,7 @@ class BaseCore(object):
         return res
 
     @classmethod
-    def generate_cores(cls, loader, all_items):
+    def generate_cores(cls, loader, all_items, duplicate=None):
         '''
         Use *loader* and matched items in *all_items* to
         generate Core instances.
@@ -97,6 +97,7 @@ class BaseCore(object):
         ----------
         loader: rawloader or pckloader ...
         all_items: loader keys or part of them ...
+        duplicate: list, len(list) duplicates for each core
         '''
         matched_items = cls.match_items(all_items)
         if len(matched_items) == 0:
@@ -107,8 +108,13 @@ class BaseCore(object):
             common = cls.match_common(all_items)
         else:
             common = None
-        return [cls(loader, section, matched_items[section], common)
-                for section in matched_items]
+        if duplicate:
+            return [[cls(loader, section, matched_items[section], common)
+                     for _ in duplicate]
+                    for section in matched_items]
+        else:
+            return [cls(loader, section, matched_items[section], common)
+                    for section in matched_items]
 
     def __init__(self, loader, section, items, common):
         self.loader = loader

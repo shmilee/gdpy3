@@ -27,22 +27,24 @@ class Digger(BaseCore):
     neededpattern: list or 'ALL'
         regular expressions for all needed data keys
         'ALL' means itemspattern + commonpattern
-    numpattern: str or list
-        regular expressions to get info for fignum
     srckeys: list
         matched datakeys of pickled data
     extrakeys: list
         common datakeys
     group: str
         group of results, default :attr:`section`[0]
+    numseeds: None or list
+        seeds info for fignum
+        so one match can generate serial cores only differs in num
     fignum: str
         figure num(label) of results
     fullnum: str
         full figure num(label)
     '''
     __slots__ = ['_group', '_fignum']
-    neededpattern = ['datakey']
-    numpattern = None
+    nitems = '?'
+    neededpattern = 'ALL'
+    numseeds = None
 
     @property
     def pckloader(self):
@@ -72,15 +74,29 @@ class Digger(BaseCore):
     @classmethod
     def generate_cores(cls, pckloader):
         '''Return generated Core instances for *pckloader*.'''
-        dcs = super(Digger, cls).generate_cores(pckloader, pckloader.datakeys)
+        dcss = super(Digger, cls).generate_cores(
+            pckloader, pckloader.datakeys, duplicate=cls.numseeds)
         res = []
-        for dc in dcs:
-            if dc.check_needed_datakeys():
-                dc._set_group()
-                dc._set_fignum()
-                res.append(dc)
-                dlog.debug("%s: loader, %s; fullnum, %s."
-                           % (dc.coreid, pckloader.path, dc.fullnum))
+        if cls.numseeds:
+            for dcs in dcss:
+                assert len(cls.numseeds) == len(dcs)
+                # only check first one
+                if dcs[0].check_needed_datakeys():
+                    for idx, dc in enumerate(dcs):
+                        dc._set_group()
+                        dc._set_fignum(numseed=cls.numseeds[idx])
+                        res.append(dc)
+                        dlog.debug("%s: loader, %s; fullnum, %s."
+                                   % (dc.coreid, pckloader.path, dc.fullnum))
+
+        else:
+            for dc in dcss:
+                if dc.check_needed_datakeys():
+                    dc._set_group()
+                    dc._set_fignum()
+                    res.append(dc)
+                    dlog.debug("%s: loader, %s; fullnum, %s."
+                               % (dc.coreid, pckloader.path, dc.fullnum))
         return res
 
     def check_needed_datakeys(self):
@@ -104,8 +120,11 @@ class Digger(BaseCore):
         '''Set :attr:`group`, using :attr:`section`.'''
         self._group = self.section[0]
 
-    def _set_fignum(self):
-        '''Set :attr:`fignum`, using info get by :attr:`numpattern`.'''
+    def _set_fignum(self, numseed=None):
+        '''
+        Set :attr:`fignum`
+        Using :attr:`section` and info get from :attr:`numseeds`.
+        '''
         raise NotImplementedError()
 
     def _dig(self, **kwargs):
