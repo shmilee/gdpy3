@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 # Copyright (c) 2019 shmilee
@@ -5,37 +6,30 @@
 '''
 Source fortran code:
 
-v110922
--------
-
 skip
 '''
 
 import re
 import numpy
-from ..core import DigCore, log
+from ..cores.converter import Converter, clog
 
-__all__ = ['GtcDigCoreV110922']
+__all__ = ['GtcConverter']
 
 
-class GtcDigCoreV110922(DigCore):
+class GtcConverter(Converter):
     '''
-    gtc.out parameters
+    Parameters in gtc.out
 
     INPUT_PARAMETERS, PHYSICAL_PARAMETERS, KEY_PARAMETERS, etc.
-
-    Original can be get by
-    `numpy.ndarray.tostring(outdict['backup-gtcout']).decode()`
     '''
     __slots__ = []
+    nitems = '?'
     itemspattern = ['^(?P<section>gtc)\.out$', '.*/(?P<section>gtc)\.out$']
-    default_section = 'gtc'
-    _datakeys = ('get by function :meth:`_convert`',)
 
     def _convert(self):
         '''Read 'gtc.out' parameters.'''
         with self.rawloader.get(self.files) as f:
-            log.debug("Read file '%s'." % self.files)
+            clog.debug("Read file '%s'." % self.files)
             outdata = f.readlines()
 
         sd = {}
@@ -53,9 +47,9 @@ class GtcDigCoreV110922(DigCore):
                     val = float(val)
                     # if int(val) - val == 0:
                     #    val = int(val)
-                log.debug("Filling datakey: %s=%s ..." % (key.lower(), val))
+                clog.debug("Filling datakey: %s=%s ..." % (key.lower(), val))
                 sd.update({key.lower(): val})
-        log.debug("Filled datakeys: %s ..." % str(tuple(sd.keys())))
+        clog.debug("Filled datakeys: %s ..." % str(tuple(sd.keys())))
 
         # search other parameters, one by one
         otherparapats = [
@@ -90,10 +84,10 @@ class GtcDigCoreV110922(DigCore):
                         val = int(val)
                     else:
                         val = float(val)
-                    log.debug("Filling datakey: %s=%s ..." % (key, val))
+                    clog.debug("Filling datakey: %s=%s ..." % (key, val))
                     debugkeys.append(key)
                     sd.update({key: val})
-        log.debug("Filled datakeys: %s ..." % str(debugkeys))
+        clog.debug("Filled datakeys: %s ..." % str(debugkeys))
 
         # search array parameters
         arraypats = [
@@ -124,14 +118,9 @@ class GtcDigCoreV110922(DigCore):
                         val = val.strip().split('\n')
                         val = numpy.array(
                             [[float(n) for n in li.split()] for li in val])
-                    log.debug("Filling datakey: %s=%s ..." % (key, val))
+                    #clog.debug("Filling datakey: %s=%s ..." % (key, val))
                     debugkeys.append(key)
                     sd.update({key: val})
-        log.debug("Filled datakeys: %s ..." % str(debugkeys))
-
-        # backup gtc.out, broken with archive loader
-        # log.debug("Filling datakey: %s ..." % 'backup-gtcout')
-        # with self.rawloader.get(self.file) as f:
-        #     sd.update({'backup-gtcout': numpy.fromfile(f)})
+        clog.debug("Filled datakeys: %s ..." % str(debugkeys))
 
         return sd
