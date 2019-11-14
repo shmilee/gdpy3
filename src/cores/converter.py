@@ -9,14 +9,14 @@ Contains Converter core class.
 
 import re
 
-from .base import BaseCore
+from .base import BaseCore, AppendDocstringMeta
 from ..glogger import getGLogger
 
 __all__ = ['Converter']
 clog = getGLogger('C')
 
 
-class Converter(BaseCore):
+class Converter(BaseCore, metaclass=AppendDocstringMeta):
     '''
     Convert raw data in files to pickled data.
     Return results in a dict.

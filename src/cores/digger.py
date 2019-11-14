@@ -9,14 +9,14 @@ Contains Digger core class.
 
 import re
 
-from .base import BaseCore
+from .base import BaseCore, AppendDocstringMeta
 from ..glogger import getGLogger
 
 __all__ = ['Digger']
 dlog = getGLogger('D')
 
 
-class Digger(BaseCore):
+class Digger(BaseCore, metaclass=AppendDocstringMeta):
     '''
     Calculate pickled data in pckloader needed by figure.
     Return results in a dict.
@@ -135,7 +135,6 @@ class Digger(BaseCore):
         '''
         Calculate pickled data get from :attr:`pckloader`,
         return results in a dict.
-        Use *data* get by keys, return calculation and layout.
         '''
         try:
             dlog.info("Dig pickled data for %s ..." % self.fullnum)
