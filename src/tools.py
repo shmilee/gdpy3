@@ -113,9 +113,9 @@ def fft(dt, signal):
         return None, None, None
 
 
-def savgol_golay_filter(x, window_size, polyorder, deriv=0, delta=1.0,
-                        axis=-1, mode='interp', cval=0.0, rate=1,
-                        nodebug=False, info='data'):
+def savgol_golay_filter(x, window_size=None, polyorder=None, deriv=0,
+                        delta=1.0, axis=-1, mode='interp', cval=0.0,
+                        rate=1, info='data'):
     '''
     Try to import `scipy.signal.savgol_filter`.
     If failed, use an old Savitzky-Golay filter:
@@ -127,14 +127,19 @@ def savgol_golay_filter(x, window_size, polyorder, deriv=0, delta=1.0,
     except ImportError:
         newfilter = False
 
+    if not window_size:
+        window_size = min(51, len(x))
+        if window_size % 2 == 0:
+            window_size = window_size - 1
+    if not polyorder:
+        polyorder = min(3, window_size-1)
+
     if newfilter:
-        if not nodebug:
-            log.debug("Use 'scipy.signal.savgol_filter' to smooth %s." % info)
+        log.debug("Use 'scipy.signal.savgol_filter' to smooth %s." % info)
         return savgol_filter(x, window_size, polyorder, deriv=deriv,
                              delta=delta, axis=axis, mode=mode, cval=cval)
 
-    if not nodebug:
-        log.debug("Use an old Savitzky-Golay filter to smooth %s." % info)
+    log.debug("Use an old Savitzky-Golay filter to smooth %s." % info)
     from math import factorial
     try:
         window_size = np.abs(np.int(window_size))
@@ -159,12 +164,12 @@ def savgol_golay_filter(x, window_size, polyorder, deriv=0, delta=1.0,
     return np.convolve(m[::-1], x, mode='valid')
 
 
-def findflat(X, upperlimit):
+def findflat(X, upperlimit, info='data'):
     '''
     Return flat region: start, len. *upperlimit* limits abs(gradient(X))
     '''
-    Xg = np.abs(np.gradient(savgol_golay_filter(X, 51, 3, nodebug=True)))
-    Xg = [1 if g < upperlimit else -X.size for g in Xg]
+    Xg = np.abs(np.gradient(savgol_golay_filter(X, info=info)))
+    Xg = [1 if g < upperlimit else -X.size**2 for g in Xg]
     _len = max_subarray(Xg)
     if _len < 0:
         return 0, 0
@@ -174,17 +179,18 @@ def findflat(X, upperlimit):
     return _start, _len
 
 
-def findgrowth(X, lowerlimit):
+def findgrowth(X, lowerlimit, info='data'):
     '''
     Return growth region: start, len. *lowerlimit* limits gradient(X)
     '''
-    Xg = np.gradient(savgol_golay_filter(X, 51, 3, nodebug=True))
-    Xg = [1 if g > lowerlimit else -X.size for g in Xg]
+    Xg = np.gradient(savgol_golay_filter(X, info=info))
+    Xg = [1 if g > lowerlimit else -X.size**2 for g in Xg]
     _len = max_subarray(Xg)
     if _len < 0:
         return 0, 0
     for _start in range(X.size):
         if sum(Xg[_start:_start + _len]) == _len:
+            print('find _start', _start)
             break
     return _start, _len
 
@@ -199,6 +205,7 @@ def correlation(data, r0, r1, c0, c1, dr, dc):
     dr, dc: correlation matrix size
     '''
     tau = np.zeros((dr, dc))
+    logstep = round(dr/10)
     for i in range(dr):
         for j in range(dc):
             #tmptau, tmpinten0, tmpinten1 = 0, 0, 0
@@ -215,7 +222,8 @@ def correlation(data, r0, r1, c0, c1, dr, dc):
             tmp = np.multiply(data[r0+i:r1, c0+j:c1], data[r0+i:r1, c0+j:c1])
             tmpinten1 = np.sum(tmp)
             tau[i, j] = tmptau/np.sqrt(tmpinten0*tmpinten1)
-        log.info('correlation row %d/%d' % (i+1, dr))
-        # print('row %d: %s' % (i, tau[i, :]))
-        # print(tau[i,:])
+        if (i+1) % logstep == 0 or i == 0 or i+1 == dr:
+            log.info('correlation row %d/%d' % (i+1, dr))
+            # print('row %d: %s' % (i, tau[i, :]))
+            # print(tau[i,:])
     return tau
