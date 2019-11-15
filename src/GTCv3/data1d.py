@@ -5,9 +5,6 @@
 '''
 Source fortran code:
 
-v110922
--------
-
 1. diagnosis.F90:opendiag():739, ::
     write(iodata1d,101)ndstep,mpsi+1,nspecies,nhybrid,mpdata1d,nfield,mfdata1d
 
@@ -61,12 +58,13 @@ diagnosis.F90:194-203, ::
 '''
 
 import numpy
-from ..core import DigCore, LayCore, PcolorFigInfo, log
+from ..cores.converter import Converter, clog
+from ..cores.digger import Digger, dlog
 
-__all__ = ['Data1dDigCoreV110922', 'Data1dLayCoreV110922']
+__all__ = ['Data1dConverter', 'Data1dFluxDigger', 'Data1dFieldDigger']
 
 
-class Data1dDigCoreV110922(DigCore):
+class Data1dConverter(Converter):
     '''
     Radial Time Data
 
@@ -78,9 +76,9 @@ class Data1dDigCoreV110922(DigCore):
        The field 2d array is field[r,time].
     '''
     __slots__ = []
+    nitems = '?'
     itemspattern = ['^(?P<section>data1d)\.out$',
                     '.*/(?P<section>data1d)\.out$']
-    default_section = 'data1d'
     _datakeys = (
         # 1. diagnosis.F90:opendiag():739
         'ndstep', 'mpsi+1', 'nspecies', 'nhybrid',
@@ -99,12 +97,12 @@ class Data1dDigCoreV110922(DigCore):
     def _convert(self):
         '''Read 'data1d.out'.'''
         with self.rawloader.get(self.files) as f:
-            log.debug("Read file '%s'." % self.files)
+            clog.debug("Read file '%s'." % self.files)
             outdata = f.readlines()
 
         sd = {}
         # 1. diagnosis.F90:opendiag():739
-        log.debug("Filling datakeys: %s ..." % str(self._datakeys[:7]))
+        clog.debug("Filling datakeys: %s ..." % str(self._datakeys[:7]))
         for i, key in enumerate(self._datakeys[:7]):
             sd.update({key: int(outdata[i].strip())})
 
@@ -113,7 +111,7 @@ class Data1dDigCoreV110922(DigCore):
         ndata = sd['mpsi+1'] * (sd['nspecies'] * sd['mpdata1d'] +
                                 sd['nfield'] * sd['mfdata1d'])
         if len(outdata) // ndata != sd['ndstep']:
-            log.debug("Filling datakeys: %s ..." % 'ndstep')
+            clog.debug("Filling datakeys: %s ..." % 'ndstep')
             sd.update({'ndstep': len(outdata) // ndata})
             outdata = outdata[:sd['ndstep'] * ndata]
 
@@ -121,7 +119,7 @@ class Data1dDigCoreV110922(DigCore):
         outdata = outdata.reshape((ndata, sd['ndstep']), order='F')
 
         # 3. data1di(0:mpsi,mpdata1d), mpdata1d=3
-        log.debug("Filling datakeys: %s ..." % str(self._datakeys[7:10]))
+        clog.debug("Filling datakeys: %s ..." % str(self._datakeys[7:10]))
         sd.update({'i-particle-flux': outdata[:sd['mpsi+1'], :]})
         index0, index1 = sd['mpsi+1'], 2 * sd['mpsi+1']
         sd.update({'i-energy-flux':  outdata[index0:index1, :]})
@@ -130,33 +128,27 @@ class Data1dDigCoreV110922(DigCore):
 
         # 4. data1de(0:mpsi,mpdata1d)
         if sd['nspecies'] > 1 and sd['nhybrid'] > 0:
-            log.debug("Filling datakeys: %s ..." % str(self._datakeys[10:13]))
+            clog.debug("Filling datakeys: %s ..." % str(self._datakeys[10:13]))
             index0, index1 = index1, index1 + sd['mpsi+1']
             sd.update({'e-particle-flux': outdata[index0:index1, :]})
             index0, index1 = index1, index1 + sd['mpsi+1']
             sd.update({'e-energy-flux': outdata[index0:index1, :]})
             index0, index1 = index1, index1 + sd['mpsi+1']
             sd.update({'e-momentum-flux': outdata[index0:index1, :]})
-        else:
-            sd.update({'e-particle-flux': [],
-                       'e-energy-flux': [], 'e-momentum-flux': []})
 
         # 5. data1df(0:mpsi,mpdata1d)
         if ((sd['nspecies'] == 2 and sd['nhybrid'] == 0) or
                 (sd['nspecies'] == 3 and sd['nhybrid'] > 0)):
-            log.debug("Filling datakeys: %s ..." % str(self._datakeys[13:16]))
+            clog.debug("Filling datakeys: %s ..." % str(self._datakeys[13:16]))
             index0, index1 = index1, index1 + sd['mpsi+1']
             sd.update({'f-particle-flux': outdata[index0:index1, :]})
             index0, index1 = index1, index1 + sd['mpsi+1']
             sd.update({'f-energy-flux': outdata[index0:index1, :]})
             index0, index1 = index1, index1 + sd['mpsi+1']
             sd.update({'f-momentum-flux': outdata[index0:index1, :]})
-        else:
-            sd.update({'f-particle-flux': [],
-                       'f-energy-flux': [], 'f-momentum-flux': []})
 
         # 6. field00(0:mpsi,nfield), nfield=3
-        log.debug("Filling datakeys: %s ..." % str(self._datakeys[16:19]))
+        clog.debug("Filling datakeys: %s ..." % str(self._datakeys[16:19]))
         index0 = sd['mpsi+1'] * sd['nspecies'] * sd['mpdata1d']
         index1 = index0 + sd['mpsi+1']
         sd.update({'field00-phi': outdata[index0:index1, :]})
@@ -166,7 +158,7 @@ class Data1dDigCoreV110922(DigCore):
         sd.update({'field00-fluidne': outdata[index0:index1, :]})
 
         # 7. fieldrms(0:mpsi,nfield)
-        log.debug("Filling datakeys: %s ..." % str(self._datakeys[19:22]))
+        clog.debug("Filling datakeys: %s ..." % str(self._datakeys[19:22]))
         index0, index1 = index1, index1 + sd['mpsi+1']
         sd.update({'fieldrms-phi': outdata[index0:index1, :]})
         index0, index1 = index1, index1 + sd['mpsi+1']
@@ -177,86 +169,97 @@ class Data1dDigCoreV110922(DigCore):
         return sd
 
 
-class FluxFigInfo(PcolorFigInfo):
-    '''Figures of particle, energy and momentum flux of ion, electron, EP.'''
-    __slots__ = ['particle', 'flux']
-    figurenums = ['%s_%s_flux' % (p, f)
-                  for p in ['ion', 'electron', 'fastion']
-                  for f in ['particle', 'energy', 'momentum']]
-    numpattern = r'^%s_%s_flux$' % (
-        r'(?P<particle>(?:ion|electron|fastion))',
-        r'(?P<flux>(?:particle|energy|momentum))')
-
-    def _get_srckey_extrakey(self, fignum):
-        groupdict = self._pre_check_get(fignum, 'particle', 'flux')
-        self.particle = groupdict['particle']
-        self.flux = groupdict['flux']
-        Zkey = '%s-%s-flux' % (self.particle[0], self.flux)
-        return [Zkey], ['gtc/tstep', 'gtc/ndiag']
-
-    def _get_data_X_Y_Z_title_etc(self, data):
-        tunit = data['gtc/tstep'] * data['gtc/ndiag']
-        Z = data['%s-%s-flux' % (self.particle[0], self.flux)]
-        y, x = Z.shape if Z.size > 0 else (0, 0)
-        X, Y = numpy.arange(1, x + 1) * tunit, numpy.arange(0, y)
-        title = '%s %s flux' % (self.particle, self.flux)
-        if self.particle == 'ion':
-            title = 'thermal %s' % title
-        elif self.particle == 'fastion':
-            title = title.replace('fastion', 'fast ion')
-        return dict(X=X, Y=Y, Z=Z, title=title,
-                    xlabel=r'time($R_0/c_s$)', ylabel=r'$r$(mpsi)')
-
-
-class Field00FigInfo(PcolorFigInfo):
-    '''Figures of phi, a_para, fluid_ne of field00'''
-    __slots__ = ['flow']
-    figurenums = ['zonal_%s' % f for f in ['flow', 'current', 'fluidne']]
-    numpattern = r'^zonal_(?P<flow>(?:flow|current|fluidne))$'
-    __keystrdict = {'flow': 'phi', 'current': 'apara', 'fluidne': 'fluidne'}
-
-    def _get_srckey_extrakey(self, fignum):
-        groupdict = self._pre_check_get(fignum, 'flow')
-        self.flow = groupdict['flow']
-        Zkey = 'field00-%s' % self.__keystrdict[self.flow]
-        return [Zkey], ['gtc/tstep', 'gtc/ndiag']
-
-    def _get_data_X_Y_Z_title_etc(self, data):
-        tunit = data['gtc/tstep'] * data['gtc/ndiag']
-        Z = data['field00-%s' % self.__keystrdict[self.flow]]
-        y, x = Z.shape if Z.size > 0 else (0, 0)
-        X, Y = numpy.arange(1, x + 1) * tunit, numpy.arange(0, y)
-        return dict(X=X, Y=Y, Z=Z, title=self.fignum.replace('_', ' '),
-                    xlabel=r'time($R_0/c_s$)', ylabel=r'$r$(mpsi)')
-
-
-class FieldRMSFigInfo(PcolorFigInfo):
-    '''Figures of phi, a_para, fluid_ne of fieldrms'''
-    __slots__ = ['field']
-    figurenums = ['%s_rms' % f for f in ['phi', 'apara', 'fluidne']]
-    numpattern = r'^(?P<field>(?:phi|apara|fluidne))_rms$'
-
-    def _get_srckey_extrakey(self, fignum):
-        groupdict = self._pre_check_get(fignum, 'field')
-        self.field = groupdict['field']
-        return ['fieldrms-%s' % self.field], ['gtc/tstep', 'gtc/ndiag']
-
-    def _get_data_X_Y_Z_title_etc(self, data):
-        tunit = data['gtc/tstep'] * data['gtc/ndiag']
-        Z = data['fieldrms-%s' % self.field]
-        y, x = Z.shape if Z.size > 0 else (0, 0)
-        X, Y = numpy.arange(1, x + 1) * tunit, numpy.arange(0, y)
-        title = r'$%s rms$' % self.field
-        title = title.replace('phi', '\phi').replace('apara', 'A_{\parallel}')
-        return dict(X=X, Y=Y, Z=Z, title=title,
-                    xlabel=r'time($R_0/c_s$)', ylabel=r'$r$(mpsi)')
-
-
-class Data1dLayCoreV110922(LayCore):
+class _Data1dDigger(Digger):
     '''
-    Radial Time Figures
+    :meth:`_dig` for Data1dFluxDigger, Data1dFieldDigger
+    cutoff x, y of data
     '''
     __slots__ = []
-    itemspattern = ['^(?P<section>data1d)$']
-    default_section = 'data1d'
-    figinfoclasses = [FluxFigInfo, Field00FigInfo, FieldRMSFigInfo]
+
+    def _dig(self, **kwargs):
+        '''
+        kwargs
+        ------
+        *tcutoff*: [t0,t1]
+            X[x0:x1], data[:,x0:x1] where t0<=X[x0:x1]<=t1
+        *pcutoff*: [p0,p1]
+            Y[y0:y1], data[y0:y1,:] where p0<=Y[y0:y1]<=p1
+        '''
+        acckwargs = {}
+        data, tstep, ndiag = self.pckloader.get_many(
+            self.srckeys[0], *self.extrakeys)
+        y, x = data.shape
+        dt = tstep * ndiag
+        X, Y = numpy.arange(1, x + 1) * dt, numpy.arange(0, y)
+        x0, x1 = 0, X.size
+        if 'tcutoff' in kwargs:
+            t0, t1 = kwargs['tcutoff']
+            index = numpy.where((X >= t0) & (X < t1 + dt))[0]
+            if index.size > 0:
+                x0, x1 = index[0], index[-1]+1
+                X = X[x0:x1]
+                acckwargs['tcutoff'] = kwargs['tcutoff']
+            else:
+                dlog.warning('Cannot cutoff: %s <= time <= %s!' % (t0, t1))
+        y0, y1 = 0, Y.size
+        if 'pcutoff' in kwargs:
+            p0, p1 = kwargs['pcutoff']
+            index = numpy.where((Y >= p0) & (Y < p1+1))[0]
+            if index.size > 0:
+                y0, y1 = index[0], index[-1]+1
+                Y = Y[y0:y1]
+                acckwargs['pcutoff'] = kwargs['pcutoff']
+            else:
+                dlog.warning('Cannot cutoff: %s <= ipsi <= %s!' % (p0, p1))
+        # update
+        data = data[y0:y1, x0:x1]
+        return dict(time=X, ipsi=Y, Z=data, title=self._get_title(),
+                    xlabel=r'time($R_0/c_s$)', ylabel=r'$r$(mpsi)'), acckwargs
+
+
+class Data1dFluxDigger(_Data1dDigger):
+    '''particle, energy and momentum flux of ion, electron, fastion.'''
+    __slots__ = ['particle']
+    itemspattern = ['^(?P<s>data1d)/(?P<particle>(?:i|e|f))'
+                    + r'-(?P<flux>(?:particle|energy|momentum))-flux']
+    commonpattern = ['gtc/tstep', 'gtc/ndiag']
+    __particles = dict(i='ion', e='electron', f='fastion')
+
+    def _set_fignum(self, numseed=None):
+        self.particle = self.__particles[self.section[1]]
+        self._fignum = '%s_%s_flux' % (self.particle, self.section[2])
+
+    def _get_title(self):
+        title = '%s %s flux' % (self.particle, self.section[2])
+        if self.particle == 'ion':
+            return 'thermal %s' % title
+        elif self.particle == 'fastion':
+            return title.replace('fastion', 'fast ion')
+
+
+field_tex_str = {
+    'phi': r'\phi',
+    'apara': r'A_{\parallel}',
+    'fluidne': r'fluidne'
+}
+
+
+class Data1dFieldDigger(Digger):
+    '''field00 and fieldrms of phi, a_para, fluidne'''
+    __slots__ = []
+    itemspattern = ['^(?P<s>data1d)/field(?P<par>(?:00|rms))'
+                    + '-(?P<field>(?:phi|apara|fluidne))']
+    commonpattern = ['gtc/tstep', 'gtc/ndiag']
+    __cnames = dict(phi='flow', apara='current', fluidne='fluidne')
+
+    def _set_fignum(self, numseed=None):
+        if self.section[1] == '00':
+            self._fignum = 'zonal_%s' % self.__cnames[self.section[2]]
+        else:
+            self._fignum = '%s_rms' % self.section[2]
+
+    def _get_title(self):
+        if self.section[1] == '00':
+            return self.fignum.replace('_', ' ')
+        else:
+            return r'$%s rms$' % field_tex_str[self.section[2]]
