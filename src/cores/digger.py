@@ -8,6 +8,7 @@ Contains Digger core class.
 '''
 
 import re
+import time
 
 from .base import BaseCore, AppendDocstringMeta
 from ..glogger import getGLogger
@@ -128,17 +129,37 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         raise NotImplementedError()
 
     def _dig(self, **kwargs):
-        '''Calculate pickled data.'''
+        '''Calculate pickled data, return accepted kwargs and results.'''
         raise NotImplementedError()
+
+    def str_dig_kwargs(self, kwargs):
+        '''
+        Turn :meth:`dig` *kwargs* to str.
+        Check them in :meth:`dig`.__doc__, and sort by key.
+        Return string like, "k1=1,k2=[2],k3='abc'".
+        '''
+        ckkws = ['%s=%r' % (k, list(v) if isinstance(v, tuple) else v)
+                 for k, v in kwargs.items()
+                 if self.dig.__doc__.find('*%s*' % k) > 0]
+        return ','.join(sorted(ckkws))
 
     def dig(self, **kwargs):
         '''
-        Calculate pickled data get from :attr:`pckloader`,
-        return results in a dict.
+        Calculate pickled data get from :attr:`pckloader`.
+
+        Returns
+        -------
+        results: dict
+        kwargstr: accepted kwargs str
+        time: :meth:`dig` real execution time in seconds
         '''
+        dlog.info("Dig pickled data for %s ..." % self.fullnum)
+        start = time.time()
         try:
-            dlog.info("Dig pickled data for %s ..." % self.fullnum)
-            return self._dig(**kwargs)
+            results, acckwargs = self._dig(**kwargs)
         except Exception:
             dlog.error("%s: can't dig data for %s!"
                        % (self.coreid, self.fullnum), exc_info=1)
+            results, acckwargs = {}, {}
+        end = time.time()
+        return results, self.str_dig_kwargs(acckwargs), end-start
