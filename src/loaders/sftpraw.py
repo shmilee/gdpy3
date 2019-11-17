@@ -119,3 +119,6 @@ class SftpRawLoader(BaseRawLoader):
 
     def key_location(self, key):
         return self._sep.join([self.path, key])
+
+    def beside_path(self, name):
+        return self._sep.join([self.path, name])

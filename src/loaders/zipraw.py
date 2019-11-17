@@ -45,3 +45,6 @@ class ZipRawLoader(BaseRawLoader):
     def _special_get(self, tmpobj, key):
         # BufferedReader -> TextIOWrapper encoding='UTF-8'
         return io.TextIOWrapper(tmpobj.open(key))
+
+    def beside_path(self, name):
+        return '-'.join([self.path[:self.path.rfind('.zip')], name])

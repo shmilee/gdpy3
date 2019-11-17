@@ -46,3 +46,6 @@ class TarRawLoader(BaseRawLoader):
         # bytes -> str
         # BufferedReader -> TextIOWrapper encoding='UTF-8'
         return io.TextIOWrapper(tmpobj.extractfile(key))
+
+    def beside_path(self, name):
+        return '-'.join([self.path[:self.path.rfind('.tar')], name])
