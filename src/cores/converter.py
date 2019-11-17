@@ -52,8 +52,16 @@ class Converter(BaseCore, metaclass=AppendDocstringMeta):
     @classmethod
     def generate_cores(cls, rawloader):
         '''Return generated Core instances for *rawloader*.'''
-        return super(Converter, cls).generate_cores(
+        ccs = super(Converter, cls).generate_cores(
             rawloader, rawloader.filenames)
+        if ccs:
+            group_files = []
+            for cc in ccs:
+                group_files.append((cc.group, cc.short_files))
+            clog.debug("%s: loader, %s; %d group and files, %s."
+                       % (ccs[0].coreid, rawloader.path,
+                          len(group_files), group_files))
+        return ccs
 
     def __init__(self, rawloader, section, items, common):
         super(Converter, self).__init__(rawloader, section, items, common)
@@ -64,8 +72,6 @@ class Converter(BaseCore, metaclass=AppendDocstringMeta):
             self._files = self.items
             self._short_files = self._get_short_files()
         self._group = '/'.join(self.section)
-        clog.debug("%s: loader, %s; files, %s; group, %s."
-                   % (self.coreid, rawloader.path, self.short_files, self.group))
 
     def _get_short_files(self):
         '''

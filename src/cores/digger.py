@@ -78,6 +78,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         dcss = super(Digger, cls).generate_cores(
             pckloader, pckloader.datakeys, duplicate=cls.numseeds)
         res = []
+        fullnums = []
         if cls.numseeds:
             for dcs in dcss:
                 assert len(cls.numseeds) == len(dcs)
@@ -87,8 +88,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
                         dc._set_group()
                         dc._set_fignum(numseed=cls.numseeds[idx])
                         res.append(dc)
-                        dlog.debug("%s: loader, %s; fullnum, %s."
-                                   % (dc.coreid, pckloader.path, dc.fullnum))
+                        fullnums.append(dc.fullnum)
 
         else:
             for dc in dcss:
@@ -96,8 +96,11 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
                     dc._set_group()
                     dc._set_fignum()
                     res.append(dc)
-                    dlog.debug("%s: loader, %s; fullnum, %s."
-                               % (dc.coreid, pckloader.path, dc.fullnum))
+                    fullnums.append(dc.fullnum)
+        if res:
+            dlog.debug("%s: loader, %s; %d fullnums, %s."
+                       % (res[0].coreid, pckloader.path,
+                          len(fullnums), fullnums))
         return res
 
     def check_needed_datakeys(self):
