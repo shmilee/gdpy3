@@ -55,7 +55,7 @@ class Hdf5PckLoader(BasePckLoader):
             if isinstance(obj, h5py.Dataset) else None)
         return mykeys
 
-    #def _special_getgroups(self, tmpobj):
+    # def _special_getgroups(self, tmpobj):
     #   # TODO: {test, te, te/st} -> {test, te/st}
     #    mygroups = []
     #    tmpobj.visititems(
