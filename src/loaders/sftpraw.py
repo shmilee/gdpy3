@@ -7,7 +7,9 @@ Contains SFTP directory raw loader class.
 '''
 
 import io
+import os
 import stat
+import tempfile
 import urllib.parse
 try:
     import paramiko
@@ -121,4 +123,5 @@ class SftpRawLoader(BaseRawLoader):
         return self._sep.join([self.path, key])
 
     def beside_path(self, name):
-        return self._sep.join([self.path, name])
+        return os.path.join(tempfile.tempdir, '%s-%s' % (
+            self.rmt_path.replace('/', '-'), name))
