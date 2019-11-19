@@ -170,7 +170,7 @@ class HistoryParticleDigger(Digger):
     numseeds = ['', 'flux']
 
     def _set_fignum(self, numseed=None):
-        self._fignum = '_'.join((self.section[1], self.numseed))
+        self._fignum = '_'.join((self.section[1], numseed))
 
     def _dig(self, **kwargs):
         data, ndstep, tstep, ndiag = self.pckloader.get_many(

@@ -133,8 +133,8 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
         y, x = Z.shape
         # if Z size is too large, cal corr will be very slow
         max_x, max_y = 400, 1536
-        step_x = np.round(x/max_x) if x > max_x else 1
-        step_y = np.round(y/max_y) if y > max_y else 1
+        step_x = round(x/max_x) if x > max_x else 1
+        step_y = round(y/max_y) if y > max_y else 1
         if step_x != 1 or step_y != 1:
             Z = Z[::step_y, ::step_x]
             dlog.parm('Too large data of phi(zeta,psi), slice it: %s -> %s'

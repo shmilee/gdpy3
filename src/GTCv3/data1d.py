@@ -244,7 +244,7 @@ field_tex_str = {
 }
 
 
-class Data1dFieldDigger(Digger):
+class Data1dFieldDigger(_Data1dDigger):
     '''field00 and fieldrms of phi, a_para, fluidne'''
     __slots__ = []
     itemspattern = ['^(?P<s>data1d)/field(?P<par>(?:00|rms))'
