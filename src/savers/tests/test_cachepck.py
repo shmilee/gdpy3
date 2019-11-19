@@ -41,7 +41,7 @@ class TestCachePckSaver(unittest.TestCase):
         self.assertTrue(saver.write('grp/sub', {'n': 1}))
         saver.close()
         store = saver.get_store()
-        inkeys = {'ver', 'num', 'list', 'group/desc', 'grp/sub/n'}
+        inkeys = {'pathstr', 'ver', 'num', 'list', 'group/desc', 'grp/sub/n'}
         outkeys = set()
         for k in store.keys():
             if isinstance(store[k], dict):

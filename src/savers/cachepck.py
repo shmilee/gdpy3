@@ -34,7 +34,7 @@ class CachePckSaver(BasePckSaver):
         return self._storeobj
 
     def _open_new(self):
-        return {}
+        return dict(pathstr=self.path)
 
     def _write(self, group, data):
         try:
