@@ -166,3 +166,20 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
             results, acckwargs = {}, {}
         end = time.time()
         return results, self.str_dig_kwargs(acckwargs), end-start
+
+    def _post_dig(self, results):
+        '''post-dig results'''
+        raise NotImplementedError()
+
+    def post_dig(self, results):
+        '''
+        post-dig results
+        Return new results and template name in exporter
+        '''
+        try:
+            new_results, template = self._post_dig(results)
+        except Exception:
+            dlog.error("%s: can't post-dig data for %s!"
+                       % (self.coreid, self.fullnum), exc_info=1)
+            new_results, template = results, None
+        return new_results, template

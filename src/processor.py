@@ -317,10 +317,10 @@ class Processor(object):
                            % (self.name, respath), exc_info=1)
                 self.resfilesaver = None
 
-    def dig(self, fignum, **kwargs):
+    def dig(self, fignum, post=True, **kwargs):
         '''
         Get digged results of *fignum*.
-        Return fignum/kwargstr, results.
+        Return fignum/kwargstr, results and template name if *post* True.
         Use :meth:`dig_doc` to see *kwargs* for *fignum*.
         '''
         if not self.pckloader:
@@ -354,7 +354,11 @@ class Processor(object):
                 basekeys = [os.path.basename(k) for k in allkeys]
                 resultstuple = gotresloader.get_many(*allkeys)
                 results = {k: v for k, v in zip(basekeys, resultstuple)}
-                return gotfignum, results
+                if post:
+                    results, template = digcore.post_dig(results)
+                    return gotfignum, results, template
+                else:
+                    return gotfignum, results
         # dig new
         results, acckwargstr, digtime = digcore.dig(**kwargs)
         if not acckwargstr:
@@ -378,7 +382,11 @@ class Processor(object):
                     self.resfilesaver.write(gotfignum, results)
             # update resfileloader & diggednums
             self.resfileloader = get_pckloader(self.resfilesaver.get_store())
-        return accfignum, results
+        if post:
+            results, template = digcore.post_dig(results)
+            return gotfignum, results, template
+        else:
+            return accfignum, results
 
     def dig_doc(self, fignum, see='help'):
         '''
