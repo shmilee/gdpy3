@@ -213,8 +213,11 @@ class _Data1dDigger(Digger):
                 dlog.warning('Cannot cutoff: %s <= ipsi <= %s!' % (p0, p1))
         # update
         data = data[y0:y1, x0:x1]
-        return dict(time=X, ipsi=Y, Z=data, title=self._get_title(),
-                    xlabel=r'time($R_0/c_s$)', ylabel=r'$r$(mpsi)'), acckwargs
+        return dict(X=X, Y=Y, Z=data, title=self._get_title()), acckwargs
+
+    def _post_dig(self, results):
+        results.update(dict(xlabel=r'time($R_0/c_s$)', ylabel=r'$r$(mpsi)'))
+        return results, 'tmpl-contourf'
 
 
 class Data1dFluxDigger(_Data1dDigger):

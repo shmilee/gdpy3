@@ -107,8 +107,12 @@ class SnapPhiZetaPsiDigger(Digger):
         title = r'$\phi(\zeta,\psi)$, %s, %s' % (self.theta, self.timestr)
         Z = self.pckloader.get(self.srckeys[0])
         y, x = Z.shape
-        return dict(X=np.arange(0, x), Y=np.arange(0, y) / y * 2 * np.pi, Z=Z,
-                    title=title, xlabel=r'$\psi$(mpsi)', ylabel=r'$\zeta$'), {}
+        return dict(X=np.arange(0, x), Y=np.arange(0, y) / y * 2 * np.pi,
+                    Z=Z, title=title), {}
+
+    def _post_dig(self, results):
+        results.update(dict(xlabel=r'$\psi$(mpsi)', ylabel=r'$\zeta$'))
+        return results, 'tmpl-contourf'
 
 
 class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
@@ -166,6 +170,24 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
             Lpsi = X[-1]  # over mdpsi
             dlog.parm("Increase mdpsi to find correlation length!")
         dlog.parm("Find correlation length: Lpsi=%s" % Lpsi)
-        return dict(X=X, Y=Y, Z=tau, mtau=mtau, Lpsi=Lpsi,
-                    title=title, xlabel=r'$d\psi$(mpsi)', ylabel=r'$d\zeta$'
-                    ), acckwargs
+        return dict(X=X, Y=Y, tau=tau, mtau=mtau, Lpsi=Lpsi,
+                    title=title), acckwargs
+
+    def _post_dig(self, results):
+        r = results
+        ax1_calc = dict(X=r['X'], Y=r['Y'], Z=r['tau'], title=r['title'],
+                        xlabel=r'$d\psi$(mpsi)', ylabel=r'$d\zeta$',
+                        plot_method='contourf')
+        ax2_calc = dict(
+            LINE=[
+                (r['X'], r['mtau'], r'$C_r(\Delta \psi)$'),
+                ([r['X'][0], r['X'][-1]], [1/np.e, 1/np.e], '1/e'),
+            ],
+            title=r'$\phi$ Correlation$(d\psi)$, C(%s)=1/e' % r['Lpsi'],
+            xlim=[r['X'][0], r['X'][-1]],
+            ylim=[0 if r['mtau'].min() > 0 else r['mtau'].min(), 1],
+        )
+        return dict(zip_results=[
+            ('template_pcolor_axstructs', 211, ax1_calc),
+            ('template_line_axstructs', 212, ax2_calc),
+        ]), 'tmpl-z111p'

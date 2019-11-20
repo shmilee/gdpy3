@@ -160,9 +160,15 @@ class EquilibriumPsi1DDigger(Digger):
 
     def _dig(self, **kwargs):
         data = self.pckloader.get(self.srckeys[0])
-        return dict(
-            X=data[0], Y=data[self._misc[self._numseed]['index']],
-            title=self._misc[self._numseed]['title'], xlabel=r'$\psi$'), {}
+        X = data[0]
+        return dict(X=X, xlim=[min(X), max(X)],
+                    Y=data[self._misc[self._numseed]['index']],
+                    title=self._misc[self._numseed]['title']), {}
+
+    def _post_dig(self, results):
+        r = results
+        return dict(LINE=[(r['X'], r['Y'])], title=r['title'],
+                    xlabel=r'$\psi$', xlim=r['xlim']), 'tmpl-line'
 
 
 class EquilibriumRadial1DDigger(Digger):
@@ -183,10 +189,15 @@ class EquilibriumRadial1DDigger(Digger):
 
     def _dig(self, **kwargs):
         data, nrad = self.pckloader.get_many(*self.srckeys, *self.extrakeys)
-        return dict(
-            X=data[23] / data[23][nrad - 1],
-            Y=data[self._misc[self._numseed]['index']],
-            title=self._misc[self._numseed]['title'], xlabel=r'radius $r$'), {}
+        X = data[23] / data[23][nrad - 1]
+        return dict(X=X, xlim=[min(X), max(X)],
+                    Y=data[self._misc[self._numseed]['index']],
+                    title=self._misc[self._numseed]['title']), {}
+
+    def _post_dig(self, results):
+        r = results
+        return dict(LINE=[(r['X'], r['Y'])], title=r['title'],
+                    xlabel=r'radius $r$', xlim=r['xlim']), 'tmpl-line'
 
 
 class EquilibriumErro1DDigger(Digger):
@@ -204,10 +215,15 @@ class EquilibriumErro1DDigger(Digger):
 
     def _dig(self, **kwargs):
         data, nrad = self.pckloader.get_many(*self.srckeys, *self.extrakeys)
-        return dict(
-            X=numpy.array(range(1, nrad + 1)) * (numpy.pi / 2 / nrad),
-            Y=data[self._misc[self._numseed]['index']],
-            title=self._misc[self._numseed]['title'], xlabel=r'$\theta$'), {}
+        X = numpy.array(range(1, nrad + 1)) * (numpy.pi / 2 / nrad),
+        return dict(X=X, xlim=[min(X), max(X)],
+                    Y=data[self._misc[self._numseed]['index']],
+                    title=self._misc[self._numseed]['title']), {}
+
+    def _post_dig(self, results):
+        r = results
+        return dict(LINE=[(r['X'], r['Y'])], title=r['title'],
+                    xlabel=r'$\theta$', xlim=r['xlim']), 'tmpl-line'
 
 
 class EquilibriumPoloidalDigger(Digger):
@@ -223,8 +239,11 @@ class EquilibriumPoloidalDigger(Digger):
 
     def _dig(self, **kwargs):
         Z, X, Y = self.pckloader.get_many(*self.srckeys)
-        return dict(X=X, Y=Y, Z=Z, title=self.fignum,
-                    xlabel='R', ylabel='Z'), {}
+        return dict(X=X, Y=Y, Z=Z, title=self.fignum), {}
+
+    def _post_dig(self, results):
+        results.update(dict(xlabel=r'$R(R_0)$', ylabel=r'$Z(R_0)$'))
+        return results, 'tmpl-contourf_aspect_equal'
 
 
 class EquilibriumMeshDigger(Digger):
@@ -251,6 +270,12 @@ class EquilibriumMeshDigger(Digger):
             LINE2.append((x, y))
         return dict(LINEs1=numpy.array(LINE1), LINEs2=numpy.array(LINE2),
                     title='poloidal mesh', xlabel='R', ylabel='Z'), {}
+
+    def _post_dig(self, results):
+        r = results
+        return dict(
+            LINE=list(r['LINEs1']) + list(r['LINEs2']), title=r['title'],
+            xlabel=r'$R(R_0)$', ylabel=r'$Z(R_0)$'), 'tmpl-line_aspect_equal'
 
 
 class EquilibriumThetaDigger(Digger):
@@ -297,4 +322,6 @@ class EquilibriumThetaDigger(Digger):
             title = self.section[1]
         Y = numpy.append(Y, Y[0])
         title = r'%s ($\theta$) at psi=isp=%d' % (title, isp)
-        return dict(X=X, Y=Y, title=title, xlabel=r'$\theta$'), acckwargs
+        return dict(X=X, Y=Y, title=title, xlim=[min(X), max(X)]), acckwargs
+
+    _post_dig = EquilibriumErro1DDigger._post_dig

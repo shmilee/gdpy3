@@ -194,6 +194,30 @@ class HistoryParticleDigger(Digger):
                 energy=data[8],
                 title='particle %s' % self.fignum), {}
 
+    def _post_dig(self, results):
+        r = results
+        if self.fignum == self.section[1]:
+            YINFO = [{
+                'left': [(r['density'], r'density $\delta f$')],
+                'right': [(r['entropy'], r'entropy $\delta f^2$')],
+                'lylabel': r'$\delta f$', 'rylabel': r'$\delta f^2$',
+            }, {
+                'left': [(r['flow'], r'flow u')],
+                'right': [(r['deltau'], r'$\delta u$')],
+                'lylabel': '$u$', 'rylabel': r'$\delta u$',
+            }, {
+                'left': [(r['energy'], r'energy $E-1.5$')],
+                'right': [(r['deltaE'], r'entropy $\delta E$')],
+                'lylabel': r'$E$', 'rylabel': r'$\delta E$',
+            }]
+        else:
+            YINFO = [{'left': [(r['particle'], 'particle flux')], 'right': []},
+                     {'left': [(r['momentum'], 'momentum flux')], 'right': []},
+                     {'left': [(['energy'], 'energy flux')], 'right': []}]
+        return dict(X=r['time'], YINFO=YINFO, title=r['title'],
+                    xlabel=r'time($R_0/c_s$)', xlim=[0, np.max(r['time'])]
+                    ), 'tmpl-sharextwinx'
+
 
 field_tex_str = {
     'phi00': r'\phi_{p00}',
@@ -207,16 +231,16 @@ field_tex_str = {
 
 class HistoryFieldDigger(Digger):
     '''phi, apara, fluidne history'''
-    __slots__ = []
+    __slots__ = ['_fstr']
     itemspattern = [r'^(?P<s>history)/fieldtime-' +
                     '(?P<field>(?:phi|apara|fluidne))$']
     commonpattern = ['history/ndstep', 'gtc/tstep', 'gtc/ndiag']
 
     def _set_fignum(self, numseed=None):
         self._fignum = self.section[1]
+        self._fstr = field_tex_str[self._fignum]
 
     def _dig(self, **kwargs):
-        fstr = field_tex_str[self.fignum]
         data, ndstep, tstep, ndiag = self.pckloader.get_many(
             self.srckeys[0], *self.extrakeys)
         return dict(
@@ -225,8 +249,21 @@ class HistoryFieldDigger(Digger):
             field00=data[1],
             field00rms=data[2],
             fieldrms=data[3],
-            title=r'$%s (\theta=\zeta=0), %s00 (i=iflux)$' % (fstr, fstr)
+            title=r'$%s (\theta=\zeta=0), %s00 (i=iflux)$' % (
+                self._fstr, self._fstr)
         ), {}
+
+    def _post_dig(self, results):
+        r = results
+        YINFO = [{'left': [(r['field'], '$%s$' % self._fstr)],
+                  'right': [(r['fieldrms'], '$%s RMS$' % self._fstr)],
+                  'lylabel': '$%s$' % self._fstr, 'rylabel': '$RMS$', },
+                 {'left': [(r['field00'], '$%s00$' % self._fstr)],
+                  'right': [(r['field00rms'], '$%s00 RMS$' % self._fstr)],
+                  'lylabel': '$%s00$' % self._fstr, 'rylabel': '$RMS$', }]
+        return dict(X=r['time'], YINFO=YINFO, title=r['title'],
+                    xlabel=r'time($R_0/c_s$)', xlim=[0, np.max(r['time'])]
+                    ), 'tmpl-sharextwinx'
 
 
 class HistoryFieldModeDigger(Digger):
@@ -365,3 +402,50 @@ class HistoryFieldModeDigger(Digger):
         else:
             idx1, idx2, nT, omega = 0, 1, 0, 0
         return normy, idx1, idx2, nT, omega
+
+    def _post_dig(self, results):
+        r = results
+        ax1_calc = dict(
+            LINE=[(r['time'], r['yreal'], 'real component'),
+                  (r['time'], r['yimag'], 'imag component'), ],
+            title=r['title1'],
+            xlim=[0, np.max(r['time'])], xlabel=r'time($R_0/c_s$)',
+            legend_kwargs=dict(loc='upper left'),
+        )
+        labelgrowth = r'Fitting, $\gamma=%.6f$' % r['growth']
+        ax2_calc = dict(
+            LINE=[(r['time'], r['logya']),
+                  (r['fittime'], r['fitya'], labelgrowth)],
+            title=r['title2'],
+            xlim=[0, np.max(r['time'])], xlabel=r'time($R_0/c_s$)',
+            legend_kwargs=dict(loc='lower right'),
+        )
+        ax3_calc = dict(
+            LINE=[
+                (r['time'], r['normyreal'], 'real component'),
+                (r['time'], r['normyimag'], 'imag component'),
+                (r['measurerealtime'], r['measurereal'],
+                 r'$\omega=%.6f,nT=%.1f$' % (r['omega_real'], r['nT_real'])),
+                (r['measureimagtime'], r['measureimag'],
+                 r'$\omega=%.6f,nT=%.1f$' % (r['omega_imag'], r['nT_imag'])),
+            ],
+            xlim=[0, np.max(r['time'])], xlabel=r'time($R_0/c_s$)',
+            title=r['title3'],
+        )
+        ymin = min(min(r['measurereal']), min(r['measureimag']))
+        ymax = max(max(r['measurereal']), max(r['measureimag']))
+        if (min(min(r['normyreal']), min(r['normyimag'])) < 20 * ymin
+                or max(max(r['normyreal']), max(r['normyimag'])) > 20 * ymax):
+            ax3_calc['ylim'] = [3 * ymin, 3 * ymax]
+        max_p, min_p = max(r['spectrum_p']), min(r['spectrum_p'])
+        ax4_calc = dict(
+            LINE=[(r['spectrum_x'], r['spectrum_p'], 'power spectral'),
+                  ([r['spectrum_omega'], r['spectrum_omega']], [min_p, max_p],
+                      r'$\omega_{pmax}=%.6f$' % r['spectrum_omega'])],
+            title=r['title4'], xlabel=r'$\omega$($c_s/R_0$)')
+        return dict(zip_results=[
+            ('template_line_axstructs', 221, ax1_calc),
+            ('template_line_axstructs', 222, ax2_calc),
+            ('template_line_axstructs', 223, ax3_calc),
+            ('template_line_axstructs', 224, ax4_calc),
+        ]), 'tmpl-z111p'

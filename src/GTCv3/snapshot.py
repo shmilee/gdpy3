@@ -192,6 +192,31 @@ class SnapshotProfilePdfDigger(Digger):
                 title=title,
                 xlabel='nvgrid'), {}
 
+    def _post_dig(self, results):
+        r = results
+        if self.section[2] == 'profile':
+            X = r['ipsi']
+            YINFO = [{'left': [(r['density'], 'density f')],
+                      'right': [(r['densitydf'], r'density $\delta f$')],
+                      'lylabel': '$f$', 'rylabel': r'$\delta f$'},
+                     {'left': [(r['flow'], 'flow f')],
+                      'right': [(r['flowdf'], r'flow $\delta f$')],
+                      'lylabel': '$f$', 'rylabel': r'$\delta f$'},
+                     {'left': [(r['energy'], 'energy f')],
+                      'right': [(r['energydf'], r'energy $\delta f$')],
+                      'lylabel': '$f$', 'rylabel': r'$\delta f$'}]
+        else:
+            X = r['jvgrid']
+            YINFO = [{'left': [(r['energy'], 'energy f')],
+                      'right': [(r['energydf'], r'energy $\delta f$')],
+                      'lylabel': '$f$', 'rylabel': r'$\delta f$'},
+                     {'left': [(r['pitchangle'], 'pitch angle f')],
+                      'right': [(r['pitchangledf'], r'pitch angle $\delta f$')],
+                      'lylabel': '$f$', 'rylabel': r'$\delta f$'}]
+        return dict(X=X, YINFO=YINFO, title=r['title'],
+                    xlabel=r['xlabel'], xlim=[0, np.max(X)]
+                    ), 'tmpl-sharextwinx'
+
 
 field_tex_str = {
     'phi': r'\phi',
@@ -229,7 +254,17 @@ class SnapshotFieldFluxPloidalDigger(Digger):
             return dict(
                 X=X, Z=Z, field=data,
                 title=r'$%s$ on ploidal plane, %s' % (fstr, title)), {}
-        # set_aspect 'equal'
+
+    def _post_dig(self, results):
+        r = results
+        if self.section[1] == 'flux':
+            return dict(X=r['zeta'], Y=r['theta'], Z=r['field'],
+                        title=r['title'], xlabel=r'$\zeta$', ylabel=r'$\theta$'
+                        ), 'tmpl-contourf_aspect_equal'
+        else:
+            return dict(X=r['X'], Y=r['Z'], Z=r['field'],
+                        title=r['title'], xlabel=r'$R(R_0)$', ylabel=r'$Z(R_0)$'
+                        ), 'tmpl-contourf_aspect_equal'
 
 
 class SnapshotFieldSpectrumDigger(Digger):
@@ -296,6 +331,20 @@ class SnapshotFieldSpectrumDigger(Digger):
             title=r'$%s$, %s' % (fstr, timestr),
         ), acckwargs
 
+    def _post_dig(self, results):
+        r = results
+        ax1_calc = dict(LINE=[(r['jtgrid'], r['poloidal_spectrum'])],
+                        xlabel='mtgrid', ylabel='poloidal spectrum',
+                        xlim=[0, r['mmode']])
+        ax2_calc = dict(LINE=[(r['ktoroidal'], r['parallel_spectrum'])],
+                        xlabel='mtoroidal', ylabel='parallel spectrum',
+                        xlim=[1, r['pmode']])
+        return dict(zip_results=[
+            ('template_line_axstructs', 211, ax1_calc),
+            ('template_line_axstructs', 212, ax2_calc),
+        ], suptitle=r'%s, m=%d, p=%d' % (
+            r['title'], r['mmode'], r['pmode'])), 'tmpl-z111p'
+
 
 class SnapshotFieldProfileDigger(Digger):
     '''field and rms radius poloidal profile'''
@@ -351,3 +400,22 @@ class SnapshotFieldProfileDigger(Digger):
             theta=X2, poloidal_profile=Y21, rms_poloidal_profile=Y22,
             title2='poloidal profile: ipsi=%d' % ipsi,
             suptitle=r'$%s$, %s' % (fstr, timestr)), acckwargs
+
+    def _post_dig(self, results):
+        r = results
+        ax1_calc = dict(
+            X=r['ipsi'], xlabel='r(mpsi)',
+            YINFO=[{'left': [(r['radius_profile'], 'point value')],
+                    'right': [(r['rms_radius_profile'], 'rms')],
+                    'lylabel': 'point value', 'rylabel': 'RMS'}],
+            title=r['title1'])
+        ax2_calc = dict(
+            X=r['theta'], xlabel=r'$\theta$',
+            YINFO=[{'left': [(r['poloidal_profile'], 'point value')],
+                    'right': [(r['rms_poloidal_profile'], 'rms')],
+                    'lylabel': 'point value', 'rylabel': 'RMS'}],
+            title=r['title2'])
+        return dict(zip_results=[
+            ('template_sharex_twinx_axstructs', 211, ax1_calc),
+            ('template_sharex_twinx_axstructs', 212, ax2_calc),
+        ], suptitle=r['suptitle']), 'tmpl-z111p'

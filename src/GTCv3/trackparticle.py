@@ -150,3 +150,33 @@ class TrackParticleOrbitDigger(Digger):
         except Exception:
             dlog.warning('Cannot calculate dr of trapped ions!', exc_info=1)
             return {}
+
+    def _post_dig(self, results):
+        r = results
+        if self.dimension == '2d':
+            if r.get('dr', None):
+                LINE = [
+                    (r['R'], r['Z'], r'$\Delta R$ = %.3f' % r['dr']),
+                    ([r['R1'], r['R1']], [-0.6 * r['rlim'], 0.6 * r['rlim']],
+                        'R=%.3f' % r['R1']),
+                    ([r['R2'], r['R2']], [-0.6 * r['rlim'], 0.6 * r['rlim']],
+                        'R=%.3f' % r['R2']),
+                    ([r['r0'], r['r0'] + r['rlim']], [0, 0]),
+                    ([r['r0'], r['minR']], [0, r['minZ']],
+                        r'$\theta$ = %.2f' % r['thetaM']),
+                ]
+            else:
+                LINE = [(r['R'], r['Z'])]
+            return dict(LINE=LINE, title=r['title'], xlabel='R(cm)$',
+                        ylabel='Z(cm)'), 'tmpl-line_aspect_equal'
+        else:
+            scale = [-r['rlim'], r['rlim']]
+            AxStru = dict(
+                layout=[111, dict(
+                    title=r['title'], xlabel='X(cm)', ylabel='Y(cm)',
+                    zlabel='Z(cm)', projection='3d')],
+                data=[[1, 'plot', (r['X'], r['Y'], r['Z']), dict(linewidth=1)],
+                      [2, 'set_aspect', ('equal',), dict()],
+                      [3, 'auto_scale_xyz', (scale, scale, scale), dict()]]
+            )
+            return dict(axesstructures=[AxStru]), 'tmpl-raw_matplotlib'
