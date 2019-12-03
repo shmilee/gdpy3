@@ -289,9 +289,6 @@ class SnapshotFieldSpectrumDigger(Digger):
         '''
         acckwargs = {}
         fluxdata, mtgrid1, mtoroidal = self.pckloader.get_many(*self.srckeys)
-        if fluxdata.size == 0:
-            log.warning("No data for %s." % self.fullnum)
-            return
         if fluxdata.shape != (mtgrid1, mtoroidal):
             log.error("Invalid fluxdata shape!")
             return
@@ -367,9 +364,6 @@ class SnapshotFieldProfileDigger(Digger):
         '''
         acckwargs = {}
         pdata, mpsi1, mtgrid1 = self.pckloader.get_many(*self.srckeys)
-        if pdata.size == 0:
-            log.warning("No data for %s." % self.fullnum)
-            return
         if pdata.shape != (mtgrid1, mpsi1):
             log.error("Invalid poloidata shape!")
             return
