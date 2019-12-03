@@ -33,12 +33,13 @@ class Processor(object):
     ressaver: cachepcksaver object to save dig results
     resfilesaver: pcksaver object to save long time dig results
     diggers: digger cores to calculate pickled data to results
-    availablenums: list
-        figure num(label)s in this processor
+    availablelabels: list
+        figure labels in this processor, like 'group/fignum'
     resloader: cachepckloader object to get dig results
     resfileloader: pckloader object to get long time dig results
-    diggednums: set
-        fignums/kwargstr digged in ressaver or resfilesaver
+    diggedlabels: set
+        figlabels/kwargstr digged in ressaver or resfilesaver
+        like 'group/fignum/a=1,b=2'
 
     Notes
     -----
@@ -175,8 +176,8 @@ class Processor(object):
     # # Start Dig Part
 
     __slots__.extend(['_pckloader', '_ressaver', '_resfilesaver',
-                      '_diggers', '_availablenums_lib', '_availablenums',
-                      '_resloader', '_resfileloader', '_diggednums'])
+                      '_diggers', '_availablelabels_lib', '_availablelabels',
+                      '_resloader', '_resfileloader', '_diggedlabels'])
     DiggerCores = []
     execution_time_limit = 30
 
@@ -206,8 +207,8 @@ class Processor(object):
                 self._diggers.extend(Dc.generate_cores(pckloader))
         else:
             self._pckloader = None
-        self._availablenums_lib = {dc.fullnum: dc for dc in self._diggers}
-        self._availablenums = sorted(self._availablenums_lib.keys())
+        self._availablelabels_lib = {dc.figlabel: dc for dc in self._diggers}
+        self._availablelabels = sorted(self._availablelabels_lib.keys())
 
     pckloader = property(_get_pckloader, _set_pckloader)
 
@@ -216,8 +217,8 @@ class Processor(object):
         return self._diggers
 
     @property
-    def availablenums(self):
-        return self._availablenums
+    def availablelabels(self):
+        return self._availablelabels
 
     # save results
     def _get_ressaver(self):
@@ -247,11 +248,11 @@ class Processor(object):
         return self._resloader
 
     def _set_resloader(self, resloader):
-        if not getattr(self, '_diggednums', None):
-            self._diggednums = set()
+        if not getattr(self, '_diggedlabels', None):
+            self._diggedlabels = set()
         if resloader and self.__check_pckloader(resloader):
             self._resloader = resloader
-            self._diggednums.update(resloader.datagroups)
+            self._diggedlabels.update(resloader.datagroups)
         else:
             self._resloader = None
 
@@ -261,19 +262,19 @@ class Processor(object):
         return self._resfileloader
 
     def _set_resfileloader(self, resfileloader):
-        if not getattr(self, '_diggednums', None):
-            self._diggednums = set()
+        if not getattr(self, '_diggedlabels', None):
+            self._diggedlabels = set()
         if resfileloader and self.__check_pckloader(resfileloader):
             self._resfileloader = resfileloader
-            self._diggednums.update(resfileloader.datagroups)
+            self._diggedlabels.update(resfileloader.datagroups)
         else:
             self._resfileloader = None
 
     resfileloader = property(_get_resfileloader, _set_resfileloader)
 
     @property
-    def diggednums(self):
-        return self._diggednums
+    def diggedlabels(self):
+        return self._diggedlabels
 
     def set_prefer_ressaver(self, ext2='digged', overwrite=False):
         '''
@@ -317,11 +318,11 @@ class Processor(object):
                            % (self.name, respath), exc_info=1)
                 self.resfilesaver = None
 
-    def dig(self, fignum, post=True, **kwargs):
+    def dig(self, figlabel, post=True, **kwargs):
         '''
-        Get digged results of *fignum*.
-        Return fignum/kwargstr, results and template name if *post* True.
-        Use :meth:`dig_doc` to see *kwargs* for *fignum*.
+        Get digged results of *figlabel*.
+        Return figlabel/kwargstr, results and template name if *post* True.
+        Use :meth:`dig_doc` to see *kwargs* for *figlabel*.
         '''
         if not self.pckloader:
             plog.error("%s: Need a pckloader object!" % self.name)
@@ -329,66 +330,67 @@ class Processor(object):
         if not self.ressaver:
             plog.error("%s: Need a results pcksaver object!" % self.name)
             return
-        if fignum not in self.availablenums:
-            plog.error("%s: Figure %s not found!" % (self.name, fignum))
+        if figlabel not in self.availablelabels:
+            plog.error("%s: Figure %s not found!" % (self.name, figlabel))
             return
-        digcore = self._availablenums_lib[fignum]
+        digcore = self._availablelabels_lib[figlabel]
         gotkwargstr = digcore.str_dig_kwargs(kwargs) or 'DEFAULT'
-        gotfignum = '%s/%s' % (fignum, gotkwargstr)
+        gotfiglabel = '%s/%s' % (figlabel, gotkwargstr)
         # find old
-        if gotfignum in self.diggednums:
-            if gotfignum in self.resloader.datagroups:
+        if gotfiglabel in self.diggedlabels:
+            if gotfiglabel in self.resloader.datagroups:
                 # use resloader first
                 gotresloader = self.resloader
             elif (self.resfilesaver
-                    and gotfignum in self.resfileloader.datagroups):
+                    and gotfiglabel in self.resfileloader.datagroups):
                 gotresloader = self.resfileloader
             else:
                 gotresloader = None
-                plog.error('%s: Not found %s in diggednums!'
-                           % (self.name, gotfignum))
+                plog.error('%s: Not found %s in diggedlabels!'
+                           % (self.name, gotfiglabel))
             if gotresloader:
                 plog.info('%s, find %s digged results in %s.'
-                          % (self.name, gotfignum, gotresloader.path))
-                allkeys = gotresloader.refind('^%s/' % gotfignum)
+                          % (self.name, gotfiglabel, gotresloader.path))
+                allkeys = gotresloader.refind(
+                    '^%s/' % re.escape(gotfiglabel))
                 basekeys = [os.path.basename(k) for k in allkeys]
                 resultstuple = gotresloader.get_many(*allkeys)
                 results = {k: v for k, v in zip(basekeys, resultstuple)}
                 if post:
                     results, template = digcore.post_dig(results)
-                    return gotfignum, results, template
+                    return gotfiglabel, results, template
                 else:
-                    return gotfignum, results
+                    return gotfiglabel, results
         # dig new
         results, acckwargstr, digtime = digcore.dig(**kwargs)
         if not acckwargstr:
             acckwargstr = 'DEFAULT'
-        accfignum = '%s/%s' % (fignum, acckwargstr)
+        accfiglabel = '%s/%s' % (figlabel, acckwargstr)
         with self.ressaver:
-            self.ressaver.write(accfignum, results)
+            self.ressaver.write(accfiglabel, results)
             if gotkwargstr == 'DEFAULT' and acckwargstr != gotkwargstr:
                 # TODO link double cache
-                self.ressaver.write(gotfignum, results)
-        # update resloader & diggednums
+                self.ressaver.write(gotfiglabel, results)
+        # update resloader & diggedlabels
         self.resloader = get_pckloader(self.ressaver.get_store())
         # long execution time
         if self.resfilesaver and digtime > self.execution_time_limit:
             with self.resfilesaver:
                 plog.info('%s, save digged results in %s.'
                           % (self.name, self.resfilesaver.path))
-                self.resfilesaver.write(accfignum, results)
+                self.resfilesaver.write(accfiglabel, results)
                 if gotkwargstr == 'DEFAULT' and acckwargstr != gotkwargstr:
                     # TODO link double cache
-                    self.resfilesaver.write(gotfignum, results)
-            # update resfileloader & diggednums
+                    self.resfilesaver.write(gotfiglabel, results)
+            # update resfileloader & diggedlabels
             self.resfileloader = get_pckloader(self.resfilesaver.get_store())
         if post:
             results, template = digcore.post_dig(results)
-            return gotfignum, results, template
+            return gotfiglabel, results, template
         else:
-            return accfignum, results
+            return accfiglabel, results
 
-    def dig_doc(self, fignum, see='help'):
+    def dig_doc(self, figlabel, see='help'):
         '''
         help(digcore.dig) or digcore.dig.__doc__
 
@@ -397,10 +399,10 @@ class Processor(object):
         see: str
             'help', 'print' or 'return'
         '''
-        if fignum not in self.availablenums:
-            plog.error("%s: Figure %s not found!" % (self.name, fignum))
+        if figlabel not in self.availablelabels:
+            plog.error("%s: Figure %s not found!" % (self.name, figlabel))
             return
-        digcore = self._availablenums_lib[fignum]
+        digcore = self._availablelabels_lib[figlabel]
         if see == 'help':
             help(digcore.dig)
         elif see == 'print':
@@ -411,10 +413,10 @@ class Processor(object):
             pass
 
     def refind(self, pattern):
-        '''Find the fignums which match the regular expression *pattern*.'''
+        '''Find the figlabels which match the regular expression *pattern*.'''
         pat = re.compile(pattern)
         return tuple(filter(
-            lambda k: True if re.match(pat, k) else False, self.availablenums))
+            lambda k: True if re.match(pat, k) else False, self.availablelabels))
 
     # # End Dig Part
 

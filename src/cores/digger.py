@@ -38,9 +38,9 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         seeds info for fignum
         so one match can generate serial cores only differs in num
     fignum: str
-        figure num(label) of results
-    fullnum: str
-        full figure num(label)
+        figure num of results
+    figlabel: str
+        full figure label, :attr:`group`/:attr:`fignum`
     '''
     __slots__ = ['_group', '_fignum']
     nitems = '?'
@@ -68,7 +68,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         return self._fignum
 
     @property
-    def fullnum(self):
+    def figlabel(self):
         '''Return full label.'''
         return '%s/%s' % (self._group, self._fignum)
 
@@ -78,7 +78,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         dcss = super(Digger, cls).generate_cores(
             pckloader, pckloader.datakeys, duplicate=cls.numseeds)
         res = []
-        fullnums = []
+        figlabels = []
         if cls.numseeds:
             for dcs in dcss:
                 assert len(cls.numseeds) == len(dcs)
@@ -88,7 +88,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
                         dc._set_group()
                         dc._set_fignum(numseed=cls.numseeds[idx])
                         res.append(dc)
-                        fullnums.append(dc.fullnum)
+                        figlabels.append(dc.figlabel)
 
         else:
             for dc in dcss:
@@ -96,11 +96,11 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
                     dc._set_group()
                     dc._set_fignum()
                     res.append(dc)
-                    fullnums.append(dc.fullnum)
+                    figlabels.append(dc.figlabel)
         if res:
-            dlog.debug("%s: loader, %s; %d fullnums, %s."
+            dlog.debug("%s: loader, %s; %d figlabels, %s."
                        % (res[0].coreid, pckloader.path,
-                          len(fullnums), fullnums))
+                          len(figlabels), figlabels))
         return res
 
     def check_needed_datakeys(self):
@@ -132,7 +132,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         raise NotImplementedError()
 
     def _dig(self, **kwargs):
-        '''Calculate pickled data, return accepted kwargs and results.'''
+        '''Calculate pickled data, return results and accepted kwargs.'''
         raise NotImplementedError()
 
     def str_dig_kwargs(self, kwargs):
@@ -156,13 +156,13 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         kwargstr: accepted kwargs str
         time: :meth:`dig` real execution time in seconds
         '''
-        dlog.info("Dig pickled data for %s ..." % self.fullnum)
+        dlog.info("Dig pickled data for %s ..." % self.figlabel)
         start = time.time()
         try:
             results, acckwargs = self._dig(**kwargs)
         except Exception:
             dlog.error("%s: can't dig data for %s!"
-                       % (self.coreid, self.fullnum), exc_info=1)
+                       % (self.coreid, self.figlabel), exc_info=1)
             results, acckwargs = {}, {}
         end = time.time()
         return results, self.str_dig_kwargs(acckwargs), end-start
@@ -180,6 +180,6 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
             new_results, template = self._post_dig(results)
         except Exception:
             dlog.error("%s: can't post-dig data for %s!"
-                       % (self.coreid, self.fullnum), exc_info=1)
+                       % (self.coreid, self.figlabel), exc_info=1)
             new_results, template = results, None
         return new_results, template
