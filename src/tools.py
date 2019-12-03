@@ -10,7 +10,7 @@ import numpy as np
 
 from .glogger import getGLogger
 
-__all__ = ['max_subarray', 'fitline', 'argrelextrema',
+__all__ = ['max_subarray', 'fitline', 'argrelextrema', 'near_peak',
            'fft', 'savgol_golay_filter', 'findflat', 'findgrowth',
            'correlation',
            ]
@@ -92,6 +92,24 @@ def argrelextrema(X, m='both', recheck=False):
                 if (X[i - 1] - X[i]) * (X[i - 1] - X[i - 2]) > 0:
                     index[j] = i - 1
     return index
+
+
+def near_peak(X, peak_idx, lowerlimit=1/np.e):
+    '''Find index of values >= lowerlimit * peak value, near the peak'''
+    limit = lowerlimit*X[peak_idx]
+    left_idx = peak_idx
+    for i in range(peak_idx, -1, -1):
+        if X[i] >= limit:
+            left_idx = i
+        else:
+            break
+    right_idx = peak_idx
+    for i in range(peak_idx, len(X), 1):
+        if X[i] >= limit:
+            right_idx = i
+        else:
+            break
+    return left_idx, right_idx
 
 
 def fft(dt, signal):
