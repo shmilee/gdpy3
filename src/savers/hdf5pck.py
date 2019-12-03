@@ -46,10 +46,10 @@ class Hdf5PckSaver(BasePckSaver):
             for key, val in data.items():
                 log.debug("Create dataset '%s/%s'." % (fgrp.name, key))
                 if isinstance(val, (list, numpy.ndarray)):
-                    if isinstance(val ,list):
+                    if isinstance(val, list):
                         val = numpy.array(val)
                     fgrp.create_dataset(key, data=val,
-                                        chunks=val.shape, # only one chunk
+                                        chunks=val.shape,  # only one chunk
                                         compression='gzip',
                                         compression_opts=9)
                 else:
