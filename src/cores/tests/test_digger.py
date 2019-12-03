@@ -23,7 +23,7 @@ class ImpDigger1(Digger):
         self._fignum = '%s_%s_f' % (self.section[1], self.section[2])
 
     def _dig(self):
-        return self.fignum
+        return dict(f=self.fignum), {}
 
 
 class ImpDigger2(Digger):
@@ -41,7 +41,7 @@ class ImpDigger2(Digger):
         self._fignum = self.section[1]
 
     def _dig(self):
-        return self.fignum
+        return dict(f=self.fignum), {}
 
 
 class ImpDigger3(ImpDigger2):
@@ -82,7 +82,7 @@ class TestDigger(unittest.TestCase):
         self.assertEqual(cores[0].srckeys, ['da/i-p-f'])
         self.assertEqual(cores[0].extrakeys, ['g/c', 'his/n'])
         self.assertEqual(cores[0].group, 'da')
-        self.assertEqual(cores[0].dig(), 'i_p_f')
+        self.assertEqual(cores[0].dig()[0]['f'], 'i_p_f')
 
     def test_one_addition_key_2_one_core(self):
         cores = ImpDigger2.generate_cores(self.pck)
@@ -90,7 +90,7 @@ class TestDigger(unittest.TestCase):
         self.assertEqual(cores[0].srckeys, ['his/i', 'his/n'])
         self.assertEqual(cores[0].extrakeys, ['g/c'])
         self.assertEqual(cores[0].group, 'his')
-        self.assertEqual(cores[0].dig(), 'i')
+        self.assertEqual(cores[0].dig()[0]['f'], 'i')
 
     def test_multi_addition_key_2_one_core(self):
         cores = ImpDigger3.generate_cores(self.pck)
@@ -98,9 +98,9 @@ class TestDigger(unittest.TestCase):
         self.assertEqual(cores[0].srckeys, ['s0/p', 's0/x', 's0/y'])
         self.assertEqual(cores[0].extrakeys, ['g/c'])
         self.assertEqual(cores[0].group, 's0')
-        self.assertEqual(cores[0].dig(), 'p')
+        self.assertEqual(cores[0].dig()[0]['f'], 'p')
         self.assertEqual(cores[3].group, 's2')
-        self.assertEqual(cores[3].dig(), 'a')
+        self.assertEqual(cores[3].dig()[0]['f'], 'a')
 
     def test_one_addition_key_2_one_core_with_numseeds(self):
         cores = ImpDigger4.generate_cores(self.pck)
