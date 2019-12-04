@@ -140,7 +140,7 @@ class AppendDocstringMeta(type):
     method docstrings. Instead, we must actually copy the functions,
     and then modify the docstring for each subclasses.
     """
-    _xxyyzz_methods = ['_convert', '_dig']
+    _xxyyzz_methods = ['_convert', '_dig', '_export']
 
     def __new__(meta, name, bases, attrs):
         attr_todo = [an for an in attrs if an in meta._xxyyzz_methods]
