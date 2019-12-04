@@ -32,6 +32,12 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
     def template(self):
         return self.items[0]
 
+    @classmethod
+    def generate_cores(cls, tmplloader):
+        '''Return generated Core instances for *tmplloader*.'''
+        return super(Exporter, cls).generate_cores(
+            tmplloader, tmplloader.templates)
+
     def fmt_export(self, data, fmt):
         '''Convert *data* format from dict to *fmt*.'''
         if fmt == 'dict':
@@ -57,33 +63,36 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
         else:
             pass
 
-    def export(self, results, fmt='dict', **kwargs):
+    def export(self, results, otherinfo={}, fmt='dict', **kwargs):
         '''
         Export results, template name for plotter.
 
         Parameters
         ----------
+        otherinfo: dict
         fmt: format 'dict', 'pickle' or 'json'
         '''
         results, tmpl = self._export(results, kwargs)
-        return self.fmt_export(dict(results=results, template=tmpl), fmt)
+        return self.fmt_export(
+            dict(results=results, template=tmpl, **otherinfo), fmt)
 
     def _export(self, results, kwargs):
         '''Return results, template name.'''
         raise NotImplementedError()
 
-    def export_options(self, digoptions, fmt='dict'):
+    def export_options(self, digoptions, otherinfo={}, fmt='dict'):
         '''
         Export dig options and plotter(vis) template options for GUI widgets.
 
         Parameters
         ----------
+        otherinfo: dict
         fmt: format 'dict', 'pickle' or 'json'
         '''
         return self.fmt_export(
             dict(digoptions=digoptions,
-                 visoptions=self.visoptions),
-            fmt)
+                 visoptions=self.visoptions,
+                 **otherinfo), fmt)
 
 
 class TmplLoader(object):
