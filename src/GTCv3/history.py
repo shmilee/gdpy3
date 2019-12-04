@@ -281,6 +281,7 @@ class HistoryFieldModeDigger(Digger):
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_mode%s' % (self.section[1], numseed)
         self._idx = numseed
+        self.kwoptions = None
 
     def _dig(self, **kwargs):
         '''
@@ -345,13 +346,19 @@ class HistoryFieldModeDigger(Digger):
             start, end = 0, 1
             fitya = logya[:2]
             growth = 0
-        results.update(dict(
+        if self.kwoptions is None:
+            self.kwoptions = dict(growth_time=dict(
+                widget='FloatRangeSlider',
+                rangee=(time[0], time[-1], dt),
+                value=[time[start], time[end+1]],
+                description='growth time:'))
+        results.update(
             logya=logya,
             fittime=time[start:end+1],
             fitya=fitya,
             growth=growth,
             title2=title2,
-        ))
+        )
         # 3 amplitude normalized by growth rate, real frequency
         if ya.any():
             normyreal, reg3, reg4, nT1, omega1 = self.__get_omega(
@@ -362,7 +369,7 @@ class HistoryFieldModeDigger(Digger):
         else:
             normyreal, reg3, reg4, nT1, omega1 = yreal, 0, 1, 0, 0
             normyimag, reg5, reg6, nT2, omega2 = yimag, 0, 1, 0, 0
-        results.update(dict(
+        results.update(
             normyreal=normyreal,
             normyimag=normyimag,
             measurerealtime=[time[reg3], time[reg4]],
@@ -374,7 +381,7 @@ class HistoryFieldModeDigger(Digger):
             nT_imag=nT2,
             omega_imag=omega2,
             title3='smooth normalized amplitude',
-        ))
+        )
         # 4 power spectrum
         #sgn = np.array([np.complex(r, i) for r, i in zip(normyreal, normyimag)])
         sgn = np.array([np.complex(r, i) for r, i in zip(yreal, yimag)])
@@ -382,13 +389,13 @@ class HistoryFieldModeDigger(Digger):
         index = np.argmax(_pf)
         omega3 = _tf[index]
         dlog.parm("Get frequency: %s, %.6f" % (index, omega3))
-        results.update(dict(
+        results.update(
             spectrum_x=_tf,
             spectrum_p=_pf,
             spectrum_omega=omega3,
             spectrum_index=index,
             title4=r'$\phi=e^{-i(\omega*t+m*\theta-n*\zeta)}$',
-        ))
+        )
         return results, acckwargs
 
     def __get_omega(self, y, time, growth, start, end):

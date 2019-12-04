@@ -41,8 +41,10 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         figure num of results
     figlabel: str
         full figure label, :attr:`group`/:attr:`fignum`
+    kwoptions: dict or None
+        kwargs option info for widgets
     '''
-    __slots__ = ['_group', '_fignum']
+    __slots__ = ['_group', '_fignum', 'kwoptions']
     nitems = '?'
     neededpattern = 'ALL'
     numseeds = None
@@ -85,6 +87,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
                 # only check first one
                 if dcs[0].check_needed_datakeys():
                     for idx, dc in enumerate(dcs):
+                        dc.kwoptions = {}
                         dc._set_group()
                         dc._set_fignum(numseed=cls.numseeds[idx])
                         res.append(dc)
@@ -93,6 +96,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         else:
             for dc in dcss:
                 if dc.check_needed_datakeys():
+                    dc.kwoptions = {}
                     dc._set_group()
                     dc._set_fignum()
                     res.append(dc)
@@ -128,11 +132,15 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         '''
         Set :attr:`fignum`
         Using :attr:`section` and info get from :attr:`numseeds`.
+        Set :attr:`kwoptions` to None if needed.
         '''
         raise NotImplementedError()
 
     def _dig(self, **kwargs):
-        '''Calculate pickled data, return results and accepted kwargs.'''
+        '''
+        Calculate pickled data, return results and accepted kwargs.
+        Set :attr:`kwoptions` if it is set to None in :meth:`_set_fignum`.
+        '''
         raise NotImplementedError()
 
     def str_dig_kwargs(self, kwargs):

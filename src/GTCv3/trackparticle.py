@@ -98,6 +98,7 @@ class TrackParticleOrbitDigger(Digger):
         self._fignum = 'orbit_%s_%s_%s' % (
             numseed, self.section[1], self.section[2])
         self.dimension = numseed
+        self.kwoptions = None
 
     def _dig(self, **kwargs):
         '''
@@ -107,6 +108,12 @@ class TrackParticleOrbitDigger(Digger):
             calculate delta R of trapped ions in 2d orbit, default False.
         '''
         acckwargs = {}
+        if self.kwoptions is None:
+            self.kwoptionst = dict(
+                cal_dr=dict(
+                    widget='Checkbox',
+                    value=False,
+                    description='cal_dr of trapped ion'))
         pdata, r0 = self.pckloader.get_many(self.srckeys[0], 'gtc/r0')
         title = 'orbit of %s %s' % self.section[1:]
         results = dict(r0=r0, title='%s %s' % (self.dimension.upper(), title))
@@ -115,7 +122,7 @@ class TrackParticleOrbitDigger(Digger):
         if self.dimension == '2d':
             rlim = 1.1 * max(abs(np.max(R) - r0), np.max(Z),
                              abs(r0 - np.min(R)), abs(np.min(Z)))
-            results.update(dict(R=R, Z=Z, rlim=rlim))
+            results.update(R=R, Z=Z, rlim=rlim)
             if bool(kwargs.get('cal_dr', False)) and self.section[1] == 'ion':
                 acckwargs['cal_dr'] = True
                 results.update(self.__trapped_ion_dr(R, Z, r0))
@@ -124,7 +131,7 @@ class TrackParticleOrbitDigger(Digger):
             X = R * np.cos(zeta)
             Y = R * np.sin(zeta)
             rlim = 1.05 * np.max(R)
-            results.update(dict(X=X, Y=Y, Z=Z, rlim=rlim))
+            results.update(X=X, Y=Y, Z=Z, rlim=rlim)
         return results, acckwargs
 
     def __trapped_ion_dr(self, R, Z, r0):
@@ -168,15 +175,10 @@ class TrackParticleOrbitDigger(Digger):
             else:
                 LINE = [(r['R'], r['Z'])]
             return dict(LINE=LINE, title=r['title'], xlabel='R(cm)$',
-                        ylabel='Z(cm)'), 'tmpl-line_aspect_equal'
+                        ylabel='Z(cm)', aspect='equal'), 'tmpl-line'
         else:
             scale = [-r['rlim'], r['rlim']]
-            AxStru = dict(
-                layout=[111, dict(
-                    title=r['title'], xlabel='X(cm)', ylabel='Y(cm)',
-                    zlabel='Z(cm)', projection='3d')],
-                data=[[1, 'plot', (r['X'], r['Y'], r['Z']), dict(linewidth=1)],
-                      [2, 'set_aspect', ('equal',), dict()],
-                      [3, 'auto_scale_xyz', (scale, scale, scale), dict()]]
-            )
-            return dict(axesstructures=[AxStru]), 'tmpl-raw_matplotlib'
+            return dict(LINE=[r['X'], r['Y'], r['Z']], title=r['title'],
+                        xlabel='X(cm)', ylabel='Y(cm)', zlabel='Z(cm)',
+                        aspect='equal', scale_xyz=(scale, scale, scale)
+                        ), 'tmpl-line3d'

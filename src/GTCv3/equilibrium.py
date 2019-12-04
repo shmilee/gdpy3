@@ -242,8 +242,8 @@ class EquilibriumPoloidalDigger(Digger):
         return dict(X=X, Y=Y, Z=Z, title=self.fignum), {}
 
     def _post_dig(self, results):
-        results.update(dict(xlabel=r'$R(R_0)$', ylabel=r'$Z(R_0)$'))
-        return results, 'tmpl-contourf_aspect_equal'
+        results.update(xlabel=r'$R(R_0)$', ylabel=r'$Z(R_0)$', aspect='equal')
+        return results, 'tmpl-contourf'
 
 
 class EquilibriumMeshDigger(Digger):
@@ -275,7 +275,7 @@ class EquilibriumMeshDigger(Digger):
         r = results
         return dict(
             LINE=list(r['LINEs1']) + list(r['LINEs2']), title=r['title'],
-            xlabel=r'$R(R_0)$', ylabel=r'$Z(R_0)$'), 'tmpl-line_aspect_equal'
+            xlabel=r'$R(R_0)$', ylabel=r'$Z(R_0)$', aspect='equal'), 'tmpl-line'
 
 
 class EquilibriumThetaDigger(Digger):
@@ -291,6 +291,7 @@ class EquilibriumThetaDigger(Digger):
         self._fignum = '%s:theta' % self.section[1]
         if self.section[1] == '1d-data':
             self._fignum = 'gq_plus_I/BB:theta'
+        self.kwoptions = None
 
     def _dig(self, **kwargs):
         '''
@@ -306,6 +307,12 @@ class EquilibriumThetaDigger(Digger):
             if 1 < kwargs['isp'] < lsp - 1:
                 isp = kwargs['isp']
                 acckwargs['isp'] = isp
+        if self.kwoptions is None:
+            self.kwoptions['isp'] = dict(
+                widget='IntSlider',
+                rangee=(0, lsp - 1, 1),
+                value=isp,
+                description='psi=isp:')
         dlog.parm("fix psi=isp=%d. Maximal isp=%d." % (isp, lsp - 1))
         X = 2.0 * numpy.pi * numpy.array(range(lst + 1)) / lst
         if self.fignum == 'gq_plus_I/BB:theta':

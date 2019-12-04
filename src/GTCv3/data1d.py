@@ -191,6 +191,16 @@ class _Data1dDigger(Digger):
         y, x = data.shape
         dt = tstep * ndiag
         X, Y = numpy.arange(1, x + 1) * dt, numpy.arange(0, y)
+        if self.kwoptions is None:
+            self.kwoptions = dict(
+                tcutoff=dict(widget='FloatRangeSlider',
+                             rangee=[X[0], X[-1], dt],
+                             value=[X[0], X[-1]],
+                             description='time cutoff:'),
+                pcutoff=dict(widget='IntRangeSlider',
+                             rangee=[Y[0], Y[-1], 1],
+                             value=[Y[0], Y[-1]],
+                             description='mpsi cutoff:'))
         x0, x1 = 0, X.size
         if 'tcutoff' in kwargs:
             t0, t1 = kwargs['tcutoff']
@@ -198,7 +208,7 @@ class _Data1dDigger(Digger):
             if index.size > 0:
                 x0, x1 = index[0], index[-1]+1
                 X = X[x0:x1]
-                acckwargs['tcutoff'] = kwargs['tcutoff']
+                acckwargs['tcutoff'] = [X[x0], X[x1-1]]
             else:
                 dlog.warning('Cannot cutoff: %s <= time <= %s!' % (t0, t1))
         y0, y1 = 0, Y.size
@@ -208,7 +218,7 @@ class _Data1dDigger(Digger):
             if index.size > 0:
                 y0, y1 = index[0], index[-1]+1
                 Y = Y[y0:y1]
-                acckwargs['pcutoff'] = kwargs['pcutoff']
+                acckwargs['pcutoff'] = [Y[y0], Y[y1-1]]
             else:
                 dlog.warning('Cannot cutoff: %s <= ipsi <= %s!' % (p0, p1))
         # update
@@ -216,7 +226,7 @@ class _Data1dDigger(Digger):
         return dict(X=X, Y=Y, Z=data, title=self._get_title()), acckwargs
 
     def _post_dig(self, results):
-        results.update(dict(xlabel=r'time($R_0/c_s$)', ylabel=r'$r$(mpsi)'))
+        results.update(xlabel=r'time($R_0/c_s$)', ylabel=r'$r$(mpsi)')
         return results, 'tmpl-contourf'
 
 
@@ -231,6 +241,7 @@ class Data1dFluxDigger(_Data1dDigger):
     def _set_fignum(self, numseed=None):
         self.particle = self.__particles[self.section[1]]
         self._fignum = '%s_%s_flux' % (self.particle, self.section[2])
+        self.kwoptions = None
 
     def _get_title(self):
         title = '%s %s flux' % (self.particle, self.section[2])
@@ -260,6 +271,7 @@ class Data1dFieldDigger(_Data1dDigger):
             self._fignum = 'zonal_%s' % self.__cnames[self.section[2]]
         else:
             self._fignum = '%s_rms' % self.section[2]
+        self.kwoptions = None
 
     def _get_title(self):
         if self.section[1] == '00':

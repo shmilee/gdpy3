@@ -111,7 +111,7 @@ class SnapPhiZetaPsiDigger(Digger):
                     Z=Z, title=title), {}
 
     def _post_dig(self, results):
-        results.update(dict(xlabel=r'$\psi$(mpsi)', ylabel=r'$\zeta$'))
+        results.update(xlabel=r'$\psi$(mpsi)', ylabel=r'$\zeta$')
         return results, 'tmpl-contourf'
 
 
@@ -122,6 +122,7 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
     def _set_fignum(self, numseed=None):
         super(SnapPhiCorrLenDigger, self)._set_fignum(numseed=numseed)
         self._fignum = 'phi_correlation_%03d' % round(self._part*360)
+        self.kwoptions = None
 
     def _dig(self, **kwargs):
         '''
@@ -159,6 +160,18 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
         dlog.parm("Use dpsi dzeta range: mdpsi=%s, mdzeta=%s. "
                   "Maximal mdpsi=%s, mdzeta=%s"
                   % (mdpsi, mdzeta, maxmdpsi, maxmdzeta))
+        if self.kwoptions is None:
+            self.kwoptions = dict(
+                mdpsi=dict(
+                    widget='IntSlider',
+                    rangee=(1, maxmdpsi, 1),
+                    value=mdpsi,
+                    description='mdpsi:'),
+                mdzeta=dict(
+                    widget='IntSlider',
+                    rangee=(1, maxmdzeta, 1),
+                    value=mdzeta,
+                    description='mdzeta:'))
         tau = tools.correlation(Z, 0, y, 0, x, mdzeta, mdpsi)
         X = np.arange(0, mdpsi) * step_x
         Y = np.arange(0, mdzeta) * step_y / y * 2 * np.pi

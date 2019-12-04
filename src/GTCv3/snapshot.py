@@ -259,12 +259,12 @@ class SnapshotFieldFluxPloidalDigger(Digger):
         r = results
         if self.section[1] == 'flux':
             return dict(X=r['zeta'], Y=r['theta'], Z=r['field'],
-                        title=r['title'], xlabel=r'$\zeta$', ylabel=r'$\theta$'
-                        ), 'tmpl-contourf_aspect_equal'
+                        title=r['title'], xlabel=r'$\zeta$',
+                        ylabel=r'$\theta$', aspect='equal'), 'tmpl-contourf'
         else:
             return dict(X=r['X'], Y=r['Z'], Z=r['field'],
-                        title=r['title'], xlabel=r'$R(R_0)$', ylabel=r'$Z(R_0)$'
-                        ), 'tmpl-contourf_aspect_equal'
+                        title=r['title'], xlabel=r'$R(R_0)$',
+                        ylabel=r'$Z(R_0)$', aspect='equal'), 'tmpl-contourf'
 
 
 class SnapshotFieldSpectrumDigger(Digger):
@@ -279,6 +279,7 @@ class SnapshotFieldSpectrumDigger(Digger):
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_spectrum' % self.section[1]
+        self.kwoptions = None
 
     def _dig(self, **kwargs):
         '''
@@ -306,6 +307,18 @@ class SnapshotFieldSpectrumDigger(Digger):
             pmode = mtoroidal // 3
         dlog.parm("Poloidal and parallel range: m=%s, p=%s. Maximal m=%s, p=%s"
                   % (mmode, pmode, maxmmode, maxpmode))
+        if self.kwoptions is None:
+            self.kwoptions = dict(
+                mmode=dict(
+                    widget='IntSlider',
+                    rangee=(1, maxmmode, 1),
+                    value=mmode,
+                    description='mmode:'),
+                pmode=dict(
+                    widget='IntSlider',
+                    rangee=(1, maxpmode, 1),
+                    value=pmode,
+                    description='pmode:'))
         X1, Y1 = np.arange(1, mmode + 1), np.zeros(mmode)
         X2, Y2 = np.arange(1, pmode + 1), np.zeros(pmode)
         for i in range(mtoroidal):
@@ -354,6 +367,7 @@ class SnapshotFieldProfileDigger(Digger):
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_profile' % self.section[1]
+        self.kwoptions = None
 
     def _dig(self, **kwargs):
         '''
@@ -379,6 +393,18 @@ class SnapshotFieldProfileDigger(Digger):
         dlog.parm("Poloidal and radius cut: jtgrid=%s, ipsi=%s. "
                   "Maximal jtgrid=%s, ipsi=%s."
                   % (jtgrid, ipsi, mtgrid1 - 1, mpsi1 - 1))
+        if self.kwoptions is None:
+            self.kwoptions = dict(
+                jtgrid=dict(
+                    widget='IntSlider',
+                    rangee=(0, mtgrid1 - 1, 1),
+                    value=jtgrid,
+                    description='jtgrid:'),
+                ipsi=dict(
+                    widget='IntSlider',
+                    rangee=(0, mpsi1 - 1, 1),
+                    value=ipsi,
+                    description='ipsi:'))
         X1, Y11 = np.arange(0, mpsi1), pdata[jtgrid, :]
         X2 = np.arange(0, mtgrid1) / mtgrid1 * 2 * np.pi
         Y21 = pdata[:, ipsi]
