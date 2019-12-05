@@ -1,17 +1,23 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 # Copyright (c) 2019 shmilee
 
+'''
+Contains processor base class.
+'''
+
 import os
 import re
 import time
+import pickle
 import hashlib
 
-from . import __version__ as gdpy3_version
-from .glogger import getGLogger
-from .loaders import is_rawloader, get_rawloader, is_pckloader, get_pckloader
-from .savers import is_pcksaver, get_pcksaver
+from .. import __version__ as gdpy3_version
+from ..glogger import getGLogger
+from ..loaders import is_rawloader, get_rawloader, is_pckloader, get_pckloader
+from ..savers import is_pcksaver, get_pcksaver
+from ..cores.exporter import (TmplLoader, ContourfExporter, LineExporter,
+                              SharexTwinxExporter, Z111pExporter)
 
 __all__ = ['Processor']
 plog = getGLogger('P')
@@ -41,11 +47,15 @@ class Processor(object):
         figlabels/kwargstr digged in ressaver or resfilesaver
         like 'group/fignum/a=1,b=2'
 
+    tmplloader: loader of exporter templates
+    exportertemplates: list
+        exporter templates supported
+
     Notes
     -----
     1. :attr:`saltname` means base name of salt file for `saver.path`.
        The :attr:`rawloader` must have exactly one salt file.
-    2. :attr:`execution_time_limit` means if :meth:`dig` spends more
+    2. :attr:`dig_acceptable_time` means if :meth:`dig` spends more
        time than this, the results will be saved in :attr:`resfilesaver`.
     '''
 
@@ -125,7 +135,7 @@ class Processor(object):
                 with self.rawloader.get(saltfile) as f:
                     salt = hashlib.sha1(f.read().encode('utf-8')).hexdigest()
             except Exception:
-                plog.error("Failed to read salt file '%s'!" % saltfile)
+                plog.warning("Failed to read salt file '%s'!" % saltfile)
                 salt = hashlib.sha1(saltfile.encode('utf-8')).hexdigest()
         plog.debug("Get salt string: '%s'." % salt)
         # prefix
@@ -153,10 +163,10 @@ class Processor(object):
         Convert raw data in rawloader.path, and save them in pcksaver.
         '''
         if not self.rawloader:
-            log.error("%s: Need a rawloader object!" % self.name)
+            plog.error("%s: Need a rawloader object!" % self.name)
             return
         if not self.pcksaver:
-            log.error("%s: Need a pcksaver object!" % self.name)
+            plog.error("%s: Need a pcksaver object!" % self.name)
             return
         summary = "Pck data converted from %s." % self._rawsummary
         description = ("%s\nCreated by gdpy3 v%s.\nCreated on %s."
@@ -179,7 +189,7 @@ class Processor(object):
                       '_diggers', '_availablelabels_lib', '_availablelabels',
                       '_resloader', '_resfileloader', '_diggedlabels'])
     DiggerCores = []
-    execution_time_limit = 30
+    dig_acceptable_time = 30
 
     def __check_pckloader(self, pckloader):
         if not is_pckloader(pckloader):
@@ -318,49 +328,59 @@ class Processor(object):
                            % (self.name, respath), exc_info=1)
                 self.resfilesaver = None
 
-    def dig(self, figlabel, post=True, **kwargs):
+    def dig(self, figlabel, post=True, redo=False, **kwargs):
         '''
         Get digged results of *figlabel*.
-        Return figlabel/kwargstr, results and template name if *post* True.
+        Return figlabel/kwargstr, results and template name.
         Use :meth:`dig_doc` to see *kwargs* for *figlabel*.
+
+        Parameters
+        ----------
+        post: bool
+        redo: bool
+            If :attr:`resfilesaver` type is '.npz', *redo* will cause warning:
+                "zipfile.py: UserWarning: Duplicate name ..."
+            Recommend using '.hdf5' when *redo* is True.
         '''
         if not self.pckloader:
             plog.error("%s: Need a pckloader object!" % self.name)
-            return
+            return None, None, None
         if not self.ressaver:
             plog.error("%s: Need a results pcksaver object!" % self.name)
-            return
+            return None, None, None
         if figlabel not in self.availablelabels:
             plog.error("%s: Figure %s not found!" % (self.name, figlabel))
-            return
+            return None, None, None
         digcore = self._availablelabels_lib[figlabel]
         gotkwargstr = digcore.str_dig_kwargs(kwargs) or 'DEFAULT'
         gotfiglabel = '%s/%s' % (figlabel, gotkwargstr)
         # find old
-        if gotfiglabel in self.diggedlabels:
+        if not redo and gotfiglabel in self.diggedlabels:
             if gotfiglabel in self.resloader.datagroups:
                 # use resloader first
-                gotresloader = self.resloader
+                gotresloader, fileloader = self.resloader, False
             elif (self.resfilesaver
                     and gotfiglabel in self.resfileloader.datagroups):
-                gotresloader = self.resfileloader
+                gotresloader, fileloader = self.resfileloader, True
             else:
-                gotresloader = None
+                gotresloader, fileloader = None, False
                 plog.error('%s: Not found %s in diggedlabels!'
                            % (self.name, gotfiglabel))
             if gotresloader:
-                plog.info('%s, find %s digged results in %s.'
-                          % (self.name, gotfiglabel, gotresloader.path))
+                plog.info('Find %s digged results in %s.'
+                          % (gotfiglabel, gotresloader.path))
                 allkeys = gotresloader.refind(
                     '^%s/' % re.escape(gotfiglabel))
                 basekeys = [os.path.basename(k) for k in allkeys]
                 resultstuple = gotresloader.get_many(*allkeys)
                 results = {k: v for k, v in zip(basekeys, resultstuple)}
+                if fileloader:
+                    # reload kwoptions
+                    digcore.kwoptions = pickle.loads(
+                        results.pop('kwoptions', None))
                 if post:
-                    results, template = digcore.post_dig(results)
-                    return gotfiglabel, results, template
-                else:
-                    return gotfiglabel, results
+                    results = digcore.post_dig(results)
+                return gotfiglabel, results, digcore.post_template
         # dig new
         results, acckwargstr, digtime = digcore.dig(**kwargs)
         if not acckwargstr:
@@ -374,21 +394,25 @@ class Processor(object):
         # update resloader & diggedlabels
         self.resloader = get_pckloader(self.ressaver.get_store())
         # long execution time
-        if self.resfilesaver and digtime > self.execution_time_limit:
+        if self.resfilesaver and digtime > self.dig_acceptable_time:
+            # also save kwoptions
+            if digcore.kwoptions is None:
+                plog.warning('Unset %s kwoptions!' % figlabel)
+            kwopts = dict(kwoptions=pickle.dumps(digcore.kwoptions))
             with self.resfilesaver:
-                plog.info('%s, save digged results in %s.'
-                          % (self.name, self.resfilesaver.path))
+                plog.info('Save digged results in %s.' %
+                          self.resfilesaver.path)
                 self.resfilesaver.write(accfiglabel, results)
+                self.resfilesaver.write(accfiglabel, kwopts)
                 if gotkwargstr == 'DEFAULT' and acckwargstr != gotkwargstr:
                     # TODO link double cache
                     self.resfilesaver.write(gotfiglabel, results)
+                    self.resfilesaver.write(gotfiglabel, kwopts)
             # update resfileloader & diggedlabels
             self.resfileloader = get_pckloader(self.resfilesaver.get_store())
         if post:
-            results, template = digcore.post_dig(results)
-            return gotfiglabel, results, template
-        else:
-            return accfiglabel, results
+            results = digcore.post_dig(results)
+        return accfiglabel, results, digcore.post_template
 
     def dig_doc(self, figlabel, see='help'):
         '''
@@ -420,13 +444,132 @@ class Processor(object):
 
     # # End Dig Part
 
+    # # Start Export Part
+
+    __slots__.extend(['_tmplloader', '_exportertemplates', '_exporters_lib'])
+    ExporterCores = [ContourfExporter, LineExporter,
+                     SharexTwinxExporter, Z111pExporter]
+
+    def _get_tmplloader(self):
+        return self._tmplloader
+
+    def _set_tmplloader(self, tmplloader):
+        self._exportertemplates = []
+        self._exporters_lib = {}
+        if tmplloader:
+            self._tmplloader = tmplloader
+            for Ec in self.ExporterCores:
+                self._exporters_lib.update({ec.template: ec
+                                            for ec in Ec.generate_cores(tmplloader)})
+            self._exportertemplates = sorted(self._exporters_lib.keys())
+        else:
+            self._tmplloader = None
+
+    tmplloader = property(_get_tmplloader, _set_tmplloader)
+
+    @property
+    def exportertemplates(self):
+        return self._exportertemplates
+
+    def export(self, figlabel, what='axes', fmt='dict', **kwargs):
+        '''
+        Get and assemble digged results, template of *figlabel*.
+        Return assembled results in format *fmt*.
+        Use :meth:`dig_doc` to see *kwargs* for *figlabel*.
+        Use :meth:`export_doc` to see *kwargs* for :meth:`exportcore.export`.
+
+        Parameters
+        ----------
+        what: str
+            'axes', results for plotter
+            'options', options for GUI widgets
+        fmt: str
+            export format, 'dict', 'pickle' or 'json'
+        '''
+        if figlabel not in self.availablelabels:
+            plog.error("%s: Figure %s not found!" % (self.name, figlabel))
+            exportcore = self._exporters_lib[self.exportertemplates[0]]
+            return exportcore.fmt_export(
+                dict(status='figlabel not found',
+                     figlabel=figlabel,
+                     ), fmt=fmt)
+        if what == 'axes':
+            label_kw, res, tmpl = self.dig(figlabel, post=True, **kwargs)
+            if tmpl in self.exportertemplates:
+                exportcore = self._exporters_lib[tmpl]
+                return exportcore.export(
+                    res, otherinfo=dict(status='success',
+                                        figlabel=figlabel,
+                                        accfiglabel=label_kw,
+                                        kwargs=kwargs,
+                                        ), fmt=fmt, **kwargs)
+            else:
+                return exportcore.fmt_export(
+                    dict(status='no template', figlabel=figlabel), fmt=fmt)
+        elif what == 'options':
+            digcore = self._availablelabels_lib[figlabel]
+            if digcore.kwoptions is None:
+                a, b, c = self.dig(figlabel, post=False, **kwargs)
+            if digcore.post_template in self.exportertemplates:
+                exportcore = self._exporters_lib[digcore.post_template]
+                return exportcore.export_options(
+                    digcore.kwoptions, otherinfo=dict(status='success',
+                                                      figlabel=figlabel,
+                                                      ), fmt=fmt)
+            else:
+                exportcore = self._exporters_lib[self.exportertemplates[0]]
+                return exportcore.fmt_export(
+                    dict(status='no visoptions',
+                         figlabel=figlabel,
+                         digoptions=digcore.kwoptions,
+                         ), fmt=fmt)
+        else:
+            plog.error("%s: What to export, 'axes' or 'options'?" % self.name)
+            exportcore = self._exporters_lib[self.exportertemplates[0]]
+            return exportcore.fmt_export(
+                dict(status='what to export',
+                     figlabel=figlabel,
+                     ), fmt=fmt)
+
+    def export_doc(self, template, see='help'):
+        '''
+        help(exportercore.export) or exportercore.export.__doc__
+
+        Parameters
+        ----------
+        see: str
+            'help', 'print' or 'return'
+        '''
+        if template not in self.exportertemplates:
+            plog.error("%s: Template %s not found!" % (self.name, template))
+            return
+        exportcore = self._exporters_lib[template]
+        if see == 'help':
+            help(exportcore.export)
+        elif see == 'print':
+            print(exportcore.export.__doc__)
+        elif see == 'return':
+            return exportcore.export.__doc__
+        else:
+            pass
+
+    # # End Export Part
+
     def __repr__(self):
-        i = (' rawloader: %r\n pcksaver: %r\n'
-             ' pckloader: %r\n ressaver: %r\n resfilesaver: %r\n'
-             ' resloader: %r\n resfileloader: %r'
-             % (self.rawloader, self.pcksaver,
-                self.pckloader, self.ressaver, self.resfilesaver,
-                self.resloader, self.resfileloader))
+        # i = (' rawloader: %r\n pcksaver: %r\n'
+        #     ' pckloader: %r\n ressaver: %r\n resfilesaver: %r\n'
+        #     ' resloader: %r\n resfileloader: %r\n'
+        #     ' tmplloader: %r'
+        #     % (self.rawloader, self.pcksaver,
+        #        self.pckloader, self.ressaver, self.resfilesaver,
+        #        self.resloader, self.resfileloader,
+        #        self.tmplloader))
+        i = (' rawloader: %r\n pckloader: %r\n'
+             ' resloader: %r\n resfileloader: %r\n'
+             ' tmplloader: %r'
+             % (self.rawloader, self.pckloader,
+                self.resloader, self.resfileloader,
+                self.tmplloader))
         return '<\n {0}.{1} object at {2},\n{3}\n>'.format(
             self.__module__, type(self).__name__, hex(id(self)), i)
 
@@ -460,6 +603,17 @@ class Processor(object):
         '''
         root, ext1 = os.path.splitext(path)
         root, ext2 = os.path.splitext(root)
+        if (ext2, ext1) in [('.digged', '.npz'), ('.digged', '.hdf5')]:
+            # resfileloader.path
+            plog.warning("This is a digged data path %s!" % path)
+            path = '%s%s%s' % (root, '.converted', ext1)
+            plog.warning("Try converted data path %s beside it!" % path)
+            if os.path.isfile(path):
+                root, ext1 = os.path.splitext(path)
+                root, ext2 = os.path.splitext(root)
+            else:
+                plog.error("%s: Can't find path %s!" % (self.name, path))
+                return
         if (ext2, ext1) in [('.converted', '.npz'), ('.converted', '.hdf5')]:
             # pckloader.path
             self.rawloader, self.pcksaver = None, None
@@ -518,3 +672,5 @@ class Processor(object):
             except Exception:
                 plog.error("%s: Failed to set ressaver object!"
                            % self.name, exc_info=1)
+        # set tmplloader and exporter templates, cores
+        self.tmplloader = TmplLoader()
