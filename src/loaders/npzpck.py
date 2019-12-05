@@ -45,7 +45,7 @@ class NpzPckLoader(BasePckLoader):
         tmpobj.close()
 
     def _special_getkeys(self, tmpobj):
-        return tmpobj.files
+        return sorted(dict.fromkeys(tmpobj.files))
 
     def _special_get(self, tmpobj, key):
         value = tmpobj[key]
