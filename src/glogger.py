@@ -60,14 +60,14 @@ gloggerConfig = {
         },
     },
     'loggers': {
-        'G': logger_common_config,  # gdpy3
+        'G': logger_common_config,  # gdpy3 # gdpy3.GUI
         'L': logger_common_config,  # gdpy3.loaders
         'S': logger_common_config,  # gdpy3.savers
         'C': logger_common_config,  # gdpy3.cores.converter
         'D': logger_common_config,  # gdpy3.cores.digger
         'E': logger_common_config,  # gdpy3.cores.exporter
-        # gdpy3.processors
-        'P': logger_common_config,  # gdpy3.plotters
+        'P': logger_common_config,  # gdpy3.processors
+        'V': logger_common_config,  # gdpy3.visplters
     },
 }
 
