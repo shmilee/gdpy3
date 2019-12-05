@@ -307,7 +307,7 @@ class Processor(object):
             ressaver.write('/', {'processor': self.name})
         self.ressaver = ressaver
         self.resloader = get_pckloader(ressaver.get_store())
-        plog.info("Default %s data cache is %s." % (ext2, respath))
+        plog.debug("Default %s data cache is %s." % (ext2, respath))
         if ext != '.cache':
             try:
                 respath = '%s%s' % (saverstr, ext)
@@ -322,7 +322,7 @@ class Processor(object):
                         resfilesaver.write('/', {'processor': self.name})
                 self.resfilesaver = resfilesaver
                 self.resfileloader = get_pckloader(resfilesaver.get_store())
-                plog.info("Default %s data file is %s." % (ext2, respath))
+                plog.info("Default %s data path is %s." % (ext2, respath))
             except Exception:
                 plog.error("%s: Failed to set results file pcksaver, '%s'!"
                            % (self.name, respath), exc_info=1)
