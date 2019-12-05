@@ -105,6 +105,10 @@ class TmplLoader(object):
         'tmpl-z111p',
     ]
 
+    def __repr__(self):
+        return '<{0} object at {1} for {2}>'.format(
+            type(self).__name__, hex(id(self)), self.path)
+
 
 class ContourfExporter(Exporter):
     '''
@@ -266,4 +270,4 @@ class Z111pExporter(Exporter):
     itemspattern = ['^(?P<section>tmpl)-z111p$']
 
     def _export(self, results, kwargs):
-        return results
+        return results, 'template_z111p_axstructs'
