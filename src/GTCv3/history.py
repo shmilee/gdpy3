@@ -168,6 +168,7 @@ class HistoryParticleDigger(Digger):
     itemspattern = ['^(?P<s>history)/(?P<particle>(?:ion|electron|fastion))$']
     commonpattern = ['history/ndstep', 'gtc/tstep', 'gtc/ndiag']
     numseeds = ['', 'flux']
+    post_template = 'tmpl-sharextwinx'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '_'.join((self.section[1], numseed))
@@ -215,8 +216,7 @@ class HistoryParticleDigger(Digger):
                      {'left': [(r['momentum'], 'momentum flux')], 'right': []},
                      {'left': [(['energy'], 'energy flux')], 'right': []}]
         return dict(X=r['time'], YINFO=YINFO, title=r['title'],
-                    xlabel=r'time($R_0/c_s$)', xlim=[0, np.max(r['time'])]
-                    ), 'tmpl-sharextwinx'
+                    xlabel=r'time($R_0/c_s$)', xlim=[0, np.max(r['time'])])
 
 
 field_tex_str = {
@@ -235,6 +235,7 @@ class HistoryFieldDigger(Digger):
     itemspattern = [r'^(?P<s>history)/fieldtime-' +
                     '(?P<field>(?:phi|apara|fluidne))$']
     commonpattern = ['history/ndstep', 'gtc/tstep', 'gtc/ndiag']
+    post_template = 'tmpl-sharextwinx'
 
     def _set_fignum(self, numseed=None):
         self._fignum = self.section[1]
@@ -262,8 +263,7 @@ class HistoryFieldDigger(Digger):
                   'right': [(r['field00rms'], '$%s00 RMS$' % self._fstr)],
                   'lylabel': '$%s00$' % self._fstr, 'rylabel': '$RMS$', }]
         return dict(X=r['time'], YINFO=YINFO, title=r['title'],
-                    xlabel=r'time($R_0/c_s$)', xlim=[0, np.max(r['time'])]
-                    ), 'tmpl-sharextwinx'
+                    xlabel=r'time($R_0/c_s$)', xlim=[0, np.max(r['time'])])
 
 
 class HistoryFieldModeDigger(Digger):
@@ -277,6 +277,7 @@ class HistoryFieldModeDigger(Digger):
                                'qiflux', 'rgiflux']]
     neededpattern = itemspattern + commonpattern[:-2]
     numseeds = [1, 2, 3, 4, 5, 6, 7, 8]
+    post_template = 'tmpl-z111p'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_mode%s' % (self.section[1], numseed)
@@ -347,10 +348,11 @@ class HistoryFieldModeDigger(Digger):
             fitya = logya[:2]
             growth = 0
         if self.kwoptions is None:
+            fixend = (time.size - 1) if end > time.size - 1 else end
             self.kwoptions = dict(growth_time=dict(
                 widget='FloatRangeSlider',
                 rangee=(time[0], time[-1], dt),
-                value=[time[start], time[end+1]],
+                value=[time[start], time[fixend]],
                 description='growth time:'))
         results.update(
             logya=logya,
@@ -455,4 +457,4 @@ class HistoryFieldModeDigger(Digger):
             ('template_line_axstructs', 222, ax2_calc),
             ('template_line_axstructs', 223, ax3_calc),
             ('template_line_axstructs', 224, ax4_calc),
-        ]), 'tmpl-z111p'
+        ])

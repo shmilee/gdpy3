@@ -93,12 +93,14 @@ class TrackParticleOrbitDigger(Digger):
                     + r'-(?P<tag>\d+-\d+)$']
     commonpattern = ['gtc/r0']
     numseeds = ['2d', '3d']
+    post_template = 'tmpl-line'
 
     def _set_fignum(self, numseed=None):
         self._fignum = 'orbit_%s_%s_%s' % (
             numseed, self.section[1], self.section[2])
         self.dimension = numseed
-        self.kwoptions = None
+        if self.dimension == '2d':
+            self.kwoptions = None
 
     def _dig(self, **kwargs):
         '''
@@ -109,7 +111,7 @@ class TrackParticleOrbitDigger(Digger):
         '''
         acckwargs = {}
         if self.kwoptions is None:
-            self.kwoptionst = dict(
+            self.kwoptions = dict(
                 cal_dr=dict(
                     widget='Checkbox',
                     value=False,
@@ -175,10 +177,10 @@ class TrackParticleOrbitDigger(Digger):
             else:
                 LINE = [(r['R'], r['Z'])]
             return dict(LINE=LINE, title=r['title'], xlabel='R(cm)$',
-                        ylabel='Z(cm)', aspect='equal'), 'tmpl-line'
+                        ylabel='Z(cm)', aspect='equal')
         else:
             scale = [-r['rlim'], r['rlim']]
             return dict(LINE=[r['X'], r['Y'], r['Z']], title=r['title'],
                         xlabel='X(cm)', ylabel='Y(cm)', zlabel='Z(cm)',
-                        aspect='equal', scale_xyz=(scale, scale, scale)
-                        ), 'tmpl-line3d'
+                        aspect='equal', scale_xyz=(scale, scale, scale),
+                        projection='3d')  # TODO line3D

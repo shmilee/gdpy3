@@ -153,6 +153,7 @@ class EquilibriumPsi1DDigger(Digger):
     _misc = _1d_data_misc.copy()
     _misc['r'] = dict(title='minor radius r(psi)', index=23)
     numseeds = list(_misc.keys())
+    post_template = 'tmpl-line'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s(psi)' % numseed
@@ -168,7 +169,7 @@ class EquilibriumPsi1DDigger(Digger):
     def _post_dig(self, results):
         r = results
         return dict(LINE=[(r['X'], r['Y'])], title=r['title'],
-                    xlabel=r'$\psi$', xlim=r['xlim']), 'tmpl-line'
+                    xlabel=r'$\psi$', xlim=r['xlim'])
 
 
 class EquilibriumRadial1DDigger(Digger):
@@ -182,6 +183,7 @@ class EquilibriumRadial1DDigger(Digger):
     _misc = _1d_data_misc.copy()
     _misc['psi'] = dict(title='psi(r)', index=0)
     numseeds = list(_misc.keys())
+    post_template = 'tmpl-line'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s(r)' % numseed
@@ -197,7 +199,7 @@ class EquilibriumRadial1DDigger(Digger):
     def _post_dig(self, results):
         r = results
         return dict(LINE=[(r['X'], r['Y'])], title=r['title'],
-                    xlabel=r'radius $r$', xlim=r['xlim']), 'tmpl-line'
+                    xlabel=r'radius $r$', xlim=r['xlim'])
 
 
 class EquilibriumErro1DDigger(Digger):
@@ -208,6 +210,7 @@ class EquilibriumErro1DDigger(Digger):
     _misc = {'cos': dict(title='error of spline cos', index=28),
              'sin': dict(title='error of spline sin', index=29)}
     numseeds = list(_misc.keys())
+    post_template = 'tmpl-line'
 
     def _set_fignum(self, numseed=None):
         self._fignum = 'error-%s' % numseed
@@ -223,7 +226,7 @@ class EquilibriumErro1DDigger(Digger):
     def _post_dig(self, results):
         r = results
         return dict(LINE=[(r['X'], r['Y'])], title=r['title'],
-                    xlabel=r'$\theta$', xlim=r['xlim']), 'tmpl-line'
+                    xlabel=r'$\theta$', xlim=r['xlim'])
 
 
 class EquilibriumPoloidalDigger(Digger):
@@ -233,6 +236,7 @@ class EquilibriumPoloidalDigger(Digger):
     itemspattern = [r'^(?P<section>equilibrium)/'
                     + '(?P<par>(?:b-field|Jacobian|icurrent|zeta2phi|delb))$',
                     r'^(?P<section>equilibrium)/mesh-points-on-(?:X|Z)$']
+    post_template = 'tmpl-contourf'
 
     def _set_fignum(self, numseed=None):
         self._fignum = self.section[1]
@@ -243,7 +247,7 @@ class EquilibriumPoloidalDigger(Digger):
 
     def _post_dig(self, results):
         results.update(xlabel=r'$R(R_0)$', ylabel=r'$Z(R_0)$', aspect='equal')
-        return results, 'tmpl-contourf'
+        return results
 
 
 class EquilibriumMeshDigger(Digger):
@@ -253,6 +257,7 @@ class EquilibriumMeshDigger(Digger):
     itemspattern = [r'^(?P<section>equilibrium)/mesh-points-on-(?:X|Z)$',
                     r'^(?P<section>equilibrium)/mpsi-over-mskip\+1',
                     r'^(?P<section>equilibrium)/lst']
+    post_template = 'tmpl-line'
 
     def _set_fignum(self, numseed=None):
         self._fignum = 'poloidal_mesh'
@@ -275,7 +280,7 @@ class EquilibriumMeshDigger(Digger):
         r = results
         return dict(
             LINE=list(r['LINEs1']) + list(r['LINEs2']), title=r['title'],
-            xlabel=r'$R(R_0)$', ylabel=r'$Z(R_0)$', aspect='equal'), 'tmpl-line'
+            xlabel=r'$R(R_0)$', ylabel=r'$Z(R_0)$', aspect='equal')
 
 
 class EquilibriumThetaDigger(Digger):
@@ -286,6 +291,7 @@ class EquilibriumThetaDigger(Digger):
                     + '(?P<par>(?:b-field|Jacobian|icurrent|zeta2phi|delb'
                     + '|1d-data))$']  # for 'gq_plus_I/BB'
     commonpattern = ['equilibrium/mpsi-over-mskip\+1', 'equilibrium/lst']
+    post_template = 'tmpl-line'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s:theta' % self.section[1]
@@ -308,11 +314,12 @@ class EquilibriumThetaDigger(Digger):
                 isp = kwargs['isp']
                 acckwargs['isp'] = isp
         if self.kwoptions is None:
-            self.kwoptions['isp'] = dict(
-                widget='IntSlider',
-                rangee=(0, lsp - 1, 1),
-                value=isp,
-                description='psi=isp:')
+            self.kwoptions = dict(
+                isp=dict(
+                    widget='IntSlider',
+                    rangee=(0, lsp - 1, 1),
+                    value=isp,
+                    description='psi=isp:'))
         dlog.parm("fix psi=isp=%d. Maximal isp=%d." % (isp, lsp - 1))
         X = 2.0 * numpy.pi * numpy.array(range(lst + 1)) / lst
         if self.fignum == 'gq_plus_I/BB:theta':

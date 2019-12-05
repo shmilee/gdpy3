@@ -175,6 +175,7 @@ class _Data1dDigger(Digger):
     cutoff x, y of data
     '''
     __slots__ = []
+    post_template = 'tmpl-contourf'
 
     def _dig(self, **kwargs):
         '''
@@ -227,7 +228,7 @@ class _Data1dDigger(Digger):
 
     def _post_dig(self, results):
         results.update(xlabel=r'time($R_0/c_s$)', ylabel=r'$r$(mpsi)')
-        return results, 'tmpl-contourf'
+        return results
 
 
 class Data1dFluxDigger(_Data1dDigger):

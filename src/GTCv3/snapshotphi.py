@@ -91,6 +91,7 @@ class SnapPhiZetaPsiDigger(Digger):
     itemspattern = ['^(?P<section>snap\d{5})/phi_zeta_psi_(?P<j>\d+)',
                     '^(?P<section>snap\d{5})/j_list']
     commonpattern = ['gtc/tstep']
+    post_template = 'tmpl-contourf'
 
     def _set_fignum(self, numseed=None):
         j_list = self.pckloader.get(self.srckeys[1])
@@ -112,12 +113,13 @@ class SnapPhiZetaPsiDigger(Digger):
 
     def _post_dig(self, results):
         results.update(xlabel=r'$\psi$(mpsi)', ylabel=r'$\zeta$')
-        return results, 'tmpl-contourf'
+        return results
 
 
 class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
     '''phi(zeta,psi) correlation (d_zeta, d_psi) at at theta=j/mtdiag*2pi'''
     __slots__ = []
+    post_template = 'tmpl-z111p'
 
     def _set_fignum(self, numseed=None):
         super(SnapPhiCorrLenDigger, self)._set_fignum(numseed=numseed)
@@ -203,4 +205,4 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
         return dict(zip_results=[
             ('template_pcolor_axstructs', 211, ax1_calc),
             ('template_line_axstructs', 212, ax2_calc),
-        ]), 'tmpl-z111p'
+        ])

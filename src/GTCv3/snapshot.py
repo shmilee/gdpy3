@@ -162,6 +162,7 @@ class SnapshotProfilePdfDigger(Digger):
                     + '-(?P<pf>(?:profile|pdf))$',
                     '^(?P<s>snap\d{5})/mpsi\+1', '^(?P<s>snap\d{5})/nvgrid']
     commonpattern = ['gtc/tstep']
+    post_template = 'tmpl-sharextwinx'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_%s' % self.section[1:]
@@ -214,8 +215,7 @@ class SnapshotProfilePdfDigger(Digger):
                       'right': [(r['pitchangledf'], r'pitch angle $\delta f$')],
                       'lylabel': '$f$', 'rylabel': r'$\delta f$'}]
         return dict(X=X, YINFO=YINFO, title=r['title'],
-                    xlabel=r['xlabel'], xlim=[0, np.max(X)]
-                    ), 'tmpl-sharextwinx'
+                    xlabel=r['xlabel'], xlim=[0, np.max(X)])
 
 
 field_tex_str = {
@@ -234,6 +234,7 @@ class SnapshotFieldFluxPloidalDigger(Digger):
                     + '-(?P<field>(?:phi|apara|fluidne))',
                     '^(?P<s>snap\d{5})/poloidata-(?:x|z)']
     commonpattern = ['gtc/tstep']
+    post_template = 'tmpl-contourf'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_%s' % (self.section[2], self.section[1])
@@ -260,11 +261,11 @@ class SnapshotFieldFluxPloidalDigger(Digger):
         if self.section[1] == 'flux':
             return dict(X=r['zeta'], Y=r['theta'], Z=r['field'],
                         title=r['title'], xlabel=r'$\zeta$',
-                        ylabel=r'$\theta$', aspect='equal'), 'tmpl-contourf'
+                        ylabel=r'$\theta$', aspect='equal')
         else:
             return dict(X=r['X'], Y=r['Z'], Z=r['field'],
                         title=r['title'], xlabel=r'$R(R_0)$',
-                        ylabel=r'$Z(R_0)$', aspect='equal'), 'tmpl-contourf'
+                        ylabel=r'$Z(R_0)$', aspect='equal')
 
 
 class SnapshotFieldSpectrumDigger(Digger):
@@ -276,6 +277,7 @@ class SnapshotFieldSpectrumDigger(Digger):
                     '^(?P<s>snap\d{5})/mtgrid\+1',
                     '^(?P<s>snap\d{5})/mtoroidal']
     commonpattern = ['gtc/tstep']
+    post_template = 'tmpl-z111p'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_spectrum' % self.section[1]
@@ -352,8 +354,7 @@ class SnapshotFieldSpectrumDigger(Digger):
         return dict(zip_results=[
             ('template_line_axstructs', 211, ax1_calc),
             ('template_line_axstructs', 212, ax2_calc),
-        ], suptitle=r'%s, m=%d, p=%d' % (
-            r['title'], r['mmode'], r['pmode'])), 'tmpl-z111p'
+        ], suptitle=r'%s, m=%d, p=%d' % (r['title'], r['mmode'], r['pmode']))
 
 
 class SnapshotFieldProfileDigger(Digger):
@@ -364,6 +365,7 @@ class SnapshotFieldProfileDigger(Digger):
                     + '/poloidata-(?P<field>(?:phi|apara|fluidne))',
                     '^(?P<s>snap\d{5})/mpsi\+1', '^(?P<s>snap\d{5})/mtgrid\+1']
     commonpattern = ['gtc/tstep']
+    post_template = 'tmpl-z111p'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_profile' % self.section[1]
@@ -438,4 +440,4 @@ class SnapshotFieldProfileDigger(Digger):
         return dict(zip_results=[
             ('template_sharex_twinx_axstructs', 211, ax1_calc),
             ('template_sharex_twinx_axstructs', 212, ax2_calc),
-        ], suptitle=r['suptitle']), 'tmpl-z111p'
+        ], suptitle=r['suptitle'])

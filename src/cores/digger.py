@@ -42,12 +42,15 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
     figlabel: str
         full figure label, :attr:`group`/:attr:`fignum`
     kwoptions: dict or None
-        kwargs option info for widgets
+        kwargs option info for building widgets
+    post_template: str
+        chosen template in :meth:`post_dig`
     '''
     __slots__ = ['_group', '_fignum', 'kwoptions']
     nitems = '?'
     neededpattern = 'ALL'
     numseeds = None
+    post_template = ''
 
     @property
     def pckloader(self):
@@ -182,12 +185,12 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
     def post_dig(self, results):
         '''
         post-dig results
-        Return new results and template name in exporter
+        Return new results match with template name in exporter
         '''
         try:
-            new_results, template = self._post_dig(results)
+            new_results = self._post_dig(results)
         except Exception:
             dlog.error("%s: can't post-dig data for %s!"
                        % (self.coreid, self.figlabel), exc_info=1)
-            new_results, template = results, None
-        return new_results, template
+            new_results = results
+        return new_results
