@@ -6,6 +6,8 @@
 Contains Hdf5 pickled file loader class.
 '''
 
+import numpy
+
 try:
     import h5py
 except ImportError as exc:
@@ -64,4 +66,8 @@ class Hdf5PckLoader(BasePckLoader):
     #    return mygroups
 
     def _special_get(self, tmpobj, key):
-        return tmpobj[key][()]
+        val = tmpobj[key][()]
+        if isinstance(val, numpy.void):
+            return val.tostring()
+        else:
+            return val

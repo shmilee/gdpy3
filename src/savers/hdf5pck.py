@@ -53,6 +53,8 @@ class Hdf5PckSaver(BasePckSaver):
                                         compression='gzip',
                                         compression_opts=9)
                 else:
+                    if isinstance(val, bytes):
+                        val = numpy.void(val)
                     fgrp.create_dataset(key, data=val)
             self._storeobj.flush()
         except Exception:
