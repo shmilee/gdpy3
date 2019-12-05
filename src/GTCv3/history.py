@@ -167,11 +167,11 @@ class HistoryParticleDigger(Digger):
     __slots__ = []
     itemspattern = ['^(?P<s>history)/(?P<particle>(?:ion|electron|fastion))$']
     commonpattern = ['history/ndstep', 'gtc/tstep', 'gtc/ndiag']
-    numseeds = ['', 'flux']
+    numseeds = ['', '_flux']
     post_template = 'tmpl-sharextwinx'
 
     def _set_fignum(self, numseed=None):
-        self._fignum = '_'.join((self.section[1], numseed))
+        self._fignum = ''.join((self.section[1], numseed))
 
     def _dig(self, **kwargs):
         data, ndstep, tstep, ndiag = self.pckloader.get_many(
