@@ -24,7 +24,7 @@ from . import (
     snapshotphi,
     trackparticle,
 )
-from ..processor import Processor
+from ..processors.processor import Processor
 
 __all__ = ['GTCv3']
 
@@ -62,7 +62,7 @@ class GTCv3(Processor):
         trackparticle.TrackParticleOrbitDigger,
     ]
     saltname = 'gtc.out'
-    execution_time_limit = 20
+    dig_acceptable_time = 20
 
     @property
     def _rawsummary(self):
