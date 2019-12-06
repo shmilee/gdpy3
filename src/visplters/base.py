@@ -427,22 +427,40 @@ class BaseVisplter(object):
         Template
         --------
         .. code::
+
                    title
                  +--------+
           ylabel | Line2D |
                  +--------+
                    xlabel
+        or
+                   title
+                   /|\
+                 /  |  \
+               /    |    \
+              |    / \    |
+              |  /     \  | zlabel
+              |/  Line   \|
+               \   3D    /
+          xlabel \     / ylabel
+                   \ /
+
 
         Parameters
         ----------
         results['LINE']: list of tuple, required
             all line info for the axes
-            example [(x1, y1, label1), (x2, y2, label2), (x3, y3)]
-            'x1', 'y1', list or numpy.ndarray, same length
+            2D example [(x1, y1, label1), (x2, y2, label2), (x3, y3)]
+            3D example [(x1, y1, z1, label1), (x2, y2, z2)]
+            'x1', 'y1', 'z1', list or numpy.ndarray, same length
         results['title']: str, optional
         results['xlabel']: str, optional
         results['ylabel']: str, optional
         results['aspect']: str, optional
+        results['lin3d']: bool, optional for 3D, default False
+        results['zlabel']: str, optional for 3D
+        results['scale_xyz']: tuple, optional for 3D
+            like ([-1,1], [-1,1], [-1,1])
         results['xlim']: (`left`, `right`), optional
         results['ylim']: (`up`, `down`), optional
         results['ylabel_rotation']: str or int, optional
@@ -455,31 +473,43 @@ class BaseVisplter(object):
         if not isinstance(results['LINE'], list):
             vlog.error("`LINE` array must be list!")
             return [], []
+        if results.get('lin3d', False):
+            lin3d, d3, d3n = True, 1, [(2, 'Z')]
+        else:
+            lin3d, d3, d3n = False, 0, []
         for i, line in enumerate(results['LINE'], 1):
-            if len(line) in (2, 3):
-                for _x, _X in [(0, 'X'), (1, 'Y')]:
+            if len(line) in (2+d3, 3+d3):
+                for _x, _X in [(0, 'X'), (1, 'Y')] + d3n:
                     if not isinstance(line[_x], (list, range, numpy.ndarray)):
                         vlog.error("%s of line %d must be array!" % (_X, i))
                         return [], []
                 if len(line[0]) != len(line[1]):
                     vlog.error("Invalid length of x, y for line %d!" % i)
                     return [], []
+                if d3 and len(line[0]) != len(line[2]):
+                    vlog.error("Invalid length of x, z for line %d!" % i)
+                    return [], []
             else:
-                vlog.error("Length of info for line %d must be 2 or 3!" % i)
+                vlog.error("Length of info for line %d must be %d or %d!"
+                           % (i, 2+d3, 3+d3))
                 return [], []
         LINE = results['LINE']
         title, xlabel, ylabel, aspect = self._get_my_optional_vals(
             results, ('title', str, None), ('xlabel', str, None),
             ('ylabel', str, None), ('aspect', str, None))
+        zlabel, scale_xyz = self._get_my_optional_vals(
+            results, ('zlabel', str, None), ('scale_xyz', tuple, None))
         xlim, ylim = self._get_my_points(results, 'xlim', 'ylim')
         ylabel_rotation, legend_kwargs = self._get_my_optional_vals(
             results, ('ylabel_rotation', (int, str), None),
             ('legend_kwargs', dict, {}))
         return self._tmpl_line(
             LINE, title, xlabel, ylabel, aspect,
+            lin3d, zlabel, scale_xyz,
             xlim, ylim, ylabel_rotation, legend_kwargs)
 
     def _tmpl_line(self, LINE, title, xlabel, ylabel, aspect,
+                   lin3d, zlabel, scale_xyz,
                    xlim, ylim, ylabel_rotation, legend_kwargs):
         '''For :meth:`tmpl_line`.'''
         raise NotImplementedError()

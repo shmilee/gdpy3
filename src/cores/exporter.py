@@ -181,6 +181,18 @@ class LineExporter(Exporter):
     ylabel | Line2D |
            +--------+
              xlabel
+    or
+             title
+             /|\
+           /  |  \
+         /    |    \
+        |    / \    |
+        |  /     \  | zlabel
+        |/  Line   \|
+         \   3D    /
+    xlabel \     / ylabel
+             \ /
+
     '''
     __slots__ = []
     itemspattern = ['^(?P<section>tmpl)_line$']

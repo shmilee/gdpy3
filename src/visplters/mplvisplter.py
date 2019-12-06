@@ -218,16 +218,33 @@ class MatplotlibVisplter(BaseVisplter):
         return [{'data': data, 'layout': [111, layoutkw]}], []
 
     def _tmpl_line(self, LINE, title, xlabel, ylabel, aspect,
+                   lin3d, zlabel, scale_xyz,
                    xlim, ylim, ylabel_rotation, legend_kwargs):
         '''For :meth:`tmpl_line`.'''
         vlog.debug("Getting Axes %s ..." % 111)
         data, layoutkw, addlegend = [], {}, False
-        for i, ln in enumerate(LINE, 1):
-            if len(ln) == 3:
-                data.append([i, 'plot', (ln[0], ln[1]), dict(label=ln[2])])
-                addlegend = True
-            elif len(ln) == 2:
-                data.append([i, 'plot', (ln[0], ln[1]), {}])
+        if lin3d:
+            layoutkw['projection'] = '3d'
+            if zlabel:
+                layoutkw['zlabel'] = zlabel
+            for i, ln in enumerate(LINE, 1):
+                if len(ln) == 4:
+                    data.append([i, 'plot3D',
+                                 (ln[0], ln[1], ln[2]), dict(label=ln[3])])
+                    addlegend = True
+                elif len(ln) == 3:
+                    data.append([i, 'plot', (ln[0], ln[1], ln[2]), {}])
+            if scale_xyz:
+                i += 1
+                data.append([i, 'auto_scale_xyz', scale_xyz, dict()])
+        else:
+            for i, ln in enumerate(LINE, 1):
+                if len(ln) == 3:
+                    data.append([i, 'plot',
+                                 (ln[0], ln[1]), dict(label=ln[2])])
+                    addlegend = True
+                elif len(ln) == 2:
+                    data.append([i, 'plot', (ln[0], ln[1]), {}])
         if addlegend:
             i = i + 1
             data.append([i, 'legend', (), legend_kwargs])
@@ -241,7 +258,8 @@ class MatplotlibVisplter(BaseVisplter):
             else:
                 data.append([i + 1, 'set_ylabel', (ylabel,),
                              dict(rotation=ylabel_rotation)])
-        if aspect:
+        # not currently possible to manually set the aspect on 3D axes
+        if aspect and not lin3d:
             layoutkw['aspect'] = aspect
         if xlim:
             layoutkw['xlim'] = xlim

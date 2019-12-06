@@ -179,8 +179,7 @@ class TrackParticleOrbitDigger(Digger):
             return dict(LINE=LINE, title=r['title'], xlabel='R(cm)$',
                         ylabel='Z(cm)', aspect='equal')
         else:
-            scale = [-r['rlim'], r['rlim']]
-            return dict(LINE=[r['X'], r['Y'], r['Z']], title=r['title'],
-                        xlabel='X(cm)', ylabel='Y(cm)', zlabel='Z(cm)',
-                        aspect='equal', scale_xyz=(scale, scale, scale),
-                        projection='3d')  # TODO line3D
+            sc = [-r['rlim'], r['rlim']]
+            return dict(LINE=[(r['X'], r['Y'], r['Z'])], title=r['title'],
+                        xlabel='X(cm)', ylabel='Y(cm)', aspect='equal',
+                        lin3d=True, zlabel='Z(cm)', scale_xyz=(sc, sc, sc))
