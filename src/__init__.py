@@ -8,10 +8,10 @@ from .__about__ import __author__, __email__, __license__, __copyright__
 __doc__ = __description__
 __all__ = [
     'get_rawloader', 'get_pckloader', 'get_pcksaver',
-    'get_plotter', 'get_processor',
+    'get_visplter', 'get_processor',
 ]
 
 from .loaders import get_rawloader, get_pckloader
 from .savers import get_pcksaver
-from .plotters import get_plotter
+from .visplters import get_visplter
 from .processors import get_processor

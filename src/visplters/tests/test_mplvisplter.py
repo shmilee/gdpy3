@@ -167,14 +167,14 @@ temp_z111presults = dict(
 )
 
 
-class TestMatplotlibPlotter(unittest.TestCase):
+class TestMatplotlibVisplter(unittest.TestCase):
     '''
-    Test class MatplotlibPlotter
+    Test class MatplotlibVisplter
     '''
 
     def setUp(self):
-        from ..mplplotter import MatplotlibPlotter
-        self.plotter = MatplotlibPlotter('mpl::test')
+        from ..mplvisplter import MatplotlibVisplter
+        self.visplter = MatplotlibVisplter('mpl::test')
         self.tmpfile = tempfile.mktemp(suffix='-mplfigure')
 
     def tearDown(self):
@@ -182,63 +182,63 @@ class TestMatplotlibPlotter(unittest.TestCase):
             if os.path.isfile(self.tmpfile + ext):
                 os.remove(self.tmpfile + ext)
 
-    def test_mplplotter_style(self):
-        self.assertTrue('seaborn' in self.plotter.style_available)
-        self.assertListEqual(self.plotter.style, ['gdpy3-notebook'])
+    def test_mplvisplter_style(self):
+        self.assertTrue('seaborn' in self.visplter.style_available)
+        self.assertListEqual(self.visplter.style, ['gdpy3-notebook'])
         self.assertListEqual(
-            self.plotter.check_style(['seaborn', '-rm', {'figure.dpi': 80}]),
+            self.visplter.check_style(['seaborn', '-rm', {'figure.dpi': 80}]),
             ['seaborn', {'figure.dpi': 80}])
         self.assertListEqual(
-            self.plotter.filter_style(['seaborn', 'gdpy3-notebook']),
+            self.visplter.filter_style(['seaborn', 'gdpy3-notebook']),
             ['seaborn', os.path.join(
-                self.plotter._STYLE_LIBPATH, 'gdpy3-notebook.mplstyle')])
-        self.assertEqual(self.plotter.param_from_style('image.cmap'), 'jet')
-        self.assertFalse(self.plotter.param_from_style('image.cmapNone'))
-        self.plotter.style = ['gdpy3-notebook', {'image.cmap': 'hot'}]
-        self.assertEqual(self.plotter.param_from_style('image.cmap'), 'hot')
+                self.visplter._STYLE_LIBPATH, 'gdpy3-notebook.mplstyle')])
+        self.assertEqual(self.visplter.param_from_style('image.cmap'), 'jet')
+        self.assertFalse(self.visplter.param_from_style('image.cmapNone'))
+        self.visplter.style = ['gdpy3-notebook', {'image.cmap': 'hot'}]
+        self.assertEqual(self.visplter.param_from_style('image.cmap'), 'hot')
 
-    def test_mplplotter_figure(self):
-        self.plotter.create_figure('test-f1', add_style=['seaborn'])
-        self.plotter.add_axes(self.plotter.get_figure('test-f1'), ax1)
+    def test_mplvisplter_figure(self):
+        self.visplter.create_figure('test-f1', add_style=['seaborn'])
+        self.visplter.add_axes(self.visplter.get_figure('test-f1'), ax1)
         for ext in ['.jpg', '.png', '.pdf']:
-            self.plotter.save_figure('test-f1', self.tmpfile + ext)
+            self.visplter.save_figure('test-f1', self.tmpfile + ext)
         input("[I]nterrupt, to see figure in %s." % self.tmpfile)
-        self.plotter.create_figure('test-f2', ax1, ax2, ax3, ax4, ax5, ax6)
-        self.plotter.show_figure('test-f2')
+        self.visplter.create_figure('test-f2', ax1, ax2, ax3, ax4, ax5, ax6)
+        self.visplter.show_figure('test-f2')
         input('[I]nterrupt, to see figure "%s".' % 'test-f2')
-        self.assertSetEqual(set(self.plotter.figures), {'test-f1', 'test-f2'})
-        self.plotter.close_figure('test-f1')
-        self.assertListEqual(self.plotter.figures, ['test-f2'])
-        self.plotter.close_figure('all')
-        self.assertListEqual(self.plotter.figures, [])
+        self.assertSetEqual(set(self.visplter.figures), {'test-f1', 'test-f2'})
+        self.visplter.close_figure('test-f1')
+        self.assertListEqual(self.visplter.figures, ['test-f2'])
+        self.visplter.close_figure('all')
+        self.assertListEqual(self.visplter.figures, [])
 
-    def test_mplplotter_template_line_axstructs(self):
-        axstruct, sty = self.plotter.template_line_axstructs(temp_lineresults)
-        self.plotter.create_figure('template-f1', *axstruct, add_style=sty)
-        self.plotter.show_figure('template-f1')
+    def test_mplvisplter_template_line_axstructs(self):
+        axstruct, sty = self.visplter.template_line_axstructs(temp_lineresults)
+        self.visplter.create_figure('template-f1', *axstruct, add_style=sty)
+        self.visplter.show_figure('template-f1')
         input('[I]nterrupt, to see figure "%s".' % 'template-f1')
-        self.plotter.close_figure('template-f1')
+        self.visplter.close_figure('template-f1')
 
-    def test_mplplotter_template_pcolor_axstructs(self):
-        axstruct, sty = self.plotter.template_pcolor_axstructs(
+    def test_mplvisplter_template_pcolor_axstructs(self):
+        axstruct, sty = self.visplter.template_pcolor_axstructs(
             temp_pcolorresults)
-        self.plotter.create_figure('template-f2', *axstruct, add_style=sty)
-        self.plotter.show_figure('template-f2')
+        self.visplter.create_figure('template-f2', *axstruct, add_style=sty)
+        self.visplter.show_figure('template-f2')
         input('[I]nterrupt, to see figure "%s".' % 'template-f2')
-        self.plotter.close_figure('template-f2')
+        self.visplter.close_figure('template-f2')
 
-    def test_mplplotter_template_sharex_twinx_axstructs(self):
-        axstruct, sty = self.plotter.template_sharex_twinx_axstructs(
+    def test_mplvisplter_template_sharex_twinx_axstructs(self):
+        axstruct, sty = self.visplter.template_sharex_twinx_axstructs(
             temp_sharextwinxresults)
-        self.plotter.create_figure('template-f3', *axstruct, add_style=sty)
-        self.plotter.show_figure('template-f3')
+        self.visplter.create_figure('template-f3', *axstruct, add_style=sty)
+        self.visplter.show_figure('template-f3')
         input('[I]nterrupt, to see figure "%s".' % 'template-f3')
-        self.plotter.close_figure('template-f3')
+        self.visplter.close_figure('template-f3')
 
-    def test_plotter_template_z111p_axstructs(self):
-        axstruct, sty = self.plotter.template_z111p_axstructs(
+    def test_visplter_template_z111p_axstructs(self):
+        axstruct, sty = self.visplter.template_z111p_axstructs(
             temp_z111presults)
-        self.plotter.create_figure('template-fz', *axstruct, add_style=sty)
-        self.plotter.show_figure('template-fz')
+        self.visplter.create_figure('template-fz', *axstruct, add_style=sty)
+        self.visplter.show_figure('template-fz')
         input('[I]nterrupt, to see figure "%s".' % 'template-fz')
-        self.plotter.close_figure('template-fz')
+        self.visplter.close_figure('template-fz')

@@ -7,14 +7,14 @@ import unittest
 import tempfile
 import numpy
 
-from ..base import BasePlotter, BasePloTemplate
+from ..base import BaseVisplter
 
 
-class ImpBasePlotter(BasePlotter, BasePloTemplate):
+class ImpBaseVisplter(BaseVisplter):
     style_available = ['s1', 's2', 's99', 'gdpy3-test']
 
     def __init__(self, name):
-        super(ImpBasePlotter, self).__init__(
+        super(ImpBaseVisplter, self).__init__(
             name, style=['s99'], example_axes='{d,l,s}')
 
     def _check_style(self, sty):
@@ -66,58 +66,58 @@ class ImpBasePlotter(BasePlotter, BasePloTemplate):
         return input_list, []
 
 
-class TestBasePlotter(unittest.TestCase):
+class TestBaseVisplter(unittest.TestCase):
     '''
-    Test class BasePlotter
+    Test class BaseVisplter
     '''
 
     def setUp(self):
         self.tmpfile = tempfile.mktemp(suffix='-test')
-        self.ImpBasePlotter = ImpBasePlotter
-        self.plotter = ImpBasePlotter('test-plotter')
+        self.ImpBaseVisplter = ImpBaseVisplter
+        self.visplter = ImpBaseVisplter('test-visplter')
 
     def tearDown(self):
         if os.path.isfile(self.tmpfile):
             os.remove(self.tmpfile)
 
-    def test_plotter_init(self):
-        self.assertEqual(self.plotter.name, 'test-plotter')
-        self.assertListEqual(self.plotter.style, ['s99'])
-        self.assertEqual(self.plotter.example_axes, '{d,l,s}')
-        self.assertListEqual(self.plotter.figures, [])
+    def test_visplter_init(self):
+        self.assertEqual(self.visplter.name, 'test-visplter')
+        self.assertListEqual(self.visplter.style, ['s99'])
+        self.assertEqual(self.visplter.example_axes, '{d,l,s}')
+        self.assertListEqual(self.visplter.figures, [])
 
-    def test_plotter_style(self):
-        style = self.plotter.style
-        self.plotter.style = ['s1']
-        self.assertListEqual(self.plotter.style, ['s1'])
-        self.plotter.style = ['s99']
+    def test_visplter_style(self):
+        style = self.visplter.style
+        self.visplter.style = ['s1']
+        self.assertListEqual(self.visplter.style, ['s1'])
+        self.visplter.style = ['s99']
 
-    def test_plotter_check_style(self):
+    def test_visplter_check_style(self):
         self.assertListEqual(
-            self.plotter.check_style(['s1', 's10', 's99', 's100']),
+            self.visplter.check_style(['s1', 's10', 's99', 's100']),
             ['s1', 's99'])
 
-    def test_plotter_filter_style(self):
+    def test_visplter_filter_style(self):
         self.assertListEqual(
-            self.plotter.filter_style(['s1', 's10', 'gdpy3-test']),
+            self.visplter.filter_style(['s1', 's10', 'gdpy3-test']),
             ['s1', 's10', '/path/gdpy3-test.style'])
 
-    def test_plotter_param_from_style(self):
-        self.assertEqual(self.plotter.param_from_style('tp'), 'param-tp')
+    def test_visplter_param_from_style(self):
+        self.assertEqual(self.visplter.param_from_style('tp'), 'param-tp')
 
-    def test_plotter_add_axes(self):
+    def test_visplter_add_axes(self):
         fig = {'datalist': [], 'layoutlist': [], 'axstylelist': []}
-        self.plotter.add_axes(
+        self.visplter.add_axes(
             fig, dict(data=['data1'], layout=[1, 'layout1'], axstyle=['s1']))
-        self.plotter.add_axes(
+        self.visplter.add_axes(
             fig, dict(data=['data2'], layout=[2, 'layout2'], axstyle=['s9']))
         self.assertListEqual(fig['datalist'], [['data1'], ['data2']])
         self.assertListEqual(fig['layoutlist'],
                              [[1, 'layout1'], [2, 'layout2']])
         self.assertListEqual(fig['axstylelist'], [['s1'], []])
 
-    def test_plotter_create_figure(self):
-        fig = self.plotter.create_figure(
+    def test_visplter_create_figure(self):
+        fig = self.visplter.create_figure(
             'test-f1',
             dict(data=['data1'], layout=[1, 'layout1'], axstyle=['s1']),
             dict(data=['data2'], layout=[2, 'layout2'], axstyle=['s2']),
@@ -129,16 +129,16 @@ class TestBasePlotter(unittest.TestCase):
                              [[1, 'layout1'], [2, 'layout2']])
         self.assertListEqual(fig['axstylelist'], [['s1'], ['s2']])
 
-    def test_plotter_get_show_save_figure(self):
-        self.plotter.create_figure('test-f2')
-        self.assertTrue(isinstance(self.plotter.get_figure('test-f2'), dict))
-        self.assertEqual(self.plotter.show_figure('test-f2'), 'test-f2')
-        self.plotter.save_figure('test-f2', self.tmpfile)
+    def test_visplter_get_show_save_figure(self):
+        self.visplter.create_figure('test-f2')
+        self.assertTrue(isinstance(self.visplter.get_figure('test-f2'), dict))
+        self.assertEqual(self.visplter.show_figure('test-f2'), 'test-f2')
+        self.visplter.save_figure('test-f2', self.tmpfile)
         with open(self.tmpfile, 'r') as f:
             self.assertEqual(f.read(), 'test-f2')
 
-    def test_plotter_template_line_axstructs(self):
-        fun = self.plotter.template_line_axstructs
+    def test_visplter_template_line_axstructs(self):
+        fun = self.visplter.template_line_axstructs
         calculation = dict(
             LINE=[
                 (range(10), range(10, 0, -1), 'dec'),
@@ -153,8 +153,8 @@ class TestBasePlotter(unittest.TestCase):
         self.assertNotEqual([], axstruct)
         self.assertIsNone(axstruct[2])
 
-    def test_plotter_template_pcolor_axstructs(self):
-        fun = self.plotter.template_pcolor_axstructs
+    def test_visplter_template_pcolor_axstructs(self):
+        fun = self.visplter.template_pcolor_axstructs
         calculation = dict(
             X=numpy.array(range(3)),
             Y=numpy.array(range(4)),
@@ -180,8 +180,8 @@ class TestBasePlotter(unittest.TestCase):
         self.assertIsNotNone(axstruct[7])
         self.assertListEqual(['x', 'z'], axstruct[-1])
 
-    def test_plotter_template_sharex_twinx_axstructs(self):
-        fun = self.plotter.template_sharex_twinx_axstructs
+    def test_visplter_template_sharex_twinx_axstructs(self):
+        fun = self.visplter.template_sharex_twinx_axstructs
         calculation = dict(
             X=range(1, 100),
             YINFO=[{
@@ -212,8 +212,8 @@ class TestBasePlotter(unittest.TestCase):
         self.assertListEqual(calculation['xlim'], axstruct[5])
         self.assertEqual(calculation['ylabel_rotation'], axstruct[6])
 
-    def test_plotter_template_z111p_axstructs(self):
-        fun = self.plotter.template_z111p_axstructs
+    def test_visplter_template_z111p_axstructs(self):
+        fun = self.visplter.template_z111p_axstructs
         calculation = {
             'zip_results': [(
                 'template_line_axstructs', 121,

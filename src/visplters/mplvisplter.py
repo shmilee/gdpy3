@@ -3,7 +3,7 @@
 # Copyright (c) 2019 shmilee
 
 '''
-Contains matplotlib plotter class. A simple wrapper for matplotlib.
+Contains matplotlib visplter class. A simple wrapper for matplotlib.
 '''
 
 import os
@@ -14,10 +14,10 @@ import mpl_toolkits.mplot3d
 
 from ..glogger import getGLogger
 from ..__about__ import __data_path__
-from .base import BasePlotter, BasePloTemplate
+from .base import BaseVisplter
 
-__all__ = ['MatplotlibPlotter']
-log = getGLogger('P')
+__all__ = ['MatplotlibVisplter']
+vlog = getGLogger('V')
 
 _Mpl_Axes_Structure = '''
 {
@@ -42,7 +42,7 @@ def _get_mplstyle_library(path):
     return available
 
 
-class MatplotlibPlotter(BasePlotter, BasePloTemplate):
+class MatplotlibVisplter(BaseVisplter):
     '''
     Use matplotlib to create figures.
     '''
@@ -51,7 +51,7 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
     style_available = _get_mplstyle_library(_STYLE_LIBPATH)
 
     def __init__(self, name):
-        super(MatplotlibPlotter, self).__init__(
+        super(MatplotlibVisplter, self).__init__(
             name, style=['gdpy3-notebook'], example_axes=_Mpl_Axes_Structure)
 
     def _check_style(self, sty):
@@ -63,7 +63,7 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
                 pass
             return True
         except Exception as exc:
-            log.error("Ignore style '%s': %s" % (sty, exc))
+            vlog.error("Ignore style '%s': %s" % (sty, exc))
             return False
 
     def _filter_style(self, sty):
@@ -75,7 +75,7 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
             with matplotlib.style.context(self.filter_style(self.style)):
                 return matplotlib.rcParams[param]
         else:
-            log.error("Invalid param '%s' for matplotlib.rcParams!" % param)
+            vlog.error("Invalid param '%s' for matplotlib.rcParams!" % param)
             return None
 
     def _add_axes(self, fig, data, layout, axstyle):
@@ -87,7 +87,7 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
             # use layout
             axpos, axkws = layout
             try:
-                log.debug("Adding axes %s ..." % (axpos,))
+                vlog.debug("Adding axes %s ..." % (axpos,))
                 if isinstance(axpos, (int, matplotlib.gridspec.SubplotSpec)):
                     ax = fig.add_subplot(axpos, **axkws)
                 elif isinstance(axpos, (tuple, list)):
@@ -96,58 +96,58 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
                     elif len(axpos) == 4:
                         ax = fig.add_axes(axpos, **axkws)
                     else:
-                        log.error("Ignore this axes: position tuple or list "
-                                  "should have 3 integers or 4 floats.")
+                        vlog.error("Ignore this axes: position tuple or list "
+                                   "should have 3 integers or 4 floats.")
                         return
                 else:
-                    log.error("Ignore this axes: position must be int, tuple"
-                              ", list, or matplotlib.gridspec.SubplotSpec")
+                    vlog.error("Ignore this axes: position must be int, tuple"
+                               ", list, or matplotlib.gridspec.SubplotSpec")
                     return
             except Exception:
-                log.error("Failed to add axes %s!" % (axpos,), exc_info=1)
+                vlog.error("Failed to add axes %s!" % (axpos,), exc_info=1)
                 return
             # use data
             axesdict, artistdict = {0: ax}, {}
             for index, axfunc, fargs, fkwargs in data:
                 if axfunc in ('twinx', 'twiny'):
-                    log.debug("Creating twin axes %s: %s ..."
-                              % (index, axfunc))
+                    vlog.debug("Creating twin axes %s: %s ..."
+                               % (index, axfunc))
                     try:
                         ax = getattr(ax, axfunc)()
                         if index in axesdict:
-                            log.warning("Duplicate index %s!" % index)
+                            vlog.warning("Duplicate index %s!" % index)
                         axesdict[index] = ax
                         if 'nextcolor' in fkwargs:
                             for i in range(fkwargs['nextcolor']):
                                 # i=next(ax._get_lines.prop_cycler)
                                 i = ax._get_lines.get_next_color()
                     except Exception:
-                        log.error("Failed to create axes %s!"
-                                  % index, exc_info=1)
+                        vlog.error("Failed to create axes %s!"
+                                   % index, exc_info=1)
                 elif axfunc == 'revise':
-                    log.debug("Revising axes %s ..." % (axpos,))
+                    vlog.debug("Revising axes %s ..." % (axpos,))
                     try:
                         fargs(fig, axesdict, artistdict, **fkwargs)
                     except Exception:
-                        log.error("Failed to revise axes %s!"
-                                  % (axpos,), exc_info=1)
+                        vlog.error("Failed to revise axes %s!"
+                                   % (axpos,), exc_info=1)
                 else:
-                    log.debug("Adding artist %s: %s ..." % (index, axfunc))
+                    vlog.debug("Adding artist %s: %s ..." % (index, axfunc))
                     try:
                         art = getattr(ax, axfunc)(*fargs, **fkwargs)
                         if index in artistdict:
-                            log.warning("Duplicate index %s!" % index)
+                            vlog.warning("Duplicate index %s!" % index)
                         artistdict[index] = art
                     except Exception:
-                        log.error("Failed to add artist %s!"
-                                  % index, exc_info=1)
+                        vlog.error("Failed to add artist %s!"
+                                   % index, exc_info=1)
 
     def _create_figure(self, num, axesstructures, figstyle):
         '''Create object *fig*.'''
         with matplotlib.style.context(self.filter_style(figstyle)):
             fig = matplotlib.pyplot.figure(num=num)
             for i, axstructure in enumerate(axesstructures, 1):
-                log.debug("Picking AxesStructure %d ..." % i)
+                vlog.debug("Picking AxesStructure %d ..." % i)
                 self.add_axes(fig, axstructure)
         return fig
 
@@ -174,7 +174,7 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
     def _template_line_axstructs(self, LINE, title, xlabel, ylabel,
                                  xlim, ylim, ylabel_rotation, legend_kwargs):
         '''For :meth:`template_line_axstructs`.'''
-        log.debug("Getting Axes %s ..." % 111)
+        vlog.debug("Getting Axes %s ..." % 111)
         data, layoutkw, addlegend = [], {}, False
         for i, ln in enumerate(LINE, 1):
             if len(ln) == 3:
@@ -249,7 +249,7 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
         AxStructs = []
         for row in range(len(YINFO)):
             number = int("%s1%s" % (len(YINFO), row + 1))
-            log.debug("Getting Axes %s ..." % number)
+            vlog.debug("Getting Axes %s ..." % number)
             layout = dict(xlim=xlim)
             if row == 0 and title:
                 layout['title'] = title
@@ -299,11 +299,11 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
         AxStructs = []
         for i, _results in enumerate(zip_results, 0):
             ax, pos = _results
-            log.debug("Getting Axes %s ..." % (pos,))
+            vlog.debug("Getting Axes %s ..." % (pos,))
             if isinstance(pos, (int, list, matplotlib.gridspec.SubplotSpec)):
                 ax['layout'][0] = pos
             else:
-                log.error("`zip_results[%d]`: invalid position!" % i)
+                vlog.error("`zip_results[%d]`: invalid position!" % i)
                 continue
             AxStructs.append(ax)
         if not suptitle:
@@ -315,5 +315,5 @@ class MatplotlibPlotter(BasePlotter, BasePloTemplate):
             def addsuptitle(fig, ax, art): return fig.suptitle(suptitle)
             data.append([len(data) + 1, 'revise', addsuptitle, dict()])
         except Exception:
-            log.error("Failed to set suptitle: %s!" % suptitle)
+            vlog.error("Failed to set suptitle: %s!" % suptitle)
         return AxStructs, []

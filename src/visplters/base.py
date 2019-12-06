@@ -3,37 +3,39 @@
 # Copyright (c) 2019 shmilee
 
 '''
-Contains plotter, plotemplate base class.
+Contains visplters base class.
 '''
 
 import numpy
 
 from ..glogger import getGLogger
 
-__all__ = ['BasePlotter', 'BasePloTemplate']
-log = getGLogger('P')
+__all__ = ['BaseVisplter']
+vlog = getGLogger('V')
 
 
-class BasePlotter(object):
+class BaseVisplter(object):
     '''
     Plot data, create figures.
 
     Attributes
     ----------
     name: str
-        plotter name
+        visplter name
     style_available: list of str
-        available styles for this plotter
+        available styles for this visplter
     style: list of str
         list of default styles, valid elements can be in *style_available*
     figures: list
-        list of figure nums(labels) created by this plotter
+        list of figure nums(labels) created by this visplter
     example_axes: str
         example structure of an axes
+    template_available: tuple
+        all available templates
 
     Notes
     -----
-    The plotter instance is callable.
+    The visplter instance is callable.
     instance() is equivalent to instance.create_figure().
     '''
     __slots__ = ['name', 'example_axes', '_style', '_figureslib']
@@ -61,7 +63,7 @@ class BasePlotter(object):
             if self._check_style(sty):
                 self._style.append(sty)
             else:
-                log.warning("Ignore style '%s': %s" % (sty, 'not available'))
+                vlog.warning("Ignore style '%s': %s" % (sty, 'not available'))
 
     style = property(_get_style, _set_style)
 
@@ -123,24 +125,24 @@ class BasePlotter(object):
         '''
         # simple check
         if not isinstance(axstructure, dict):
-            log.error("AxesStructure must be dict. Not %s. Ignore this axes."
-                      % type(axstructure))
+            vlog.error("AxesStructure must be dict. Not %s. Ignore this axes."
+                       % type(axstructure))
             return
         check_pass = True
         for k in ('data', 'layout'):
             if k not in axstructure:
                 check_pass = False
-                log.error("AxesStructure must contain key: '%s'!" % k)
+                vlog.error("AxesStructure must contain key: '%s'!" % k)
             if not isinstance(axstructure[k], list):
                 check_pass = False
-                log.error("AxesStructure[%s] must be list. Not %s."
-                          % (k, type(axstructure[k])))
+                vlog.error("AxesStructure[%s] must be list. Not %s."
+                           % (k, type(axstructure[k])))
         layout = axstructure['layout']
         if not(isinstance(layout, list) and len(layout) == 2):
             check_pass = False
-            log.error("AxesStructure['layout'] must have 2 elements.")
+            vlog.error("AxesStructure['layout'] must have 2 elements.")
         if not check_pass:
-            log.error("Ignore this axes.")
+            vlog.error("Ignore this axes.")
             return
         # check axstyle
         axstyle = []
@@ -148,10 +150,10 @@ class BasePlotter(object):
             if isinstance(axstructure['axstyle'], list):
                 axstyle = self.check_style(axstructure['axstyle'])
             else:
-                log.error("AxesStructure['axstyle'] must be list. Not %s. "
-                          % type(axstructure['axstyle'])
-                          + "Ignore 'axstyle' setting!")
-        log.debug("Axes Style: %s" % str(axstyle))
+                vlog.error("AxesStructure['axstyle'] must be list. Not %s. "
+                           % type(axstructure['axstyle'])
+                           + "Ignore 'axstyle' setting!")
+        vlog.debug("Axes Style: %s" % str(axstyle))
         return self._add_axes(fig, axstructure['data'], layout, axstyle)
 
     def _create_figure(self, num, axesstructures, figstyle):
@@ -188,15 +190,15 @@ class BasePlotter(object):
         '''
         if num in self._figureslib:
             if replace:
-                log.warning("Figure %s was created. Closing it!" % num)
+                vlog.warning("Figure %s was created. Closing it!" % num)
                 self.close_figure(num)
             else:
                 return self.get_figure(num)
-        log.info("Plotting figure %s ..." % num)
+        vlog.info("Plotting figure %s ..." % num)
         figstyle = self.style.copy()
         if add_style and isinstance(add_style, list):
             figstyle.extend(self.check_style(add_style))
-        log.debug("Figure Style: %s" % str(figstyle))
+        vlog.debug("Figure Style: %s" % str(figstyle))
         figure = self._create_figure(num, axesstructures, figstyle)
         if figure:
             self._figureslib[num] = figure
@@ -228,7 +230,7 @@ class BasePlotter(object):
         if num in self._figureslib:
             return self._show_figure(self._figureslib[num])
         else:
-            log.error("Figure %s is not created!" % num)
+            vlog.error("Figure %s is not created!" % num)
 
     def _close_figure(self, fig):
         '''Close figure object *fig*.'''
@@ -263,23 +265,11 @@ class BasePlotter(object):
         Save figure *num* to *fpath* if already created.
         '''
         if num in self._figureslib:
-            log.info("Save figure to %s ..." % fpath)
+            vlog.info("Save figure to %s ..." % fpath)
             self._save_figure(self._figureslib[num], fpath, **kwargs)
         else:
-            log.error("Figure %s is not created!" % num)
+            vlog.error("Figure %s is not created!" % num)
 
-
-class BasePloTemplate(object):
-    '''
-    Some plot templates(methods)
-        Use *results* to get a list of axesstructure and add_style.
-
-    Attributes
-    ----------
-    template_available: tuple
-        all available templates
-    '''
-    __slots__ = []
     template_available = [
         'template_line_axstructs',
         'template_pcolor_axstructs',
@@ -342,22 +332,22 @@ class BasePloTemplate(object):
             legend kwargs
         '''
         if not 'LINE' in results:
-            log.error("`LINE` are required!")
+            vlog.error("`LINE` are required!")
             return [], []
         if not isinstance(results['LINE'], list):
-            log.error("`LINE` array must be list!")
+            vlog.error("`LINE` array must be list!")
             return [], []
         for i, line in enumerate(results['LINE'], 1):
             if len(line) in (2, 3):
                 for _x, _X in [(0, 'X'), (1, 'Y')]:
                     if not isinstance(line[_x], (list, range, numpy.ndarray)):
-                        log.error("%s of line %d must be array!" % (_X, i))
+                        vlog.error("%s of line %d must be array!" % (_X, i))
                         return [], []
                 if len(line[0]) != len(line[1]):
-                    log.error("Invalid length of x, y for line %d!" % i)
+                    vlog.error("Invalid length of x, y for line %d!" % i)
                     return [], []
             else:
-                log.error("Length of info for line %d must be 2 or 3!" % i)
+                vlog.error("Length of info for line %d must be 2 or 3!" % i)
                 return [], []
         LINE = results['LINE']
         title, xlabel, ylabel = self._get_my_optional_vals(
@@ -414,11 +404,11 @@ class BasePloTemplate(object):
         '''
         if not ('X' in results
                 and 'Y' in results and 'Z' in results):
-            log.error("`X`, 'Y' and `Z` are required!")
+            vlog.error("`X`, 'Y' and `Z` are required!")
             return [], []
         for _x in ['X', 'Y', 'Z']:
             if not isinstance(results[_x], numpy.ndarray):
-                log.error("`%s` array must be numpy.ndarray!" % _x)
+                vlog.error("`%s` array must be numpy.ndarray!" % _x)
                 return [], []
         X = results['X']
         Y = results['Y']
@@ -426,16 +416,16 @@ class BasePloTemplate(object):
         if len(X.shape) == 1 and len(Y.shape) == 1:
             # X, Y: 1 dimension
             if (len(Y), len(X)) != Z.shape:
-                log.error("Invalid `X`, `Y` length or `Z` shape!")
+                vlog.error("Invalid `X`, `Y` length or `Z` shape!")
                 return [], []
             X, Y = numpy.meshgrid(X, Y)
         elif len(X.shape) == 2 and len(Y.shape) == 2:
             # X, Y: 2 dimension
             if not (X.shape == Y.shape == Z.shape):
-                log.error("Invalid `X`, `Y` or `Z` shape!")
+                vlog.error("Invalid `X`, `Y` or `Z` shape!")
                 return [], []
         else:
-            log.error("Invalid `X`, `Y` dimension!")
+            vlog.error("Invalid `X`, `Y` dimension!")
             return [], []
         plot_method, plot_method_args, plot_method_kwargs = \
             self._get_my_optional_vals(results,
@@ -454,7 +444,7 @@ class BasePloTemplate(object):
         plot_surface_shadow = list(filter(
             lambda x: True if x in ['x', 'y', 'z'] else False,
             plot_surface_shadow))
-        log.debug("Some template pcolor parameters: %s" % [
+        vlog.debug("Some template pcolor parameters: %s" % [
             plot_method, plot_method_args, plot_method_kwargs,
             colorbar, grid_alpha, plot_surface_shadow])
         return self._template_pcolor_axstructs(
@@ -524,30 +514,30 @@ class BasePloTemplate(object):
         '''
         # check
         if not ('X' in results and 'YINFO' in results):
-            log.error("`X` and `YINFO` are required!")
+            vlog.error("`X` and `YINFO` are required!")
             return [], []
         if isinstance(results['X'], (list, range, numpy.ndarray)):
             X = results['X']
         else:
-            log.error("`X` must be array!")
+            vlog.error("`X` must be array!")
             return [], []
         if not isinstance(results['YINFO'], list):
-            log.error("`YINFO` array must be list!")
+            vlog.error("`YINFO` array must be list!")
             return [], []
         for i, ax in enumerate(results['YINFO'], 1):
             if not (isinstance(ax, dict) and 'left' in ax and 'right' in ax):
-                log.error("Info of axes %d must be dict!"
-                          "Key 'left', 'right' must in it!" % i)
+                vlog.error("Info of axes %d must be dict!"
+                           "Key 'left', 'right' must in it!" % i)
                 return [], []
             for lr in ['left', 'right']:
                 for j, line in enumerate(ax[lr], 1):
                     if not isinstance(line[0], (list, range, numpy.ndarray)):
-                        log.error(
+                        vlog.error(
                             "Info of line %d in axes %d %s must be array!"
                             % (j, i, lr))
                         return [], []
                     if len(line[0]) != len(X):
-                        log.error(
+                        vlog.error(
                             "Invalid array length of line %d in axes %d %s!"
                             % (j, i, lr))
                         return [], []
@@ -590,29 +580,29 @@ class BasePloTemplate(object):
         All *add_style* from other templates are ignored!
         '''
         if not 'zip_results' in results:
-            log.error("`zip_results` are required!")
+            vlog.error("`zip_results` are required!")
             return [], []
         if not isinstance(results['zip_results'], list):
-            log.error("`zip_results` must be list!")
+            vlog.error("`zip_results` must be list!")
             return [], []
         zip_results = []
         for i, _results in enumerate(results['zip_results'], 0):
             if len(_results) != 3:
-                log.error("`zip_results[%d]`: invalid length!" % i)
+                vlog.error("`zip_results[%d]`: invalid length!" % i)
                 continue
             temp, pos, _res = _results
             try:
                 template_method = getattr(self, temp)
             except AttributeError:
-                log.error("`zip_results[%d]`: template %s not found!"
-                          % (i, temp))
+                vlog.error("`zip_results[%d]`: template %s not found!"
+                           % (i, temp))
                 continue
             try:
                 _axs, _sty = template_method(_res)
                 zip_results.append((_axs[0], pos))
             except Exception:
-                log.error("`zip_results[%d]`: failed to get AxStruct!" % i,
-                          exc_info=1)
+                vlog.error("`zip_results[%d]`: failed to get AxStruct!" % i,
+                           exc_info=1)
                 continue
         suptitle, = self._get_my_optional_vals(
             results, ('suptitle', str, None))
