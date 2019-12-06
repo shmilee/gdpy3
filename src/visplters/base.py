@@ -290,6 +290,8 @@ class BaseVisplter(object):
         data['results']: dict
         '''
         if data['template'] in self.template_available:
+            if data['accfiglabel'] in self.figures and not replace:
+                return self.get_figure(data['accfiglabel'])
             meth = getattr(self, data['template'])
             axesstructures, add_style = meth(data['results'])
             return self.create_figure(
