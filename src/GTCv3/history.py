@@ -168,7 +168,7 @@ class HistoryParticleDigger(Digger):
     itemspattern = ['^(?P<s>history)/(?P<particle>(?:ion|electron|fastion))$']
     commonpattern = ['history/ndstep', 'gtc/tstep', 'gtc/ndiag']
     numseeds = ['', '_flux']
-    post_template = 'tmpl-sharextwinx'
+    post_template = 'tmpl_sharextwinx'
 
     def _set_fignum(self, numseed=None):
         self._fignum = ''.join((self.section[1], numseed))
@@ -235,7 +235,7 @@ class HistoryFieldDigger(Digger):
     itemspattern = [r'^(?P<s>history)/fieldtime-' +
                     '(?P<field>(?:phi|apara|fluidne))$']
     commonpattern = ['history/ndstep', 'gtc/tstep', 'gtc/ndiag']
-    post_template = 'tmpl-sharextwinx'
+    post_template = 'tmpl_sharextwinx'
 
     def _set_fignum(self, numseed=None):
         self._fignum = self.section[1]
@@ -277,7 +277,7 @@ class HistoryFieldModeDigger(Digger):
                                'qiflux', 'rgiflux']]
     neededpattern = itemspattern + commonpattern[:-2]
     numseeds = [1, 2, 3, 4, 5, 6, 7, 8]
-    post_template = 'tmpl-z111p'
+    post_template = 'tmpl_z111p'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_mode%s' % (self.section[1], numseed)
@@ -453,8 +453,6 @@ class HistoryFieldModeDigger(Digger):
                       r'$\omega_{pmax}=%.6f$' % r['spectrum_omega'])],
             title=r['title4'], xlabel=r'$\omega$($c_s/R_0$)')
         return dict(zip_results=[
-            ('template_line_axstructs', 221, ax1_calc),
-            ('template_line_axstructs', 222, ax2_calc),
-            ('template_line_axstructs', 223, ax3_calc),
-            ('template_line_axstructs', 224, ax4_calc),
+            ('tmpl_line', 221, ax1_calc), ('tmpl_line', 222, ax2_calc),
+            ('tmpl_line', 223, ax3_calc), ('tmpl_line', 224, ax4_calc),
         ])

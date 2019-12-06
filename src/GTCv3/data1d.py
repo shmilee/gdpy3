@@ -175,7 +175,7 @@ class _Data1dDigger(Digger):
     cutoff x, y of data
     '''
     __slots__ = []
-    post_template = 'tmpl-contourf'
+    post_template = 'tmpl_contourf'
 
     def _dig(self, **kwargs):
         '''

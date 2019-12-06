@@ -162,7 +162,7 @@ class SnapshotProfilePdfDigger(Digger):
                     + '-(?P<pf>(?:profile|pdf))$',
                     '^(?P<s>snap\d{5})/mpsi\+1', '^(?P<s>snap\d{5})/nvgrid']
     commonpattern = ['gtc/tstep']
-    post_template = 'tmpl-sharextwinx'
+    post_template = 'tmpl_sharextwinx'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_%s' % self.section[1:]
@@ -234,7 +234,7 @@ class SnapshotFieldFluxPloidalDigger(Digger):
                     + '-(?P<field>(?:phi|apara|fluidne))',
                     '^(?P<s>snap\d{5})/poloidata-(?:x|z)']
     commonpattern = ['gtc/tstep']
-    post_template = 'tmpl-contourf'
+    post_template = 'tmpl_contourf'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_%s' % (self.section[2], self.section[1])
@@ -277,7 +277,7 @@ class SnapshotFieldSpectrumDigger(Digger):
                     '^(?P<s>snap\d{5})/mtgrid\+1',
                     '^(?P<s>snap\d{5})/mtoroidal']
     commonpattern = ['gtc/tstep']
-    post_template = 'tmpl-z111p'
+    post_template = 'tmpl_z111p'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_spectrum' % self.section[1]
@@ -352,8 +352,8 @@ class SnapshotFieldSpectrumDigger(Digger):
                         xlabel='mtoroidal', ylabel='parallel spectrum',
                         xlim=[1, r['pmode']])
         return dict(zip_results=[
-            ('template_line_axstructs', 211, ax1_calc),
-            ('template_line_axstructs', 212, ax2_calc),
+            ('tmpl_line', 211, ax1_calc),
+            ('tmpl_line', 212, ax2_calc),
         ], suptitle=r'%s, m=%d, p=%d' % (r['title'], r['mmode'], r['pmode']))
 
 
@@ -365,7 +365,7 @@ class SnapshotFieldProfileDigger(Digger):
                     + '/poloidata-(?P<field>(?:phi|apara|fluidne))',
                     '^(?P<s>snap\d{5})/mpsi\+1', '^(?P<s>snap\d{5})/mtgrid\+1']
     commonpattern = ['gtc/tstep']
-    post_template = 'tmpl-z111p'
+    post_template = 'tmpl_z111p'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_profile' % self.section[1]
@@ -438,6 +438,6 @@ class SnapshotFieldProfileDigger(Digger):
                     'lylabel': 'point value', 'rylabel': 'RMS'}],
             title=r['title2'])
         return dict(zip_results=[
-            ('template_sharex_twinx_axstructs', 211, ax1_calc),
-            ('template_sharex_twinx_axstructs', 212, ax2_calc),
+            ('tmpl_sharextwinx', 211, ax1_calc),
+            ('tmpl_sharextwinx', 212, ax2_calc),
         ], suptitle=r['suptitle'])

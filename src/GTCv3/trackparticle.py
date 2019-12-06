@@ -93,7 +93,7 @@ class TrackParticleOrbitDigger(Digger):
                     + r'-(?P<tag>\d+-\d+)$']
     commonpattern = ['gtc/r0']
     numseeds = ['2d', '3d']
-    post_template = 'tmpl-line'
+    post_template = 'tmpl_line'
 
     def _set_fignum(self, numseed=None):
         self._fignum = 'orbit_%s_%s_%s' % (

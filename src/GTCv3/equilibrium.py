@@ -153,7 +153,7 @@ class EquilibriumPsi1DDigger(Digger):
     _misc = _1d_data_misc.copy()
     _misc['r'] = dict(title='minor radius r(psi)', index=23)
     numseeds = list(_misc.keys())
-    post_template = 'tmpl-line'
+    post_template = 'tmpl_line'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s(psi)' % numseed
@@ -183,7 +183,7 @@ class EquilibriumRadial1DDigger(Digger):
     _misc = _1d_data_misc.copy()
     _misc['psi'] = dict(title='psi(r)', index=0)
     numseeds = list(_misc.keys())
-    post_template = 'tmpl-line'
+    post_template = 'tmpl_line'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s(r)' % numseed
@@ -210,7 +210,7 @@ class EquilibriumErro1DDigger(Digger):
     _misc = {'cos': dict(title='error of spline cos', index=28),
              'sin': dict(title='error of spline sin', index=29)}
     numseeds = list(_misc.keys())
-    post_template = 'tmpl-line'
+    post_template = 'tmpl_line'
 
     def _set_fignum(self, numseed=None):
         self._fignum = 'error-%s' % numseed
@@ -236,7 +236,7 @@ class EquilibriumPoloidalDigger(Digger):
     itemspattern = [r'^(?P<section>equilibrium)/'
                     + '(?P<par>(?:b-field|Jacobian|icurrent|zeta2phi|delb))$',
                     r'^(?P<section>equilibrium)/mesh-points-on-(?:X|Z)$']
-    post_template = 'tmpl-contourf'
+    post_template = 'tmpl_contourf'
 
     def _set_fignum(self, numseed=None):
         self._fignum = self.section[1]
@@ -257,7 +257,7 @@ class EquilibriumMeshDigger(Digger):
     itemspattern = [r'^(?P<section>equilibrium)/mesh-points-on-(?:X|Z)$',
                     r'^(?P<section>equilibrium)/mpsi-over-mskip\+1',
                     r'^(?P<section>equilibrium)/lst']
-    post_template = 'tmpl-line'
+    post_template = 'tmpl_line'
 
     def _set_fignum(self, numseed=None):
         self._fignum = 'poloidal_mesh'
@@ -291,7 +291,7 @@ class EquilibriumThetaDigger(Digger):
                     + '(?P<par>(?:b-field|Jacobian|icurrent|zeta2phi|delb'
                     + '|1d-data))$']  # for 'gq_plus_I/BB'
     commonpattern = ['equilibrium/mpsi-over-mskip\+1', 'equilibrium/lst']
-    post_template = 'tmpl-line'
+    post_template = 'tmpl_line'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s:theta' % self.section[1]
