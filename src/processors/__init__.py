@@ -36,10 +36,11 @@ alias_names = {
 }
 
 
-def get_processor(path, name='GTCv3', **kwargs):
+def get_processor(path=None, name='GTCv3', **kwargs):
     '''
     Generate a processor instance of *name*,
     then pick up raw data or converted data in *path*.
+    If no *path* given, return processor class of *name*.
 
     Parameters
     ----------
@@ -60,13 +61,16 @@ def get_processor(path, name='GTCv3', **kwargs):
             % (name, ', '.join(processor_names), ', '.join(alias_names)))
     module_relative = _processorlib.get(pname)
     ppack = importlib.import_module(module_relative, package=__name__)
-    gdp = getattr(ppack, pname)
-    if kwargs:
-        sig = inspect.signature(gdp)
-        for k in list(kwargs.keys()):
-            if k not in sig.parameters:
-                remove = kwargs.pop(k, None)
-    return gdp(path, **kwargs)
+    gdpcls = getattr(ppack, pname)
+    if path:
+        if kwargs:
+            sig = inspect.signature(gdpcls)
+            for k in list(kwargs.keys()):
+                if k not in sig.parameters:
+                    remove = kwargs.pop(k, None)
+        return gdpcls(path, **kwargs)
+    else:
+        return gdpcls
 
 
 def is_processor(obj):
