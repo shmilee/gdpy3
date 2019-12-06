@@ -8,9 +8,11 @@ Gdpy3's logger module.
 * [G]dp: gdpy3
 * [L]oad: loaders
 * [S]ave: savers
-* [C]ore: processors
+* [C]onvert: converters
+* [D]ig: diggers
 * [E]xport: exporters
-* [P]lot: plotters
+* [P]rocess: processors
+* [V]isualize, plot: visplters
 '''
 
 import os
