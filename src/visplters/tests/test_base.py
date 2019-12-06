@@ -50,19 +50,19 @@ class ImpBaseVisplter(BaseVisplter):
             f.write(fig['num'])
 
     @staticmethod
-    def _template_line_axstructs(*input_list):
+    def _tmpl_contourf(*input_list):
         return input_list, []
 
     @staticmethod
-    def _template_pcolor_axstructs(*input_list):
+    def _tmpl_line(*input_list):
         return input_list, []
 
     @staticmethod
-    def _template_sharex_twinx_axstructs(*input_list):
+    def _tmpl_sharextwinx(*input_list):
         return input_list, []
 
     @staticmethod
-    def _template_z111p_axstructs(*input_list):
+    def _tmpl_z111p(*input_list):
         return input_list, []
 
 
@@ -137,24 +137,8 @@ class TestBaseVisplter(unittest.TestCase):
         with open(self.tmpfile, 'r') as f:
             self.assertEqual(f.read(), 'test-f2')
 
-    def test_visplter_template_line_axstructs(self):
-        fun = self.visplter.template_line_axstructs
-        calculation = dict(
-            LINE=[
-                (range(10), range(10, 0, -1), 'dec'),
-                ([3, 6], [5, 7, 8], 'dot2'),
-                (numpy.array(range(20)), numpy.linspace(5, 7, 20)),
-            ],
-        )
-        axstruct, add_style = fun(calculation)
-        self.assertListEqual([], axstruct)
-        calculation['LINE'][1] = ([3, 6], [5, 7], 'dot2')
-        axstruct, add_style = fun(calculation)
-        self.assertNotEqual([], axstruct)
-        self.assertIsNone(axstruct[2])
-
-    def test_visplter_template_pcolor_axstructs(self):
-        fun = self.visplter.template_pcolor_axstructs
+    def test_visplter_tmpl_contourf(self):
+        fun = self.visplter.tmpl_contourf
         calculation = dict(
             X=numpy.array(range(3)),
             Y=numpy.array(range(4)),
@@ -169,19 +153,35 @@ class TestBaseVisplter(unittest.TestCase):
         calculation.update(X=X, Y=Y)
         axstruct, add_style = fun(calculation)
         self.assertNotEqual([], axstruct)
-        self.assertIsNone(axstruct[7])
+        self.assertIsNone(axstruct[6])
         calculation.update(
             plot_method='contourf',
             title='t', xlabel='x', ylabel='y',
             plot_surface_shadow=['a', 'x', 'c', 'z'],
         )
         axstruct, add_style = fun(calculation)
-        self.assertEqual('contourf', axstruct[3])
-        self.assertIsNotNone(axstruct[7])
+        self.assertEqual('contourf', axstruct[7])
+        self.assertIsNotNone(axstruct[8])
         self.assertListEqual(['x', 'z'], axstruct[-1])
 
-    def test_visplter_template_sharex_twinx_axstructs(self):
-        fun = self.visplter.template_sharex_twinx_axstructs
+    def test_visplter_tmpl_line(self):
+        fun = self.visplter.tmpl_line
+        calculation = dict(
+            LINE=[
+                (range(10), range(10, 0, -1), 'dec'),
+                ([3, 6], [5, 7, 8], 'dot2'),
+                (numpy.array(range(20)), numpy.linspace(5, 7, 20)),
+            ],
+        )
+        axstruct, add_style = fun(calculation)
+        self.assertListEqual([], axstruct)
+        calculation['LINE'][1] = ([3, 6], [5, 7], 'dot2')
+        axstruct, add_style = fun(calculation)
+        self.assertNotEqual([], axstruct)
+        self.assertIsNone(axstruct[2])
+
+    def test_visplter_tmpl_sharextwinx(self):
+        fun = self.visplter.tmpl_sharextwinx
         calculation = dict(
             X=range(1, 100),
             YINFO=[{
@@ -212,16 +212,16 @@ class TestBaseVisplter(unittest.TestCase):
         self.assertListEqual(calculation['xlim'], axstruct[5])
         self.assertEqual(calculation['ylabel_rotation'], axstruct[6])
 
-    def test_visplter_template_z111p_axstructs(self):
-        fun = self.visplter.template_z111p_axstructs
+    def test_visplter_tmpl_z111p(self):
+        fun = self.visplter.tmpl_z111p
         calculation = {
             'zip_results': [(
-                'template_line_axstructs', 121,
+                'tmpl_line', 121,
                 dict(LINE=[(range(10), range(10, 0, -1), 'dec'),
                            ([3, 6], [5, 7], 'dot2')],
                      title='f1')
             ), (
-                'template_pcolor_axstructs', 122,
+                'tmpl_contourf', 122,
                 dict(X=numpy.array(range(3)), Y=numpy.array(range(4)),
                      Z=numpy.eye(4, 3))
             )],

@@ -270,12 +270,12 @@ class BaseVisplter(object):
         else:
             vlog.error("Figure %s is not created!" % num)
 
-    template_available = [
-        'template_line_axstructs',
-        'template_pcolor_axstructs',
-        'template_sharex_twinx_axstructs',
-        'template_z111p_axstructs',
-    ]
+    template_available = (
+        'tmpl_contourf',
+        'tmpl_line',
+        'tmpl_sharextwinx',
+        'tmpl_z111p',
+    )
 
     def create_template_figure(self, data, replace=True):
         '''
@@ -327,7 +327,102 @@ class BaseVisplter(object):
                 points.append(None)
         return points
 
-    def template_line_axstructs(self, results):
+    def tmpl_contourf(self, results):
+        '''
+        Template
+        --------
+        .. code::
+
+                   title
+                 +----------+ +-+
+          ylabel | contourf | |-|colorbar
+                 +----------+ +-+
+                   xlabel
+
+        Parameters
+        ----------
+        results['X']: 1 or 2 dimension numpy.ndarray, required
+        results['Y']: 1 or 2 dimension numpy.ndarray, required
+        results['Z']: 2 dimension numpy.ndarray, required
+            (len(Y), len(X)) == Z.shape or (X.shape == Y.shape == Z.shape)
+        results['title']: str, optional
+        results['xlabel']: str, optional
+        results['ylabel']: str, optional
+        results['aspect']: str, optional
+        results['plot_method']: str, optional
+            'contourf', 'pcolor', 'pcolormesh', or 'plot_surface'
+            default 'contourf'
+        results['plot_method_args']: list, optional
+            args for *plot_method*, like levels for 'contourf'
+        results['plot_method_kwargs']: dict, optional
+            kwargs for *plot_method*,
+            like cmap for 'plot_surface', default in style
+        results['colorbar']: bool, optional
+            add colorbar or not, default True
+        results['grid_alpha']: float, optional
+            transparency of grid, use this when 'grid.alpha' has no effect
+        results['plot_surface_shadow']: list, optional
+            add contourf in a surface plot, ['x', 'y', 'z'], default []
+        '''
+        if not ('X' in results
+                and 'Y' in results and 'Z' in results):
+            vlog.error("`X`, 'Y' and `Z` are required!")
+            return [], []
+        for _x in ['X', 'Y', 'Z']:
+            if not isinstance(results[_x], numpy.ndarray):
+                vlog.error("`%s` array must be numpy.ndarray!" % _x)
+                return [], []
+        X = results['X']
+        Y = results['Y']
+        Z = results['Z']
+        if len(X.shape) == 1 and len(Y.shape) == 1:
+            # X, Y: 1 dimension
+            if (len(Y), len(X)) != Z.shape:
+                vlog.error("Invalid `X`, `Y` length or `Z` shape!")
+                return [], []
+            X, Y = numpy.meshgrid(X, Y)
+        elif len(X.shape) == 2 and len(Y.shape) == 2:
+            # X, Y: 2 dimension
+            if not (X.shape == Y.shape == Z.shape):
+                vlog.error("Invalid `X`, `Y` or `Z` shape!")
+                return [], []
+        else:
+            vlog.error("Invalid `X`, `Y` dimension!")
+            return [], []
+        title, xlabel, ylabel, aspect = self._get_my_optional_vals(
+            results, ('title', str, None), ('xlabel', str, None),
+            ('ylabel', str, None), ('aspect', str, None))
+        plot_method, plot_method_args, plot_method_kwargs, \
+            colorbar, grid_alpha, plot_surface_shadow = \
+            self._get_my_optional_vals(results,
+                                       ('plot_method', str, 'contourf'),
+                                       ('plot_method_args', list, []),
+                                       ('plot_method_kwargs', dict, {}),
+                                       ('colorbar', bool, True),
+                                       ('grid_alpha', float, None),
+                                       ('plot_surface_shadow', list, []))
+        if plot_method not in ('contourf', 'pcolor', 'pcolormesh',
+                               'plot_surface'):
+            plot_method = 'contourf'
+        plot_surface_shadow = list(filter(
+            lambda x: True if x in ['x', 'y', 'z'] else False,
+            plot_surface_shadow))
+        vlog.debug("Some template contourf parameters: %s" % [
+            plot_method, plot_method_args, plot_method_kwargs,
+            colorbar, grid_alpha, plot_surface_shadow])
+        return self._tmpl_contourf(
+            X, Y, Z, title, xlabel, ylabel, aspect,
+            plot_method, plot_method_args, plot_method_kwargs,
+            colorbar, grid_alpha, plot_surface_shadow)
+
+    def _tmpl_contourf(
+            self, X, Y, Z, title, xlabel, ylabel, aspect,
+            plot_method, plot_method_args, plot_method_kwargs,
+            colorbar, grid_alpha, plot_surface_shadow):
+        '''For :meth:`tmpl_contourf`.'''
+        raise NotImplementedError()
+
+    def tmpl_line(self, results):
         '''
         Template
         --------
@@ -379,107 +474,16 @@ class BaseVisplter(object):
         ylabel_rotation, legend_kwargs = self._get_my_optional_vals(
             results, ('ylabel_rotation', (int, str), None),
             ('legend_kwargs', dict, {}))
-        return self._template_line_axstructs(
+        return self._tmpl_line(
             LINE, title, xlabel, ylabel,
             xlim, ylim, ylabel_rotation, legend_kwargs)
 
-    def _template_line_axstructs(self, LINE, title, xlabel, ylabel,
-                                 xlim, ylim, ylabel_rotation, legend_kwargs):
-        '''For :meth:`template_line_axstructs`.'''
+    def _tmpl_line(self, LINE, title, xlabel, ylabel,
+                   xlim, ylim, ylabel_rotation, legend_kwargs):
+        '''For :meth:`tmpl_line`.'''
         raise NotImplementedError()
 
-    def template_pcolor_axstructs(self, results):
-        '''
-        Template
-        --------
-        .. code::
-
-                   title
-                 +--------+ +-+
-          ylabel | pcolor | |-|colorbar
-                 +--------+ +-+
-                   xlabel
-
-        Parameters
-        ----------
-        results['X']: 1 or 2 dimension numpy.ndarray, required
-        results['Y']: 1 or 2 dimension numpy.ndarray, required
-        results['Z']: 2 dimension numpy.ndarray, required
-            (len(Y), len(X)) == Z.shape or (X.shape == Y.shape == Z.shape)
-        results['plot_method']: str, optional
-            'pcolor', 'pcolormesh', 'contourf' or 'plot_surface'
-            default 'pcolor'
-        results['plot_method_args']: list, optional
-            args for *plot_method*, like levels for 'contourf'
-        results['plot_method_kwargs']: dict, optional
-            kwargs for *plot_method*,
-            like cmap for 'plot_surface', default in style
-        results['title']: str, optional
-        results['xlabel']: str, optional
-        results['ylabel']: str, optional
-        results['colorbar']: bool, optional
-            add colorbar or not, default True
-        results['grid_alpha']: float, optional
-            transparency of grid, use this when 'grid.alpha' has no effect
-        results['plot_surface_shadow']: list, optional
-            add contourf in a surface plot, ['x', 'y', 'z'], default []
-        '''
-        if not ('X' in results
-                and 'Y' in results and 'Z' in results):
-            vlog.error("`X`, 'Y' and `Z` are required!")
-            return [], []
-        for _x in ['X', 'Y', 'Z']:
-            if not isinstance(results[_x], numpy.ndarray):
-                vlog.error("`%s` array must be numpy.ndarray!" % _x)
-                return [], []
-        X = results['X']
-        Y = results['Y']
-        Z = results['Z']
-        if len(X.shape) == 1 and len(Y.shape) == 1:
-            # X, Y: 1 dimension
-            if (len(Y), len(X)) != Z.shape:
-                vlog.error("Invalid `X`, `Y` length or `Z` shape!")
-                return [], []
-            X, Y = numpy.meshgrid(X, Y)
-        elif len(X.shape) == 2 and len(Y.shape) == 2:
-            # X, Y: 2 dimension
-            if not (X.shape == Y.shape == Z.shape):
-                vlog.error("Invalid `X`, `Y` or `Z` shape!")
-                return [], []
-        else:
-            vlog.error("Invalid `X`, `Y` dimension!")
-            return [], []
-        plot_method, plot_method_args, plot_method_kwargs = \
-            self._get_my_optional_vals(results,
-                                       ('plot_method', str, 'pcolor'),
-                                       ('plot_method_args', list, []),
-                                       ('plot_method_kwargs', dict, {}))
-        if plot_method not in ('pcolor', 'pcolormesh',
-                               'contourf', 'plot_surface'):
-            plot_method = 'pcolor'
-        title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow = \
-            self._get_my_optional_vals(
-                results, ('title', str, None), ('xlabel', str, None),
-                ('ylabel', str, None), ('colorbar', bool, True),
-                ('grid_alpha', float, None), ('plot_surface_shadow', list, [])
-            )
-        plot_surface_shadow = list(filter(
-            lambda x: True if x in ['x', 'y', 'z'] else False,
-            plot_surface_shadow))
-        vlog.debug("Some template pcolor parameters: %s" % [
-            plot_method, plot_method_args, plot_method_kwargs,
-            colorbar, grid_alpha, plot_surface_shadow])
-        return self._template_pcolor_axstructs(
-            X, Y, Z, plot_method, plot_method_args, plot_method_kwargs,
-            title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow)
-
-    def _template_pcolor_axstructs(
-            self, X, Y, Z, plot_method, plot_method_args, plot_method_kwargs,
-            title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow):
-        '''For :meth:`template_pcolor_axstructs`.'''
-        raise NotImplementedError()
-
-    def template_sharex_twinx_axstructs(self, results):
+    def tmpl_sharextwinx(self, results):
         '''
         Template
         --------
@@ -571,20 +575,17 @@ class BaseVisplter(object):
         xlim, = self._get_my_points(results, 'xlim')
         if not xlim:
             xlim = [numpy.min(X), numpy.max(X)]
-        return self._template_sharex_twinx_axstructs(
+        return self._tmpl_sharextwinx(
             X, YINFO,
             hspace, title, xlabel, xlim, ylabel_rotation)
 
-    def _template_sharex_twinx_axstructs(
+    def _tmpl_sharextwinx(
             self, X, YINFO,
             hspace, title, xlabel, xlim, ylabel_rotation):
-        '''
-        For :meth:`template_sharex_twinx_axstructs`.
-        Return [*AxStructs], add_style
-        '''
+        '''For :meth:`tmpl_sharextwinx`.'''
         raise NotImplementedError()
 
-    def template_z111p_axstructs(self, results):
+    def tmpl_z111p(self, results):
         '''
         Zip axes from other templates that return only one axes.
 
@@ -628,11 +629,11 @@ class BaseVisplter(object):
                 continue
         suptitle, = self._get_my_optional_vals(
             results, ('suptitle', str, None))
-        return self._template_z111p_axstructs(zip_results, suptitle)
+        return self._tmpl_z111p(zip_results, suptitle)
 
-    def _template_z111p_axstructs(self, zip_results, suptitle):
+    def _tmpl_z111p(self, zip_results, suptitle):
         '''
-        For :meth:`template_z111p_axstructs`.
+        For :meth:`tmpl_z111p`.
         zip_results = [(AxStruct1, pos1), (AxStruct2, pos2)]
         Return [*AxStructs], add_style
         '''

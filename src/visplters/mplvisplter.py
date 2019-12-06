@@ -7,6 +7,7 @@ Contains matplotlib visplter class. A simple wrapper for matplotlib.
 '''
 
 import os
+import numpy as np
 import matplotlib
 import matplotlib.style
 import matplotlib.pyplot
@@ -171,41 +172,12 @@ class MatplotlibVisplter(BaseVisplter):
         '''Save *fig* to *fpath*.'''
         fig.savefig(fpath, **kwargs)
 
-    def _template_line_axstructs(self, LINE, title, xlabel, ylabel,
-                                 xlim, ylim, ylabel_rotation, legend_kwargs):
-        '''For :meth:`template_line_axstructs`.'''
+    def _tmpl_contourf(
+            self, X, Y, Z, title, xlabel, ylabel, aspect,
+            plot_method, plot_method_args, plot_method_kwargs,
+            colorbar, grid_alpha, plot_surface_shadow):
+        '''For :meth:`tmpl_contourf`.'''
         vlog.debug("Getting Axes %s ..." % 111)
-        data, layoutkw, addlegend = [], {}, False
-        for i, ln in enumerate(LINE, 1):
-            if len(ln) == 3:
-                data.append([i, 'plot', (ln[0], ln[1]), dict(label=ln[2])])
-                addlegend = True
-            elif len(ln) == 2:
-                data.append([i, 'plot', (ln[0], ln[1]), {}])
-        if addlegend:
-            i = i + 1
-            data.append([i, 'legend', (), legend_kwargs])
-        if title:
-            layoutkw['title'] = title
-        if xlabel:
-            layoutkw['xlabel'] = xlabel
-        if ylabel:
-            if ylabel_rotation is None:
-                layoutkw['ylabel'] = ylabel
-            else:
-                data.append([i + 1, 'set_ylabel', (ylabel,),
-                             dict(rotation=ylabel_rotation)])
-        if xlim:
-            layoutkw['xlim'] = xlim
-        if ylim:
-            layoutkw['ylim'] = ylim
-        return [{'data': data, 'layout': [111, layoutkw]}], []
-
-    def _template_pcolor_axstructs(
-            self, X, Y, Z, plot_method, plot_method_args, plot_method_kwargs,
-            title, xlabel, ylabel, colorbar, grid_alpha, plot_surface_shadow):
-        '''For :meth:`template_pcolor_axstructs`.'''
-        import numpy as np
         Zmax = max(abs(Z.max()), abs(Z.min()))
         layoutkw, plotkw, plotarg, order, data = {}, {}, [], 1, []
         if plot_method == 'plot_surface':
@@ -240,12 +212,44 @@ class MatplotlibVisplter(BaseVisplter):
             layoutkw['xlabel'] = xlabel
         if ylabel:
             layoutkw['ylabel'] = ylabel
+        if aspect:
+            data.append([order + 1, 'set_aspect', (aspect,), dict()])
         return [{'data': data, 'layout': [111, layoutkw]}], []
 
-    def _template_sharex_twinx_axstructs(
+    def _tmpl_line(self, LINE, title, xlabel, ylabel,
+                   xlim, ylim, ylabel_rotation, legend_kwargs):
+        '''For :meth:`tmpl_line`.'''
+        vlog.debug("Getting Axes %s ..." % 111)
+        data, layoutkw, addlegend = [], {}, False
+        for i, ln in enumerate(LINE, 1):
+            if len(ln) == 3:
+                data.append([i, 'plot', (ln[0], ln[1]), dict(label=ln[2])])
+                addlegend = True
+            elif len(ln) == 2:
+                data.append([i, 'plot', (ln[0], ln[1]), {}])
+        if addlegend:
+            i = i + 1
+            data.append([i, 'legend', (), legend_kwargs])
+        if title:
+            layoutkw['title'] = title
+        if xlabel:
+            layoutkw['xlabel'] = xlabel
+        if ylabel:
+            if ylabel_rotation is None:
+                layoutkw['ylabel'] = ylabel
+            else:
+                data.append([i + 1, 'set_ylabel', (ylabel,),
+                             dict(rotation=ylabel_rotation)])
+        if xlim:
+            layoutkw['xlim'] = xlim
+        if ylim:
+            layoutkw['ylim'] = ylim
+        return [{'data': data, 'layout': [111, layoutkw]}], []
+
+    def _tmpl_sharextwinx(
             self, X, YINFO,
             hspace, title, xlabel, xlim, ylabel_rotation):
-        '''For :meth:`template_sharex_twinx_axstructs`.'''
+        '''For :meth:`tmpl_sharextwinx`.'''
         AxStructs = []
         for row in range(len(YINFO)):
             number = int("%s1%s" % (len(YINFO), row + 1))
@@ -292,9 +296,9 @@ class MatplotlibVisplter(BaseVisplter):
             AxStructs.append({'data': data, 'layout': [number, layout]})
         return AxStructs, [{'figure.subplot.hspace': hspace}]
 
-    def _template_z111p_axstructs(self, zip_results, suptitle):
+    def _tmpl_z111p(self, zip_results, suptitle):
         '''
-        For :meth:`template_z111p_axstructs`.
+        For :meth:`tmpl_z111p`.
         '''
         AxStructs = []
         for i, _results in enumerate(zip_results, 0):

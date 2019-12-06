@@ -117,6 +117,14 @@ ax6 = {
         [7, 'legend', (), dict(loc='center right')],
     ],
 }
+temp_contourfresults = dict(
+    X=fieldx, Y=fieldy, Z=fielddata,
+    plot_method='plot_surface',
+    plot_method_kwargs=dict(rstride=1, cstride=1, linewidth=1,
+                            antialiased=True, label='field'),
+    title='test field', xlabel='r', ylabel='time',
+    plot_surface_shadow=['x', 'z'],
+)
 temp_lineresults = dict(
     LINE=[
         ([3, 6], [1.5, 1]),
@@ -125,14 +133,6 @@ temp_lineresults = dict(
     ],
     title='test title', xlabel='X', ylabel='Y',
     xlim=[0, 30], ylabel_rotation=45, legend_kwargs=dict(loc=0),
-)
-temp_pcolorresults = dict(
-    X=fieldx, Y=fieldy, Z=fielddata,
-    plot_method='plot_surface',
-    plot_method_kwargs=dict(rstride=1, cstride=1, linewidth=1,
-                            antialiased=True, label='field'),
-    title='test field', xlabel='r', ylabel='time',
-    plot_surface_shadow=['x', 'z'],
 )
 temp_sharextwinxresults = dict(
     X=range(100),
@@ -159,9 +159,9 @@ temp_sharextwinxresults = dict(
 )
 temp_z111presults = dict(
     zip_results=[
-        ('template_line_axstructs', 221, temp_lineresults),
-        ('template_pcolor_axstructs', 223, temp_pcolorresults),
-        ('template_sharex_twinx_axstructs', 122, temp_sharextwinxresults),
+        ('tmpl_line', 221, temp_lineresults),
+        ('tmpl_contourf', 223, temp_contourfresults),
+        ('tmpl_sharextwinx', 122, temp_sharextwinxresults),
     ],
     suptitle='test z111p figures'
 )
@@ -210,33 +210,34 @@ class TestMatplotlibVisplter(unittest.TestCase):
         self.visplter.close_figure('test-f1')
         self.assertListEqual(self.visplter.figures, ['test-f2'])
         self.visplter.close_figure('all')
+
         self.assertListEqual(self.visplter.figures, [])
 
-    def test_mplvisplter_template_line_axstructs(self):
-        axstruct, sty = self.visplter.template_line_axstructs(temp_lineresults)
+    def test_mplvisplter_tmpl_contourf(self):
+        axstruct, sty = self.visplter.tmpl_contourf(
+            temp_contourfresults)
         self.visplter.create_figure('template-f1', *axstruct, add_style=sty)
         self.visplter.show_figure('template-f1')
         input('[I]nterrupt, to see figure "%s".' % 'template-f1')
         self.visplter.close_figure('template-f1')
 
-    def test_mplvisplter_template_pcolor_axstructs(self):
-        axstruct, sty = self.visplter.template_pcolor_axstructs(
-            temp_pcolorresults)
+    def test_mplvisplter_tmpl_line(self):
+        axstruct, sty = self.visplter.tmpl_line(temp_lineresults)
         self.visplter.create_figure('template-f2', *axstruct, add_style=sty)
         self.visplter.show_figure('template-f2')
         input('[I]nterrupt, to see figure "%s".' % 'template-f2')
         self.visplter.close_figure('template-f2')
 
-    def test_mplvisplter_template_sharex_twinx_axstructs(self):
-        axstruct, sty = self.visplter.template_sharex_twinx_axstructs(
+    def test_mplvisplter_tmpl_sharextwinx(self):
+        axstruct, sty = self.visplter.tmpl_sharextwinx(
             temp_sharextwinxresults)
         self.visplter.create_figure('template-f3', *axstruct, add_style=sty)
         self.visplter.show_figure('template-f3')
         input('[I]nterrupt, to see figure "%s".' % 'template-f3')
         self.visplter.close_figure('template-f3')
 
-    def test_visplter_template_z111p_axstructs(self):
-        axstruct, sty = self.visplter.template_z111p_axstructs(
+    def test_visplter_tmpl_z111p(self):
+        axstruct, sty = self.visplter.tmpl_z111p(
             temp_z111presults)
         self.visplter.create_figure('template-fz', *axstruct, add_style=sty)
         self.visplter.show_figure('template-fz')
