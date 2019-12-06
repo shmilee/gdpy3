@@ -212,11 +212,12 @@ class MatplotlibVisplter(BaseVisplter):
             layoutkw['xlabel'] = xlabel
         if ylabel:
             layoutkw['ylabel'] = ylabel
-        if aspect:
-            data.append([order + 1, 'set_aspect', (aspect,), dict()])
+        # not currently possible to manually set the aspect on 3D axes
+        if aspect and plot_method != 'plot_surface':
+            layoutkw['aspect'] = aspect
         return [{'data': data, 'layout': [111, layoutkw]}], []
 
-    def _tmpl_line(self, LINE, title, xlabel, ylabel,
+    def _tmpl_line(self, LINE, title, xlabel, ylabel, aspect,
                    xlim, ylim, ylabel_rotation, legend_kwargs):
         '''For :meth:`tmpl_line`.'''
         vlog.debug("Getting Axes %s ..." % 111)
@@ -240,6 +241,8 @@ class MatplotlibVisplter(BaseVisplter):
             else:
                 data.append([i + 1, 'set_ylabel', (ylabel,),
                              dict(rotation=ylabel_rotation)])
+        if aspect:
+            layoutkw['aspect'] = aspect
         if xlim:
             layoutkw['xlim'] = xlim
         if ylim:

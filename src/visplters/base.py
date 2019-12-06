@@ -442,6 +442,7 @@ class BaseVisplter(object):
         results['title']: str, optional
         results['xlabel']: str, optional
         results['ylabel']: str, optional
+        results['aspect']: str, optional
         results['xlim']: (`left`, `right`), optional
         results['ylim']: (`up`, `down`), optional
         results['ylabel_rotation']: str or int, optional
@@ -467,18 +468,18 @@ class BaseVisplter(object):
                 vlog.error("Length of info for line %d must be 2 or 3!" % i)
                 return [], []
         LINE = results['LINE']
-        title, xlabel, ylabel = self._get_my_optional_vals(
-            results, ('title', str, None),
-            ('xlabel', str, None), ('ylabel', str, None))
+        title, xlabel, ylabel, aspect = self._get_my_optional_vals(
+            results, ('title', str, None), ('xlabel', str, None),
+            ('ylabel', str, None), ('aspect', str, None))
         xlim, ylim = self._get_my_points(results, 'xlim', 'ylim')
         ylabel_rotation, legend_kwargs = self._get_my_optional_vals(
             results, ('ylabel_rotation', (int, str), None),
             ('legend_kwargs', dict, {}))
         return self._tmpl_line(
-            LINE, title, xlabel, ylabel,
+            LINE, title, xlabel, ylabel, aspect,
             xlim, ylim, ylabel_rotation, legend_kwargs)
 
-    def _tmpl_line(self, LINE, title, xlabel, ylabel,
+    def _tmpl_line(self, LINE, title, xlabel, ylabel, aspect,
                    xlim, ylim, ylabel_rotation, legend_kwargs):
         '''For :meth:`tmpl_line`.'''
         raise NotImplementedError()
