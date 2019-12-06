@@ -6,5 +6,5 @@
 This is the subpackage ``cores`` of gdpy3.
 ``Converter``: convert raw data to pickled data
 ``Digger``: dig pickled data
-``Exporter``: assemble dig results for plotter
+``Exporter``: assemble dig results for visplter
 '''

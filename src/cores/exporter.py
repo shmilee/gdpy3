@@ -22,7 +22,7 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
 
     Attributes
     ----------
-    template: template name, like 'tmpl-line'
+    template: template name, like 'tmpl_line'
     '''
     __slots__ = []
     nitems = '?'
@@ -65,24 +65,24 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
 
     def export(self, results, otherinfo={}, fmt='dict', **kwargs):
         '''
-        Export results, template name for plotter.
+        Export results, template name for visplter.
 
         Parameters
         ----------
         otherinfo: dict
         fmt: format 'dict', 'pickle' or 'json'
         '''
-        results, tmpl = self._export(results, kwargs)
+        results = self._export(results, kwargs)
         return self.fmt_export(
-            dict(results=results, template=tmpl, **otherinfo), fmt)
+            dict(results=results, template=self.template, **otherinfo), fmt)
 
     def _export(self, results, kwargs):
-        '''Return results, template name.'''
+        '''Return results.'''
         raise NotImplementedError()
 
     def export_options(self, digoptions, otherinfo={}, fmt='dict'):
         '''
-        Export dig options and plotter(vis) template options for GUI widgets.
+        Export dig options and  visplter template options for GUI widgets.
 
         Parameters
         ----------
@@ -98,11 +98,10 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
 class TmplLoader(object):
     path = 'tmpl/lodaer'
     templates = [
-        'tmpl-contourf',
-        'tmpl-line',
-        'tmpl-line3d',
-        'tmpl-sharextwinx',
-        'tmpl-z111p',
+        'tmpl_contourf',
+        'tmpl_line',
+        'tmpl_sharextwinx',
+        'tmpl_z111p',
     ]
 
     def __repr__(self):
@@ -112,7 +111,7 @@ class TmplLoader(object):
 
 class ContourfExporter(Exporter):
     '''
-    For :meth:`plotter.template_contourf_axstructs`.
+    For :meth:`visplter.tmpl_contourf`.
 
     Template
     --------
@@ -125,7 +124,7 @@ class ContourfExporter(Exporter):
              xlabel
     '''
     __slots__ = []
-    itemspattern = ['^(?P<section>tmpl)-contourf$']
+    itemspattern = ['^(?P<section>tmpl)_contourf$']
     visoptions = dict(
         plot_method=dict(
             widget='Dropdown',
@@ -152,7 +151,7 @@ class ContourfExporter(Exporter):
         '''
         kwargs
         ------
-        kwargs passed on to :meth:`plotter.template_contourf_axstructs`
+        kwargs passed on to :meth:`visplter.tmpl_contourf`
         *plot_method*, *plot_method_args*, *plot_method_kwargs*,
         *colorbar*, *grid_alpha*, *plot_surface_shadow*
         '''
@@ -166,12 +165,12 @@ class ContourfExporter(Exporter):
             if k in results:
                 debug_kw[k] = results[k]
         elog.debug("Some template contourf kwargs: %s" % debug_kw)
-        return results, 'template_contourf_axstructs'
+        return results
 
 
 class LineExporter(Exporter):
     '''
-    For :meth:`plotter.template_line_axstructs`.
+    For :meth:`visplter.tmpl_line`.
 
     Template
     --------
@@ -184,7 +183,7 @@ class LineExporter(Exporter):
              xlabel
     '''
     __slots__ = []
-    itemspattern = ['^(?P<section>tmpl)-line$']
+    itemspattern = ['^(?P<section>tmpl)_line$']
     visoptions = dict(
         ylabel_rotation=dict(
             widget='IntSlider',
@@ -197,7 +196,7 @@ class LineExporter(Exporter):
         '''
         kwargs
         ------
-        kwargs passed on to :meth:`plotter.template_line_axstructs`
+        kwargs passed on to :meth:`visplter.tmpl_line`
         *ylabel_rotation*: str or int
             default 'vertical'
         '''
@@ -208,12 +207,12 @@ class LineExporter(Exporter):
             if k in results:
                 debug_kw[k] = results[k]
         elog.debug("Some template line kwargs: %s" % debug_kw)
-        return results, 'template_line_axstructs'
+        return results
 
 
 class SharexTwinxExporter(Exporter):
     '''
-    For :meth:`plotter.template_sharex_twinx_axstructs`.
+    For :meth:`visplter.tmpl_sharextwinx`.
 
     Template
     --------
@@ -228,7 +227,7 @@ class SharexTwinxExporter(Exporter):
              xlabel
     '''
     __slots__ = []
-    itemspattern = ['^(?P<section>tmpl)-sharextwinx$']
+    itemspattern = ['^(?P<section>tmpl)_sharextwinx$']
     visoptions = dict(
         hspace=dict(
             widget='FloatSlider',
@@ -246,7 +245,7 @@ class SharexTwinxExporter(Exporter):
         '''
         kwargs
         ------
-        kwargs passed on to :meth:`plotter.template_sharex_twinx_axstructs`
+        kwargs passed on to :meth:`visplter.tmpl_sharextwinx`
         *hspace*: float
             subplot.hspace, default 0.02
         *ylabel_rotation*: str or int
@@ -259,15 +258,15 @@ class SharexTwinxExporter(Exporter):
             if k in results:
                 debug_kw[k] = results[k]
         elog.debug("Some template sharextwinx kwargs: %s" % debug_kw)
-        return results, 'template_sharex_twinx_axstructs'
+        return results
 
 
 class Z111pExporter(Exporter):
     '''
-    For :meth:`plotter.template_z111p_axstructs`.
+    For :meth:`visplter.tmpl_z111p`.
     '''
     __slots__ = []
-    itemspattern = ['^(?P<section>tmpl)-z111p$']
+    itemspattern = ['^(?P<section>tmpl)_z111p$']
 
     def _export(self, results, kwargs):
-        return results, 'template_z111p_axstructs'
+        return results

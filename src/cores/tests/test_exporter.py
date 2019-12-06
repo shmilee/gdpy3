@@ -18,7 +18,7 @@ class TestDigger(unittest.TestCase):
     def test_contourf_Exporter_core(self):
         cores = ContourfExporter.generate_cores(self.ldr)
         self.assertEqual(len(cores), 1)
-        self.assertEqual(cores[0].template, 'tmpl-contourf')
+        self.assertEqual(cores[0].template, 'tmpl_contourf')
         self.assertEqual(cores[0].export(
             {}, {}, plot_method='plot_surface')['results']['plot_method'],
             'plot_surface')
@@ -27,9 +27,9 @@ class TestDigger(unittest.TestCase):
     def test_line_exporter_core(self):
         cores = LineExporter.generate_cores(self.ldr)
         self.assertEqual(len(cores), 1)
-        self.assertEqual(cores[0].template, 'tmpl-line')
+        self.assertEqual(cores[0].template, 'tmpl_line')
         self.assertEqual(cores[0].export(
-            {})['template'], 'template_line_axstructs')
+            {})['template'], 'tmpl_line')
 
     def test_exporter_core_fmt(self):
         cores = LineExporter.generate_cores(self.ldr)
