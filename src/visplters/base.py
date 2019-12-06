@@ -277,6 +277,28 @@ class BaseVisplter(object):
         'template_z111p_axstructs',
     ]
 
+    def create_template_figure(self, data, replace=True):
+        '''
+        Use axes results get by `processor.export` to create a figure object.
+
+        Parameters
+        ----------
+        data['accfiglabel']: str, as num
+        data['template']: str
+        data['results']: dict
+        '''
+        if data['template'] in self.template_available:
+            meth = getattr(self, data['template'])
+            axesstructures, add_style = meth(data['results'])
+            return self.create_figure(
+                data['accfiglabel'],
+                *axesstructures,
+                add_style=add_style,
+                replace=replace)
+        else:
+            vlog.error("Template %s not available!" % data['template'])
+            return
+
     @staticmethod
     def _get_my_optional_vals(results, *items):
         '''
