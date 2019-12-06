@@ -18,6 +18,7 @@ from ..loaders import is_rawloader, get_rawloader, is_pckloader, get_pckloader
 from ..savers import is_pcksaver, get_pcksaver
 from ..cores.exporter import (TmplLoader, ContourfExporter, LineExporter,
                               SharexTwinxExporter, Z111pExporter)
+from ..visplters import get_visplter, is_visplter
 
 __all__ = ['Processor']
 plog = getGLogger('P')
@@ -328,7 +329,7 @@ class Processor(object):
                            % (self.name, respath), exc_info=1)
                 self.resfilesaver = None
 
-    def dig(self, figlabel, post=True, redo=False, **kwargs):
+    def dig(self, figlabel, post=True, redig=False, **kwargs):
         '''
         Get digged results of *figlabel*.
         Return figlabel/kwargstr, results and template name.
@@ -337,10 +338,10 @@ class Processor(object):
         Parameters
         ----------
         post: bool
-        redo: bool
-            If :attr:`resfilesaver` type is '.npz', *redo* will cause warning:
+        redig: bool
+            If :attr:`resfilesaver` type is '.npz', *redig* will cause warning:
                 "zipfile.py: UserWarning: Duplicate name ..."
-            Recommend using '.hdf5' when *redo* is True.
+            Recommend using '.hdf5' when *redig* is True.
         '''
         if not self.pckloader:
             plog.error("%s: Need a pckloader object!" % self.name)
@@ -355,7 +356,7 @@ class Processor(object):
         gotkwargstr = digcore.str_dig_kwargs(kwargs) or 'DEFAULT'
         gotfiglabel = '%s/%s' % (figlabel, gotkwargstr)
         # find old
-        if not redo and gotfiglabel in self.diggedlabels:
+        if not redig and gotfiglabel in self.diggedlabels:
             if gotfiglabel in self.resloader.datagroups:
                 # use resloader first
                 gotresloader, fileloader = self.resloader, False
@@ -481,7 +482,7 @@ class Processor(object):
         Parameters
         ----------
         what: str
-            'axes', results for plotter
+            'axes', results for visplter
             'options', options for GUI widgets
         fmt: str
             export format, 'dict', 'pickle' or 'json'
@@ -555,27 +556,73 @@ class Processor(object):
 
     # # End Export Part
 
+    # # Start Visplt Part
+
+    __slots__.extend(['_visplter'])
+
+    def _get_visplter(self):
+        return self._visplter
+
+    def _set_visplter(self, visplter):
+        if is_visplter(visplter):
+            self._visplter = visplter
+        else:
+            self._visplter = visplter
+
+    visplter = property(_get_visplter, _set_visplter)
+
+    def visplt(self, figlabel, revis=False, show=True, **kwargs):
+        '''
+        Get results of *figlabel* and visualize(plot).
+        Use :meth:`dig_doc` :meth:`export_doc` to see *kwargs* for *figlabel*.
+
+        Parameters
+        ----------
+        revis: bool
+            replot *figlabel* if it was already ploted
+        show: bool
+            display *figlabel* after it ploted
+        '''
+        if not self.visplter:
+            plog.error("%s: Need a visplter object!" % self.name)
+            return
+        results = self.export(figlabel, what='axes', fmt='dict', **kwargs)
+        if results['status'] == 'success':
+            try:
+                self.visplter.create_template_figure(results, replace=revis)
+            except Exception:
+                plog.error("%s: Failed to create figure %s!" % (
+                    self.name, results['accfiglabel']),  exc_info=1)
+            else:
+                if show:
+                    return self.visplter.show_figure(results['accfiglabel'])
+        else:
+            plog.error("%s: Failed to create figure %s: %s" % (
+                self.name, figlabel, results['status']),  exc_info=1)
+
+    # # End Visplt Part
+
     def __repr__(self):
         # i = (' rawloader: %r\n pcksaver: %r\n'
         #     ' pckloader: %r\n ressaver: %r\n resfilesaver: %r\n'
         #     ' resloader: %r\n resfileloader: %r\n'
-        #     ' tmplloader: %r'
+        #     ' tmplloader: %r\n visplter: %r'
         #     % (self.rawloader, self.pcksaver,
         #        self.pckloader, self.ressaver, self.resfilesaver,
         #        self.resloader, self.resfileloader,
-        #        self.tmplloader))
+        #        self.tmplloader, self.visplter))
         i = (' rawloader: %r\n pckloader: %r\n'
              ' resloader: %r\n resfileloader: %r\n'
-             ' tmplloader: %r'
+             ' tmplloader: %r\n visplter: %r'
              % (self.rawloader, self.pckloader,
                 self.resloader, self.resfileloader,
-                self.tmplloader))
+                self.tmplloader, self.visplter))
         return '<\n {0}.{1} object at {2},\n{3}\n>'.format(
             self.__module__, type(self).__name__, hex(id(self)), i)
 
     def __init__(self, path, add_desc=None, filenames_filter=None,
                  savetype='.npz', overwrite=False, Sid=False,
-                 datagroups_filter=None):
+                 datagroups_filter=None, add_visplter='mpl::'):
         '''
         Pick up raw data or converted data in *path*,
         set processor's rawloader, pcksaver and pckloader, etc.
@@ -600,6 +647,8 @@ class Processor(object):
             Default False.
         datagroups_filter: function
             function to filter datagroups in pckloader
+        add_visplter: str
+            add visplter by type *add_visplter*, default 'mpl::'
         '''
         root, ext1 = os.path.splitext(path)
         root, ext2 = os.path.splitext(root)
@@ -674,3 +723,6 @@ class Processor(object):
                            % self.name, exc_info=1)
         # set tmplloader and exporter templates, cores
         self.tmplloader = TmplLoader()
+        # set visplter
+        if add_visplter:
+            self.visplter = get_visplter(add_visplter + path)
