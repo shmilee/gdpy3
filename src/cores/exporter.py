@@ -62,6 +62,17 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
         else:
             pass
 
+    def str_export_kwargs(self, kwargs):
+        '''
+        Turn :meth:`export` *kwargs* to str.
+        Check them in :meth:`export`.__doc__, and sort by key.
+        Return string like, "k1=1,k2=[2],k3='abc'".
+        '''
+        ckkws = ['%s=%r' % (k, list(v) if isinstance(v, tuple) else v)
+                 for k, v in kwargs.items()
+                 if self.export.__doc__.find('*%s*' % k) > 0]
+        return ','.join(sorted(ckkws))
+
     def export(self, results, otherinfo={}, fmt='dict', **kwargs):
         '''
         Export results, template name for visplter.
@@ -69,14 +80,21 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
         Parameters
         ----------
         otherinfo: dict
+            if 'accfiglabel' in it, accfiglabel will be updated.
+            'figlabel/digkwargstr' -> 'figlabel/digkwargstr,viskwargstr'
         fmt: format 'dict', 'pickle' or 'json'
+        kwargs: visplter template options, like colorbar, hspace etc.
         '''
-        results = self._export(results, kwargs)
+        results, viskwargs = self._export(results, kwargs)
+        viskwargstr = self.str_export_kwargs(viskwargs)
+        if viskwargstr and 'accfiglabel' in otherinfo:
+            otherinfo['accfiglabel'] = ','.join((
+                otherinfo['accfiglabel'], viskwargstr))
         return self.fmt_export(
             dict(results=results, template=self.template, **otherinfo), fmt)
 
     def _export(self, results, kwargs):
-        '''Return results.'''
+        '''Return results and viskwargs.'''
         raise NotImplementedError()
 
     def export_options(self, digoptions, otherinfo={}, fmt='dict'):
@@ -164,7 +182,7 @@ class ContourfExporter(Exporter):
             if k in results:
                 debug_kw[k] = results[k]
         elog.debug("Some template contourf kwargs: %s" % debug_kw)
-        return results
+        return results, debug_kw
 
 
 class LineExporter(Exporter):
@@ -218,7 +236,7 @@ class LineExporter(Exporter):
             if k in results:
                 debug_kw[k] = results[k]
         elog.debug("Some template line kwargs: %s" % debug_kw)
-        return results
+        return results, debug_kw
 
 
 class SharexTwinxExporter(Exporter):
@@ -269,7 +287,7 @@ class SharexTwinxExporter(Exporter):
             if k in results:
                 debug_kw[k] = results[k]
         elog.debug("Some template sharextwinx kwargs: %s" % debug_kw)
-        return results
+        return results, debug_kw
 
 
 class Z111pExporter(Exporter):
@@ -280,4 +298,4 @@ class Z111pExporter(Exporter):
     itemspattern = ['^(?P<section>tmpl)_z111p$']
 
     def _export(self, results, kwargs):
-        return results
+        return results, {}

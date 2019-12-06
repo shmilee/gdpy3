@@ -332,8 +332,9 @@ class Processor(object):
     def dig(self, figlabel, post=True, redig=False, **kwargs):
         '''
         Get digged results of *figlabel*.
-        Return figlabel/kwargstr, results and template name.
         Use :meth:`dig_doc` to see *kwargs* for *figlabel*.
+        Return accfiglabel, results and template name,
+        and accfiglabel is 'figlabel/digkwargstr'.
 
         Parameters
         ----------
@@ -475,9 +476,15 @@ class Processor(object):
     def export(self, figlabel, what='axes', fmt='dict', **kwargs):
         '''
         Get and assemble digged results, template of *figlabel*.
-        Return assembled results in format *fmt*.
         Use :meth:`dig_doc` to see *kwargs* for *figlabel*.
         Use :meth:`export_doc` to see *kwargs* for :meth:`exportcore.export`.
+
+        Returns
+        -------
+        assembled results in format *fmt*
+        If *what* is 'axes', results['accfiglabel'] will be updated
+        from 'figlabel/digkwargstr' to 'figlabel/digkwargstr,viskwargstr',
+        where 'viskwargstr' is :meth:`exportcore.export` *kwargs* to str.
 
         Parameters
         ----------
@@ -502,7 +509,6 @@ class Processor(object):
                     res, otherinfo=dict(status='success',
                                         figlabel=figlabel,
                                         accfiglabel=label_kw,
-                                        kwargs=kwargs,
                                         ), fmt=fmt, **kwargs)
             else:
                 return exportcore.fmt_export(
@@ -575,6 +581,7 @@ class Processor(object):
         '''
         Get results of *figlabel* and visualize(plot).
         Use :meth:`dig_doc` :meth:`export_doc` to see *kwargs* for *figlabel*.
+        Return accfiglabel or None.
 
         Parameters
         ----------
