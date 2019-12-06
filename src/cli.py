@@ -12,7 +12,7 @@ import time
 import argparse
 
 from .glogger import logfile, getGLogger
-from .processors import processor_names, alias_processor_names, get_processor
+from .processors import processor_names, alias_names, get_processor
 from . import __version__ as gdpy3_version
 
 __all__ = ['cli_script']
@@ -54,7 +54,7 @@ def get_parser_base():
     arggrp.add_argument('casepath', nargs='*', type=str,
                         help='Case data path(s)')
     optgrp = parser.add_argument_group('common options')
-    _pnames = processor_names + list(alias_processor_names.keys())
+    _pnames = processor_names + list(alias_names.keys())
     optgrp.add_argument('--processor', type=str, metavar='ProcessorName',
                         choices=_pnames, default=_pnames[0],
                         help="Assign processor to work, "
@@ -136,8 +136,8 @@ def cli_script():
         for i, n in enumerate(processor_names):
             print("%s%s" % (' ' * 4, n))
         print("Alias Processors:")
-        for i, apn in enumerate(alias_processor_names):
-            print("%s%10s -> %s" % (' ' * 4, apn, alias_processor_names[apn]))
+        for i, apn in enumerate(alias_names):
+            print("%s%s -> %s" % (' ' * 4, apn, alias_names[apn]))
         sys.exit()
     if args.help:
         if args.subcmd:
@@ -158,8 +158,7 @@ def cli_script():
         parserlib['top'].print_help()
         sys.exit()
 
-    gdp = get_processor(args.processor)
-    log.info("Using %s ..." % gdp.name)
+    log.info("Using Processor '%s' ..." % args.processor)
     if args.subcmd == 'plot':
         if not args.select:
             _YN = input("Select all figures to plot! Continue(y/n)? ")
@@ -174,8 +173,9 @@ def cli_script():
         log.info("Case(%d/%d) path: %s" % (i, N, path))
         try:
             if args.subcmd == 'convert':
-                gdp.pick(
+                gdp = get_processor(
                     path,
+                    name=args.processor,
                     add_desc=args.add_desc,
                     filenames_filter=args.filenames_filter,
                     savetype=args.savetype,
@@ -186,17 +186,18 @@ def cli_script():
                         or not os.path.isfile(gdp.pcksaver.path)):
                     log.error("Failed to convert %s!" % path)
             elif args.subcmd == 'plot':
-                gdp.pick(
+                gdp = get_processor(
                     path,
+                    name=args.processor,
                     add_desc=args.add_desc,
                     filenames_filter=args.filenames_filter,
                     savetype=args.savetype,
                     overwrite=args.overwrite,
                     Sid=False,
                     datagroups_filter=args.datagroups_filter,
-                    add_plotter=True,
+                    add_visplter='mpl::',
                 )
-                if gdp.pckloader is None or gdp.plotter is None:
+                if gdp.pckloader is None or gdp.visplter is None:
                     log.error("Failed to plot %s!" % path)
                     continue
                 # plot figures
@@ -207,14 +208,14 @@ def cli_script():
                     continue
                 if plot_style is None:
                     if args.style:
-                        plot_style = gdp.plotter.check_style(args.style)
+                        plot_style = gdp.visplter.check_style(args.style)
                     else:
                         plot_style = []
                 if plot_style:
-                    gdp.plotter.style = plot_style
-                figdir = '%s-figures-%s' % (
-                    os.path.splitext(gdp.pckloader.path)[0],
-                    time.strftime('%F-%H'))
+                    gdp.visplter.style = plot_style
+                prefix = os.path.splitext(gdp.pckloader.path)[0]
+                prefix = os.path.splitext(prefix)[0]
+                figdir = '%s-figures-%s' % (prefix, time.strftime('%F-%H'))
                 if not os.path.isdir(figdir):
                     os.mkdir(figdir)
                 M = len(figurelabels)
@@ -223,12 +224,14 @@ def cli_script():
                              % (i, N, j, M, flabel))
                     fname = '%s.%s' % (flabel.replace('/', '-'), args.figext)
                     try:
-                        gdp.plot(flabel, show=False)
-                        gdp.plotter.save_figure(
-                            flabel, os.path.join(figdir, fname))
+                        accfiglabel = gdp.visplt(flabel, show=False)
                     except Exception:
                         continue
-                    gdp.plotter.close_figure(flabel)
+                    else:
+                        if accfiglabel:
+                            gdp.visplter.save_figure(
+                                accfiglabel, os.path.join(figdir, fname))
+                            gdp.visplter.close_figure(accfiglabel)
             else:
                 pass
         except Exception:

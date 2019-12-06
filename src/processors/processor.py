@@ -595,7 +595,8 @@ class Processor(object):
                     self.name, results['accfiglabel']),  exc_info=1)
             else:
                 if show:
-                    return self.visplter.show_figure(results['accfiglabel'])
+                    self.visplter.show_figure(results['accfiglabel'])
+                return results['accfiglabel']
         else:
             plog.error("%s: Failed to create figure %s: %s" % (
                 self.name, figlabel, results['status']),  exc_info=1)
