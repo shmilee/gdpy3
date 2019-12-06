@@ -655,7 +655,8 @@ class BaseVisplter(object):
                 continue
             try:
                 _axs, _sty = template_method(_res)
-                zip_results.append((_axs[0], pos))
+                if _axs:
+                    zip_results.append((_axs[0], pos))
             except Exception:
                 vlog.error("`zip_results[%d]`: failed to get AxStruct!" % i,
                            exc_info=1)

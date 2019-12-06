@@ -177,7 +177,7 @@ class MatplotlibVisplter(BaseVisplter):
             plot_method, plot_method_args, plot_method_kwargs,
             colorbar, grid_alpha, plot_surface_shadow):
         '''For :meth:`tmpl_contourf`.'''
-        vlog.debug("Getting Axes %s ..." % 111)
+        vlog.debug("Getting contourf Axes %s ..." % 111)
         Zmax = max(abs(Z.max()), abs(Z.min()))
         layoutkw, plotkw, plotarg, order, data = {}, {}, [], 1, []
         if plot_method == 'plot_surface':
@@ -221,7 +221,7 @@ class MatplotlibVisplter(BaseVisplter):
                    lin3d, zlabel, scale_xyz,
                    xlim, ylim, ylabel_rotation, legend_kwargs):
         '''For :meth:`tmpl_line`.'''
-        vlog.debug("Getting Axes %s ..." % 111)
+        vlog.debug("Getting line Axes %s ..." % 111)
         data, layoutkw, addlegend = [], {}, False
         if lin3d:
             layoutkw['projection'] = '3d'
@@ -274,7 +274,7 @@ class MatplotlibVisplter(BaseVisplter):
         AxStructs = []
         for row in range(len(YINFO)):
             number = int("%s1%s" % (len(YINFO), row + 1))
-            vlog.debug("Getting Axes %s ..." % number)
+            vlog.debug("Getting sharextwinx Axes %s ..." % number)
             layout = dict(xlim=xlim)
             if row == 0 and title:
                 layout['title'] = title
@@ -324,7 +324,7 @@ class MatplotlibVisplter(BaseVisplter):
         AxStructs = []
         for i, _results in enumerate(zip_results, 0):
             ax, pos = _results
-            vlog.debug("Getting Axes %s ..." % (pos,))
+            vlog.debug("Getting z111p Axes %s ..." % (pos,))
             if isinstance(pos, (int, list, matplotlib.gridspec.SubplotSpec)):
                 ax['layout'][0] = pos
             else:
