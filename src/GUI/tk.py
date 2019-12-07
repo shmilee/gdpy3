@@ -149,6 +149,7 @@ class GTkApp(object):
         self.processor = None
         self.figkwslib = {}  # all figure kwargs widgets, key is figlabel
         self.figkws = {}  # kwargs widgets mapped in panel
+        # TODO: choose accfiglabel or figlabel
         self.figwindows = {}  # all plotted figure windows, key is accfiglabel
         self.next_figwindows_index = 0
         # X - events
@@ -343,7 +344,7 @@ class GTkApp(object):
                 self.figkws = self.figkwslib[figlabel]
             else:
                 log.debug("Gen new widgets")
-                result = self.processor.export(figlabel,what='options')
+                result = self.processor.export(figlabel, what='options')
                 options = dict(**result['digoptions'], **result['visoptions'])
                 if options:
                     self.figkws = self.get_figkws_widgets(options)
