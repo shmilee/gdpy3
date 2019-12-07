@@ -49,6 +49,7 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Topic :: Scientific/Engineering :: Physics',
         'Topic :: Scientific/Engineering :: Visualization'
     ),
@@ -61,7 +62,7 @@ setup(
         'raw.ssh': ['paramiko>=2.4.1'],
         'core.tools': ['scipy>=0.14.0'],
         'gui.ipynb': ['ipython[notebook]', 'ipywidgets'],
-        'gui.tk': ['dataclasses', 'screeninfo'],
+        'gui.tk': ['screeninfo>=0.4.1'],
     },
     package_data={
         'gdpy3': ['%s/%s' % (data_dir, f) for f in [
