@@ -596,7 +596,8 @@ class Processor(object):
         results = self.export(figlabel, what='axes', fmt='dict', **kwargs)
         if results['status'] == 'success':
             try:
-                self.visplter.create_template_figure(results, replace=revis)
+                figure = self.visplter.create_template_figure(
+                    results, replace=revis)
             except Exception:
                 plog.error("%s: Failed to create figure %s!" % (
                     self.name, results['accfiglabel']),  exc_info=1)
@@ -733,4 +734,6 @@ class Processor(object):
         self.tmplloader = TmplLoader()
         # set visplter
         if add_visplter:
-            self.visplter = get_visplter(add_visplter + path)
+            self.visplter = get_visplter(str(add_visplter) + path)
+        else:
+            self.visplter = None
