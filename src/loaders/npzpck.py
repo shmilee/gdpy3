@@ -49,6 +49,6 @@ class NpzPckLoader(BasePckLoader):
 
     def _special_get(self, tmpobj, key):
         value = tmpobj[key]
-        if value.size == 1:
-            value = value.item()
+        # if value.size == 1:
+        #    value = value.item()
         return value
