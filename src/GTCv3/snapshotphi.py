@@ -132,7 +132,6 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
         *mdpsi*, *mdzeta*: int
             set dpsi dzeta range, max mpsi//2, mzeta//2
         '''
-        acckwargs = {}
         title = r'Correlation $\phi(d\zeta,d\psi)$, %s, %s' % (
                 self.theta, self.timestr)
         Z = self.pckloader.get(self.srckeys[0])
@@ -150,14 +149,11 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
             dlog.parm('Data shape of phi(zeta,psi) is %s.' % ((y, x),))
         maxmdpsi, maxmdzeta = int(x/2+1), int(y/2+1)
         mdpsi, mdzeta = kwargs.get('mdpsi', None), kwargs.get('mdzeta', None)
-        if isinstance(mdpsi, int) and mdpsi <= maxmdpsi:
-            acckwargs['mdpsi'] = mdpsi
-        else:
+        if not (isinstance(mdpsi, int) and mdpsi <= maxmdpsi):
             mdpsi = x // 2
-        if isinstance(mdzeta, int) and mdzeta <= maxmdzeta:
-            acckwargs['mdzeta'] = mdzeta
-        else:
+        if not (isinstance(mdzeta, int) and mdzeta <= maxmdzeta):
             mdzeta = y // 24
+        acckwargs = dict(mdpsi=mdpsi, mdzeta=mdzeta)
         dlog.parm("Use dpsi dzeta range: mdpsi=%s, mdzeta=%s. "
                   "Maximal mdpsi=%s, mdzeta=%s"
                   % (mdpsi, mdzeta, maxmdpsi, maxmdzeta))

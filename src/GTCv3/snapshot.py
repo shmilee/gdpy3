@@ -290,7 +290,6 @@ class SnapshotFieldSpectrumDigger(Digger):
         *mmode*, *pmode*: int
             set poloidal or parallel range
         '''
-        acckwargs = {}
         fluxdata, mtgrid1, mtoroidal = self.pckloader.get_many(*self.srckeys)
         if fluxdata.shape != (mtgrid1, mtoroidal):
             log.error("Invalid fluxdata shape!")
@@ -299,14 +298,11 @@ class SnapshotFieldSpectrumDigger(Digger):
         maxmmode = int(mtgrid / 2 + 1)
         maxpmode = int(mtoroidal / 2 + 1)
         mmode, pmode = kwargs.get('mmode', None), kwargs.get('pmode', None)
-        if isinstance(mmode, int) and mmode <= maxmmode:
-            acckwargs['mmode'] = mmode
-        else:
+        if not (isinstance(mmode, int) and mmode <= maxmmode):
             mmode = mtgrid // 5
-        if isinstance(pmode, int) and pmode <= maxpmode:
-            acckwargs['pmode'] = pmode
-        else:
+        if not (isinstance(pmode, int) and pmode <= maxpmode):
             pmode = mtoroidal // 3
+        acckwargs = dict(mmode=mmode, pmode=pmode)
         dlog.parm("Poloidal and parallel range: m=%s, p=%s. Maximal m=%s, p=%s"
                   % (mmode, pmode, maxmmode, maxpmode))
         if self.kwoptions is None:
@@ -378,20 +374,16 @@ class SnapshotFieldProfileDigger(Digger):
         *jtgrid*, *ipsi*: int
             set poloidal and radius cut
         '''
-        acckwargs = {}
         pdata, mpsi1, mtgrid1 = self.pckloader.get_many(*self.srckeys)
         if pdata.shape != (mtgrid1, mpsi1):
             log.error("Invalid poloidata shape!")
             return
         jtgrid, ipsi = kwargs.get('jtgrid', None), kwargs.get('ipsi', None)
-        if isinstance(jtgrid, int) and jtgrid < mtgrid1:
-            acckwargs['jtgrid'] = jtgrid
-        else:
+        if not (isinstance(jtgrid, int) and jtgrid < mtgrid1):
             jtgrid = 0
-        if isinstance(ipsi, int) and ipsi < mpsi1:
-            acckwargs['ipsi'] = ipsi
-        else:
+        if not (isinstance(ipsi, int) and ipsi < mpsi1):
             ipsi = (mpsi1 - 1) // 2
+        acckwargs = dict(jtgrid=jtgrid, ipsi=ipsi)
         dlog.parm("Poloidal and radius cut: jtgrid=%s, ipsi=%s. "
                   "Maximal jtgrid=%s, ipsi=%s."
                   % (jtgrid, ipsi, mtgrid1 - 1, mpsi1 - 1))

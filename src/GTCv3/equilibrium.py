@@ -306,9 +306,9 @@ class EquilibriumThetaDigger(Digger):
         *isp*: int
             fix psi=isp, default 'mpsi-over-mskip+1' - 1
         '''
-        acckwargs = {}
         Z, lsp, lst = self.pckloader.get_many(*self.srckeys, *self.extrakeys)
         isp = lsp - 1
+        acckwargs = {'isp': isp}
         if 'isp' in kwargs and isinstance(kwargs['isp'], int):
             if 1 < kwargs['isp'] < lsp - 1:
                 isp = kwargs['isp']

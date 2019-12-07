@@ -402,12 +402,15 @@ class Processor(object):
                 plog.warning('Unset %s kwoptions!' % figlabel)
             kwopts = dict(kwoptions=pickle.dumps(digcore.kwoptions))
             with self.resfilesaver:
-                plog.info('Save digged results in %s.' %
-                          self.resfilesaver.path)
+                shortpath = os.path.basename(self.resfilesaver.path)
+                plog.info('Save %s digged results in %s.' % (
+                    accfiglabel, shortpath))
                 self.resfilesaver.write(accfiglabel, results)
                 self.resfilesaver.write(accfiglabel, kwopts)
                 if gotkwargstr == 'DEFAULT' and acckwargstr != gotkwargstr:
                     # TODO link double cache
+                    plog.info('Save %s digged results in %s.' % (
+                        gotfiglabel, shortpath))
                     self.resfilesaver.write(gotfiglabel, results)
                     self.resfilesaver.write(gotfiglabel, kwopts)
             # update resfileloader & diggedlabels

@@ -186,7 +186,6 @@ class _Data1dDigger(Digger):
         *pcutoff*: [p0,p1]
             Y[y0:y1], data[y0:y1,:] where p0<=Y[y0:y1]<=p1
         '''
-        acckwargs = {}
         data, tstep, ndiag = self.pckloader.get_many(
             self.srckeys[0], *self.extrakeys)
         y, x = data.shape
@@ -202,6 +201,7 @@ class _Data1dDigger(Digger):
                              rangee=[Y[0], Y[-1], 1],
                              value=[Y[0], Y[-1]],
                              description='mpsi cutoff:'))
+        acckwargs = {'tcutoff': [X[0], X[-1]], 'pcutoff': [Y[0], Y[-1]]}
         x0, x1 = 0, X.size
         if 'tcutoff' in kwargs:
             t0, t1 = kwargs['tcutoff']

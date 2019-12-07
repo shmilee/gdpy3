@@ -322,7 +322,6 @@ class HistoryFieldModeDigger(Digger):
                 index = np.where((time >= start) & (time <= end))[0]
                 if index.size > 0:
                     start, end = index[0], index[-1]
-                    acckwargs = dict(growth_time=kwargs['growth_time'])
                 else:
                     dlog.warning('Cannot set growth time: %s <= time <= %s!'
                                  % (start, end))
@@ -332,6 +331,7 @@ class HistoryFieldModeDigger(Digger):
                 if region_len == 0:
                     start, region_len = 0, ndstep // 4
                 end = start + region_len - 1
+            acckwargs = dict(growth_time=[time[start], time[end]])
             dlog.parm("Find growth time: [%s,%s], index: [%s,%s]."
                       % (time[start], time[end], start, end))
             # polyfit growth region

@@ -109,7 +109,7 @@ class TrackParticleOrbitDigger(Digger):
         *cal_dr*: bool
             calculate delta R of trapped ions in 2d orbit, default False.
         '''
-        acckwargs = {}
+        acckwargs = {'cal_dr': False}
         if self.kwoptions is None:
             self.kwoptions = dict(
                 cal_dr=dict(
