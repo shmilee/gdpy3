@@ -225,13 +225,12 @@ def cli_script():
                     fname = '%s.%s' % (flabel.replace('/', '-'), args.figext)
                     try:
                         accfiglabel = gdp.visplt(flabel, show=False)
-                    except Exception:
-                        continue
-                    else:
                         if accfiglabel:
                             gdp.visplter.save_figure(
                                 accfiglabel, os.path.join(figdir, fname))
-                            gdp.visplter.close_figure(accfiglabel)
+                    except Exception:
+                        continue
+                    gdp.visplter.close_figure('all')
             else:
                 pass
         except Exception:
