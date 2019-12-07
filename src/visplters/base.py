@@ -324,9 +324,10 @@ class BaseVisplter(object):
         points = []
         for k in keys:
             p = results.get(k, None)
-            if (p and len(p) == 2 and isinstance(p[0], (int, float))
+            if (getattr(p, '__len__', None) and len(p) == 2
+                    and isinstance(p[0], (int, float))
                     and isinstance(p[1], (int, float))):
-                points.append(p)
+                points.append(list(p))
             else:
                 points.append(None)
         return points
