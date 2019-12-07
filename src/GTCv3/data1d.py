@@ -208,8 +208,8 @@ class _Data1dDigger(Digger):
             index = numpy.where((X >= t0) & (X < t1 + dt))[0]
             if index.size > 0:
                 x0, x1 = index[0], index[-1]+1
-                X = X[x0:x1]
                 acckwargs['tcutoff'] = [X[x0], X[x1-1]]
+                X = X[x0:x1]
             else:
                 dlog.warning('Cannot cutoff: %s <= time <= %s!' % (t0, t1))
         y0, y1 = 0, Y.size
@@ -218,8 +218,8 @@ class _Data1dDigger(Digger):
             index = numpy.where((Y >= p0) & (Y < p1+1))[0]
             if index.size > 0:
                 y0, y1 = index[0], index[-1]+1
-                Y = Y[y0:y1]
                 acckwargs['pcutoff'] = [Y[y0], Y[y1-1]]
+                Y = Y[y0:y1]
             else:
                 dlog.warning('Cannot cutoff: %s <= ipsi <= %s!' % (p0, p1))
         # update
