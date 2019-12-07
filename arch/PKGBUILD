@@ -8,17 +8,18 @@ url="https://github.com/shmilee/gdpy3.git"
 arch=('any')
 license=('MIT')
 depends=('python-setuptools' 'python-numpy' 'python-matplotlib')
-optdepends=('python-h5py: for saving and loading hdf5 support'
-            'python-paramiko: for loading raw data through ssh'
-            'python-scipy: for smooth support'
-            'tk: for GUI made by tkinter'
-            'python-ipykernel: for GUI in Jupyter Notebook'
-            'python-ipywidgets: for GUI in Jupyter Notebook')
+optdepends=('python-h5py: saving and loading hdf5 support'
+            'python-paramiko: loading raw data through ssh'
+            'python-scipy: dig smooth support'
+            'tk: tkinter GUI support'
+            'python-screeninfo>=0.4.1: tkinter GUI support'
+            'python-ipykernel: GUI in Jupyter Notebook support'
+            'python-ipywidgets: GUI in Jupyter Notebook support')
 makedepends=('git')
 source=("https://github.com/shmilee/$pkgname/archive/v$pkgver.tar.gz" "gdpy3.desktop" "gdpy3-data.xml")
 sha512sums=('SKIP'
             'a10239135e6ba9ed9b8064cc17712c6b2ac6cd2141f51d63c0a7ac829ec206a023814779d0b04bdd082d8d6c8ed7a76ef7bcbe2b5612dcc4db50afeecdd22437'
-            'e5e1d62b4660cb85c8b75cf34521bb26c49a9893e8ade0903c5b1fdba5a28d65bd62e553dfa13b56e64414267b50385345bd6e8f1e3bcc831e3feda9f91bbe22')
+            'ee1d44496e1a7194bdfa742cd2e3f2274363101ef117712e360e75e790c30a86fa066aad666fdb33635c4699a7758f30ee712561a108245b027ef7d8c56317c2')
 
 build() {
   cd $pkgname-$pkgver

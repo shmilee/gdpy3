@@ -2,9 +2,17 @@
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
     <mime-type type="application/x-npz">
         <sub-class-of type="application/zip"/>
-        <comment>NumPy Zipped Data</comment>
-        <comment xml:lang="zh_CN">Numpy 存储数据</comment>
+        <comment>NumPy compressed data</comment>
+        <comment xml:lang="zh_CN">NumPy 存储数据</comment>
         <generic-icon name="package-x-generic"/>
         <glob pattern="*.npz"/>
+    </mime-type>
+    <mime-type type="application/x-gdpy3-npz">
+        <sub-class-of type="application/zip"/>
+        <comment>Gdpy3 compressed data</comment>
+        <comment xml:lang="zh_CN">Gdpy3 存储数据</comment>
+        <generic-icon name="package-x-generic"/>
+        <glob pattern="*.converted.npz"/>
+        <glob pattern="*.digged.npz"/>
     </mime-type>
 </mime-info>
