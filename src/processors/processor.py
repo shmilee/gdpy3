@@ -369,8 +369,8 @@ class Processor(object):
                 plog.error('%s: Not found %s in diggedlabels!'
                            % (self.name, gotfiglabel))
             if gotresloader:
-                plog.info('Find %s digged results in %s.'
-                          % (gotfiglabel, gotresloader.path))
+                plog.info('Find %s digged results in %s.' % (
+                    gotfiglabel, os.path.basename(gotresloader.path)))
                 allkeys = gotresloader.refind(
                     '^%s/' % re.escape(gotfiglabel))
                 basekeys = [os.path.basename(k) for k in allkeys]
