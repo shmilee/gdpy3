@@ -208,7 +208,6 @@ def findgrowth(X, lowerlimit, info='data'):
         return 0, 0
     for _start in range(X.size):
         if sum(Xg[_start:_start + _len]) == _len:
-            print('find _start', _start)
             break
     return _start, _len
 

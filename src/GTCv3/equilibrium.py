@@ -218,7 +218,7 @@ class EquilibriumErro1DDigger(Digger):
 
     def _dig(self, **kwargs):
         data, nrad = self.pckloader.get_many(*self.srckeys, *self.extrakeys)
-        X = numpy.array(range(1, nrad + 1)) * (numpy.pi / 2 / nrad),
+        X = numpy.array(range(1, nrad + 1)) * (numpy.pi / 2 / nrad)
         return dict(X=X, xlim=[min(X), max(X)],
                     Y=data[self._misc[self._numseed]['index']],
                     title=self._misc[self._numseed]['title']), {}

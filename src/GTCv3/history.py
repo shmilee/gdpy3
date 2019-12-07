@@ -213,7 +213,7 @@ class HistoryParticleDigger(Digger):
         else:
             YINFO = [{'left': [(r['particle'], 'particle flux')], 'right': []},
                      {'left': [(r['momentum'], 'momentum flux')], 'right': []},
-                     {'left': [(['energy'], 'energy flux')], 'right': []}]
+                     {'left': [(r['energy'], 'energy flux')], 'right': []}]
         return dict(X=r['time'], YINFO=YINFO, title=r['title'],
                     xlabel=r'time($R_0/c_s$)', xlim=[0, np.max(r['time'])])
 
