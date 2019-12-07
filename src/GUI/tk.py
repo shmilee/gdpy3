@@ -4,6 +4,7 @@
 
 import os
 import time
+import numpy
 import tempfile
 import getpass
 import tkinter
@@ -148,7 +149,7 @@ class GTkApp(object):
         self.processor = None
         self.figkwslib = {}  # all figure kwargs widgets, key is figlabel
         self.figkws = {}  # kwargs widgets mapped in panel
-        self.figwindows = {}  # all plotted figure windows, key is figlabel
+        self.figwindows = {}  # all plotted figure windows, key is accfiglabel
         self.next_figwindows_index = 0
         # X - events
         w_select_proc.bind("<<ComboboxSelected>>", self.after_processor_name)
@@ -232,21 +233,21 @@ class GTkApp(object):
 
     def after_pick(self):
         if self.processor_name.get():
-            gdp = get_processor(self.processor_name.get())
+            gdpcls = get_processor(name=self.processor_name.get())
             if self.path.startswith('sftp://'):
                 def _passwd_CALLBACK(prompt):
                     return simpledialog.askstring(
                         "Input Password", prompt, show='*', parent=self.root)
                 from ..getpasswd import GetPasswd
                 GetPasswd.CALLBACK = _passwd_CALLBACK
-            if self.path.endswith(gdp.pcksaltname):
-                self.path = self.path[:-len(gdp.pcksaltname)]
-            gdp.pick(self.path)
+            if self.path.endswith(gdpcls.saltname):
+                self.path = self.path[:-len(gdpcls.saltname)]
+            gdp = gdpcls(self.path)
             self.root.title('gdpy3 - %s' % self.path)
             if gdp.pckloader:
                 self.processor = gdp
                 self.figlabel_filter.set('^.*/.*$')
-                self.figlabels.set(gdp.figurelabels)
+                self.figlabels.set(gdp.availablelabels)
                 self.figlistbox.selection_clear(0, END)
                 # reset panel, clear kw widgets
                 self.reset_panel(clear_lib=True)
@@ -271,32 +272,28 @@ class GTkApp(object):
         if not self.figlistbox.curselection():
             messagebox.showwarning(message='Select a figure first!')
             return
-        if not self.processor.plotter.name.startswith('mpl::'):
+        if not self.processor.visplter.name.startswith('mpl::'):
             messagebox.showerror(message='%s not supported with Tk!'
                                  % self.processor.plotter.name)
             return
         figlabel = self.figlabels.get()[self.figlistbox.curselection()[0]]
         figkwargs = {k: v.value for k, v in self.figkws.items()}
         log.debug('Collect figkwargs: %s' % figkwargs)
-        _, _, n0, _, _ = self.processor._figurelabelslib.get(
-            figlabel, (0, 0, 0, 0, 0))
-        self.processor.plot(figlabel, show=False, **figkwargs)
-        _, _, n1, _, _ = self.processor._figurelabelslib.get(
-            figlabel, (0, 0, 0, 0, 0))
-        figure = self.processor.plotter.get_figure(figlabel)
-        if figlabel in self.figwindows:
-            if n0 == n1:
-                log.debug('Raise old figure window.')
-                self.figwindows[figlabel].wm_deiconify()
-            else:
-                log.debug('Update old figure window.')
-                self.figwindows[figlabel].figure_update(figure)
+        accfiglabel = self.processor.visplt(figlabel, show=False, **figkwargs)
+        if accfiglabel in self.processor.visplter.figures:
+            figure = self.processor.visplter.get_figure(accfiglabel)
+        else:
+            messagebox.showerror(message='Failed to get figure object!')
+            return
+        if accfiglabel in self.figwindows:
+            log.debug('Raise old figure window.')
+            self.figwindows[accfiglabel].wm_deiconify()
         else:
             log.debug('Get new figure window.')
             index = self.next_figwindows_index
             self.next_figwindows_index += 1
-            self.figwindows[figlabel] = MplFigWindow(
-                figure, figlabel, index, self, class_='gdpy3-gui')
+            self.figwindows[accfiglabel] = MplFigWindow(
+                figure, accfiglabel, index, self, class_='gdpy3-gui')
 
     def after_processor_name(self, event):
         self.figlabel_filter.set('^.*/.*$')
@@ -307,9 +304,9 @@ class GTkApp(object):
         # close fig windows
         self.close_figwindows()
 
-    def get_figkws_widgets(self, layout):
+    def get_figkws_widgets(self, options):
         controls = {}
-        for k, v in layout.items():
+        for k, v in options.items():
             if v['widget'] in (
                     'IntSlider', 'FloatSlider',
                     'IntRangeSlider', 'FloatRangeSlider'):
@@ -346,9 +343,10 @@ class GTkApp(object):
                 self.figkws = self.figkwslib[figlabel]
             else:
                 log.debug("Gen new widgets")
-                figinfo = self.processor.get(figlabel)
-                if figinfo:
-                    self.figkws = self.get_figkws_widgets(figinfo.layout)
+                result = self.processor.export(figlabel,what='options')
+                options = dict(**result['digoptions'], **result['visoptions'])
+                if options:
+                    self.figkws = self.get_figkws_widgets(options)
                 else:
                     self.figkws = {}
                 self.figkwslib[figlabel] = self.figkws
@@ -385,9 +383,11 @@ class LabeledSpinBoxs(ttk.Frame):
         self.variables = []
         self.spinboxs = []
         for i_val in init_val:
-            if isinstance(step, int) and isinstance(i_val, int):
+            if (isinstance(step, (int, numpy.integer))
+                    and isinstance(i_val, (int, numpy.integer))):
                 self.variables.append(tkinter.IntVar(self))
-            elif isinstance(step, float) and isinstance(i_val, float):
+            elif (isinstance(step, (float, numpy.floating))
+                    and isinstance(i_val, (float, numpy.floating))):
                 self.variables.append(tkinter.DoubleVar(self))
             else:
                 log.error('type error: var %s, step %s ' %
