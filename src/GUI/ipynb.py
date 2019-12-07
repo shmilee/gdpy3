@@ -19,7 +19,8 @@ class IpynbUI(object):
     '''
     UI(User Interface) used in Jupyter notebook.
     '''
-    __slots__ = ['path', 'processor', 'widgets', 'panel_widgets', 'figlabel']
+    __slots__ = ['path', 'processor', 'widgets', 'panel_widgets',
+                 'grouplabels', 'figlabel']
 
     def __init__(self, path):
         self.path = path
@@ -34,10 +35,10 @@ class IpynbUI(object):
                 button_style='primary',  # 'success', 'info', or ''
                 tooltip='Pick', icon='arrow-circle-right',
                 layout=ipywidgets.Layout(width='5%')),
-            scope=ipywidgets.Dropdown(
+            group=ipywidgets.Dropdown(
                 options=[None],
                 value=None,
-                description='Scope:'),
+                description='Group:'),
             figlabel=ipywidgets.Dropdown(
                 options=[None],
                 value=None,
@@ -53,33 +54,41 @@ class IpynbUI(object):
             canvas=ipywidgets.Output(),
         )
         self.panel_widgets = {}
+        self.grouplabels = {}
         self.figlabel = None
 
-        self.widgets['processor'].observe(self.init_scope, 'value')
-        self.widgets['pick'].on_click(self.update_scope)
-        self.widgets['scope'].observe(self.update_figlabel, 'value')
+        self.widgets['processor'].observe(self.init_group, 'value')
+        self.widgets['pick'].on_click(self.update_group)
+        self.widgets['group'].observe(self.update_figlabel, 'value')
         self.widgets['figlabel'].observe(self.update_panel, 'value')
         self.widgets['plot'].on_click(self.update_canvas)
 
-    def init_scope(self, *args):
-        self.widgets['scope'].options = [None]
-        self.widgets['scope'].value = None
+    def init_group(self, *args):
+        self.widgets['group'].options = [None]
+        self.widgets['group'].value = None
         self.widgets['pick'].button_style = 'primary'
 
-    def update_scope(self, *args):
-        gdp = get_processor(self.widgets['processor'].value)
+    def update_group(self, *args):
         with self.widgets['terminal']:
-            gdp.pick(self.path)
+            gdp = get_processor(
+                self.path, name=self.widgets['processor'].value)
         if gdp.pckloader:
             self.processor = gdp
-            options = sorted(gdp.layout.keys())
-            self.widgets['scope'].options = options
-            self.widgets['scope'].value = options[0]
+            self.grouplabels = {}
+            for l in gdp.availablelabels:
+                g = l[:l.find('/')]
+                if g in self.grouplabels:
+                    self.grouplabels[g].append(l[l.find('/')+1:])
+                else:
+                    self.grouplabels[g] = [l[l.find('/')+1:]]
+            options = sorted(self.grouplabels.keys())
+            self.widgets['group'].options = options
+            self.widgets['group'].value = options[0]
             self.widgets['pick'].button_style = 'success'
 
     def update_figlabel(self, *args):
-        options = self.processor.layout.get(
-            self.widgets['scope'].value, [None])
+        options = self.grouplabels.get(
+            self.widgets['group'].value, [None])
         self.widgets['figlabel'].options = options
         self.widgets['figlabel'].value = options[0]
         self.widgets['plot'].button_style = 'primary'
@@ -88,13 +97,14 @@ class IpynbUI(object):
         self.widgets['plot'].button_style = 'primary'
         if self.widgets['figlabel'].value:
             self.figlabel = '%s/%s' % (
-                self.widgets['scope'].value, self.widgets['figlabel'].value)
+                self.widgets['group'].value, self.widgets['figlabel'].value)
             with self.widgets['terminal']:
-                figinfo = self.processor.get(self.figlabel)
+                result = self.processor.export(self.figlabel, what='options')
         else:
-            self.figlabel, figinfo = None, None
-        if figinfo:
-            self.panel_widgets = self.get_panel_widgets(figinfo.layout)
+            self.figlabel, result = None, None
+        if result:
+            options = dict(**result['digoptions'], **result['visoptions'])
+            self.panel_widgets = self.get_panel_widgets(options)
             self.widgets['panel'].clear_output(wait=True)
             with self.widgets['panel']:
                 w = list(self.panel_widgets.values())
@@ -106,13 +116,13 @@ class IpynbUI(object):
                 w = [ipywidgets.HBox(w[i:i+2]) for i in range(0, len(w), 2)]
                 display(ipywidgets.VBox(w))
 
-    def get_panel_widgets(self, layout):
+    def get_panel_widgets(self, options):
         controls = {}
         common_kw = dict(
             style={'description_width': 'initial'},
             layout=ipywidgets.Layout(width='40%', margin='1% 2% auto 2%'),
             disabled=False)
-        for k, v in layout.items():
+        for k, v in options.items():
             if v['widget'] in (
                     'IntSlider', 'FloatSlider',
                     'IntRangeSlider', 'FloatRangeSlider'):
@@ -144,12 +154,13 @@ class IpynbUI(object):
         if self.figlabel:
             figkwargs = {k: v.value for k, v in self.panel_widgets.items()}
             with self.widgets['terminal']:
-                figure = self.processor.plot(self.figlabel, **figkwargs)
-            if figure:
+                accfiglabel = self.processor.visplt(
+                    self.figlabel, show=False, **figkwargs)
+            if accfiglabel:
                 self.widgets['canvas'].clear_output(wait=True)
                 with self.widgets['canvas']:
                     # print(figkwargs)
-                    display(self.processor.plotter.get_figure(self.figlabel))
+                    display(self.processor.visplter.get_figure(accfiglabel))
                 self.widgets['plot'].button_style = 'success'
         else:
             self.widgets['canvas'].clear_output(wait=True)
@@ -162,7 +173,7 @@ class IpynbUI(object):
             ipywidgets.HBox([
                 self.widgets['processor'],
                 self.widgets['pick'],
-                self.widgets['scope'],
+                self.widgets['group'],
                 self.widgets['figlabel'],
                 self.widgets['plot'],
             ]),
