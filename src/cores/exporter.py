@@ -181,6 +181,10 @@ class ContourfExporter(Exporter):
                 results[k] = kwargs[k]
             if k in results:
                 debug_kw[k] = results[k]
+        if not results['Z'].any():
+            # all zeros
+            elog.warning("All elements in 'Z' is 0, use plot method pcolor!")
+            results['plot_method'] = 'pcolor'
         elog.debug("Some template contourf kwargs: %s" % debug_kw)
         return results, debug_kw
 
