@@ -379,7 +379,7 @@ class LabeledSpinBoxs(ttk.Frame):
             _ignore = kw.pop(_k, None)
         if init_val is None:
             init_val = from_
-        if isinstance(init_val, (int, float)):
+        if isinstance(init_val, (int, float, numpy.number)):
             init_val = [init_val]
         self.variables = []
         self.spinboxs = []
