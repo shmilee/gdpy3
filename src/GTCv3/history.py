@@ -329,7 +329,7 @@ class HistoryFieldModeDigger(Digger):
             if not start:
                 start, region_len = tools.findgrowth(logya, 1e-4)
                 if region_len == 0:
-                    start, region_len = 0, ndstep // 4
+                    start, region_len = 0, max(ndstep // 4, 2)
                 end = start + region_len - 1
             acckwargs = dict(growth_time=[time[start], time[end]])
             dlog.parm("Find growth time: [%s,%s], index: [%s,%s]."
