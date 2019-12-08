@@ -20,7 +20,7 @@ from . import (
     history,
     meshgrid,
     snapshot,
-    snapshotphi,
+    snapphi,
     trackparticle,
 )
 from ..processors.processor import Processor
@@ -37,7 +37,7 @@ class GTCv3(Processor):
         history.HistoryConverter,
         meshgrid.MeshgridConverter,
         snapshot.SnapshotConverter,
-        snapshotphi.SnapPhiZetaPsiConverter,
+        snapphi.SnapPhiZetaPsiConverter,
         trackparticle.TrackParticleConverter,
     ]
     DiggerCores = [
@@ -56,8 +56,8 @@ class GTCv3(Processor):
         snapshot.SnapshotFieldFluxPloidalDigger,
         snapshot.SnapshotFieldSpectrumDigger,
         snapshot.SnapshotFieldProfileDigger,
-        snapshotphi.SnapPhiZetaPsiDigger,
-        snapshotphi.SnapPhiCorrLenDigger,
+        snapphi.SnapPhiZetaPsiDigger,
+        snapphi.SnapPhiCorrLenDigger,
         trackparticle.TrackParticleOrbitDigger,
     ]
     saltname = 'gtc.out'
