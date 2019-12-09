@@ -286,13 +286,15 @@ class SnapPhiFieldnDigger(Digger):
         # j_list[-1] is mtdiag
         self._part = j / j_list[-1]
         self._fignum = 'phi_fieldn_%03d' % round(self._part*360)
+        self.kwoptions = None
 
     def _dig(self, **kwargs):
-        title = r'$\phi(\zeta,\psi)$, %s, %s' % (self.theta, self.timestr)
-        Z = self.pckloader.get(self.srckeys[0])
-        y, x = Z.shape
-
-    def _dig(self, **kwargs):
+        '''
+        kwargs
+        ------
+        *ymaxlimit*: float, default 0
+            if (ymax of line) < ymaxlimit * (ymax of lines), then remove it.
+        '''
         timestr = _snap_get_timestr(self.group, self.pckloader)
         theta = r'$\theta=%.2f=%d^\circ$' % (
             round(self._part*2*np.pi, ndigits=2), round(self._part*360))
@@ -303,20 +305,39 @@ class SnapPhiFieldnDigger(Digger):
             log.error("Invalid phi(zeta,psi) shape!")
             return
         rr = arr2[:, 1] / a
-        filedn = []
+        fieldn = []
         for ipsi in range(1, mpsi1 - 1):
             y = data[:, ipsi]
-            dy_ft = np.fft.fft(y)/Lz * 2  # why /Lz * 2
-            filedn.append(abs(dy_ft[:Lz//2]))
-        filedn = np.array(filedn).T
+            dy_ft = np.fft.fft(y)*Lz / 8  # why *Lz / 8
+            fieldn.append(abs(dy_ft[:Lz//2]))
+        fieldn = np.array(fieldn).T
+        # remove some lines
+        if self.kwoptions is None:
+            self.kwoptions = dict(
+                ymaxlimit=dict(widget='FloatSlider',
+                               rangee=(0, 1, 0.05),
+                               value=0.0,
+                               description='ymaxlimit:'))
+        ymaxlimit = kwargs.get('ymaxlimit', 0.0)
+        if isinstance(ymaxlimit, float) and 0 < ymaxlimit < 1:
+            maxlimit = fieldn.max() * ymaxlimit
+            zpass = fieldn.max(axis=1) >= maxlimit
+            zlist = [i for i, z in enumerate(zpass) if z]
+        else:
+            zlist = 'all'
+        acckwargs = dict(ymaxlimit=ymaxlimit)
         return dict(
-            rr=rr, filedn=filedn,
+            rr=rr, fieldn=fieldn, zlist=zlist,
             title=r'$\left|\phi_n(r)\right|$, %s, %s' % (theta, timestr)
-        ), {}
+        ), acckwargs
 
     def _post_dig(self, results):
         r = results
-        mz, _ = r['filedn'].shape
-        LINE = [(r['rr'], r['filedn'][j, :]) for j in range(mz)]
+        if r['zlist'] == 'all':
+            mz, _ = r['fieldn'].shape
+            zlist = range(mz)
+        else:
+            zlist = r['zlist']
+        LINE = [(r['rr'], r['fieldn'][z, :]) for z in zlist]
         return dict(LINE=LINE, title=r['title'],
                     xlabel=r'$r/a$', xlim=[0, 1])

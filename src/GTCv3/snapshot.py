@@ -448,8 +448,15 @@ class SnapshotFieldmDigger(Digger):
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_fieldm' % self.section[1]
+        self.kwoptions = None
 
     def _dig(self, **kwargs):
+        '''
+        kwargs
+        ------
+        *ymaxlimit*: float, default 0
+            if (ymax of line) < ymaxlimit * (ymax of lines), then remove it.
+        '''
         timestr = _snap_get_timestr(self.group, self.pckloader)
         fstr = field_tex_str[self.section[1]]
         pdata, mpsi1, mtgrid1, dt, arr2, a = self.pckloader.get_many(
@@ -458,19 +465,38 @@ class SnapshotFieldmDigger(Digger):
             log.error("Invalid poloidata shape!")
             return
         rr = arr2[:, 1] / a
-        filedm = []
+        fieldm = []
         for ipsi in range(1, mpsi1 - 1):
             y = pdata[:, ipsi]
             dy_ft = np.fft.fft(y)/mtgrid1 * 2  # why /mtgrid1 * 2
-            filedm.append(abs(dy_ft[:mtgrid1//2]))
-        filedm = np.array(filedm).T
-        return dict(rr=rr, filedm=filedm,
+            fieldm.append(abs(dy_ft[:mtgrid1//2]))
+        fieldm = np.array(fieldm).T
+        # remove some lines
+        if self.kwoptions is None:
+            self.kwoptions = dict(
+                ymaxlimit=dict(widget='FloatSlider',
+                               rangee=(0, 1, 0.05),
+                               value=0.0,
+                               description='ymaxlimit:'))
+        ymaxlimit = kwargs.get('ymaxlimit', 0.0)
+        if isinstance(ymaxlimit, float) and 0 < ymaxlimit < 1:
+            maxlimit = fieldm.max() * ymaxlimit
+            jpass = fieldm.max(axis=1) >= maxlimit
+            jlist = [i for i, j in enumerate(jpass) if j]
+        else:
+            jlist = 'all'
+        acckwargs = dict(ymaxlimit=ymaxlimit)
+        return dict(rr=rr, fieldm=fieldm, jlist=jlist,
                     title=r'$\left|{%s}_m(r)\right|$, %s' % (fstr, timestr)
-                    ), {}
+                    ), acckwargs
 
     def _post_dig(self, results):
         r = results
-        mt, _ = r['filedm'].shape
-        LINE = [(r['rr'], r['filedm'][j, :]) for j in range(mt)]
+        if r['jlist'] == 'all':
+            mt, _ = r['fieldm'].shape
+            jlist = range(mt)
+        else:
+            jlist = r['jlist']
+        LINE = [(r['rr'], r['fieldm'][j, :]) for j in jlist]
         return dict(LINE=LINE, title=r['title'],
                     xlabel=r'$r/a$', xlim=[0, 1])
