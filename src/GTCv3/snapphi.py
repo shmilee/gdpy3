@@ -151,7 +151,7 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
 
     def _set_fignum(self, numseed=None):
         super(SnapPhiCorrLenDigger, self)._set_fignum(numseed=numseed)
-        self._fignum = 'phi_correlation_%03d' % round(self._part*360)
+        self._fignum = 'phi_corrlen_%03d' % round(self._part*360)
         self.kwoptions = None
 
     def _dig(self, **kwargs):
@@ -233,18 +233,25 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
             tau, vdz, vdp = tools.correlation(Z, 0, y, 0, x, mdzeta, mdpsi)
             X = Xpsi
         mtau = tau.max(axis=0)
-        index = np.where(mtau <= 1/np.e)[0]
+        index = np.where(mtau <= 1.0/np.e)[0]
         if index.size > 0:
-            L, Lpsi = X[index[0]], Xpsi[index[0]]
+            # line cross
+            i0, i1 = index[0], index[0] - 1
+            L = X[i0] + (1.0/np.e-mtau[i0])/(mtau[i1]-mtau[i0])*(X[i1]-X[i0])
+            if use_ra:
+                Lpsi = Xpsi[i0] + (1.0/np.e-mtau[i0]) / \
+                    (mtau[i1]-mtau[i0])*(Xpsi[i1]-Xpsi[i0])
+            else:
+                Lpsi = L
         else:
             L, Lpsi = X[-1], Xpsi[-1]  # over mdpsi
             dlog.parm("Increase mdpsi to find correlation length!")
         if use_ra:
             title2 = r'$\phi$ $C(\Delta r)$, $C_r(\Delta r=%.6f)=1/e$' % L
-            dlog.parm("Find correlation length: L=%.6f, Lpsi=%s" % (L, Lpsi))
+            dlog.parm("Find correlation length: L=%.6f, Lpsi=%.3f" % (L, Lpsi))
         else:
-            title2 = r'$\phi$ $C(\Delta\psi)$, $C(\Delta\psi=%s)=1/e$' % Lpsi
-            dlog.parm("Find correlation length: Lpsi=%s" % Lpsi)
+            title2 = r'$\phi$ $C(\Delta\psi)$, $C(\Delta\psi=%.3f)=1/e$' % Lpsi
+            dlog.parm("Find correlation length: Lpsi=%.3f" % Lpsi)
         return dict(X=X, Y=Y, tau=tau, mtau=mtau, L=L, Lpsi=Lpsi,
                     xlabel=xlabel, title1=title1, title2=title2,
                     xname=r'r' if use_ra else r'\psi'), acckwargs
