@@ -90,7 +90,7 @@ class SnapPhiZetaPsiDigger(Digger):
     nitems = '+'
     itemspattern = ['^(?P<section>snap\d{5})/phi_zeta_psi_(?P<j>\d+)',
                     '^(?P<section>snap\d{5})/j_list']
-    commonpattern = ['gtc/tstep']
+    commonpattern = ['gtc/tstep', 'gtc/arr2', 'gtc/a_minor']
     post_template = 'tmpl_contourf'
 
     def _set_fignum(self, numseed=None):
@@ -103,16 +103,44 @@ class SnapPhiZetaPsiDigger(Digger):
         self.theta = r'$\theta=%.2f=%d^\circ$' % (
             round(self._part*2*np.pi, ndigits=2), round(self._part*360))
         self.timestr = _snap_get_timestr(self.group, self.pckloader)
+        self.kwoptions = None
 
     def _dig(self, **kwargs):
-        title = r'$\phi(\zeta,\psi)$, %s, %s' % (self.theta, self.timestr)
+        '''
+        *use_ra*: bool
+            use psi or r/a, default False
+        '''
         Z = self.pckloader.get(self.srckeys[0])
         y, x = Z.shape
-        return dict(X=np.arange(0, x), Y=np.arange(0, y) / y * 2 * np.pi,
-                    Z=Z, title=title), {}
+        if self.kwoptions is None:
+            self.kwoptions = dict(
+                use_ra=dict(widget='Checkbox',
+                            value=False,
+                            description='X: r/a'))
+        # use_ra, arr2 [1,mpsi-1], so y0>=1, y1<=mpsi
+        if kwargs.get('use_ra', False):
+            try:
+                arr2, a = self.pckloader.get_many('gtc/arr2', 'gtc/a_minor')
+                rr = arr2[:, 1] / a  # index [0, mpsi-2]
+                x0 = 1
+                x1 = x - 1
+                X = rr[x0-1:x1-1]
+                Z = Z[:, x0:x1]
+            except Exception:
+                dlog.warning("Cannot use r/a!", exc_info=1)
+            else:
+                title = r'$\phi(\zeta,r)$, %s, %s' % (self.theta, self.timestr)
+                xlabel = r'$r/a$'
+                acckwargs = dict(use_ra=True)
+        else:
+            title = r'$\phi(\zeta,\psi)$, %s, %s' % (self.theta, self.timestr)
+            xlabel = r'$\psi$(mpsi)'
+            acckwargs = dict(use_ra=False)
+            X = np.arange(0, x)
+        return dict(X=X, Y=np.arange(0, y) / y * 2 * np.pi, Z=Z,
+                    xlabel=xlabel, ylabel=r'$\zeta$', title=title), acckwargs
 
     def _post_dig(self, results):
-        results.update(xlabel=r'$\psi$(mpsi)', ylabel=r'$\zeta$')
         return results
 
 
@@ -132,16 +160,32 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
         ------
         *mdpsi*, *mdzeta*: int
             set dpsi dzeta range, max mpsi//2, mzeta//2
+        *use_ra*: bool
+            use psi or r/a, default True
         '''
-        title = r'Correlation $\phi(d\zeta,d\psi)$, %s, %s' % (
-                self.theta, self.timestr)
         Z = self.pckloader.get(self.srckeys[0])
         y, x = Z.shape
+        # use_ra, arr2 [1,mpsi-1], so y0>=1, y1<=mpsi
+        if kwargs.get('use_ra', True):
+            try:
+                arr2, a = self.pckloader.get_many('gtc/arr2', 'gtc/a_minor')
+                rr = arr2[:, 1] / a  # index [0, mpsi-2]
+                Z = Z[:, 1:x-1]
+                y, x = Z.shape
+            except Exception:
+                dlog.warning("Cannot use r/a!", exc_info=1)
+                use_ra = False
+            else:
+                use_ra = True
+        else:
+            use_ra = False
         # if Z size is too large, cal corr will be very slow
         max_x, max_y = 400, 1536
         step_x = round(x/max_x) if x > max_x else 1
         step_y = round(y/max_y) if y > max_y else 1
         if step_x != 1 or step_y != 1:
+            if use_ra:
+                rr = rr[::step_x]
             Z = Z[::step_y, ::step_x]
             dlog.parm('Too large data of phi(zeta,psi), slice it: %s -> %s'
                       % ((y, x), Z.shape))
@@ -154,7 +198,7 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
             mdpsi = x // 2
         if not (isinstance(mdzeta, int) and mdzeta <= maxmdzeta):
             mdzeta = y // 24
-        acckwargs = dict(mdpsi=mdpsi, mdzeta=mdzeta)
+        acckwargs = dict(mdpsi=mdpsi, mdzeta=mdzeta, use_ra=use_ra)
         dlog.parm("Use dpsi dzeta range: mdpsi=%s, mdzeta=%s. "
                   "Maximal mdpsi=%s, mdzeta=%s"
                   % (mdpsi, mdzeta, maxmdpsi, maxmdzeta))
@@ -169,32 +213,53 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
                     widget='IntSlider',
                     rangee=(1, maxmdzeta, 1),
                     value=mdzeta,
-                    description='mdzeta:'))
-        tau = tools.correlation(Z, 0, y, 0, x, mdzeta, mdpsi)
-        X = np.arange(0, mdpsi) * step_x
+                    description='mdzeta:'),
+                use_ra=dict(widget='Checkbox',
+                            value=True,
+                            description='X: r/a'))
+        Xpsi = np.arange(0, mdpsi) * step_x
         Y = np.arange(0, mdzeta) * step_y / y * 2 * np.pi
+        if use_ra:
+            # print(rr, rr.size, Z.shape, step_x)
+            title1 = r'Correlation $\phi(\Delta\zeta,\Delta r)$, %s, %s' % (
+                self.theta, self.timestr)
+            xlabel = r'$\Delta r/a$'
+            tau, vdz, X = tools.correlation(
+                Z, 0, y, 0, x, mdzeta, mdpsi, ruler_c=rr)
+        else:
+            title1 = r'Correlation $\phi(\Delta\zeta,\Delta\psi)$, %s, %s' % (
+                self.theta, self.timestr)
+            xlabel = r'$\Delta\psi(mpsi)$'
+            tau, vdz, vdp = tools.correlation(Z, 0, y, 0, x, mdzeta, mdpsi)
+            X = Xpsi
         mtau = tau.max(axis=0)
         index = np.where(mtau <= 1/np.e)[0]
         if index.size > 0:
-            Lpsi = X[index[0]]
+            L, Lpsi = X[index[0]], Xpsi[index[0]]
         else:
-            Lpsi = X[-1]  # over mdpsi
+            L, Lpsi = X[-1], Xpsi[-1]  # over mdpsi
             dlog.parm("Increase mdpsi to find correlation length!")
-        dlog.parm("Find correlation length: Lpsi=%s" % Lpsi)
-        return dict(X=X, Y=Y, tau=tau, mtau=mtau, Lpsi=Lpsi,
-                    title=title), acckwargs
+        if use_ra:
+            title2 = r'$\phi$ $C(\Delta r)$, $C_r(\Delta r=%.6f)=1/e$' % L
+            dlog.parm("Find correlation length: L=%.6f, Lpsi=%s" % (L, Lpsi))
+        else:
+            title2 = r'$\phi$ $C(\Delta\psi)$, $C(\Delta\psi=%s)=1/e$' % Lpsi
+            dlog.parm("Find correlation length: Lpsi=%s" % Lpsi)
+        return dict(X=X, Y=Y, tau=tau, mtau=mtau, L=L, Lpsi=Lpsi,
+                    xlabel=xlabel, title1=title1, title2=title2,
+                    xname=r'r' if use_ra else r'\psi'), acckwargs
 
     def _post_dig(self, results):
         r = results
-        ax1_calc = dict(X=r['X'], Y=r['Y'], Z=r['tau'], title=r['title'],
-                        xlabel=r'$d\psi$(mpsi)', ylabel=r'$d\zeta$',
-                        plot_method='contourf')
+        ax1_calc = dict(X=r['X'], Y=r['Y'], Z=r['tau'], title=r['title1'],
+                        xlabel=r['xlabel'], ylabel=r'$\Delta\zeta$')
         ax2_calc = dict(
             LINE=[
-                (r['X'], r['mtau'], r'$C_r(\Delta \psi)$'),
+                (r['X'], r['mtau'], r'$C_r(\Delta %s)$' % r['xname']),
                 ([r['X'][0], r['X'][-1]], [1/np.e, 1/np.e], '1/e'),
             ],
-            title=r'$\phi$ Correlation$(d\psi)$, C(%s)=1/e' % r['Lpsi'],
+            title=r['title2'],
+            xlabel=r['xlabel'],
             xlim=[r['X'][0], r['X'][-1]],
             ylim=[0 if r['mtau'].min() > 0 else r['mtau'].min(), 1],
         )
