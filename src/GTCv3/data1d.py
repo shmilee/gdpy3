@@ -185,6 +185,8 @@ class _Data1dDigger(Digger):
             X[x0:x1], data[:,x0:x1] where t0<=X[x0:x1]<=t1
         *pcutoff*: [p0,p1]
             Y[y0:y1], data[y0:y1,:] where p0<=Y[y0:y1]<=p1
+        *use_ra*: bool
+            use psi or r/a, default False
         '''
         data, tstep, ndiag = self.pckloader.get_many(
             self.srckeys[0], *self.extrakeys)
@@ -200,8 +202,12 @@ class _Data1dDigger(Digger):
                 pcutoff=dict(widget='IntRangeSlider',
                              rangee=[Y[0], Y[-1], 1],
                              value=[Y[0], Y[-1]],
-                             description='mpsi cutoff:'))
-        acckwargs = {'tcutoff': [X[0], X[-1]], 'pcutoff': [Y[0], Y[-1]]}
+                             description='mpsi cutoff:'),
+                use_ra=dict(widget='Checkbox',
+                            value=False,
+                            description='Y: r/a'))
+        acckwargs = {'tcutoff': [X[0], X[-1]], 'pcutoff': [Y[0], Y[-1]],
+                     'use_ra': False}
         x0, x1 = 0, X.size
         if 'tcutoff' in kwargs:
             t0, t1 = kwargs['tcutoff']
@@ -222,12 +228,29 @@ class _Data1dDigger(Digger):
                 Y = Y[y0:y1]
             else:
                 dlog.warning('Cannot cutoff: %s <= ipsi <= %s!' % (p0, p1))
+        ylabel = r'$\psi$(mpsi)'
+        # use_ra, arr2 [1,mpsi-1], so y0>=1, y1<=mpsi
+        if kwargs.get('use_ra', False):
+            try:
+                arr2, a = self.pckloader.get_many('gtc/arr2', 'gtc/a_minor')
+                rr = arr2[:, 1] / a  # index [0, mpsi-2]
+                if y0 < 1:
+                    y0 = 1
+                if y1 > y - 1:
+                    y1 = y - 1
+                Y = rr[y0-1:y1-1]
+            except Exception:
+                dlog.warning("Cannot use r/a!", exc_info=1)
+            else:
+                ylabel = r'$r/a$'
+                acckwargs['use_ra'] = True
         # update
         data = data[y0:y1, x0:x1]
-        return dict(X=X, Y=Y, Z=data, title=self._get_title()), acckwargs
+        return dict(X=X, Y=Y, Z=data, ylabel=ylabel,
+                    title=self._get_title()), acckwargs
 
     def _post_dig(self, results):
-        results.update(xlabel=r'time($R_0/c_s$)', ylabel=r'$r$(mpsi)')
+        results.update(xlabel=r'time($R_0/c_s$)')
         return results
 
 
