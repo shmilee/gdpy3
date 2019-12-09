@@ -124,7 +124,8 @@ def fft(dt, signal):
             tf = np.linspace(-0.5, 0.5, size, endpoint=True)
         tf = 2 * np.pi / dt * tf
         af = np.fft.fftshift(np.fft.fft(signal))
-        pf = np.sqrt(np.power(af.real, 2) + np.power(af.imag, 2))
+        # pf = np.sqrt(np.power(af.real, 2) + np.power(af.imag, 2))
+        pf = abs(af)
         return tf, af, pf
     else:
         log.error("'dt' must be 'float', 'signal' must be 'np.ndarray'!")
