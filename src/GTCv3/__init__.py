@@ -56,6 +56,7 @@ class GTCv3(Processor):
         snapshot.SnapshotFieldFluxPloidalDigger,
         snapshot.SnapshotFieldSpectrumDigger,
         snapshot.SnapshotFieldProfileDigger,
+        snapshot.SnapshotFieldmDigger,
         snapphi.SnapPhiZetaPsiDigger,
         snapphi.SnapPhiCorrLenDigger,
         trackparticle.TrackParticleOrbitDigger,

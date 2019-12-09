@@ -38,7 +38,8 @@ from ..cores.digger import Digger, dlog
 
 __all__ = ['SnapshotConverter',
            'SnapshotProfilePdfDigger', 'SnapshotFieldFluxPloidalDigger',
-           'SnapshotFieldSpectrumDigger', 'SnapshotFieldProfileDigger']
+           'SnapshotFieldSpectrumDigger', 'SnapshotFieldProfileDigger',
+           'SnapshotFieldmDigger']
 
 
 class SnapshotConverter(Converter):
@@ -433,3 +434,43 @@ class SnapshotFieldProfileDigger(Digger):
             ('tmpl_sharextwinx', 211, ax1_calc),
             ('tmpl_sharextwinx', 212, ax2_calc),
         ], suptitle=r['suptitle'])
+
+
+class SnapshotFieldmDigger(Digger):
+    '''profile of field_m'''
+    __slots__ = []
+    nitems = '+'
+    itemspattern = ['^(?P<section>snap\d{5})'
+                    + '/poloidata-(?P<field>(?:phi|apara|fluidne))',
+                    '^(?P<s>snap\d{5})/mpsi\+1', '^(?P<s>snap\d{5})/mtgrid\+1']
+    commonpattern = ['gtc/tstep', 'gtc/arr2', 'gtc/a_minor']
+    post_template = 'tmpl_line'
+
+    def _set_fignum(self, numseed=None):
+        self._fignum = '%s_fieldm' % self.section[1]
+
+    def _dig(self, **kwargs):
+        timestr = _snap_get_timestr(self.group, self.pckloader)
+        fstr = field_tex_str[self.section[1]]
+        pdata, mpsi1, mtgrid1, dt, arr2, a = self.pckloader.get_many(
+            *self.srckeys, *self.common)
+        if pdata.shape != (mtgrid1, mpsi1):
+            log.error("Invalid poloidata shape!")
+            return
+        rr = arr2[:, 1] / a
+        filedm = []
+        for ipsi in range(1, mpsi1 - 1):
+            y = pdata[:, ipsi]
+            dy_ft = np.fft.fft(y)/mtgrid1 * 2  # why /mtgrid1 * 2
+            filedm.append(abs(dy_ft[:mtgrid1//2]))
+        filedm = np.array(filedm).T
+        return dict(rr=rr, filedm=filedm,
+                    title=r'$\left|{%s}_m(r)\right|$, %s' % (fstr, timestr)
+                    ), {}
+
+    def _post_dig(self, results):
+        r = results
+        mt, _ = r['filedm'].shape
+        LINE = [(r['rr'], r['filedm'][j, :]) for j in range(mt)]
+        return dict(LINE=LINE, title=r['title'],
+                    xlabel=r'$r/a$', xlim=[0, 1])
