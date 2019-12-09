@@ -59,6 +59,7 @@ class GTCv3(Processor):
         snapshot.SnapshotFieldmDigger,
         snapphi.SnapPhiZetaPsiDigger,
         snapphi.SnapPhiCorrLenDigger,
+        snapphi.SnapPhiFieldnDigger,
         trackparticle.TrackParticleOrbitDigger,
     ]
     saltname = 'gtc.out'

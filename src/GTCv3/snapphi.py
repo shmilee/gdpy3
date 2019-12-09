@@ -30,7 +30,8 @@ from .snapshot import _snap_get_timestr
 from .. import tools
 
 __all__ = ['SnapPhiZetaPsiConverter',
-           'SnapPhiZetaPsiDigger', 'SnapPhiCorrLenDigger']
+           'SnapPhiZetaPsiDigger', 'SnapPhiCorrLenDigger',
+           'SnapPhiFieldnDigger']
 
 
 class SnapPhiZetaPsiConverter(Converter):
@@ -201,3 +202,56 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
             ('tmpl_contourf', 211, ax1_calc),
             ('tmpl_line', 212, ax2_calc),
         ])
+
+
+class SnapPhiFieldnDigger(Digger):
+    '''profile of field_n'''
+    __slots__ = ['_part']
+    nitems = '+'
+    itemspattern = ['^(?P<section>snap\d{5})/phi_zeta_psi_(?P<j>\d+)',
+                    '^(?P<section>snap\d{5})/j_list',
+                    '^(?P<s>snap\d{5})/mpsi\+1']
+    commonpattern = ['gtc/tstep', 'gtc/arr2', 'gtc/a_minor']
+    post_template = 'tmpl_line'
+
+    def _set_fignum(self, numseed=None):
+        j_list = self.pckloader.get(self.srckeys[1])
+        j = int(self.section[1])
+        assert j in j_list
+        # j_list[-1] is mtdiag
+        self._part = j / j_list[-1]
+        self._fignum = 'phi_fieldn_%03d' % round(self._part*360)
+
+    def _dig(self, **kwargs):
+        title = r'$\phi(\zeta,\psi)$, %s, %s' % (self.theta, self.timestr)
+        Z = self.pckloader.get(self.srckeys[0])
+        y, x = Z.shape
+
+    def _dig(self, **kwargs):
+        timestr = _snap_get_timestr(self.group, self.pckloader)
+        theta = r'$\theta=%.2f=%d^\circ$' % (
+            round(self._part*2*np.pi, ndigits=2), round(self._part*360))
+        data, j_list, mpsi1, dt, arr2, a = self.pckloader.get_many(
+            *self.srckeys, *self.common)
+        Lz, Lr = data.shape
+        if Lr != mpsi1:
+            log.error("Invalid phi(zeta,psi) shape!")
+            return
+        rr = arr2[:, 1] / a
+        filedn = []
+        for ipsi in range(1, mpsi1 - 1):
+            y = data[:, ipsi]
+            dy_ft = np.fft.fft(y)/Lz * 2  # why /Lz * 2
+            filedn.append(abs(dy_ft[:Lz//2]))
+        filedn = np.array(filedn).T
+        return dict(
+            rr=rr, filedn=filedn,
+            title=r'$\left|\phi_n(r)\right|$, %s, %s' % (theta, timestr)
+        ), {}
+
+    def _post_dig(self, results):
+        r = results
+        mz, _ = r['filedn'].shape
+        LINE = [(r['rr'], r['filedn'][j, :]) for j in range(mz)]
+        return dict(LINE=LINE, title=r['title'],
+                    xlabel=r'$r/a$', xlim=[0, 1])
