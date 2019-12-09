@@ -213,14 +213,20 @@ def findgrowth(X, lowerlimit, info='data'):
     return _start, _len
 
 
-def correlation(data, r0, r1, c0, c1, dr, dc):
+def correlation(data, r0, r1, c0, c1, dr, dc,
+                ruler_r=None, ruler_r_use='little',
+                ruler_c=None, ruler_c_use='little'):
     '''
     correlation length
     autocorrelation time
     xiao2010, POP, 17, 022302
 
+    data: 2d array, like delta_phi(zeta,psi)
     r0, r1, c0, c1: select data[r0:r1, c0:c1]
     dr, dc: correlation matrix size
+    ruler_r, ruler_c: index [0,dr] [0,dc] -> value [vdr0, vdr1] [vdc0, vdc1]
+        (ruler_r.size, ruler_c.size) == data.shape
+    ruler_r_use, ruler_c_use: use ruler little or big endian
     '''
     tau = np.zeros((dr, dc))
     logstep = round(dr/10)
@@ -244,4 +250,22 @@ def correlation(data, r0, r1, c0, c1, dr, dc):
             log.info('correlation row %d/%d' % (i+1, dr))
             # print('row %d: %s' % (i, tau[i, :]))
             # print(tau[i,:])
-    return tau
+    if ruler_r is None:
+        vdr = None
+    else:
+        vdr = np.zeros(dr)
+        for i in range(dr):
+            if ruler_r_use == 'little':
+                vdr[i] = ruler_r[r0+i] - ruler_r[r0]
+            else:
+                vdr[i] = ruler_r[r1] - ruler_r[r1-i]
+    if ruler_c is None:
+        vdc = None
+    else:
+        vdc = np.zeros(dc)
+        for j in range(dc):
+            if ruler_c_use == 'little':
+                vdc[j] = ruler_c[c0+j] - ruler_c[c0]
+            else:
+                vdc[j] = ruler_c[c1] - ruler_c[c1-j]
+    return tau, vdr, vdc
