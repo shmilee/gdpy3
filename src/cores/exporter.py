@@ -172,7 +172,8 @@ class ContourfExporter(Exporter):
         *plot_method*, *plot_method_args*, *plot_method_kwargs*,
         *colorbar*, *grid_alpha*, *plot_surface_shadow*
         '''
-        results['plot_method'] = 'contourf'
+        if 'plot_method' not in results:
+            results['plot_method'] = 'contourf'
         debug_kw = {}
         for k in ['plot_method', 'plot_method_args',
                   'plot_method_kwargs', 'colorbar',
