@@ -89,25 +89,33 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
                 # only check first one
                 if dcs[0].check_needed_datakeys():
                     for idx, dc in enumerate(dcs):
-                        dc.kwoptions = {}
-                        dc._set_group()
-                        dc._set_fignum(numseed=cls.numseeds[idx])
-                        res.append(dc)
-                        figlabels.append(dc.figlabel)
+                        if dc.__second_init__(numseed=cls.numseeds[idx]):
+                            res.append(dc)
+                            figlabels.append(dc.figlabel)
 
         else:
             for dc in dcss:
                 if dc.check_needed_datakeys():
-                    dc.kwoptions = {}
-                    dc._set_group()
-                    dc._set_fignum()
-                    res.append(dc)
-                    figlabels.append(dc.figlabel)
+                    if dc.__second_init__():
+                        res.append(dc)
+                        figlabels.append(dc.figlabel)
         if res:
             dlog.debug("%s: loader, %s; %d figlabels, %s."
                        % (res[0].coreid, pckloader.path,
                           len(figlabels), figlabels))
         return res
+
+    def __second_init__(self, numseed=None):
+        try:
+            self.kwoptions = {}
+            self._set_group()
+            self._set_fignum(numseed=numseed)
+        except Exception:
+            dlog.error("%s: Failed to initialize object %s!"
+                       % (self.coreid, id(self)), exc_info=1)
+            return False
+        else:
+            return True
 
     def check_needed_datakeys(self):
         '''Return Ture if all :attr:`neededpattern` matched.'''
