@@ -72,7 +72,9 @@ class GTCv3(Processor):
 
     def _check_pckloader_backward_version(self, pckloader):
         if 'version' in pckloader:
-            if pckloader.get('version') in ['110922', 'GTCV110922']:
+            if pckloader.get('version') in [
+                    '110922', 'GTCV110922',
+                    'GTCV3.14-22']:
                 plog.info("Use an old version '%s' pckloader %s."
                           % (pckloader.get('version'), pckloader.path))
                 return True
