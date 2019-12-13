@@ -192,10 +192,19 @@ class Processor(object):
     DiggerCores = []
     dig_acceptable_time = 30
 
+    def _check_pckloader_backward_version(self, pckloader):
+        return False
+
+    def _check_pckloader_forward_version(self, pckloader):
+        return False
+
     def __check_pckloader(self, pckloader):
         if not is_pckloader(pckloader):
             plog.error("%s: Not a pckloader object!" % self.name)
-            return
+            return False
+        if (self._check_pckloader_backward_version(pckloader)
+                or self._check_pckloader_forward_version(pckloader)):
+            return True
         if 'processor' not in pckloader:
             plog.error("%s: Can't find 'processor' in '%s'!"
                        % (self.name, pckloader.path))

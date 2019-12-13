@@ -23,7 +23,7 @@ from . import (
     snapphi,
     trackparticle,
 )
-from ..processors.processor import Processor
+from ..processors.processor import Processor, plog
 
 __all__ = ['GTCv3']
 
@@ -69,3 +69,19 @@ class GTCv3(Processor):
     def _rawsummary(self):
         return "GTC '.out' files in %s '%s'" % (
             self.rawloader.loader_type, self.rawloader.path)
+
+    def _check_pckloader_backward_version(self, pckloader):
+        if 'version' in pckloader:
+            if pckloader.get('version') in ['110922', 'GTCV110922']:
+                plog.info("Use an old version '%s' pckloader %s."
+                          % (pckloader.get('version'), pckloader.path))
+                return True
+        return False
+
+    def _check_pckloader_forward_version(self, pckloader):
+        if 'processor' in pckloader:
+            if pckloader.get('processor') in ['GTCv4']:
+                plog.info("Use a new version '%s' pckloader %s."
+                          % (pckloader.get('processor'), pckloader.path))
+                return True
+        return False
