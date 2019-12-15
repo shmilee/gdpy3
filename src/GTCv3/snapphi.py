@@ -26,7 +26,7 @@ import numpy as np
 
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
-from .snapshot import _snap_get_timestr
+from .snapshot import _snap_get_timestr, SnapshotFieldmDigger
 from .. import tools
 
 __all__ = ['SnapPhiZetaPsiConverter',
@@ -235,14 +235,17 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
         mtau = tau.max(axis=0)
         index = np.where(mtau <= 1.0/np.e)[0]
         if index.size > 0:
-            # line cross
-            i0, i1 = index[0], index[0] - 1
-            L = X[i0] + (1.0/np.e-mtau[i0])/(mtau[i1]-mtau[i0])*(X[i1]-X[i0])
+            # line intersection
+            i, j = index[0] - 1,  index[0]
+            Lpsi, y = tools.intersection_4points(
+                Xpsi[i], mtau[i], Xpsi[j], mtau[j],
+                Xpsi[i], 1.0/np.e, Xpsi[j], 1.0/np.e)
             if use_ra:
-                Lpsi = Xpsi[i0] + (1.0/np.e-mtau[i0]) / \
-                    (mtau[i1]-mtau[i0])*(Xpsi[i1]-Xpsi[i0])
+                L, y = tools.intersection_4points(
+                    X[i], mtau[i], X[j], mtau[j],
+                    X[i], 1.0/np.e, X[j], 1.0/np.e)
             else:
-                Lpsi = L
+                L = Lpsi
         else:
             L, Lpsi = X[-1], Xpsi[-1]  # over mdpsi
             dlog.parm("Increase mdpsi to find correlation length!")
@@ -276,7 +279,7 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
         ])
 
 
-class SnapPhiFieldnDigger(Digger):
+class SnapPhiFieldnDigger(SnapshotFieldmDigger):
     '''profile of field_n'''
     __slots__ = ['_part']
     nitems = '+'
@@ -296,12 +299,6 @@ class SnapPhiFieldnDigger(Digger):
         self.kwoptions = None
 
     def _dig(self, **kwargs):
-        '''
-        kwargs
-        ------
-        *ymaxlimit*: float, default 0
-            if (ymax of line) < ymaxlimit * (ymax of lines), then remove it.
-        '''
         timestr = _snap_get_timestr(self.group, self.pckloader)
         theta = r'$\theta=%.2f=%d^\circ$' % (
             round(self._part*2*np.pi, ndigits=2), round(self._part*360))
@@ -318,23 +315,12 @@ class SnapPhiFieldnDigger(Digger):
             dy_ft = np.fft.fft(y)*Lz / 8  # why *Lz / 8
             fieldn.append(abs(dy_ft[:Lz//2]))
         fieldn = np.array(fieldn).T
-        # remove some lines
-        if self.kwoptions is None:
-            self.kwoptions = dict(
-                ymaxlimit=dict(widget='FloatSlider',
-                               rangee=(0, 1, 0.05),
-                               value=0.0,
-                               description='ymaxlimit:'))
-        ymaxlimit = kwargs.get('ymaxlimit', 0.0)
-        if isinstance(ymaxlimit, float) and 0 < ymaxlimit < 1:
-            maxlimit = fieldn.max() * ymaxlimit
-            zpass = fieldn.max(axis=1) >= maxlimit
-            zlist = [i for i, z in enumerate(zpass) if z]
-        else:
-            zlist = 'all'
-        acckwargs = dict(ymaxlimit=ymaxlimit)
+        zlist, acckwargs, envY, envXp, envYp, envXmax, envYmax = \
+            self._remove_add_some_lines(fieldn, rr, kwargs)
         return dict(
             rr=rr, fieldn=fieldn, zlist=zlist,
+            envY=envY, envXp=envXp, envYp=envYp,
+            envXmax=envXmax, envYmax=envYmax,
             title=r'$\left|\phi_n(r)\right|$, %s, %s' % (theta, timestr)
         ), acckwargs
 
@@ -346,5 +332,12 @@ class SnapPhiFieldnDigger(Digger):
         else:
             zlist = r['zlist']
         LINE = [(r['rr'], r['fieldn'][z, :]) for z in zlist]
+        if type(r['envY']) is np.ndarray and type(r['envYp']) is np.ndarray:
+            LINE.append((r['rr'], r['envY'],
+                         'envelope, $r/a(max)=%.6f$' % r['envXmax']))
+            dx = r['envXp'][-1] - r['envXp'][0]
+            halfY = r['envYmax'] / np.e
+            flatYp = np.linspace(halfY, halfY, len(r['envXp']))
+            LINE.append((r['envXp'], flatYp, r'$\Delta r/a(1/e) = %.6f$' % dx))
         return dict(LINE=LINE, title=r['title'],
                     xlabel=r'$r/a$', xlim=[0, 1])

@@ -33,6 +33,7 @@ field quantities: phi, a_para, fluidne.
 '''
 
 import numpy as np
+from .. import tools
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
 
@@ -451,12 +452,6 @@ class SnapshotFieldmDigger(Digger):
         self.kwoptions = None
 
     def _dig(self, **kwargs):
-        '''
-        kwargs
-        ------
-        *ymaxlimit*: float, default 0
-            if (ymax of line) < ymaxlimit * (ymax of lines), then remove it.
-        '''
         timestr = _snap_get_timestr(self.group, self.pckloader)
         fstr = field_tex_str[self.section[1]]
         pdata, mpsi1, mtgrid1, dt, arr2, a = self.pckloader.get_many(
@@ -471,13 +466,40 @@ class SnapshotFieldmDigger(Digger):
             dy_ft = np.fft.fft(y)/mtgrid1 * 2  # why /mtgrid1 * 2
             fieldm.append(abs(dy_ft[:mtgrid1//2]))
         fieldm = np.array(fieldm).T
-        # remove some lines
+        jlist, acckwargs, envY, envXp, envYp, envXmax, envYmax = \
+            self._remove_add_some_lines(fieldm, rr, kwargs)
+        return dict(rr=rr, fieldm=fieldm, jlist=jlist,
+                    envY=envY, envXp=envXp, envYp=envYp,
+                    envXmax=envXmax, envYmax=envYmax,
+                    title=r'$\left|{%s}_m(r)\right|$, %s' % (fstr, timestr)
+                    ), acckwargs
+
+    def _remove_add_some_lines(self, fieldm, rr, kwargs):
+        '''
+        kwargs
+        ------
+        *ymaxlimit*: float, default 0
+            if (ymax of line) < ymaxlimit * (ymax of lines), then remove it.
+        *envelope*: bool
+            add high envelope or not, default False
+        *kind*: str or odd int
+            the kind of interpolation for envelope, default 'cubic'
+            see class scipy.interpolate.interpolate.interp1d
+        '''
         if self.kwoptions is None:
             self.kwoptions = dict(
                 ymaxlimit=dict(widget='FloatSlider',
                                rangee=(0, 1, 0.05),
                                value=0.0,
-                               description='ymaxlimit:'))
+                               description='ymaxlimit:'),
+                envelope=dict(widget='Checkbox',
+                              value=False,
+                              description='add envelope'),
+                kind=dict(widget='Dropdown',
+                          options=['linear', 'quadratic', 'cubic'] + list(
+                              range(5, 10, 2)),
+                          value='cubic',
+                          description='interp kind:'))
         ymaxlimit = kwargs.get('ymaxlimit', 0.0)
         if isinstance(ymaxlimit, float) and 0 < ymaxlimit < 1:
             maxlimit = fieldm.max() * ymaxlimit
@@ -485,10 +507,38 @@ class SnapshotFieldmDigger(Digger):
             jlist = [i for i, j in enumerate(jpass) if j]
         else:
             jlist = 'all'
-        acckwargs = dict(ymaxlimit=ymaxlimit)
-        return dict(rr=rr, fieldm=fieldm, jlist=jlist,
-                    title=r'$\left|{%s}_m(r)\right|$, %s' % (fstr, timestr)
-                    ), acckwargs
+        envelope = kwargs.get('envelope', False)
+        kind = kwargs.get('kind', 'cubic')
+        if envelope:
+            maxfm = fieldm.max(axis=0)
+            tmp = np.diff(maxfm)
+            add_indexs = []
+            inc = 1  # increase
+            for i in range(len(tmp)//2):
+                inc = tmp[i]*inc
+                if inc > 0:
+                    add_indexs.append(i)
+                else:
+                    break
+            dec = 1  # decrease
+            for i in range(len(tmp)-1, len(tmp)//2, -1):
+                dec = -tmp[i]*dec
+                if dec > 0:
+                    add_indexs.append(i)
+                else:
+                    break
+            Y = tools.high_envelope(
+                maxfm, X=rr, kind=kind, add_indexs=add_indexs)
+            newX, newY = tools.near_peak(
+                Y, X=rr, intersection=True, select='1', lowerlimit=1/np.e)[0]
+            idxmax = np.argmax(newY)
+            Xmax, Ymax = newX[idxmax], newY[idxmax]
+        else:
+            Y, newX, newY, Xmax, Ymax = 'n', 'n', 'n', 'n', 'n'
+        acckwargs = dict(ymaxlimit=ymaxlimit, envelope=envelope, kind=kind)
+        return jlist, acckwargs, Y, newX, newY, Xmax, Ymax
+
+    _dig.__doc__ = _remove_add_some_lines.__doc__
 
     def _post_dig(self, results):
         r = results
@@ -498,5 +548,12 @@ class SnapshotFieldmDigger(Digger):
         else:
             jlist = r['jlist']
         LINE = [(r['rr'], r['fieldm'][j, :]) for j in jlist]
+        if type(r['envY']) is np.ndarray and type(r['envYp']) is np.ndarray:
+            LINE.append((r['rr'], r['envY'],
+                         'envelope, $r/a(max)=%.6f$' % r['envXmax']))
+            dx = r['envXp'][-1] - r['envXp'][0]
+            halfY = r['envYmax'] / np.e
+            flatYp = np.linspace(halfY, halfY, len(r['envXp']))
+            LINE.append((r['envXp'], flatYp, r'$\Delta r/a(1/e) = %.6f$' % dx))
         return dict(LINE=LINE, title=r['title'],
                     xlabel=r'$r/a$', xlim=[0, 1])
