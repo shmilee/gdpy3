@@ -10,7 +10,8 @@ import numpy as np
 
 from .glogger import getGLogger
 
-__all__ = ['max_subarray', 'fitline', 'argrelextrema', 'near_peak',
+__all__ = ['max_subarray', 'fitline', 'argrelextrema', 'intersection_4points',
+           'near_peak', 'high_envelope',
            'fft', 'savgol_golay_filter', 'findflat', 'findgrowth',
            'correlation',
            ]
@@ -94,22 +95,89 @@ def argrelextrema(X, m='both', recheck=False):
     return index
 
 
-def near_peak(X, peak_idx, lowerlimit=1/np.e):
-    '''Find index of values >= lowerlimit * peak value, near the peak'''
-    limit = lowerlimit*X[peak_idx]
-    left_idx = peak_idx
-    for i in range(peak_idx, -1, -1):
-        if X[i] >= limit:
-            left_idx = i
+def intersection_4points(P1x, P1y, P2x, P2y, P3x, P3y, P4x, P4y):
+    '''Return line P1P2 and P3P4 intersection (x,y).'''
+    tmp = (P1x-P2x)*(P3y-P4y)-(P1y-P2y)*(P3x-P4x)
+    if tmp == 0:
+        return None, None
+    else:
+        x = ((P1x*P2y-P1y*P2x)*(P3x-P4x)-(P3x*P4y-P3y*P4x)*(P1x-P2x))/tmp
+        y = ((P1x*P2y-P1y*P2x)*(P3y-P4y)-(P3x*P4y-P3y*P4x)*(P1y-P2y))/tmp
+        return x, y
+
+
+def near_peak(Y, X=None, intersection=False, select='all', lowerlimit=1.0/np.e):
+    '''
+    Find Y values >= lowerlimit * peak value, near the peak
+    Return new sub array X and Y, if no X given, use index.
+    If select='all', get all peaks, else only get the max peak.
+    '''
+    if select == 'all':
+        indexs = argrelextrema(Y, m='max')
+    else:
+        indexs = [np.argmax(Y)]
+    res = []
+    for idx in indexs:
+        limit = lowerlimit*Y[idx]
+        left_idx = idx
+        for i in range(idx, -1, -1):
+            if Y[i] >= limit:
+                left_idx = i
+            else:
+                break
+        right_idx = idx
+        for i in range(idx, len(Y), 1):
+            if Y[i] >= limit:
+                right_idx = i
+            else:
+                break
+        newY = Y[left_idx:right_idx+1]
+        if X is None:
+            newX = np.array(range(left_idx, right_idx+1))
         else:
-            break
-    right_idx = peak_idx
-    for i in range(peak_idx, len(X), 1):
-        if X[i] >= limit:
-            right_idx = i
-        else:
-            break
-    return left_idx, right_idx
+            newX = X[left_idx:right_idx+1]
+        # add line intersection
+        if intersection:
+            if Y[left_idx] > limit and left_idx > 0:
+                x, y = intersection_4points(
+                    X[left_idx-1], Y[left_idx-1], X[left_idx], Y[left_idx],
+                    X[left_idx-1], limit, X[left_idx], limit)
+                newX, newY = np.insert(newX, 0, x), np.insert(newY, 0, y)
+            if Y[right_idx] > limit and right_idx < len(Y) - 1:
+                x, y = intersection_4points(
+                    X[right_idx], Y[right_idx], X[right_idx+1], Y[right_idx+1],
+                    X[right_idx], limit, X[right_idx+1], limit)
+                newX, newY = np.append(newX, x), np.append(newY, y)
+        res.append((newX, newY))
+    return res
+
+
+def high_envelope(Y, X=None, add_indexs=[], kind='linear'):
+    '''
+    Return high envelope of Y.
+    Specifies the *kind* of interpolation as a string, if use scipy.
+    '''
+    old_indexs = argrelextrema(Y, m='max')
+    uadd = []
+    if 0 not in add_indexs:
+        add_indexs.insert(0, 0)
+    if len(Y)-1 not in add_indexs:
+        add_indexs.append(len(Y)-1)
+    for i in add_indexs:
+        if i not in old_indexs and 0 <= i <= len(Y)-1:
+            uadd.append(i)
+    new_indexs = np.concatenate((old_indexs, uadd))
+    new_indexs.sort(kind='mergesort')
+    # print(new_indexs,type(new_indexs[0]))
+    if X is None:
+        X = np.array(range(len(Y)))
+    try:
+        from scipy.interpolate import interp1d
+    except ImportError:
+        return np.interp(X, X[new_indexs], Y[new_indexs])
+    Yinterp = interp1d(X[new_indexs], Y[new_indexs], kind=kind,
+                       bounds_error=False, fill_value=0.0)
+    return Yinterp(X)
 
 
 def fft(dt, signal):
