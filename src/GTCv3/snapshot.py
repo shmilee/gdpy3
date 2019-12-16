@@ -496,8 +496,7 @@ class SnapshotFieldmDigger(Digger):
                               value=False,
                               description='add envelope'),
                 kind=dict(widget='Dropdown',
-                          options=['linear', 'quadratic', 'cubic'] + list(
-                              range(5, 10, 2)),
+                          options=['linear', 'quadratic', 'cubic', 5, 7, 11],
                           value='cubic',
                           description='interp kind:'))
         ymaxlimit = kwargs.get('ymaxlimit', 0.0)
@@ -511,19 +510,18 @@ class SnapshotFieldmDigger(Digger):
         kind = kwargs.get('kind', 'cubic')
         if envelope:
             maxfm = fieldm.max(axis=0)
-            tmp = np.diff(maxfm)
+            tmp = np.gradient(maxfm, rr)
+            zerolimit = tmp.max()*1e-6
             add_indexs = []
-            inc = 1  # increase
+            # increase
             for i in range(len(tmp)//2):
-                inc = tmp[i]*inc
-                if inc > 0:
+                if tmp[i] >= - zerolimit:
                     add_indexs.append(i)
                 else:
                     break
-            dec = 1  # decrease
+            # decrease
             for i in range(len(tmp)-1, len(tmp)//2, -1):
-                dec = -tmp[i]*dec
-                if dec > 0:
+                if tmp[i] <= zerolimit:
                     add_indexs.append(i)
                 else:
                     break
