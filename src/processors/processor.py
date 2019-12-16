@@ -296,7 +296,8 @@ class Processor(object):
     def diggedlabels(self):
         return self._diggedlabels
 
-    def set_prefer_ressaver(self, ext2='digged', overwrite=False):
+    def set_prefer_ressaver(self, ext2='digged', oldext2='converted',
+                            overwrite=False):
         '''
         Set preferable ressaver resfilesaver beside converted data.
 
@@ -304,13 +305,15 @@ class Processor(object):
         ----------
         ext2: str
             second extension, like name.(digged).npz
+        oldext2: str
+            second extension of converted file, like name.(converted).npz
         overwrite: bool
             overwrite existing resfilesaver.path file or not, default False
         '''
         if not self.pckloader:
             raise IOError("%s: Need a pckloader object!" % self.name)
         saverstr, ext = os.path.splitext(self.pckloader.path)
-        saverstr = saverstr.replace('converted', ext2)
+        saverstr = saverstr.replace(oldext2, ext2)
         respath = '%s.cache' % saverstr
         ressaver = get_pcksaver(respath)
         with ressaver:
@@ -673,6 +676,14 @@ class Processor(object):
         '''
         root, ext1 = os.path.splitext(path)
         root, ext2 = os.path.splitext(root)
+        if ((ext2, ext1) in [('', '.npz'), ('', '.hdf5')]
+                and os.path.basename(root).startswith('gdpy3-pickled-data-')):
+            # pckloader.path backward compatibility
+            plog.warning("This is an old converted data path %s!" % path)
+            ext2 = '.converted'
+            old_pickled_path = True
+        else:
+            old_pickled_path = False
         if (ext2, ext1) in [('.digged', '.npz'), ('.digged', '.hdf5')]:
             # resfileloader.path
             plog.warning("This is a digged data path %s!" % path)
@@ -697,7 +708,12 @@ class Processor(object):
                            % (self.name, path), exc_info=1)
                 return
             try:
-                self.set_prefer_ressaver(ext2='digged', overwrite=overwrite)
+                if old_pickled_path:
+                    self.set_prefer_ressaver(
+                        ext2='digged', oldext2='pickled', overwrite=overwrite)
+                else:
+                    self.set_prefer_ressaver(
+                        ext2='digged', overwrite=overwrite)
             except Exception:
                 plog.error("%s: Failed to set ressaver object!"
                            % self.name, exc_info=1)
