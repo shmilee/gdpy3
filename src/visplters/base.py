@@ -636,7 +636,9 @@ class BaseVisplter(object):
 
         Notes
         -----
-        All *add_style* from other templates are ignored!
+        1. All *add_style* from other templates are ignored!
+        2. If axes use same *pos*, results data will be merged(append),
+           layout only use first one.
         '''
         if not 'zip_results' in results:
             vlog.error("`zip_results` are required!")

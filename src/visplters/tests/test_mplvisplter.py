@@ -166,6 +166,22 @@ temp_z111presults = dict(
     suptitle='test z111p figures'
 )
 
+temp_z111presults_merge = dict(
+    zip_results=[
+        ('tmpl_contourf', 211, dict(
+            X=fieldx, Y=fieldy, Z=fielddata,
+            title='test field', xlabel='r', ylabel='time',
+        )),
+        ('tmpl_line', 211, dict(
+            LINE=[
+                (np.linspace(20, 80, 120), 30+10 *
+                 np.sin(np.linspace(20, 80, 120)), 'sin'),
+                (range(100), np.linspace(0, 65, 100), 'cross'),
+            ])),
+    ],
+    suptitle='test z111p merge figures'
+)
+
 
 class TestMatplotlibVisplter(unittest.TestCase):
     '''
@@ -237,9 +253,12 @@ class TestMatplotlibVisplter(unittest.TestCase):
         self.visplter.close_figure('template-f3')
 
     def test_visplter_tmpl_z111p(self):
-        axstruct, sty = self.visplter.tmpl_z111p(
-            temp_z111presults)
+        axstruct, sty = self.visplter.tmpl_z111p(temp_z111presults)
         self.visplter.create_figure('template-fz', *axstruct, add_style=sty)
         self.visplter.show_figure('template-fz')
         input('[I]nterrupt, to see figure "%s".' % 'template-fz')
-        self.visplter.close_figure('template-fz')
+        axstruct, sty = self.visplter.tmpl_z111p(temp_z111presults_merge)
+        self.visplter.create_figure('template-fzm', *axstruct, add_style=sty)
+        self.visplter.show_figure('template-fzm')
+        input('[I]nterrupt, to see figure "%s".' % 'template-fzm')
+        self.visplter.close_figure('all')

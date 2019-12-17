@@ -322,15 +322,23 @@ class MatplotlibVisplter(BaseVisplter):
         For :meth:`tmpl_z111p`.
         '''
         AxStructs = []
+        axposres = {}
         for i, _results in enumerate(zip_results, 0):
             ax, pos = _results
             vlog.debug("Getting z111p Axes %s ..." % (pos,))
             if isinstance(pos, (int, list, matplotlib.gridspec.SubplotSpec)):
-                ax['layout'][0] = pos
+                if pos not in axposres:
+                    ax['layout'][0] = pos
+                    AxStructs.append(ax)
+                    axposres[pos] = ax
+                else:
+                    idx = axposres[pos]['data'][-1][0] + 1
+                    for i in range(len(ax['data'])):
+                        ax['data'][i][0] = idx + i
+                    axposres[pos]['data'].extend(ax['data'])
             else:
                 vlog.error("`zip_results[%d]`: invalid position!" % i)
                 continue
-            AxStructs.append(ax)
         if not suptitle:
             return AxStructs, []
 
