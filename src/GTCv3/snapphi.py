@@ -99,7 +99,7 @@ class SnapPhiZetaPsiDigger(Digger):
         assert j in j_list
         # j_list[-1] is mtdiag
         self._part = j / j_list[-1]
-        self._fignum = 'phi_zeta_psi_%03d' % round(self._part*360)
+        self._fignum = 'phi_%03d_zeta_psi' % round(self._part*360)
         self.theta = r'$\theta=%.2f=%d^\circ$' % (
             round(self._part*2*np.pi, ndigits=2), round(self._part*360))
         self.timestr = _snap_get_timestr(self.group, self.pckloader)
@@ -151,7 +151,7 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
 
     def _set_fignum(self, numseed=None):
         super(SnapPhiCorrLenDigger, self)._set_fignum(numseed=numseed)
-        self._fignum = 'phi_corrlen_%03d' % round(self._part*360)
+        self._fignum = 'phi_%03d_corrlen' % round(self._part*360)
         self.kwoptions = None
 
     def _dig(self, **kwargs):
@@ -295,7 +295,7 @@ class SnapPhiFieldnDigger(SnapshotFieldmDigger):
         assert j in j_list
         # j_list[-1] is mtdiag
         self._part = j / j_list[-1]
-        self._fignum = 'phi_fieldn_%03d' % round(self._part*360)
+        self._fignum = 'phi_%03d_fieldn' % round(self._part*360)
         self.kwoptions = None
 
     def _dig(self, **kwargs):
