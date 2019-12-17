@@ -38,9 +38,9 @@ from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
 
 __all__ = ['SnapshotConverter',
-           'SnapshotProfilePdfDigger', 'SnapshotFieldFluxPloidalDigger',
-           'SnapshotFieldSpectrumDigger', 'SnapshotFieldProfileDigger',
-           'SnapshotFieldmDigger']
+           'SnapshotProfilePdfDigger', 'SnapshotFieldFluxDigger',
+           'SnapshotFieldPoloidalDigger', 'SnapshotFieldSpectrumDigger',
+           'SnapshotFieldProfileDigger', 'SnapshotFieldmDigger']
 
 
 class SnapshotConverter(Converter):
@@ -57,7 +57,7 @@ class SnapshotConverter(Converter):
        pdf 2d array is pdf[nvgrid,4].
        4 pdf order: fullf energy, delf energy,
        fullf pitch angle, delf pitch angle.
-    3) phi, a_para, fluidne on ploidal plane
+    3) phi, a_para, fluidne on poloidal plane
        poloidata 2d array is poloidata[theta,r].
     4) phi, a_para, fluidne on flux surface
        fluxdata 2d array is fluxdata[theta,zeta].
@@ -227,47 +227,104 @@ field_tex_str = {
 }
 
 
-class SnapshotFieldFluxPloidalDigger(Digger):
-    '''phi, a_para, fluidne on flux surface or ploidal plane.'''
+class SnapshotFieldFluxDigger(Digger):
+    '''phi, a_para, fluidne on flux surface.'''
     __slots__ = []
-    nitems = '+'
+    nitems = '?'
     itemspattern = ['^(?P<section>snap\d{5})'
-                    + '/(?P<pf>(?:flux|poloi))data'
-                    + '-(?P<field>(?:phi|apara|fluidne))',
-                    '^(?P<s>snap\d{5})/poloidata-(?:x|z)']
+                    + '/fluxdata-(?P<field>(?:phi|apara|fluidne))']
     commonpattern = ['gtc/tstep']
     post_template = 'tmpl_contourf'
 
     def _set_fignum(self, numseed=None):
-        self._fignum = '%s_%s' % (self.section[2], self.section[1])
+        self._fignum = '%s_flux' % self.section[1]
 
     def _dig(self, **kwargs):
         title = _snap_get_timestr(self.group, self.pckloader)
-        fstr = field_tex_str[self.section[2]]
-        if self.section[1] == 'flux':
-            data = self.pckloader.get(self.srckeys[0])
-            y, x = data.shape
-            return dict(
-                zeta=np.arange(0, x) / x * 2 * np.pi,
-                theta=np.arange(0, y) / y * 2 * np.pi,
-                field=data,
-                title=r'$%s$ on flux surface, %s' % (fstr, title)), {}
-        else:
-            data, X, Z = self.pckloader.get_many(*self.srckeys)
-            return dict(
-                X=X, Z=Z, field=data,
-                title=r'$%s$ on ploidal plane, %s' % (fstr, title)), {}
+        fstr = field_tex_str[self.section[1]]
+        data = self.pckloader.get(self.srckeys[0])
+        y, x = data.shape
+        return dict(
+            zeta=np.arange(0, x) / x * 2 * np.pi,
+            theta=np.arange(0, y) / y * 2 * np.pi,
+            field=data,
+            title=r'$%s$ on flux surface, %s' % (fstr, title)), {}
 
     def _post_dig(self, results):
         r = results
-        if self.section[1] == 'flux':
-            return dict(X=r['zeta'], Y=r['theta'], Z=r['field'],
-                        title=r['title'], xlabel=r'$\zeta$',
-                        ylabel=r'$\theta$', aspect='equal')
+        return dict(X=r['zeta'], Y=r['theta'], Z=r['field'],
+                    title=r['title'], xlabel=r'$\zeta$',
+                    ylabel=r'$\theta$', aspect='equal')
+
+
+class SnapshotFieldPoloidalDigger(Digger):
+    '''phi, a_para, fluidne on poloidal plane.'''
+    __slots__ = []
+    nitems = '+'
+    itemspattern = ['^(?P<section>snap\d{5})'
+                    + '/poloidata-(?P<field>(?:phi|apara|fluidne))',
+                    '^(?P<s>snap\d{5})/poloidata-(?:x|z)']
+    commonpattern = ['gtc/tstep', 'gtc/mpsi', 'gtc/arr2', 'gtc/a_minor']
+    neededpattern = itemspattern + commonpattern[:-2]
+    post_template = 'tmpl_z111p'
+
+    def _set_fignum(self, numseed=None):
+        self._fignum = '%s_poloi' % self.section[1]
+        self.kwoptions = None
+
+    def _dig(self, **kwargs):
+        '''
+        kwargs
+        ------
+        *circle_iflux*: int, default mpsi//2
+            when iflux=[1,mpsi-1], add a circle for r(iflux)
+            when iflux=0,mpsi, donot add circle
+        '''
+        title = _snap_get_timestr(self.group, self.pckloader)
+        fstr = field_tex_str[self.section[1]]
+        data, X, Z = self.pckloader.get_many(*self.srckeys)
+        mpsi = self.pckloader.get('gtc/mpsi')
+        circle_iflux = kwargs.get('circle_iflux', mpsi//2)
+        if isinstance(circle_iflux, int) and 0 < circle_iflux < mpsi:
+            dlog.parm("Add circle for iflux=%s on poloidal plane." %
+                      circle_iflux)
         else:
-            return dict(X=r['X'], Y=r['Z'], Z=r['field'],
-                        title=r['title'], xlabel=r'$R(R_0)$',
-                        ylabel=r'$Z(R_0)$', aspect='equal')
+            circle_iflux = 0
+        acckwargs = dict(circle_iflux=circle_iflux)
+        circle_r = 0
+        if circle_iflux:
+            try:
+                arr2, a = self.pckloader.get_many(*self.common[-2:])
+                rr = arr2[:, 1] / a  # arr2 [1,mpsi-1]
+                circle_r = np.round(rr[circle_iflux-1], decimals=3)
+            except Exception:
+                pass
+        if self.kwoptions is None:
+            self.kwoptions = dict(
+                circle_iflux=dict(
+                    widget='IntSlider',
+                    rangee=(0, mpsi, 1),
+                    value=circle_iflux,
+                    description='circle_iflux:'))
+        return dict(
+            X=X, Z=Z, field=data, circle_iflux=circle_iflux, circle_r=circle_r,
+            title=r'$%s$ on poloidal plane, %s' % (fstr, title)), acckwargs
+
+    def _post_dig(self, results):
+        # ?TODO? kwargs['circle_iflux '] to postkwargs ?kwoptions?
+        r = results
+        zip_results = [('tmpl_contourf', 111, dict(
+            X=r['X'], Y=r['Z'], Z=r['field'], title=r['title'],
+            xlabel=r'$R(R_0)$', ylabel=r'$Z(R_0)$', aspect='equal'))]
+        if r['circle_iflux']:
+            X, Z = r['X'][:, r['circle_iflux']], r['Z'][:, r['circle_iflux']]
+            if r['circle_r']:
+                label = r'r(iflux=%d)=%ga' % (r['circle_iflux'], r['circle_r'])
+            else:
+                label = r'iflux=%d' % r['circle_iflux']
+            zip_results.append(('tmpl_line', 111, dict(LINE=[
+                ([], []), (X, Z, label)])))
+        return dict(zip_results=zip_results)
 
 
 class SnapshotFieldSpectrumDigger(Digger):
@@ -553,5 +610,6 @@ class SnapshotFieldmDigger(Digger):
             halfY = r['envYmax'] / np.e
             flatYp = np.linspace(halfY, halfY, len(r['envXp']))
             LINE.append((r['envXp'], flatYp, r'$\Delta r/a(1/e) = %.6f$' % dx))
+        r0, r1 = np.round(r['rr'][[0, -1]], decimals=2)
         return dict(LINE=LINE, title=r['title'],
-                    xlabel=r'$r/a$', xlim=[0, 1])
+                    xlabel=r'$r/a$', xlim=[r0, r1])
