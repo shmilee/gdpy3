@@ -223,7 +223,7 @@ class SnapshotProfilePdfDigger(Digger):
 field_tex_str = {
     'phi': r'\phi',
     'apara': r'A_{\parallel}',
-    'fluidne': r'fluidne'
+    'fluidne': r'fluid n_e'
 }
 
 

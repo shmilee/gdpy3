@@ -223,14 +223,14 @@ field_tex_str = {
     'phi': r'\phi',
     'apara00': r'A_{\parallel 00}',
     'apara': r'A_{\parallel}',
-    'fluidne00': r'fluidne_{00}',
-    'fluidne': r'fluidne'
+    'fluidne00': r'fluid n_{e 00}',
+    'fluidne': r'fluid n_e'
 }
 
 
 class HistoryFieldDigger(Digger):
     '''phi, apara, fluidne history'''
-    __slots__ = ['_fstr']
+    __slots__ = ['_fstr', '_fstr00']
     itemspattern = [r'^(?P<s>history)/fieldtime-' +
                     '(?P<field>(?:phi|apara|fluidne))$']
     commonpattern = ['history/ndstep', 'gtc/tstep', 'gtc/ndiag']
@@ -239,6 +239,7 @@ class HistoryFieldDigger(Digger):
     def _set_fignum(self, numseed=None):
         self._fignum = self.section[1]
         self._fstr = field_tex_str[self._fignum]
+        self._fstr00 = field_tex_str[self._fignum + '00']
 
     def _dig(self, **kwargs):
         data, ndstep, tstep, ndiag = self.pckloader.get_many(
@@ -249,8 +250,8 @@ class HistoryFieldDigger(Digger):
             field00=data[1],
             field00rms=data[2],
             fieldrms=data[3],
-            title=r'$%s (\theta=\zeta=0), %s00 (i=iflux)$' % (
-                self._fstr, self._fstr)
+            title=r'$%s (\theta=\zeta=0), %s (i=iflux)$' % (
+                self._fstr, self._fstr00)
         ), {}
 
     def _post_dig(self, results):
@@ -258,9 +259,9 @@ class HistoryFieldDigger(Digger):
         YINFO = [{'left': [(r['field'], '$%s$' % self._fstr)],
                   'right': [(r['fieldrms'], '$%s RMS$' % self._fstr)],
                   'lylabel': '$%s$' % self._fstr, 'rylabel': '$RMS$', },
-                 {'left': [(r['field00'], '$%s00$' % self._fstr)],
-                  'right': [(r['field00rms'], '$%s00 RMS$' % self._fstr)],
-                  'lylabel': '$%s00$' % self._fstr, 'rylabel': '$RMS$', }]
+                 {'left': [(r['field00'], '$%s$' % self._fstr00)],
+                  'right': [(r['field00rms'], '$%s RMS$' % self._fstr00)],
+                  'lylabel': '$%s$' % self._fstr00, 'rylabel': '$RMS$', }]
         return dict(X=r['time'], YINFO=YINFO, title=r['title'],
                     xlabel=r'time($R_0/c_s$)', xlim=[0, np.max(r['time'])])
 
