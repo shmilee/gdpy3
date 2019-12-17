@@ -339,5 +339,6 @@ class SnapPhiFieldnDigger(SnapshotFieldmDigger):
             halfY = r['envYmax'] / np.e
             flatYp = np.linspace(halfY, halfY, len(r['envXp']))
             LINE.append((r['envXp'], flatYp, r'$\Delta r/a(1/e) = %.6f$' % dx))
+        r0, r1 = np.round(r['rr'][[0, -1]], decimals=2)
         return dict(LINE=LINE, title=r['title'],
-                    xlabel=r'$r/a$', xlim=[0, 1])
+                    xlabel=r'$r/a$', xlim=[r0, r1])
