@@ -159,7 +159,7 @@ class EquilibriumPsi1DDigger(Digger):
         self._fignum = '%s(psi)' % numseed
         self._numseed = numseed
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         data = self.pckloader.get(self.srckeys[0])
         X = data[0]
         return dict(X=X, xlim=[min(X), max(X)],
@@ -189,7 +189,7 @@ class EquilibriumRadial1DDigger(Digger):
         self._fignum = '%s(r)' % numseed
         self._numseed = numseed
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         data, nrad = self.pckloader.get_many(*self.srckeys, *self.extrakeys)
         X = data[23] / data[23][nrad - 1]
         return dict(X=X, xlim=[min(X), max(X)],
@@ -216,7 +216,7 @@ class EquilibriumErro1DDigger(Digger):
         self._fignum = 'error-%s' % numseed
         self._numseed = numseed
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         data, nrad = self.pckloader.get_many(*self.srckeys, *self.extrakeys)
         X = numpy.array(range(1, nrad + 1)) * (numpy.pi / 2 / nrad)
         return dict(X=X, xlim=[min(X), max(X)],
@@ -241,7 +241,7 @@ class EquilibriumPoloidalDigger(Digger):
     def _set_fignum(self, numseed=None):
         self._fignum = self.section[1]
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         Z, X, Y = self.pckloader.get_many(*self.srckeys)
         return dict(X=X, Y=Y, Z=Z, title=self.fignum), {}
 
@@ -262,7 +262,7 @@ class EquilibriumMeshDigger(Digger):
     def _set_fignum(self, numseed=None):
         self._fignum = 'poloidal_mesh'
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         X, Y, lsp, lst = self.pckloader.get_many(
             *self.srckeys, *self.extrakeys)
         LINE1, LINE2 = [], []
@@ -299,7 +299,7 @@ class EquilibriumThetaDigger(Digger):
             self._fignum = 'gq_plus_I/BB:theta'
         self.kwoptions = None
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         '''
         kwargs
         ------

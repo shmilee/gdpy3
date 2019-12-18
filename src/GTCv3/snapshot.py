@@ -169,7 +169,7 @@ class SnapshotProfilePdfDigger(Digger):
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_%s' % self.section[1:]
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         title = '%s %s, %s' % (self.section[1], self.section[2],
                                _snap_get_timestr(self.group, self.pckloader))
         data, x1, x2 = self.pckloader.get_many(*self.srckeys)
@@ -239,7 +239,7 @@ class SnapshotFieldFluxDigger(Digger):
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_flux' % self.section[1]
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         title = _snap_get_timestr(self.group, self.pckloader)
         fstr = field_tex_str[self.section[1]]
         data = self.pckloader.get(self.srckeys[0])
@@ -272,7 +272,7 @@ class SnapshotFieldPoloidalDigger(Digger):
         self._fignum = '%s_poloi' % self.section[1]
         self.kwoptions = None
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         '''
         kwargs
         ------
@@ -342,7 +342,7 @@ class SnapshotFieldSpectrumDigger(Digger):
         self._fignum = '%s_spectrum' % self.section[1]
         self.kwoptions = None
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         '''
         kwargs
         ------
@@ -426,7 +426,7 @@ class SnapshotFieldProfileDigger(Digger):
         self._fignum = '%s_profile' % self.section[1]
         self.kwoptions = None
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         '''
         kwargs
         ------
@@ -508,7 +508,7 @@ class SnapshotFieldmDigger(Digger):
         self._fignum = '%s_fieldm' % self.section[1]
         self.kwoptions = None
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         timestr = _snap_get_timestr(self.group, self.pckloader)
         fstr = field_tex_str[self.section[1]]
         pdata, mpsi1, mtgrid1, dt, arr2, a = self.pckloader.get_many(

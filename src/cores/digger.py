@@ -146,7 +146,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         '''
         raise NotImplementedError()
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         '''
         Calculate pickled data, return results and accepted kwargs.
         Set :attr:`kwoptions` if it is set to None in :meth:`_set_fignum`.
@@ -177,7 +177,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         dlog.info("Dig pickled data for %s ..." % self.figlabel)
         start = time.time()
         try:
-            results, acckwargs = self._dig(**kwargs)
+            results, acckwargs = self._dig(kwargs)
         except Exception:
             dlog.error("%s: can't dig data for %s!"
                        % (self.coreid, self.figlabel), exc_info=1)

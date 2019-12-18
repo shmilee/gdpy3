@@ -105,7 +105,7 @@ class SnapPhiZetaPsiDigger(Digger):
         self.timestr = _snap_get_timestr(self.group, self.pckloader)
         self.kwoptions = None
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         '''
         *use_ra*: bool
             use psi or r/a, default False
@@ -154,7 +154,7 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
         self._fignum = 'phi_%03d_corrlen' % round(self._part*360)
         self.kwoptions = None
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         '''
         kwargs
         ------
@@ -298,7 +298,7 @@ class SnapPhiFieldnDigger(SnapshotFieldmDigger):
         self._fignum = 'phi_%03d_fieldn' % round(self._part*360)
         self.kwoptions = None
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         timestr = _snap_get_timestr(self.group, self.pckloader)
         theta = r'$\theta=%.2f=%d^\circ$' % (
             round(self._part*2*np.pi, ndigits=2), round(self._part*360))

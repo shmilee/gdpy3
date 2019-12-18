@@ -102,7 +102,7 @@ class TrackParticleOrbitDigger(Digger):
         if self.dimension == '2d':
             self.kwoptions = None
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         '''
         kwargs
         ------

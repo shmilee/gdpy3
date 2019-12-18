@@ -172,7 +172,7 @@ class HistoryParticleDigger(Digger):
     def _set_fignum(self, numseed=None):
         self._fignum = ''.join((self.section[1], numseed))
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         data, ndstep, tstep, ndiag = self.pckloader.get_many(
             self.srckeys[0], *self.extrakeys)
         if self.fignum == self.section[1]:
@@ -241,7 +241,7 @@ class HistoryFieldDigger(Digger):
         self._fstr = field_tex_str[self._fignum]
         self._fstr00 = field_tex_str[self._fignum + '00']
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         data, ndstep, tstep, ndiag = self.pckloader.get_many(
             self.srckeys[0], *self.extrakeys)
         return dict(
@@ -284,7 +284,7 @@ class HistoryFieldModeDigger(Digger):
         self._idx = numseed
         self.kwoptions = None
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         '''
         kwargs
         ------
