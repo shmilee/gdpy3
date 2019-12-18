@@ -29,9 +29,10 @@ from ..cores.digger import Digger, dlog
 from .snapshot import _snap_get_timestr, SnapshotFieldmDigger
 from .. import tools
 
-__all__ = ['SnapPhiZetaPsiConverter',
-           'SnapPhiZetaPsiDigger', 'SnapPhiCorrLenDigger',
-           'SnapPhiFieldnDigger']
+_all_Converters = ['SnapPhiZetaPsiConverter']
+_all_Diggers = ['SnapPhiZetaPsiDigger', 'SnapPhiCorrLenDigger',
+                'SnapPhiFieldnDigger']
+__all__ = _all_Converters + _all_Diggers
 
 
 class SnapPhiZetaPsiConverter(Converter):

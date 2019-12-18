@@ -37,10 +37,11 @@ from .. import tools
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
 
-__all__ = ['SnapshotConverter',
-           'SnapshotProfilePdfDigger', 'SnapshotFieldFluxDigger',
-           'SnapshotFieldPoloidalDigger', 'SnapshotFieldSpectrumDigger',
-           'SnapshotFieldProfileDigger', 'SnapshotFieldmDigger']
+_all_Converters = ['SnapshotConverter']
+_all_Diggers = ['SnapshotProfilePdfDigger', 'SnapshotFieldFluxDigger',
+                'SnapshotFieldPoloidalDigger', 'SnapshotFieldSpectrumDigger',
+                'SnapshotFieldProfileDigger', 'SnapshotFieldmDigger']
+__all__ = _all_Converters + _all_Diggers
 
 
 class SnapshotConverter(Converter):

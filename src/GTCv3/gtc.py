@@ -12,7 +12,9 @@ import re
 import numpy
 from ..cores.converter import Converter, clog
 
-__all__ = ['GtcConverter']
+_all_Converters = ['GtcConverter']
+_all_Diggers = []
+__all__ = _all_Converters + _all_Diggers
 
 
 class GtcConverter(Converter):

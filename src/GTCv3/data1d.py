@@ -62,9 +62,10 @@ from .. import tools
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
 
-__all__ = ['Data1dConverter',
-           'Data1dFluxDigger', 'Data1dMeanFluxDigger',
-           'Data1dFieldDigger', 'Data1dMeanFieldDigger']
+_all_Converters = ['Data1dConverter']
+_all_Diggers = ['Data1dFluxDigger', 'Data1dMeanFluxDigger',
+                'Data1dFieldDigger', 'Data1dMeanFieldDigger']
+__all__ = _all_Converters + _all_Diggers
 
 
 class Data1dConverter(Converter):

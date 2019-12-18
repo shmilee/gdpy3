@@ -60,8 +60,10 @@ from .. import tools
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
 
-__all__ = ['HistoryConverter', 'HistoryParticleDigger',
-           'HistoryFieldDigger', 'HistoryFieldModeDigger']
+_all_Converters = ['HistoryConverter']
+_all_Diggers = ['HistoryParticleDigger',
+                'HistoryFieldDigger', 'HistoryFieldModeDigger']
+__all__ = _all_Converters + _all_Diggers
 
 
 class HistoryConverter(Converter):

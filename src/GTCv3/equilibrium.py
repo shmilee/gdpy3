@@ -38,10 +38,11 @@ import numpy
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
 
-__all__ = ['EquilibriumConverter',
-           'EquilibriumPsi1DDigger', 'EquilibriumRadial1DDigger',
-           'EquilibriumErro1DDigger', 'EquilibriumPoloidalDigger',
-           'EquilibriumMeshDigger', 'EquilibriumThetaDigger']
+_all_Converters = ['EquilibriumConverter']
+_all_Diggers = ['EquilibriumPsi1DDigger', 'EquilibriumRadial1DDigger',
+                'EquilibriumErro1DDigger', 'EquilibriumPoloidalDigger',
+                'EquilibriumMeshDigger', 'EquilibriumThetaDigger']
+__all__ = _all_Converters + _all_Diggers
 
 
 class EquilibriumConverter(Converter):

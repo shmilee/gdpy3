@@ -31,40 +31,29 @@ __all__ = ['GTCv3']
 class GTCv3(Processor):
     __slots__ = []
     ConverterCores = [
-        gtc.GtcConverter,
-        data1d.Data1dConverter,
-        equilibrium.EquilibriumConverter,
-        history.HistoryConverter,
-        meshgrid.MeshgridConverter,
-        snapshot.SnapshotConverter,
-        snapphi.SnapPhiZetaPsiConverter,
-        trackparticle.TrackParticleConverter,
-    ]
+        getattr(m, c)
+        for m in [
+            gtc,
+            data1d,
+            equilibrium,
+            history,
+            meshgrid,
+            snapshot,
+            snapphi,
+            trackparticle,
+        ] for c in m._all_Converters]
     DiggerCores = [
-        data1d.Data1dFluxDigger,
-        data1d.Data1dMeanFluxDigger,
-        data1d.Data1dFieldDigger,
-        data1d.Data1dMeanFieldDigger,
-        equilibrium.EquilibriumPsi1DDigger,
-        equilibrium.EquilibriumRadial1DDigger,
-        equilibrium.EquilibriumErro1DDigger,
-        equilibrium.EquilibriumPoloidalDigger,
-        equilibrium.EquilibriumMeshDigger,
-        equilibrium.EquilibriumThetaDigger,
-        history.HistoryParticleDigger,
-        history.HistoryFieldDigger,
-        history.HistoryFieldModeDigger,
-        snapshot.SnapshotProfilePdfDigger,
-        snapshot.SnapshotFieldFluxDigger,
-        snapshot.SnapshotFieldPoloidalDigger,
-        snapshot.SnapshotFieldSpectrumDigger,
-        snapshot.SnapshotFieldProfileDigger,
-        snapshot.SnapshotFieldmDigger,
-        snapphi.SnapPhiZetaPsiDigger,
-        snapphi.SnapPhiCorrLenDigger,
-        snapphi.SnapPhiFieldnDigger,
-        trackparticle.TrackParticleOrbitDigger,
-    ]
+        getattr(m, d)
+        for m in [
+            gtc,
+            data1d,
+            equilibrium,
+            history,
+            meshgrid,
+            snapshot,
+            snapphi,
+            trackparticle,
+        ] for d in m._all_Diggers]
     saltname = 'gtc.out'
     dig_acceptable_time = 20
 

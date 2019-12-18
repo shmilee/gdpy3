@@ -26,7 +26,9 @@ import numpy
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
 
-__all__ = ['MeshgridConverter']
+_all_Converters = ['MeshgridConverter']
+_all_Diggers = []
+__all__ = _all_Converters + _all_Diggers
 
 
 class MeshgridConverter(Converter):

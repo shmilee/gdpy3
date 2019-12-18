@@ -28,7 +28,9 @@ import numpy as np
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
 
-__all__ = ['TrackParticleConverter', 'TrackParticleOrbitDigger']
+_all_Converters = ['TrackParticleConverter']
+_all_Diggers = ['TrackParticleOrbitDigger']
+__all__ = _all_Converters + _all_Diggers
 
 
 class TrackParticleConverter(Converter):
