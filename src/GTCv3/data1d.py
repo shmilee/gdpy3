@@ -58,10 +58,13 @@ diagnosis.F90:194-203, ::
 '''
 
 import numpy
+from .. import tools
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
 
-__all__ = ['Data1dConverter', 'Data1dFluxDigger', 'Data1dFieldDigger']
+__all__ = ['Data1dConverter',
+           'Data1dFluxDigger', 'Data1dMeanFluxDigger',
+           'Data1dFieldDigger', 'Data1dMeanFieldDigger']
 
 
 class Data1dConverter(Converter):
@@ -177,13 +180,13 @@ class _Data1dDigger(Digger):
     __slots__ = []
     post_template = 'tmpl_contourf'
 
-    def _dig(self, **kwargs):
+    def _dig(self, kwargs):
         '''
         kwargs
         ------
-        *tcutoff*: [t0,t1]
+        *tcutoff*: [t0,t1], t0 float
             X[x0:x1], data[:,x0:x1] where t0<=X[x0:x1]<=t1
-        *pcutoff*: [p0,p1]
+        *pcutoff*: [p0,p1], p0 int
             Y[y0:y1], data[y0:y1,:] where p0<=Y[y0:y1]<=p1
         *use_ra*: bool
             use psi or r/a, default False
@@ -254,6 +257,160 @@ class _Data1dDigger(Digger):
         return results
 
 
+class _Data1dMeanDigger(_Data1dDigger):
+    '''
+    :meth:`_dig` for Data1dMeanFluxDigger, Data1dMeanFieldDigger
+    '''
+    __slots__ = []
+    post_template = 'tmpl_z111p'
+
+    def _dig(self, kwargs):
+        '''*mean_select*: str 'iflux' or 'peak'
+            default 'mean_iflux'
+        *mean_iflux*: [i0, i1], i0 int
+            mean data[y0:y1,:] where i0<=mpsi[y0:y1]<=i1
+            default i0, i1 = (y0+y1)//2, (y0+y1)//2
+        *mean_peak_limit*: float
+            set percentage of the min value near peak, default 1.0/e
+            mean data[y0:y1,t] where [y0,y1] near the peak
+        *mean_peak_greedy*: bool
+            if greedy is True, then search from edge, else from peak.
+            default False
+        *mean_z_abs*: bool
+            use z or sqrt(z**2), default False
+        *mean_smooth*: bool
+            smooth results or not, default True
+        *mean_z_weight_order*: int
+            use 'abs(z)^mean_z_weight_order * dy' as weight, default 0
+        '''
+        results, acckwargs = super(_Data1dMeanDigger, self)._dig(kwargs)
+        X, Y, Z = results['X'], results['Y'], results['Z']
+        y0, y1 = acckwargs['pcutoff']
+        use_ra = acckwargs['use_ra']
+        select = kwargs.get('mean_select', 'iflux')
+        iflux = kwargs.get('mean_iflux', [(y1+y0)//2, (y1+y0)//2])
+        peak_limit = kwargs.get('mean_peak_limit', 1.0/numpy.e)
+        peak_greedy = bool(kwargs.get('mean_peak_greedy', False))
+        z_abs = bool(kwargs.get('mean_z_abs', False))
+        smooth = bool(kwargs.get('mean_smooth', True))
+        weight_order = kwargs.get('mean_z_weight_order', 0)
+        if select == 'iflux':
+            i0, i1 = iflux
+            if i0 < y0:
+                i0 = y0
+            if i1 > y1:
+                i1 = y1
+            # [y0:y1] -> [0:y1-y0]
+            i0, i1 = i0-y0, i1-y0
+            if z_abs:
+                selectZ = numpy.abs(Z[i0:i1+1])
+                weight = selectZ**weight_order
+            else:
+                selectZ = Z[i0:i1+1]
+                weight = numpy.abs(selectZ)**weight_order
+            if i0 < i1:
+                dY = numpy.array([numpy.gradient(Y[i0:i1+1])]).T
+                # weight = numpy.repeat(dY, len(X), axis=1) * weight
+                weight = numpy.tile(dY, (1, len(X))) * weight
+            meanZ = numpy.average(selectZ, axis=0, weights=weight)
+            upY = numpy.linspace(Y[i1], Y[i1], len(X))
+            downY = numpy.linspace(Y[i0], Y[i0], len(X))
+            midY, maxY = None, None
+        else:
+            maxZ = Z.max(axis=0)
+            maxidx = Z.argmax(axis=0)
+            meanZ, upY, downY, midY = [], [], [], []
+            maxY = Y[maxidx]
+            for t in range(len(X)):
+                tZ = Z[:, t]
+                nY, ntZ = tools.near_peak(
+                    tZ, X=Y, intersection=True, lowerlimit=peak_limit,
+                    select='one', greedy=peak_greedy)
+                if z_abs:
+                    ntZ = numpy.abs(ntZ)
+                    weight = numpy.gradient(nY) * ntZ**weight_order
+                else:
+                    weight = numpy.gradient(nY) * numpy.abs(ntZ)**weight_order
+                upY.append(nY[-1])
+                downY.append(nY[0])
+                midY.append(numpy.average(nY, weights=weight))
+                meanZ.append(numpy.average(ntZ, weights=weight))
+            upY, downY = numpy.array(upY), numpy.array(downY)
+            midY, meanZ = numpy.array(midY), numpy.array(meanZ)
+            if smooth:
+                upY = tools.savgol_golay_filter(numpy.array(upY), info='up')
+                downY = tools.savgol_golay_filter(
+                    numpy.array(downY), info='down')
+                maxY = tools.savgol_golay_filter(Y[maxidx], info='max')
+                midY = tools.savgol_golay_filter(numpy.array(midY), info='mid')
+                # min(Y) <= up, down, max, mid <= max(Y)
+                ymin, ymax = Y.min(), Y.max()
+                upY[upY > ymax] = ymax
+                downY[downY < ymin] = ymin
+                maxY[maxY > ymax] = ymax
+                maxY[maxY < ymin] = ymin
+                midY[midY > ymax] = ymax
+                midY[midY < ymin] = ymin
+        if smooth:
+            meanZ = tools.savgol_golay_filter(meanZ, info='Z mean')
+        if 'mean_select' not in self.kwoptions:
+            self.kwoptions.update(dict(
+                mean_select=dict(
+                    widget='Dropdown',
+                    options=['iflux', 'peak'],
+                    value='iflux',
+                    description='select mean:'),
+                mean_iflux=dict(
+                    widget='IntRangeSlider',
+                    rangee=self.kwoptions['pcutoff']['rangee'].copy(),
+                    value=iflux,
+                    description='mean iflux:'),
+                mean_peak_limit=dict(
+                    widget='FloatSlider',
+                    rangee=(0, 1, 0.05),
+                    value=1.0/numpy.e,
+                    description='mean peak limit:'),
+                mean_peak_greedy=dict(widget='Checkbox',
+                                      value=False,
+                                      description='mean peak greedy'),
+                mean_z_abs=dict(widget='Checkbox',
+                                value=False,
+                                description='mean z abs'),
+                mean_smooth=dict(widget='Checkbox',
+                                 value=True,
+                                 description='mean smooth'),
+                mean_z_weight_order=dict(widget='IntSlider',
+                                         rangee=(0, 6, 1),
+                                         value=0,
+                                         description='mean z weight order:')
+            ))
+        acckwargs.update(dict(
+            mean_select=select, mean_iflux=iflux,
+            mean_peak_limit=peak_limit, mean_peak_greedy=peak_greedy,
+            mean_z_abs=z_abs, mean_smooth=smooth,
+            mean_z_weight_order=weight_order))
+        results.update(dict(
+            meanZ=meanZ, upY=upY, maxY=maxY, midY=midY, downY=downY))
+        return results, acckwargs
+
+    def _post_dig(self, results):
+        r = results
+        LINE = [(r['X'], r['downY'], 'down'), (r['X'], r['upY'], 'up')]
+        if r['maxY'] is not None:
+            LINE.insert(0, (r['X'], r['maxY'], 'max'))
+        if r['midY'] is not None:
+            LINE.insert(0, (r['X'], r['midY'], 'mean'))
+        zip_results = [
+            ('tmpl_contourf', 211, dict(
+                X=r['X'], Y=r['Y'], Z=r['Z'], title=r['title'],
+                xlabel=r'time($R_0/c_s$)', ylabel=r['ylabel'])),
+            ('tmpl_line', 211, dict(LINE=LINE)),
+            ('tmpl_line', 212, dict(
+                LINE=[(r['X'], r['meanZ'], 'mean')],
+                xlabel=r'time($R_0/c_s$)'))]
+        return dict(zip_results=zip_results)
+
+
 class Data1dFluxDigger(_Data1dDigger):
     '''particle, energy and momentum flux of ion, electron, fastion.'''
     __slots__ = ['particle']
@@ -273,6 +430,17 @@ class Data1dFluxDigger(_Data1dDigger):
             return 'thermal %s' % title
         elif self.particle == 'fastion':
             return title.replace('fastion', 'fast ion')
+        else:
+            return title
+
+
+class Data1dMeanFluxDigger(_Data1dMeanDigger, Data1dFluxDigger):
+    '''particle, energy and momentum mean flux of ion, electron, fastion.'''
+    __slots__ = []
+
+    def _set_fignum(self, numseed=None):
+        super(Data1dMeanFluxDigger, self)._set_fignum(numseed=numseed)
+        self._fignum = '%s_mean' % self._fignum
 
 
 field_tex_str = {
@@ -302,3 +470,12 @@ class Data1dFieldDigger(_Data1dDigger):
             return self.fignum.replace('_', ' ')
         else:
             return r'$%s rms$' % field_tex_str[self.section[2]]
+
+
+class Data1dMeanFieldDigger(_Data1dMeanDigger, Data1dFieldDigger):
+    '''mean field00 and fieldrms of phi, a_para, fluidne'''
+    __slots__ = []
+
+    def _set_fignum(self, numseed=None):
+        super(Data1dMeanFieldDigger, self)._set_fignum(numseed=numseed)
+        self._fignum = '%s_mean' % self._fignum

@@ -42,7 +42,9 @@ class GTCv3(Processor):
     ]
     DiggerCores = [
         data1d.Data1dFluxDigger,
+        data1d.Data1dMeanFluxDigger,
         data1d.Data1dFieldDigger,
+        data1d.Data1dMeanFieldDigger,
         equilibrium.EquilibriumPsi1DDigger,
         equilibrium.EquilibriumRadial1DDigger,
         equilibrium.EquilibriumErro1DDigger,
