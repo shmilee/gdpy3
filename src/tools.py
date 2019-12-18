@@ -106,31 +106,47 @@ def intersection_4points(P1x, P1y, P2x, P2y, P3x, P3y, P4x, P4y):
         return x, y
 
 
-def near_peak(Y, X=None, intersection=False, select='all', lowerlimit=1.0/np.e):
+def near_peak(Y, X=None, intersection=False, lowerlimit=1.0/np.e,
+              select='all', greedy=False):
     '''
-    Find Y values >= lowerlimit * peak value, near the peak
+    Find 1D Y values >= lowerlimit * peak value, near the peak
     Return new sub array X and Y, if no X given, use index.
     If select='all', get all peaks, else only get the max peak.
+    If select not 'all' and greedy is True,
+    search from edge where Y values >= lowerlimit * peak value.
     '''
     if select == 'all':
         indexs = argrelextrema(Y, m='max')
+        greedy = False
     else:
         indexs = [np.argmax(Y)]
     res = []
     for idx in indexs:
         limit = lowerlimit*Y[idx]
-        left_idx = idx
-        for i in range(idx, -1, -1):
-            if Y[i] >= limit:
-                left_idx = i
-            else:
-                break
-        right_idx = idx
-        for i in range(idx, len(Y), 1):
-            if Y[i] >= limit:
-                right_idx = i
-            else:
-                break
+        if select != 'all' and greedy:
+            left_idx = 0
+            for i in range(idx):
+                if Y[i] >= limit:
+                    left_idx = i
+                    break
+            right_idx = len(Y)-1
+            for i in range(len(Y)-1, idx, -1):
+                if Y[i] >= limit:
+                    right_idx = i
+                    break
+        else:
+            left_idx = idx
+            for i in range(idx, -1, -1):
+                if Y[i] >= limit:
+                    left_idx = i
+                else:
+                    break
+            right_idx = idx
+            for i in range(idx, len(Y), 1):
+                if Y[i] >= limit:
+                    right_idx = i
+                else:
+                    break
         newY = Y[left_idx:right_idx+1]
         if X is None:
             newX = np.array(range(left_idx, right_idx+1))
@@ -149,7 +165,10 @@ def near_peak(Y, X=None, intersection=False, select='all', lowerlimit=1.0/np.e):
                     X[right_idx], limit, X[right_idx+1], limit)
                 newX, newY = np.append(newX, x), np.append(newY, y)
         res.append((newX, newY))
-    return res
+    if select == 'all':
+        return res
+    else:
+        return res[0]
 
 
 def high_envelope(Y, X=None, add_indexs=[], kind='linear'):

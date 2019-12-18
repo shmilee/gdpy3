@@ -585,7 +585,7 @@ class SnapshotFieldmDigger(Digger):
             Y = tools.high_envelope(
                 maxfm, X=rr, kind=kind, add_indexs=add_indexs)
             newX, newY = tools.near_peak(
-                Y, X=rr, intersection=True, select='1', lowerlimit=1/np.e)[0]
+                Y, X=rr, intersection=True, lowerlimit=1.0/np.e, select='1')
             idxmax = np.argmax(newY)
             Xmax, Ymax = newX[idxmax], newY[idxmax]
         else:
