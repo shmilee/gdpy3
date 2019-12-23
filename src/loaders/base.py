@@ -25,7 +25,7 @@ class BaseLoader(object):
     ----------
     path: str
     '''
-    __slots__ = ['path']
+    __slots__ = ['path', 'pathobj']
     loader_type = 'base'
 
     def __init__(self, path):
@@ -33,8 +33,15 @@ class BaseLoader(object):
             self.path = path
             if not self._special_check_path():
                 raise ValueError("Path '%s' checking failed." % path)
+            self.pathobj = None
         else:
             raise IOError("Failed to access path '%s'." % path)
+
+    def update(self, *args, **kwargs):
+        '''
+        Update path object, keys, etc.
+        '''
+        raise NotImplementedError()
 
     @staticmethod
     def _check_path_access(path):
@@ -58,23 +65,29 @@ class BaseLoader(object):
         '''
         raise NotImplementedError()
 
-    def _special_close(self, tmpobj):
+    def _special_close(self, pathobj):
         '''
         Close path object.
         '''
         raise NotImplementedError()
 
-    def _special_getkeys(self, tmpobj):
+    def _special_getkeys(self, pathobj):
         '''
         Return all keys in path object.
         '''
         raise NotImplementedError()
 
-    def _special_get(self, tmpobj, item):
+    def _special_get(self, pathobj, item):
         '''
         Return value object of key *item* in path object.
         '''
         raise NotImplementedError()
+
+    def close(self):
+        if self.pathobj:
+            log.debug("Close path %s." % self.path)
+            self._special_close(self.pathobj)
+            self.pathobj = None
 
     def keys(self):
         '''Return loader keys.'''
@@ -150,25 +163,27 @@ class BaseRawLoader(BaseLoader):
     2. File-like object which returned by *get()* must has close method,
        and read, readline, or readlines.
     '''
-    __slots__ = ['path', 'filenames']
+    __slots__ = ['filenames']
 
     def __init__(self, path, filenames_filter=None):
         super(BaseRawLoader, self).__init__(path)
+        self.update(filenames_filter=filenames_filter)
+
+    def update(self, filenames_filter=None):
+        self.close()
+        self.filenames = None
         try:
             log.debug("Open path %s." % self.path)
-            tmpobj = self._special_open()
+            pathobj = self._special_open()
             log.debug("Getting filenames from %s ..." % self.path)
-            filenames = tuple(self._special_getkeys(tmpobj))
+            filenames = tuple(self._special_getkeys(pathobj))
             if isinstance(filenames_filter, types.FunctionType):
                 filenames = [k for k in filenames if filenames_filter(k)]
+            self.pathobj = pathobj
             self.filenames = tuple(sorted(filenames))
         except (IOError, ValueError):
             log.error("Failed to read path %s." % self.path, exc_info=1)
             raise
-        finally:
-            if 'tmpobj' in dir():
-                log.debug("Close path %s." % self.path)
-                self._special_close(tmpobj)
 
     def keys(self):
         return self.filenames
@@ -182,10 +197,8 @@ class BaseRawLoader(BaseLoader):
         if key not in self.filenames:
             raise KeyError("%s is not in '%s'" % (key, self.path))
         try:
-            log.debug("Open path %s." % self.path)
-            tmpobj = self._special_open()
             log.debug("Getting file '%s' from %s ..." % (key, self.path))
-            fileobj = self._special_get(tmpobj, key)
+            fileobj = self._special_get(self.pathobj, key)
             yield fileobj
         except (IOError, ValueError):
             log.error("Failed to get '%s' from %s!" %
@@ -195,9 +208,6 @@ class BaseRawLoader(BaseLoader):
             if 'fileobj' in dir():
                 log.debug("Close file %s in path %s." % (key, self.path))
                 fileobj.close()
-            if 'tmpobj' in dir():
-                log.debug("Close path %s." % self.path)
-                self._special_close(tmpobj)
 
     def key_location(self, key):
         return '%s: %s' % (self.path, key)
@@ -234,10 +244,10 @@ class BasePckLoader(BaseLoader):
         a function to filter datagroups
         example, lambda group: False if group in ['ex1', 'ex2'] else True
     '''
-    __slots__ = ['path', 'datakeys', 'datagroups',
+    __slots__ = ['datakeys', 'datagroups',
                  'desc', 'description', 'cache']
 
-    def _special_getgroups(self, tmpobj):
+    def _special_getgroups(self, pathobj):
         '''
         Return all keys' groups in path object.
         '''
@@ -245,13 +255,20 @@ class BasePckLoader(BaseLoader):
 
     def __init__(self, path, datagroups_filter=None):
         super(BasePckLoader, self).__init__(path)
+        self.update(datagroups_filter=datagroups_filter)
+
+    def update(self, datagroups_filter=None):
+        self.close()
+        self.datakeys, self.datagroups = None, None
+        self.description, self.desc = None, None
         try:
             log.debug("Open path %s." % self.path)
-            tmpobj = self._special_open()
+            pathobj = self._special_open()
+            self.pathobj = pathobj
             log.debug("Getting datakeys from %s ..." % self.path)
-            self.datakeys = tuple(self._special_getkeys(tmpobj))
+            self.datakeys = tuple(self._special_getkeys(pathobj))
             log.debug("Getting datagroups from %s ..." % self.path)
-            datagroups = list(self._special_getgroups(tmpobj))
+            datagroups = list(self._special_getgroups(pathobj))
             if isinstance(datagroups_filter, types.FunctionType):
                 datagroups = list(filter(datagroups_filter, datagroups))
             if '' in datagroups:
@@ -259,17 +276,13 @@ class BasePckLoader(BaseLoader):
             self.datagroups = tuple(sorted(datagroups))
             log.debug("Getting description of %s ..." % self.path)
             if 'description' in self.datakeys:
-                self.desc = str(self._special_get(tmpobj, 'description'))
+                self.desc = str(self._special_get(pathobj, 'description'))
             else:
                 self.desc = None
             self.description = self.desc
         except (IOError, ValueError):
             log.error("Failed to read path %s." % self.path, exc_info=1)
             raise
-        finally:
-            if 'tmpobj' in dir():
-                log.debug("Close path %s." % self.path)
-                self._special_close(tmpobj)
         self.cache = {}
 
     def keys(self):
@@ -287,19 +300,13 @@ class BasePckLoader(BaseLoader):
         if key in self.cache:
             return self.cache[key]
         try:
-            log.debug("Open path %s." % self.path)
-            tmpobj = self._special_open()
             log.debug("Getting key '%s' from %s ..." % (key, self.path))
-            value = self._special_get(tmpobj, key)
+            value = self._special_get(self.pathobj, key)
             self.cache[key] = value
         except (IOError, ValueError):
             log.error("Failed to get '%s' from %s!" %
                       (key, self.path), exc_info=1)
             raise
-        finally:
-            if 'tmpobj' in dir():
-                log.debug("Close path %s." % self.path)
-                self._special_close(tmpobj)
         return value
 
     __getitem__ = get
@@ -313,12 +320,10 @@ class BasePckLoader(BaseLoader):
         if len(idxtodo) == 0:
             return tuple(result)
         try:
-            log.debug("Open path %s." % self.path)
-            tmpobj = self._special_open()
             for i in idxtodo:
                 key = keys[i]
                 log.debug("Getting key '%s' from %s ..." % (key, self.path))
-                value = self._special_get(tmpobj, key)
+                value = self._special_get(self.pathobj, key)
                 result[i] = value
                 self.cache[key] = value
         except (IOError, ValueError):
@@ -328,10 +333,6 @@ class BasePckLoader(BaseLoader):
             else:
                 log.error("Failed to open '%s'!" % self.path, exc_info=1)
             raise
-        finally:
-            if 'tmpobj' in dir():
-                log.debug("Close path %s." % self.path)
-                self._special_close(tmpobj)
         return tuple(result)
 
     def clear_cache(self):

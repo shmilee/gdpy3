@@ -35,17 +35,17 @@ class TarRawLoader(BaseRawLoader):
     def _special_open(self):
         return tarfile.open(self.path, mode='r')
 
-    def _special_close(self, tmpobj):
-        tmpobj.close()
+    def _special_close(self, pathobj):
+        pathobj.close()
 
-    def _special_getkeys(self, tmpobj):
+    def _special_getkeys(self, pathobj):
         return sorted(
-            [n for n in tmpobj.getnames() if tmpobj.getmember(n).isfile()])
+            [n for n in pathobj.getnames() if pathobj.getmember(n).isfile()])
 
-    def _special_get(self, tmpobj, key):
+    def _special_get(self, pathobj, key):
         # bytes -> str
         # BufferedReader -> TextIOWrapper encoding='UTF-8'
-        return io.TextIOWrapper(tmpobj.extractfile(key))
+        return io.TextIOWrapper(pathobj.extractfile(key))
 
     def beside_path(self, name):
         return '-'.join([self.path[:self.path.rfind('.tar')], name])

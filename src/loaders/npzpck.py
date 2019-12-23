@@ -41,14 +41,14 @@ class NpzPckLoader(BasePckLoader):
     def _special_open(self):
         return numpy.load(self.path)
 
-    def _special_close(self, tmpobj):
-        tmpobj.close()
+    def _special_close(self, pathobj):
+        pathobj.close()
 
-    def _special_getkeys(self, tmpobj):
-        return sorted(dict.fromkeys(tmpobj.files))
+    def _special_getkeys(self, pathobj):
+        return sorted(dict.fromkeys(pathobj.files))
 
-    def _special_get(self, tmpobj, key):
-        value = tmpobj[key]
+    def _special_get(self, pathobj, key):
+        value = pathobj[key]
         if value.size == 1:
             value = value.item()
         return value

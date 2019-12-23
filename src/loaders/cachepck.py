@@ -41,26 +41,26 @@ class CachePckLoader(BasePckLoader):
     def _special_open(self):
         return self._cache_dict
 
-    def _special_close(self, tmpobj):
+    def _special_close(self, pathobj):
         pass
 
-    def _special_getkeys(self, tmpobj):
+    def _special_getkeys(self, pathobj):
         mykeys = []
-        for k in tmpobj.keys():
-            if isinstance(tmpobj[k], dict):
-                mykeys.extend([k + '/' + kk for kk in tmpobj[k]])
+        for k in pathobj.keys():
+            if isinstance(pathobj[k], dict):
+                mykeys.extend([k + '/' + kk for kk in pathobj[k]])
             else:
                 mykeys.append(k)
         return mykeys
 
-    def _special_getgroups(self, tmpobj):
-        return [k for k in tmpobj.keys() if isinstance(tmpobj[k], dict)]
+    def _special_getgroups(self, pathobj):
+        return [k for k in pathobj.keys() if isinstance(pathobj[k], dict)]
 
-    def _special_get(self, tmpobj, key):
+    def _special_get(self, pathobj, key):
         gstop = key.rfind('/')
         if gstop == -1:
-            return tmpobj[key]
+            return pathobj[key]
         elif gstop > 0:
-            return tmpobj[key[:gstop]][key[gstop+1:]]
+            return pathobj[key[:gstop]][key[gstop+1:]]
         else:
             raise ValueError('Wrong key "%s"!' % key)

@@ -31,15 +31,15 @@ class ImpBaseRawLoader(BaseRawLoader):
 
     def _special_open(self):
         self._special_history.append('open')
-        return
+        return self.path
 
-    def _special_close(self, tmpobj):
+    def _special_close(self, pathobj):
         self._special_history.append('close')
 
-    def _special_getkeys(self, tmpobj):
+    def _special_getkeys(self, pathobj):
         return self._D.keys()
 
-    def _special_get(self, tmpobj, key):
+    def _special_get(self, pathobj, key):
         return self._Fcls(self._D[key])
 
 
@@ -67,7 +67,10 @@ class TestBaseRawLoader(unittest.TestCase):
         self.assertSetEqual(set(loader.filenames),
                             set(ImpBaseRawLoader._D.keys()))
         self.assertListEqual(loader._special_history,
-                             ['check', 'open', 'close'])
+                             ['check', 'open'])
+        loader.update()
+        self.assertListEqual(loader._special_history,
+                             ['check', 'open', 'close', 'open'])
 
     def test_rawloader_get(self):
         loader = ImpBaseRawLoader(self.tmpfile)
@@ -104,13 +107,13 @@ class ImpBasePckLoader(BasePckLoader):
     def _special_open(self):
         return True
 
-    def _special_close(self, tmpobj):
+    def _special_close(self, pathobj):
         pass
 
-    def _special_getkeys(self, tmpobj):
+    def _special_getkeys(self, pathobj):
         return tuple(self._D.keys())
 
-    def _special_get(self, tmpobj, key):
+    def _special_get(self, pathobj, key):
         return self._D[key]
 
 

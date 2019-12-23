@@ -8,29 +8,31 @@ It contains two kinds of loaders.
 
 1. ``RawLoader``, get by :func:`get_rawloader`.
    ``RawLoader`` has attributes
-   :attr:`base.BaseRawLoader.path``,
-   :attr:`base.BaseRawLoader.filenames`
+   :attr:`RawLoader.path``,
+   :attr:`RawLoader.filenames`
    and methods
-   :meth:`base.BaseRawLoader.keys`,
-   :meth:`base.BaseRawLoader.get`,
-   :meth:`base.BaseLoader.find`,
-   :meth:`base.BaseLoader.refind`,
-   :meth:`base.BaseLoader.all_in_loader`.
+   :meth:`RawLoader.keys`,
+   :meth:`RawLoader.get`,
+   :meth:`Loader.find`,
+   :meth:`Loader.refind`,
+   :meth:`Loader.update`,
+   :meth:`Loader.all_in_loader`.
 
 2. ``PckLoader``, get by :func:`get_pckloader`.
    ``PckLoader`` has attributes
-   :attr:`base.BasePckLoader.path``,
-   :attr:`base.BasePckLoader.datakeys`,
-   :attr:`base.BasePckLoader.datagroups`,
-   :attr:`base.BasePckLoader.description`,
-   :attr:`base.BasePckLoader.cache`,
+   :attr:`PckLoader.path``,
+   :attr:`PckLoader.datakeys`,
+   :attr:`PckLoader.datagroups`,
+   :attr:`PckLoader.description`,
+   :attr:`PckLoader.cache`,
    and methods
-   :meth:`base.BasePckLoader.keys`,
-   :meth:`base.BasePckLoader.get`,
-   :meth:`base.BasePckLoader.get_many`,
-   :meth:`base.BaseLoader.find`,
-   :meth:`base.BaseLoader.refind`,
-   :meth:`base.BaseLoader.all_in_loader`.
+   :meth:`PckLoader.keys`,
+   :meth:`PckLoader.get`,
+   :meth:`PckLoader.get_many`,
+   :meth:`Loader.find`,
+   :meth:`Loader.refind`,
+   :meth:`Loader.update`,   
+   :meth:`Loader.all_in_loader`.
 '''
 
 import os

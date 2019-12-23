@@ -35,16 +35,16 @@ class ZipRawLoader(BaseRawLoader):
     def _special_open(self):
         return zipfile.ZipFile(self.path, mode='r')
 
-    def _special_close(self, tmpobj):
-        tmpobj.close()
+    def _special_close(self, pathobj):
+        pathobj.close()
 
-    def _special_getkeys(self, tmpobj):
+    def _special_getkeys(self, pathobj):
         return sorted(
-            [n for n in tmpobj.namelist() if not tmpobj.getinfo(n).is_dir()])
+            [n for n in pathobj.namelist() if not pathobj.getinfo(n).is_dir()])
 
-    def _special_get(self, tmpobj, key):
+    def _special_get(self, pathobj, key):
         # BufferedReader -> TextIOWrapper encoding='UTF-8'
-        return io.TextIOWrapper(tmpobj.open(key))
+        return io.TextIOWrapper(pathobj.open(key))
 
     def beside_path(self, name):
         return '-'.join([self.path[:self.path.rfind('.zip')], name])

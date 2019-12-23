@@ -98,15 +98,15 @@ class SftpRawLoader(BaseRawLoader):
                 raise
         return paramiko.SFTPClient.from_transport(self.transport)
 
-    def _special_close(self, tmpobj):
-        tmpobj.close()
+    def _special_close(self, pathobj):
+        pathobj.close()
 
-    def _special_getkeys(self, tmpobj):
+    def _special_getkeys(self, pathobj):
         filenames = []
-        for p1 in tmpobj.listdir_attr(self.rmt_path):
+        for p1 in pathobj.listdir_attr(self.rmt_path):
             if stat.S_ISDIR(p1.st_mode):
                 _dir = self._sep.join([self.rmt_path, p1.filename])
-                for p2 in tmpobj.listdir_attr(_dir):
+                for p2 in pathobj.listdir_attr(_dir):
                     if not stat.S_ISDIR(p2.st_mode):
                         filenames.append(
                             self._sep.join([p1.filename, p2.filename]))
@@ -114,10 +114,10 @@ class SftpRawLoader(BaseRawLoader):
                 filenames.append(p1.filename)
         return sorted(filenames)
 
-    def _special_get(self, tmpobj, key):
+    def _special_get(self, pathobj, key):
         # paramiko.SFTP.open, SSH treats all files as binary
         return io.TextIOWrapper(
-            tmpobj.open(self._sep.join([self.rmt_path, key]), 'r'))
+            pathobj.open(self._sep.join([self.rmt_path, key]), 'r'))
 
     def key_location(self, key):
         return self._sep.join([self.path, key])

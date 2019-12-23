@@ -34,12 +34,12 @@ class DirRawLoader(BaseRawLoader):
             return False
 
     def _special_open(self):
-        return
+        return self.path
 
-    def _special_close(self, tmpobj):
+    def _special_close(self, pathobj):
         pass
 
-    def _special_getkeys(self, tmpobj):
+    def _special_getkeys(self, pathobj):
         filenames = []
         for _root, _dirs, _files in os.walk(self.path):
             # _root: '/path/'->'', '/path/sub1'->'sub1', '/p/s1/s2'->'s1/s2'
@@ -52,7 +52,7 @@ class DirRawLoader(BaseRawLoader):
             filenames.extend([os.path.join(_root, f) for f in _files])
         return sorted(filenames)
 
-    def _special_get(self, tmpobj, key):
+    def _special_get(self, pathobj, key):
         return open(os.path.join(self.path, key))
 
     def key_location(self, key):

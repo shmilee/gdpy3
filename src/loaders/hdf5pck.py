@@ -47,26 +47,26 @@ class Hdf5PckLoader(BasePckLoader):
     def _special_open(self):
         return h5py.File(self.path, 'r')
 
-    def _special_close(self, tmpobj):
-        tmpobj.close()
+    def _special_close(self, pathobj):
+        pathobj.close()
 
-    def _special_getkeys(self, tmpobj):
+    def _special_getkeys(self, pathobj):
         mykeys = []
-        tmpobj.visititems(
+        pathobj.visititems(
             lambda name, obj: mykeys.append(name)
             if isinstance(obj, h5py.Dataset) else None)
         return mykeys
 
-    # def _special_getgroups(self, tmpobj):
+    # def _special_getgroups(self, pathobj):
     #   # TODO: {test, te, te/st} -> {test, te/st}
     #    mygroups = []
-    #    tmpobj.visititems(
+    #    pathobj.visititems(
     #        lambda name, obj: mygroups.append(name)
     #        if isinstance(obj, h5py.Group) else None)
     #    return mygroups
 
-    def _special_get(self, tmpobj, key):
-        val = tmpobj[key][()]
+    def _special_get(self, pathobj, key):
+        val = pathobj[key][()]
         if isinstance(val, numpy.void):
             return val.tostring()
         else:
