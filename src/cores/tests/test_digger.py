@@ -19,10 +19,10 @@ class ImpDigger1(Digger):
     commonpattern = ['g/c', 'his/n']
     neededpattern = ['da/(?:i|e)-(?:p|m)-f', 'g/c']
 
-    def _set_fignum(self):
+    def _set_fignum(self, numseed=None):
         self._fignum = '%s_%s_f' % (self.section[1], self.section[2])
 
-    def _dig(self):
+    def _dig(self, kwargs):
         return dict(f=self.fignum), {}
 
 
@@ -37,10 +37,10 @@ class ImpDigger2(Digger):
     commonpattern = ['g/c']
     neededpattern = 'ALL'
 
-    def _set_fignum(self):
+    def _set_fignum(self, numseed=None):
         self._fignum = self.section[1]
 
-    def _dig(self):
+    def _dig(self, kwargs):
         return dict(f=self.fignum), {}
 
 
