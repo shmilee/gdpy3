@@ -356,7 +356,7 @@ class BaseVisplter(object):
         results['aspect']: str, optional
         results['plot_method']: str, optional
             'contourf', 'pcolor', 'pcolormesh', or 'plot_surface'
-            default 'contourf'
+            default 'contourf', if 'Z' all zeros, default is 'pcolor'
         results['plot_method_args']: list, optional
             args for *plot_method*, like levels for 'contourf'
         results['plot_method_kwargs']: dict, optional
@@ -409,6 +409,10 @@ class BaseVisplter(object):
         if plot_method not in ('contourf', 'pcolor', 'pcolormesh',
                                'plot_surface'):
             plot_method = 'contourf'
+        if not Z.any():
+            # all zeros
+            vlog.warning("All elements in 'Z' is 0, use plot method pcolor!")
+            plot_method = 'pcolor'
         plot_surface_shadow = list(filter(
             lambda x: True if x in ['x', 'y', 'z'] else False,
             plot_surface_shadow))
