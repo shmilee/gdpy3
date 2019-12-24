@@ -19,8 +19,9 @@ from . import (
     equilibrium,
     history,
     meshgrid,
-    snapshot,
+    simugrid,
     snapphi,
+    snapshot,
     trackparticle,
 )
 from ..processors.processor import Processor, plog
@@ -38,8 +39,9 @@ class GTCv3(Processor):
             equilibrium,
             history,
             meshgrid,
-            snapshot,
+            simugrid,
             snapphi,
+            snapshot,
             trackparticle,
         ] for c in m._all_Converters]
     DiggerCores = [
@@ -50,8 +52,9 @@ class GTCv3(Processor):
             equilibrium,
             history,
             meshgrid,
-            snapshot,
+            simugrid,
             snapphi,
+            snapshot,
             trackparticle,
         ] for d in m._all_Diggers]
     saltname = 'gtc.out'
