@@ -165,8 +165,11 @@ class MatplotlibVisplter(BaseVisplter):
 
     def _close_figure(self, fig):
         '''Close *fig*.'''
+        try:
+            fig.clf()
+        except Exception:
+            pass
         matplotlib.pyplot.close(fig)
-        fig.clf()
 
     def _save_figure(self, fig, fpath, **kwargs):
         '''Save *fig* to *fpath*.'''
