@@ -101,8 +101,8 @@ class SnapPhiZetaPsiDigger(Digger):
         # j_list[-1] is mtdiag
         self._part = j / j_list[-1]
         self._fignum = 'phi_%03d_zeta_psi' % round(self._part*360)
-        self.theta = r'$\theta=%.2f=%d^\circ$' % (
-            round(self._part*2*np.pi, ndigits=2), round(self._part*360))
+        self.theta = r'$\theta=%.3f=%g^\circ$' % (
+            round(self._part*2*np.pi, ndigits=3), self._part*360)
         self.timestr = _snap_get_timestr(self.group, self.pckloader)
         self.kwoptions = None
 
@@ -301,8 +301,8 @@ class SnapPhiFieldnDigger(SnapshotFieldmDigger):
 
     def _dig(self, kwargs):
         timestr = _snap_get_timestr(self.group, self.pckloader)
-        theta = r'$\theta=%.2f=%d^\circ$' % (
-            round(self._part*2*np.pi, ndigits=2), round(self._part*360))
+        theta = r'$\theta=%.2f=%g^\circ$' % (
+            round(self._part*2*np.pi, ndigits=2), self._part*360)
         data, j_list, mpsi1, dt, arr2, a = self.pckloader.get_many(
             *self.srckeys, *self.common)
         Lz, Lr = data.shape
