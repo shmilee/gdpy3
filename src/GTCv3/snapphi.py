@@ -198,7 +198,11 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
         if not (isinstance(mdpsi, int) and mdpsi <= maxmdpsi):
             mdpsi = x // 2
         if not (isinstance(mdzeta, int) and mdzeta <= maxmdzeta):
-            mdzeta = y // 24
+            Zz = Z[:, int(Z.argmax(axis=1).mean())]
+            index = (np.diff(np.sign(np.gradient(Zz))) < 0).nonzero()[0]
+            mdzeta = int(np.diff(index).mean())
+            mdzeta *= 3 if mdzeta < y//32 else 2
+            mdzeta = min(mdzeta, y//8)
         acckwargs = dict(mdpsi=mdpsi, mdzeta=mdzeta, use_ra=use_ra)
         dlog.parm("Use dpsi dzeta range: mdpsi=%s, mdzeta=%s. "
                   "Maximal mdpsi=%s, mdzeta=%s"
