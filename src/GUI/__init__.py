@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2019 shmilee
+# Copyright (c) 2020 shmilee
 
 '''
 This subpackage provides GUI support for gdpy3, entry points of gui_scripts.

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2019 shmilee
+# Copyright (c) 2020 shmilee
 
 '''
 Contains core base class.

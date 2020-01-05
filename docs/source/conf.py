@@ -20,7 +20,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'gdpy3'
-copyright = '2019, shmilee'
+copyright = '2020, shmilee'
 author = 'shmilee'
 
 # The short X.Y version
