@@ -29,10 +29,12 @@ __all__ = ['get_processor', 'is_processor']
 
 _processorlib = {
     'GTCv3': '..GTCv3',
+    'GTCv4': '..GTCv4',
 }
 processor_names = sorted(_processorlib.keys())
 alias_names = {
     'G3': 'GTCv3',
+    'G4': 'GTCv4',
 }
 
 
