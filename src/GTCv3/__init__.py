@@ -58,7 +58,7 @@ class GTCv3(Processor):
             trackparticle,
         ] for d in m._all_Diggers]
     saltname = 'gtc.out'
-    dig_acceptable_time = 20
+    dig_acceptable_time = 10
 
     @property
     def _rawsummary(self):
