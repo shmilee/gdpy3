@@ -27,6 +27,89 @@ class GtcConverter(Converter):
     nitems = '?'
     itemspattern = ['^(?P<section>gtc)\.out$', '.*/(?P<section>gtc)\.out$']
 
+    # http://stackoverflow.com/a/29581287
+    numpat = r'[-+]?\d+[\.]?\d*[eE]?[-+]?\d*'
+
+    @staticmethod
+    def _c_val_default(val):
+        if val.isdigit():
+            return int(val)
+        else:
+            # if int(val) - val == 0:
+            #    return int(val)
+            return float(val)
+
+    @staticmethod
+    def _c_val_int_arr(val):
+        return numpy.array([int(n) for n in val.split()])
+
+    @staticmethod
+    def _c_val_float_arr(val):
+        return numpy.array([float(n) for n in val.split()])
+
+    @property
+    def otherparapats(self):
+        '''
+        search other parameters, one by one
+
+        str: pat_str, then convert_val_method='default'
+        OR
+        tuple: (pat_str, convert_val_method), like 'int_arr', 'float_arr'
+
+        method: getattr(self, '_c_val_%s' % convert_val_method)
+        '''
+        return [
+            r'npartdom=\s*?(?P<npartdom>\d+?)\s+?and\s+?.+',
+            r',\s+?psiw=\s*?(?P<psiw>' + self.numpat + r'?)$',
+            r'nue_eff=\s*?(?P<nue_eff>' + self.numpat + r'?)'
+            + r'\s+?nui_eff=\s*?(?P<nui_eff>' + self.numpat + r'?)$',
+            r'rg0=\s*?(?P<rg0>' + self.numpat + r'?)'  # commit ee5da784
+            + r'\s+?rg1=\s*?(?P<rg1>' + self.numpat + r'?)\s+?',
+            r'rg0,rg1=\s*?(?P<rg0>' + self.numpat + r'?)'
+            + r'\s+?(?P<rg1>' + self.numpat + r'?)\s+?',
+            r'a_minor=\s*?(?P<a_minor>' + self.numpat + r'?)\s+$',
+            (r'\s*?nmodes=(?P<nmodes>(\s*?\d+)+)\s*$', 'int_arr'),
+            (r'\s*?mmodes=(?P<mmodes>(\s*?\d+)+)\s*$', 'int_arr'),
+            # TODO me,trapped fraction
+            (r'TIME USAGE \(in SEC\):$\s*.+$\s*total\s*$\s*(?P<cputime>(\s*?'
+             + self.numpat + r'){8})\s*$', 'float_arr'),
+            r'Program starts at DATE=(?P<start_date>' + self.numpat + r'?)'
+            + r'\s+TIME=(?P<start_time>' + self.numpat + r'?)\s*?$',
+            r'Program ends at   DATE=(?P<end_date>' + self.numpat + r'?)'
+            + r'\s+TIME=(?P<end_time>' + self.numpat + r'?)\s*?$',
+        ]
+
+    @staticmethod
+    def _c_val_float_2d_arr(val):
+        val = val.strip().split('\n')
+        return numpy.array([[float(n) for n in li.split()] for li in val])
+
+    @staticmethod
+    def _c_val_float_2d_arr3(val):
+        return numpy.array([[float(n) for n in li.split()]
+                            for li in val.strip().split('\n')
+                            if not li.startswith(' write to restart_dir')])
+
+    @property
+    def twoDarraypats(self):
+        '''
+        search two dimensional array parameters
+        str or tuple like :attr:`otherparapats`
+
+        default convert_val_method = 'float_2d_arr'
+        '''
+        return [
+            r'\s+?nui_eff=\s*?' + self.numpat + r'?$'
+            + r'(?P<arr1>.*)$'
+            + r'\s*?rg0=\s*?' + self.numpat + r'?\s+?rg1=\s*?' + self.numpat,
+            r'a_minor=\s*?' + self.numpat + r'?\s+$'
+            + r'(?P<arr2>.*)$'
+            + r'\s*?nmodes=(\s*?\d+)+\s*$',
+            (r'poisson solver=(\s*?' + self.numpat + r'){4}\s*$'
+             + r'(?P<arr3>.*)$'
+             + r'\s*CPU TIME USAGE \(in SEC\):$', 'float_2d_arr3'),
+        ]
+
     def _convert(self):
         '''Read 'gtc.out' parameters.'''
         with self.rawloader.get(self.files) as f:
@@ -34,94 +117,57 @@ class GtcConverter(Converter):
             outdata = f.readlines()
 
         sd = {}
-        # http://stackoverflow.com/a/29581287
-        numpat = r'[-+]?\d+[\.]?\d*[eE]?[-+]?\d*'
-        pickpara = re.compile(
-            r'^\s*?(?P<key>\w+?)\s*?=\s*?(?P<val>' + numpat + '?)\s*?,?\s*?$')
+        pickpara = re.compile(r'^\s*?(?P<key>\w+?)\s*?=\s*?(?P<val>'
+                              + self.numpat + '?)\s*?,?\s*?$')
         for line in outdata:
             mline = pickpara.match(line)
             if mline:
                 key, val = mline.groups()
-                if val.isdigit():
-                    val = int(val)
-                else:
-                    val = float(val)
-                    # if int(val) - val == 0:
-                    #    val = int(val)
+                val = self._c_val_default(val)
                 clog.debug("Filling datakey: %s=%s ..." % (key.lower(), val))
                 sd.update({key.lower(): val})
         clog.debug("Filled datakeys: %s ..." % str(tuple(sd.keys())))
 
         # search other parameters, one by one
-        otherparapats = [
-            r'npartdom=\s*?(?P<npartdom>\d+?)\s+?and\s+?.+',
-            r',\s+?psiw=\s*?(?P<psiw>' + numpat + r'?)$',
-            r'nue_eff=\s*?(?P<nue_eff>' + numpat + r'?)'
-            + r'\s+?nui_eff=\s*?(?P<nui_eff>' + numpat + r'?)$',
-            r'rg0=\s*?(?P<rg0>' + numpat + r'?)'
-            + r'\s+?rg1=\s*?(?P<rg1>' + numpat + r'?)\s+?',
-            r'a_minor=\s*?(?P<a_minor>' + numpat + r'?)\s+$',
-            r'\s*?nmodes=(?P<nmodes>(\s*?\d+)+)\s*$',
-            r'\s*?mmodes=(?P<mmodes>(\s*?\d+)+)\s*$',
-            # TODO me,trapped fraction
-            r'TIME USAGE \(in SEC\):$\s*.+$\s*total\s*$\s*(?P<cputime>(\s*?'
-            + numpat + r'){8})\s*$',
-            r'Program starts at DATE=(?P<start_date>' + numpat + r'?)'
-            + r'\x00{2}\s+TIME=(?P<start_time>' + numpat + r'?)$',
-            r'Program ends at   DATE=(?P<end_date>' + numpat + r'?)'
-            + r'\x00{2}\s+TIME=(?P<end_time>' + numpat + r'?)$',
-        ]
         outdata = ''.join(outdata)
         debugkeys = []
-        for pat in otherparapats:
+        for pat in self.otherparapats:
+            if type(pat) == tuple:
+                pat, c_val_method = pat
+            else:
+                c_val_method = 'default'
             mdata = re.search(pat, outdata, re.M)
             if mdata:
+                c_val_method = getattr(self, '_c_val_%s' % c_val_method)
                 for key, val in mdata.groupdict().items():
-                    if key in ('nmodes', 'mmodes'):
-                        val = numpy.array([int(n) for n in val.split()])
-                    elif key in ('cputime',):
-                        val = numpy.array([float(t) for t in val.split()])
-                    elif val.isdigit():
-                        val = int(val)
-                    else:
-                        val = float(val)
-                    clog.debug("Filling datakey: %s=%s ..." % (key, val))
-                    debugkeys.append(key)
-                    sd.update({key: val})
+                    try:
+                        val = c_val_method(val)
+                        clog.debug("Filling datakey: %s=%s ..." % (key, val))
+                        debugkeys.append(key)
+                        sd.update({key: val})
+                    except Exception:
+                        pass
         clog.debug("Filled datakeys: %s ..." % str(debugkeys))
 
-        # search array parameters
-        arraypats = [
-            r'nue_eff=\s*?' + numpat + r'?\s+?nui_eff=\s*?' + numpat + r'?$'
-            + r'(?P<arr1>.*)$'
-            + r'\s*?rg0=\s*?' + numpat + r'?\s+?rg1=\s*?' + numpat + r'?\s+?',
-            r'a_minor=\s*?' + numpat + r'?\s+$'
-            + r'(?P<arr2>.*)$'
-            + r'\s*?nmodes=(\s*?\d+)+\s*$',
-            r'poisson solver=(\s*?' + numpat + r'){4}\s*$'
-            + r'(?P<arr3>.*)$'
-            + r'\s*CPU TIME USAGE \(in SEC\):$',
-        ]
+        # search two dimensional array parameters
         debugkeys = []
-        for pat in arraypats:
+        for pat in self.twoDarraypats:
+            if type(pat) == tuple:
+                pat, c_val_method = pat
+            else:
+                c_val_method = 'float_2d_arr'
             mdata = re.search(re.compile(
                 pat, re.MULTILINE | re.DOTALL), outdata)
             if mdata:
+                c_val_method = getattr(self, '_c_val_%s' % c_val_method)
                 for key, val in mdata.groupdict().items():
-                    if key in ('arr3',):
-                        val = val.strip().split('\n')
-                        val = numpy.array([
-                            [float(n) for n in li.split()]
-                            for li in val
-                            if not li.startswith(' write to restart_dir')
-                        ])
-                    else:
-                        val = val.strip().split('\n')
-                        val = numpy.array(
-                            [[float(n) for n in li.split()] for li in val])
-                    #clog.debug("Filling datakey: %s=%s ..." % (key, val))
-                    debugkeys.append(key)
-                    sd.update({key: val})
+                    try:
+                        val = c_val_method(val)
+                        #clog.debug("Filling datakey: %s=%s ..." % (key, val))
+                        debugkeys.append(key)
+                        sd.update({key: val})
+                    except Exception:
+                        pass
         clog.debug("Filled datakeys: %s ..." % str(debugkeys))
 
         return sd
