@@ -9,7 +9,8 @@ Notes
 -----
 GTC .out files should be named as:
 gtc.out, data1d.out, equilibrium.out, history.out, meshgrid.out,
-snap("%05d" % istep).out, trackp_dir/TRACKP.("%05d" % pe), etc.
+snap("%05d" % istep).out or snap("%07d" % istep).out,
+trackp_dir/TRACKP.("%05d" % pe), etc.
 so they can be auto-detected.
 '''
 
