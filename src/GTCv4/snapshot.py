@@ -5,7 +5,7 @@
 '''
 GTCv3.snapshot -> GTCv4.snapshot
 
-* snap\d{5} -> snap\d{7}
+* patterns: v3, snap\d{5,7} -> v4, snap\d{7}
 '''
 
 from ..GTCv3 import snapshot as snapv3
@@ -19,8 +19,6 @@ __all__ = _all_Converters + _all_Diggers
 class ModifyPattern527(AppendDocstringMeta):
     """
     Modify itemspattern, commonpattern, neededpattern
-
-    snap\d{5} -> snap\d{7}
     """
     _todo_pattern = ['itemspattern', 'commonpattern', 'neededpattern']
 
@@ -35,12 +33,16 @@ class ModifyPattern527(AppendDocstringMeta):
                     continue
                 v4pattern = []
                 for pat in original:
-                    if r'snap\d{5}' in pat:
+                    if r'snap\d{5,7}' in pat:
                         v4pattern.append(
-                            pat.replace(r'snap\d{5}', r'snap\d{7}'))
+                            pat.replace(r'snap\d{5,7}', r'snap\d{7}'))
                     else:
                         v4pattern.append(pat)
                 attrs[attr_name] = v4pattern
+        # OR Modify property group, preserve _group
+        # group: v3, snap\d{5} -> v4, snap\d{7} -> v4, snap\d{5}
+        # attrs['group'] = property(
+        #    fget=lambda self: self._group.replace('snap00', 'snap'))
         return super(ModifyPattern527, meta).__new__(meta, name, bases, attrs)
 
 
