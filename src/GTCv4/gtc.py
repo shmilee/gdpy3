@@ -19,6 +19,12 @@ __all__ = _all_Converters + _all_Diggers
 class GtcConverter(gtcv3.GtcConverter):
     __slots__ = []
 
+    @staticmethod
+    def _c_val_cputime(val):
+        val = val.strip().split('\n')
+        val = numpy.array([[float(n) for n in li.split()[1:]] for li in val])
+        return val.T
+
     @property
     def twoDarraypats(self):
         # search two dimensional array parameters
@@ -35,6 +41,9 @@ class GtcConverter(gtcv3.GtcConverter):
             (r'poisson solver=(\s*?' + self.numpat + r'){4}\s*$'
              + r'(?P<arr3>.*)$'
              + r'\s+routine\s+count\s+rank0.*$', 'float_2d_arr3'),
+            (r'CPU TIME USAGE \(in SEC\):$'
+             + '(?P<cputimeusage>.*)$'
+             + r'\s*?MPush/sec:\s+?' + self.numpat + '\s*?$', 'cputime'),
         ]
 
     def _convert(self):
