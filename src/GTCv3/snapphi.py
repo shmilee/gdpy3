@@ -199,6 +199,7 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
             mdpsi = x // 2
         if not (isinstance(mdzeta, int) and mdzeta <= maxmdzeta):
             Zz = Z[:, int(Z.argmax(axis=1).mean())]
+            Zz = tools.savgol_golay_filter(Zz, info='phi(zeta)')
             index = (np.diff(np.sign(np.gradient(Zz))) < 0).nonzero()[0]
             mdzeta = int(np.diff(index).mean())
             mdzeta *= 3 if mdzeta < y//32 else 2
