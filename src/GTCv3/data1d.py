@@ -408,6 +408,7 @@ class _Data1dMeanDigger(_Data1dDigger):
             ('tmpl_line', 211, dict(LINE=LINE)),
             ('tmpl_line', 212, dict(
                 LINE=[(r['X'], r['meanZ'], 'mean')],
+                xlim=[r['X'][0], r['X'][-1]],
                 xlabel=r'time($R_0/c_s$)'))]
         return dict(zip_results=zip_results)
 
