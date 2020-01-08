@@ -10,9 +10,9 @@ def _get_gdpy3_about():
     import gdpy3.__about__
 
     return {
-        'name': 'gdpy3-gui',
+        'name': 'gdpy3-app',
         'version': gdpy3.__about__.__version__,
-        'AppID': 'io.shmilee.gdpy3.gui',
+        'AppID': 'io.shmilee.gdpy3.app',
         'desc': gdpy3.__about__.__description__,
         'copyright': gdpy3.__about__.__copyright__,
         'icon': os.path.join(
@@ -24,7 +24,7 @@ def _get_gdpy3_about():
 gdpy3_about = _get_gdpy3_about()
 block_cipher = None
 
-a = Analysis(['./gdpy3-gui.py'],
+a = Analysis(['./gdpy3-app.py'],
              pathex=[],
              binaries=[],
              datas=[],
@@ -41,7 +41,8 @@ exe = EXE(pyz,
           a.scripts,
           exclude_binaries=True,
           name=gdpy3_about['name'],
-          debug=True,
+          debug=False,
+          bootloader_ignore_signals=False,
           strip=False,
           upx=True,
           icon=gdpy3_about['icon'],

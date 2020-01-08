@@ -2,6 +2,7 @@
 *.npz
 *.hdf5
 tests-report.html
+pyinstaller/gdpy3-app
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
