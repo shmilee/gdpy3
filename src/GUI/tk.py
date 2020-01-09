@@ -136,9 +136,14 @@ class GTkApp(object):
         log.debug('Main frame filled.')
         # X - for share
         self.root = root
-        self.monitor = sorted(
-            screeninfo.get_monitors(), key=lambda m: m.width, reverse=True)[0]
-        self.center(root, self.monitor)
+        try:
+            monitors = screeninfo.get_monitors()
+            monitor = sorted(monitors, key=lambda m: m.width, reverse=True)[0]
+        except Exception:
+            log.debug('No active monitors found!')
+            monitor = None
+        self.monitor = monitor
+        self.center(root)
         self.img = img
         self.processor_name = w_str_proc
         self.figlabel_filter = w_str_filter
@@ -166,15 +171,22 @@ class GTkApp(object):
             except Exception:
                 log.debug('Error of saving recent path.', exc_info=1)
         self.root.title('gdpy3 - %s' % self.path)
-        log.info('Start Tk mainloop on monitor %s.' % self.monitor.name)
+        if monitor:
+            log.info('Start Tk mainloop on monitor %s.' % monitor.name)
+        else:
+            log.info('Start Tk mainloop.')
         self.root.mainloop()
 
-    def center(self, win, monitor):
+    def center(self, win):
         win.update_idletasks()
         width = win.winfo_width()
         height = win.winfo_height()
-        x = monitor.x + (monitor.width // 2) - (width // 2)
-        y = monitor.y + (monitor.height // 2) - (height // 2)
+        if self.monitor:
+            x = self.monitor.x + (self.monitor.width // 2) - (width // 2)
+            y = self.monitor.y + (self.monitor.height // 2) - (height // 2)
+        else:
+            x = (win.winfo_screenwidth() // 2) - (width // 2)
+            y = (win.winfo_screenheight() // 2) - (height // 2)
         win.geometry('{}x{}+{}+{}'.format(width, height, x, y))
 
     def ask_case_path(self, ask_sftp):
@@ -500,10 +512,16 @@ class MplFigWindow(tkinter.Toplevel):
         self.left_right(app.monitor, right=index % 2)
 
     def left_right(self, monitor, right=1):
-        width = int(0.45 * monitor.width)
-        height = int(0.8 * monitor.height)
-        x = monitor.x + int(0.05 * monitor.width) + right * width
-        y = monitor.y + int(0.1 * monitor.height)
+        if monitor:
+            width = int(0.45 * monitor.width)
+            height = int(0.8 * monitor.height)
+            x = monitor.x + int(0.05 * monitor.width) + right * width
+            y = monitor.y + int(0.1 * monitor.height)
+        else:
+            width = int(0.45 * self.winfo_screenwidth())
+            height = int(0.8 * self.winfo_screenheight())
+            x = int(0.05 * self.winfo_screenwidth()) + right * width
+            y = int(0.1 * self.winfo_screenheight())
         self.geometry('{}x{}+{}+{}'.format(width, height, x, y))
 
     def figure_on_key_event(self, event):
