@@ -126,6 +126,10 @@ class GtcConverter(Converter):
                 val = self._c_val_default(val)
                 clog.debug("Filling datakey: %s=%s ..." % (key.lower(), val))
                 sd.update({key.lower(): val})
+        if 'tstep' in sd:
+            val = round(sd['tstep'], 8)
+            clog.debug("Round datakey: %s=%s ..." % ('tstep', val))
+            sd['tstep'] = val
         clog.debug("Filled datakeys: %s ..." % str(tuple(sd.keys())))
 
         # search other parameters, one by one
