@@ -525,27 +525,31 @@ class Processor(object):
         if self.multiproc > 1:
             nworkers = min(self.multiproc, len(couple_figlabels))
             with multiprocessing.Pool(processes=nworkers) as pool:
-                async_results = [pool.apply_async(
-                    self._dig_worker, (figlabel, redig, kwargs))
-                    for figlabel, kwargs in couple_figlabels]
-                # do not pool.close(); pool.join()
-                # res.get blocks until `nworkers` results are ready
-                for res in async_results:
-                    data = res.get()
-                    if data == (None,)*6:
-                        multi_results.append((None,)*3)
-                    else:
-                        accfiglabel, gotfiglabel, \
-                            res_from, results, digtime, digcore = data
-                        if res_from == 'new':
-                            self._save_new_dig(accfiglabel, gotfiglabel,
-                                               results, digtime, digcore)
-                        if post:
-                            results = digcore.post_dig(results)
-                        if callable(callback):
-                            callback(results)
-                        multi_results.append(
-                            (accfiglabel, results, digcore.post_template))
+                # While _save_new_dig running, _dig_worker call _find_old_dig,
+                # then writing and reading file together may cause error.
+                for i in range(0, len(couple_figlabels), nworkers):
+                    async_results = [pool.apply_async(
+                        self._dig_worker, (figlabel, redig, kwargs))
+                        for figlabel, kwargs in couple_figlabels[i:i+nworkers]
+                    ]
+                    # do not pool.close(); pool.join()
+                    # res.get blocks until `nworkers` results are ready
+                    # then save them together before next `nworkers` tasks.
+                    for data in [res.get() for res in async_results]:
+                        if data == (None,)*6:
+                            multi_results.append((None,)*3)
+                        else:
+                            accfiglabel, gotfiglabel, \
+                                res_from, results, digtime, digcore = data
+                            if res_from == 'new':
+                                self._save_new_dig(accfiglabel, gotfiglabel,
+                                                   results, digtime, digcore)
+                            if post:
+                                results = digcore.post_dig(results)
+                            if callable(callback):
+                                callback(results)
+                            multi_results.append(
+                                (accfiglabel, results, digcore.post_template))
         else:
             # plog.error("Max number of worker processes must > 1!")
             plog.warning("Max number of worker processes is one, "
