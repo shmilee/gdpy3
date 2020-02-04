@@ -136,6 +136,19 @@ class BaseLoader(object):
         # return '<{0}.{1} object at {2} for {3}>'.format(
         #    self.__module__, type(self).__name__, hex(id(self)), self.path)
 
+    def __getstate__(self):
+        # self.pathobj may has '_io.BufferedReader' object,
+        # which cannot be pickled, when use multiprocessing.
+        return [(name, getattr(self, name))
+                for cls in type(self).__mro__
+                for name in getattr(cls, '__slots__', [])
+                if name != 'pathobj']
+
+    def __setstate__(self, state):
+        for name, value in state:
+            setattr(self, name, value)
+        self.pathobj = self._special_open()
+
 
 class BaseRawLoader(BaseLoader):
     '''
