@@ -409,15 +409,21 @@ class Processor(object):
 
     def _save_new_dig(self, accfiglabel, gotfiglabel, results,
                       digtime, digcore):
-        '''save dig results, link DEFAULT to acckwargstr.'''
+        '''
+        Save dig results, link DEFAULT to accfiglabel.
+
+        Returns
+        -------
+        1: need to update resloader
+        2: need to update resloader and resfileloader
+        '''
+
         with self.ressaver:
             self.ressaver.write(accfiglabel, results)
             if (gotfiglabel.endswith('/DEFAULT')
                     and not accfiglabel.endswith('/DEFAULT')):
                 # link double cache
                 self.ressaver.write(gotfiglabel, dict(_LINK=accfiglabel))
-        # update resloader & diggedlabels
-        self.resloader = get_pckloader(self.ressaver.get_store())
         # long execution time
         if self.resfilesaver and digtime > self.dig_acceptable_time:
             # also save kwoptions
@@ -435,8 +441,8 @@ class Processor(object):
                         gotfiglabel, shortpath))
                     self.resfilesaver.write(
                         gotfiglabel, dict(_LINK=accfiglabel))
-            # update resfileloader & diggedlabels
-            self.resfileloader = get_pckloader(self.resfilesaver.get_store())
+            return 2
+        return 1
 
     def _dig_worker(self, figlabel, redig, kwargs):
         digcore = self._pre_find_digcore(figlabel)
@@ -448,7 +454,7 @@ class Processor(object):
         accfiglabel, res_from, results, digtime = gotfiglabel, 'old', None, 0
         if not redig and gotfiglabel in self.diggedlabels:
             results = self._find_old_dig(gotfiglabel, digcore)
-        # save new
+        # dig new
         if results is None:
             results, acckwargstr, digtime = digcore.dig(**kwargs)
             res_from = 'new'
@@ -457,7 +463,7 @@ class Processor(object):
             accfiglabel = '%s/%s' % (figlabel, acckwargstr)
         return accfiglabel, gotfiglabel, res_from, results, digtime, digcore
 
-    def dig(self, figlabel, post=True, redig=False, callback=None, **kwargs):
+    def dig(self, figlabel, redig=False, post=True, callback=None, **kwargs):
         '''
         Get digged results of *figlabel*.
         Use :meth:`dig_doc` to see *kwargs* for *figlabel*.
@@ -466,11 +472,12 @@ class Processor(object):
 
         Parameters
         ----------
-        post: bool
         redig: bool
             If :attr:`resfilesaver` type is '.npz', *redig* will cause warning:
                 "zipfile.py: UserWarning: Duplicate name ..."
             Recommend using '.hdf5' when *redig* is True.
+        post: bool
+            call post_dig
         callback: a callable
             which accepts a single argument, post_dig or dig results
         '''
@@ -479,15 +486,21 @@ class Processor(object):
             return (None,)*3
         accfiglabel, gotfiglabel, res_from, results, digtime, digcore = data
         if res_from == 'new':
-            self._save_new_dig(accfiglabel, gotfiglabel, results,
-                               digtime, digcore)
+            update = self._save_new_dig(accfiglabel, gotfiglabel, results,
+                                        digtime, digcore)
+            # update resloader & diggedlabels
+            self.resloader = get_pckloader(self.ressaver.get_store())
+            # update resfileloader & diggedlabels
+            if update == 2:
+                self.resfileloader = get_pckloader(
+                    self.resfilesaver.get_store())
         if post:
             results = digcore.post_dig(results)
         if callable(callback):
             callback(results)
         return accfiglabel, results, digcore.post_template
 
-    def multi_dig(self, *figlabels, post=True, redig=False, callback=None):
+    def multi_dig(self, *figlabels, redig=False, post=True, callback=None):
         '''
         Get digged results of *figlabels*.
         Multiprocess version of :meth:`dig`.
@@ -535,6 +548,7 @@ class Processor(object):
                     # do not pool.close(); pool.join()
                     # res.get blocks until `nworkers` results are ready
                     # then save them together before next `nworkers` tasks.
+                    update = 1
                     for data in [res.get() for res in async_results]:
                         if data == (None,)*6:
                             multi_results.append((None,)*3)
@@ -542,21 +556,28 @@ class Processor(object):
                             accfiglabel, gotfiglabel, \
                                 res_from, results, digtime, digcore = data
                             if res_from == 'new':
-                                self._save_new_dig(accfiglabel, gotfiglabel,
-                                                   results, digtime, digcore)
+                                update = self._save_new_dig(
+                                    accfiglabel, gotfiglabel,
+                                    results, digtime, digcore)
                             if post:
                                 results = digcore.post_dig(results)
                             if callable(callback):
                                 callback(results)
                             multi_results.append(
                                 (accfiglabel, results, digcore.post_template))
+                    # update resloader & diggedlabels
+                    self.resloader = get_pckloader(self.ressaver.get_store())
+                    # update resfileloader & diggedlabels
+                    if update == 2:
+                        self.resfileloader = get_pckloader(
+                            self.resfilesaver.get_store())
         else:
             # plog.error("Max number of worker processes must > 1!")
             plog.warning("Max number of worker processes is one, "
                          "use for loop to multi_dig!")
             for fl, kws in couple_figlabels:
                 multi_results.append(self.dig(
-                    fl, post=post, redig=redig, callback=callback, **kws))
+                    fl, redig=redig, post=post, callback=callback, **kws))
         return multi_results
 
     def dig_doc(self, figlabel, see='help'):
