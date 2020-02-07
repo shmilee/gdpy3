@@ -32,19 +32,18 @@ class Hdf5PckSaver(BasePckSaver):
     def _write(self, group, data):
         try:
             if group in ('/', ''):
-                fgrp = self._storeobj
+                group = '/'
+            if group in self._storeobj:
+                fgrp = self._storeobj[group]
                 for key in data.keys():
-                    if key in self._storeobj:
-                        log.debug("Delete dataset '/%s'." % key)
-                        self._storeobj.__delitem__(key)
+                    if key in fgrp:
+                        log.debug("Delete dataset %s/%s." % (group, key))
+                        fgrp.__delitem__(key)
             else:
-                if group in self._storeobj:
-                    log.debug("Delete group '/%s'." % group)
-                    self._storeobj.__delitem__(group)
                 log.debug("Create group '/%s'." % group)
                 fgrp = self._storeobj.create_group(group)
             for key, val in data.items():
-                log.debug("Create dataset '%s/%s'." % (fgrp.name, key))
+                log.debug("Create dataset %s/%s." % (fgrp.name, key))
                 if isinstance(val, (list, numpy.ndarray)):
                     if isinstance(val, list):
                         val = numpy.array(val)
