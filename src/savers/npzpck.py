@@ -35,6 +35,20 @@ class NpzPckSaver(BasePckSaver):
         return numpy.lib.npyio.zipfile_factory(
             self.path, mode="w", compression=zipfile.ZIP_DEFLATED)
 
+    def _not_use_find_overwrite_names(self, group, data):
+        old_all = self._storeobj.namelist()
+        if group in ('/', ''):
+            new = ['%s.npy' % key for key in data.keys()]
+            old_copy = [n for n in old_all if ('/' in n or n not in new)]
+            old_over = [n for n in old_all if ('/' not in n and n in new)]
+        else:
+            new = ['%s/%s.npy' % (group, key) for key in data.keys()]
+            old_copy = [n for n in old_all
+                        if (not n.startswith('%s/' % group) or n not in new)]
+            old_over = [n for n in old_all
+                        if (n.startswith('%s/' % group) and n in new)]
+        return old_copy, old_over
+
     def _write(self, group, data):
         file_dir, file_prefix = os.path.split(self.path)
         fd, tmpfile = tempfile.mkstemp(
