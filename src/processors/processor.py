@@ -475,7 +475,9 @@ class Processor(object):
         redig: bool
             If :attr:`resfilesaver` type is '.npz', *redig* will cause warning:
                 "zipfile.py: UserWarning: Duplicate name ..."
-            Recommend using '.hdf5' when *redig* is True.
+            Recommend using '.hdf5' when *redig* is True or
+            setting :attr:`resfilesaver.duplicate_name`=False to rebuild
+            a new zip archive when we get duplicate names.
         post: bool
             call post_dig
         callback: a callable
