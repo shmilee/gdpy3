@@ -14,7 +14,7 @@ import hashlib
 import multiprocessing
 
 from .. import __version__ as gdpy3_version
-from ..glogger import getGLogger
+from ..glogger import getGLogger, get_glogger_work_initializer
 from ..loaders import is_rawloader, get_rawloader, is_pckloader, get_pckloader
 from ..savers import is_pcksaver, get_pcksaver
 from ..cores.exporter import (TmplLoader, ContourfExporter, LineExporter,
@@ -164,6 +164,20 @@ class Processor(object):
         return "Raw data files in %s '%s'" % (
             self.rawloader.loader_type, self.rawloader.path)
 
+    @staticmethod
+    def _convert_worker(core, id=False):
+        '''
+        Parameters
+        ----------
+        core: Converter core instance
+        id: bool
+            When using multiprocessing,
+            *id* is True, processname is set to :arrt:`short_files`.
+        '''
+        if id:
+            multiprocessing.current_process().name = core.short_files
+        return core.convert()
+
     def convert(self, add_desc=None):
         '''
         Convert raw data in rawloader.path, and save them in pcksaver.
@@ -184,17 +198,21 @@ class Processor(object):
                                       'processor': self.name})
         if self.multiproc > 1:
             nworkers = min(self.multiproc, len(self.converters))
-            with multiprocessing.Pool(processes=nworkers) as pool:
-                for i in range(0, len(self.converters), nworkers):
-                    results = [
-                        (core.group, pool.apply_async(core.convert, ()))
-                        for core in self.converters[i:i+nworkers]
-                    ]
-                    # do not pool.close(); pool.join()
-                    # res.get blocks until `nworkers` results are ready
-                    with self.pcksaver:
-                        for group, res in results:
-                            self.pcksaver.write(group, res.get())
+            with get_glogger_work_initializer() as loginitializer:
+                with multiprocessing.Pool(
+                        processes=nworkers,
+                        initializer=loginitializer) as pool:
+                    for i in range(0, len(self.converters), nworkers):
+                        results = [
+                            (core.group, pool.apply_async(
+                                self._convert_worker, (core,), {'id': True}))
+                            for core in self.converters[i:i+nworkers]
+                        ]
+                        # do not pool.close(); pool.join()
+                        # res.get blocks until `nworkers` results are ready
+                        with self.pcksaver:
+                            for group, res in results:
+                                self.pcksaver.write(group, res.get())
         else:
             with self.pcksaver:
                 for core in self.converters:
@@ -444,7 +462,16 @@ class Processor(object):
             return 2
         return 1
 
-    def _dig_worker(self, figlabel, redig, kwargs):
+    def _dig_worker(self, figlabel, redig, kwargs, id=False):
+        '''
+        Parameters
+        ----------
+        id: bool
+            When using multiprocessing,
+            *id* is True, processname is set to *figlabel*.
+        '''
+        if id:
+            multiprocessing.current_process().name = figlabel
         digcore = self._pre_find_digcore(figlabel)
         if not digcore:
             return (None,)*6
@@ -473,7 +500,7 @@ class Processor(object):
         Parameters
         ----------
         redig: bool
-            If :attr:`resfilesaver` type is '.npz', *redig* will cause warning:
+            If :attr:`resfilesaver` type is '.npz', *redig* may cause warning:
                 "zipfile.py: UserWarning: Duplicate name ..."
             Recommend using '.hdf5' when *redig* is True or
             setting :attr:`resfilesaver.duplicate_name`=False to rebuild
@@ -536,43 +563,52 @@ class Processor(object):
             else:
                 plog.warning("Parameter figlabel can be str or dict, "
                              "not %s: %s" % (type(fl), fl))
+        if len(couple_figlabels) <= 0:
+            plog.warning("please pass at least one figlabel!")
+            return []
         multi_results = []
         if self.multiproc > 1:
             nworkers = min(self.multiproc, len(couple_figlabels))
-            with multiprocessing.Pool(processes=nworkers) as pool:
-                # While _save_new_dig running, _dig_worker call _find_old_dig,
-                # then writing and reading file together may cause error.
-                for i in range(0, len(couple_figlabels), nworkers):
-                    async_results = [pool.apply_async(
-                        self._dig_worker, (figlabel, redig, kwargs))
-                        for figlabel, kwargs in couple_figlabels[i:i+nworkers]
-                    ]
-                    # do not pool.close(); pool.join()
-                    # res.get blocks until `nworkers` results are ready
-                    # then save them together before next `nworkers` tasks.
-                    update = 1
-                    for data in [res.get() for res in async_results]:
-                        if data == (None,)*6:
-                            multi_results.append((None,)*3)
-                        else:
-                            accfiglabel, gotfiglabel, \
-                                res_from, results, digtime, digcore = data
-                            if res_from == 'new':
-                                update = self._save_new_dig(
-                                    accfiglabel, gotfiglabel,
-                                    results, digtime, digcore)
-                            if post:
-                                results = digcore.post_dig(results)
-                            if callable(callback):
-                                callback(results)
-                            multi_results.append(
-                                (accfiglabel, results, digcore.post_template))
-                    # update resloader & diggedlabels
-                    self.resloader = get_pckloader(self.ressaver.get_store())
-                    # update resfileloader & diggedlabels
-                    if update == 2:
-                        self.resfileloader = get_pckloader(
-                            self.resfilesaver.get_store())
+            with get_glogger_work_initializer() as loginitializer:
+                with multiprocessing.Pool(
+                        processes=nworkers,
+                        initializer=loginitializer) as pool:
+                    # While _save_new_dig running, _dig_worker
+                    # call _find_old_dig, then writing and reading file
+                    # together may cause error.
+                    # So do not pool.close(); pool.join()
+                    for i in range(0, len(couple_figlabels), nworkers):
+                        async_results = [pool.apply_async(
+                            self._dig_worker,
+                            (figlabel, redig, kwargs), {'id': True})
+                            for figlabel, kwargs in couple_figlabels[i:i+nworkers]
+                        ]
+                        # res.get blocks until `nworkers` results are ready
+                        # save them together before next `nworkers` tasks.
+                        update = 1
+                        for data in [res.get() for res in async_results]:
+                            if data == (None,)*6:
+                                multi_results.append((None,)*3)
+                            else:
+                                accfiglabel, gotfiglabel, \
+                                    res_from, results, digtime, digcore = data
+                                if res_from == 'new':
+                                    update = self._save_new_dig(
+                                        accfiglabel, gotfiglabel,
+                                        results, digtime, digcore)
+                                if post:
+                                    results = digcore.post_dig(results)
+                                if callable(callback):
+                                    callback(results)
+                                multi_results.append(
+                                    (accfiglabel, results, digcore.post_template))
+                        # update resloader & diggedlabels
+                        self.resloader = get_pckloader(
+                            self.ressaver.get_store())
+                        # update resfileloader & diggedlabels
+                        if update == 2:
+                            self.resfileloader = get_pckloader(
+                                self.resfilesaver.get_store())
         else:
             # plog.error("Max number of worker processes must > 1!")
             plog.warning("Max number of worker processes is one, "
