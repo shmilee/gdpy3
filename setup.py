@@ -36,7 +36,7 @@ setup(
         'MacOS X',
         'Windows',
     ],
-    classifiers=(
+    classifiers=[
         'Development Status :: 3 - Alpha',
         'Environment :: Console',
         'Environment :: Plugins',
@@ -52,7 +52,7 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Topic :: Scientific/Engineering :: Physics',
         'Topic :: Scientific/Engineering :: Visualization'
-    ),
+    ],
     install_requires=[
         'numpy>=1.10.0',
         'matplotlib>=1.5.3',
