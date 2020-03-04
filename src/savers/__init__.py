@@ -50,10 +50,10 @@ def get_pcksaver(path):
         saver = CachePckSaver(path)
     elif ext == '.npz':
         from .npzpck import NpzPckSaver
-        saver = NpzPckSaver(path)
+        saver = NpzPckSaver(os.path.expanduser(path))
     elif ext == '.hdf5':
         from .hdf5pck import Hdf5PckSaver
-        saver = Hdf5PckSaver(path)
+        saver = Hdf5PckSaver(os.path.expanduser(path))
     else:
         raise ValueError('Save ha? Who am I? Why am I here?')
     return saver

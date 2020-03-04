@@ -62,28 +62,24 @@ def get_rawloader(path, filenames_filter=None):
        format: 'sftp://username[:passwd]@host[:port]##remote/path'
     '''
 
-    path = str(path)
+    path = os.path.expanduser(str(path))
     if path.startswith('sftp://'):
-        from .sftpraw import SftpRawLoader
-        loader = SftpRawLoader(path, filenames_filter=filenames_filter)
+        from .sftpraw import SftpRawLoader as Loader
     elif os.path.isdir(path):
-        from .dirraw import DirRawLoader
-        loader = DirRawLoader(path, filenames_filter=filenames_filter)
+        from .dirraw import DirRawLoader as Loader
     elif os.path.isfile(path):
         import tarfile
         import zipfile
         if tarfile.is_tarfile(path):
-            from .tarraw import TarRawLoader
-            loader = TarRawLoader(path, filenames_filter=filenames_filter)
+            from .tarraw import TarRawLoader as Loader
         elif zipfile.is_zipfile(path):
-            from .zipraw import ZipRawLoader
-            loader = ZipRawLoader(path, filenames_filter=filenames_filter)
+            from .zipraw import ZipRawLoader as Loader
         else:
             raise ValueError('Unsupported File "%s"! Try with one of: "%s"!'
                              % (path, ', '.join(rawloader_types[1:-1])))
     else:
         raise IOError("Can't find path '%s'!" % path)
-    return loader
+    return Loader(path, filenames_filter=filenames_filter)
 
 
 def is_rawloader(obj):
@@ -107,23 +103,24 @@ def get_pckloader(path, datagroups_filter=None):
     '''
 
     if isinstance(path, dict):
-        from .cachepck import CachePckLoader
-        loader = CachePckLoader(path, datagroups_filter=datagroups_filter)
-    elif isinstance(path, str) and os.path.isfile(path):
-        ext = os.path.splitext(path)[1]
-        if ext == '.npz':
-            from .npzpck import NpzPckLoader
-            loader = NpzPckLoader(path, datagroups_filter=datagroups_filter)
-        elif ext == '.hdf5':
-            from .hdf5pck import Hdf5PckLoader
-            loader = Hdf5PckLoader(path, datagroups_filter=datagroups_filter)
+        from .cachepck import CachePckLoader as Loader
+    elif isinstance(path, str):
+        path = os.path.expanduser(path)
+        if os.path.isfile(path):
+            ext = os.path.splitext(path)[1]
+            if ext == '.npz':
+                from .npzpck import NpzPckLoader as Loader
+            elif ext == '.hdf5':
+                from .hdf5pck import Hdf5PckLoader as Loader
+            else:
+                raise ValueError('Unsupported Filetype: "%s"! '
+                                 'Did you mean one of: "%s"?'
+                                 % (ext, ', '.join(pckloader_types[1:])))
         else:
-            raise ValueError('Unsupported Filetype: "%s"! '
-                             'Did you mean one of: "%s"?'
-                             % (ext, ', '.join(pckloader_types[1:])))
+            raise IOError("Can't find path '%s'!" % path)
     else:
-        raise IOError("Can't find path '%s'!" % path)
-    return loader
+        raise ValueError("Var *path* should be str or dict object!")
+    return Loader(path, datagroups_filter=datagroups_filter)
 
 
 def is_pckloader(obj):
