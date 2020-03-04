@@ -3,7 +3,8 @@
 # Copyright (c) 2020 shmilee
 
 if __name__ == "__main__":
-    iface = 'cli'
+    import os
+    iface = os.getenv('GDPY3_IFACE', default='gui')
     if iface == 'gui':
         from .GUI import gui_script as i_script
     else:
