@@ -1,0 +1,24 @@
+# Maintainer: shmilee <shmilee.zju@gmail.com>
+
+if [ -f "$PWD"/PKGBUILD ]; then
+    _old_p="$PWD"/PKGBUILD
+elif [ -f "$PWD"/../PKGBUILD ]; then
+    _old_p="$PWD"/../PKGBUILD
+elif [ -f "$PWD"/gdpy3/arch/PKGBUILD ]; then
+    _old_p="$PWD"/gdpy3/arch/PKGBUILD
+fi
+msg "source old PKGBUILD: $_old_p"
+source "$_old_p"
+
+_pkgname=gdpy3
+pkgname=gdpy3-git
+pkgver=0.6.0.r19.g0016c30
+makedepends+=('git')
+conflicts=("$_pkgname")
+source[0]="git+file:///home/shmilee/project/$_pkgname"
+#source[0]="git+https://github.com/shmilee/$_pkgname.git"
+
+pkgver() {
+  cd "$_pkgname"
+  git describe --long --tags --dirty | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
