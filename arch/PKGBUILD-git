@@ -1,5 +1,6 @@
 # Maintainer: shmilee <shmilee.zju@gmail.com>
 
+# fix pkgver
 if [ -f "$PWD"/PKGBUILD ]; then
     _old_p="$PWD"/PKGBUILD
 elif [ -f "$PWD"/../PKGBUILD ]; then
@@ -12,10 +13,10 @@ source "$_old_p"
 
 _pkgname=gdpy3
 pkgname=gdpy3-git
-pkgver=0.6.0.r19.g0016c30
+pkgver=0.6.0.r21.g30f3186
 makedepends+=('git')
 conflicts=("$_pkgname")
-source[0]="git+file:///home/shmilee/project/$_pkgname"
+source[0]="git+file://$PWD/../../$_pkgname"
 #source[0]="git+https://github.com/shmilee/$_pkgname.git"
 
 pkgver() {
