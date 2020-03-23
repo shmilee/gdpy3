@@ -125,7 +125,7 @@ class SnapshotConverter(Converter):
             clog.debug("Filling datakey: %s ..." % 'fastion-pdf')
             sd.update({'fastion-pdf': tempdata[:, :, 2]})
 
-        # 4. poloidata(0:mtgrid,0:mpsi,nfield+2), nfield=3
+        # 4. poloidata(0:mtgrid,0:mpsi,nfield+2), nfield=3 or 5
         clog.debug("Filling datakeys: %s ..." % str(self._datakeys[13:18]))
         tempsize = sd['mtgrid+1'] * sd['mpsi+1'] * (sd['nfield'] + 2)
         index0, index1 = index1, index1 + tempsize
@@ -134,8 +134,13 @@ class SnapshotConverter(Converter):
         sd.update({'poloidata-phi': tempdata[:, :, 0]})
         sd.update({'poloidata-apara': tempdata[:, :, 1]})
         sd.update({'poloidata-fluidne': tempdata[:, :, 2]})
-        sd.update({'poloidata-x': tempdata[:, :, 3]})
-        sd.update({'poloidata-z': tempdata[:, :, 4]})
+        sd.update({'poloidata-x': tempdata[:, :, -2]})
+        sd.update({'poloidata-z': tempdata[:, :, -1]})
+        if sd['nfield'] == 5:
+            clog.debug("Filling datakeys: %s ..." % str(
+                ('poloidata-densityi', 'poloidata-densitye')))
+            sd.update({'poloidata-densityi': tempdata[:, :, 3]})
+            sd.update({'poloidata-densitye': tempdata[:, :, 4]})
 
         # 5. fluxdata(0:mtgrid,mtoroidal,nfield)
         clog.debug("Filling datakeys: %s ..." % str(self._datakeys[18:]))
@@ -146,6 +151,11 @@ class SnapshotConverter(Converter):
         sd.update({'fluxdata-phi': tempdata[:, :, 0]})
         sd.update({'fluxdata-apara': tempdata[:, :, 1]})
         sd.update({'fluxdata-fluidne': tempdata[:, :, 2]})
+        if sd['nfield'] == 5:
+            clog.debug("Filling datakeys: %s ..." % str(
+                ('fluxdata-densityi', 'fluxdata-densitye')))
+            sd.update({'fluxdata-densityi': tempdata[:, :, 3]})
+            sd.update({'fluxdata-densitye': tempdata[:, :, 4]})
 
         return sd
 
@@ -225,16 +235,19 @@ class SnapshotProfilePdfDigger(Digger):
 field_tex_str = {
     'phi': r'\phi',
     'apara': r'A_{\parallel}',
-    'fluidne': r'fluid n_e'
+    'fluidne': r'fluid n_e',
+    'densityi': r'\delta n_i',
+    'densitye': r'\delta n_e',
 }
 
 
 class SnapshotFieldFluxDigger(Digger):
-    '''phi, a_para, fluidne on flux surface.'''
+    '''phi, a_para, fluidne, or densityi, densitye on flux surface.'''
     __slots__ = []
     nitems = '?'
-    itemspattern = ['^(?P<section>snap\d{5,7})'
-                    + '/fluxdata-(?P<field>(?:phi|apara|fluidne))']
+    itemspattern = [
+        '^(?P<section>snap\d{5,7})'
+        + '/fluxdata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))']
     commonpattern = ['gtc/tstep']
     post_template = 'tmpl_contourf'
 
@@ -260,12 +273,13 @@ class SnapshotFieldFluxDigger(Digger):
 
 
 class SnapshotFieldPoloidalDigger(Digger):
-    '''phi, a_para, fluidne on poloidal plane.'''
+    '''phi, a_para, fluidne or densityi, densitye on poloidal plane.'''
     __slots__ = []
     nitems = '+'
-    itemspattern = ['^(?P<section>snap\d{5,7})'
-                    + '/poloidata-(?P<field>(?:phi|apara|fluidne))',
-                    '^(?P<s>snap\d{5,7})/poloidata-(?:x|z)']
+    itemspattern = [
+        '^(?P<section>snap\d{5,7})'
+        + '/poloidata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))',
+        '^(?P<s>snap\d{5,7})/poloidata-(?:x|z)']
     commonpattern = ['gtc/tstep', 'gtc/mpsi', 'gtc/arr2', 'gtc/a_minor']
     neededpattern = itemspattern + commonpattern[:-2]
     post_template = 'tmpl_z111p'
@@ -330,13 +344,14 @@ class SnapshotFieldPoloidalDigger(Digger):
 
 
 class SnapshotFieldSpectrumDigger(Digger):
-    '''field poloidal and parallel spectra.'''
+    '''field or density poloidal and parallel spectra.'''
     __slots__ = []
     nitems = '+'
-    itemspattern = ['^(?P<section>snap\d{5,7})'
-                    + '/fluxdata-(?P<field>(?:phi|apara|fluidne))',
-                    '^(?P<s>snap\d{5,7})/mtgrid\+1',
-                    '^(?P<s>snap\d{5,7})/mtoroidal']
+    itemspattern = [
+        '^(?P<section>snap\d{5,7})'
+        + '/fluxdata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))',
+        '^(?P<s>snap\d{5,7})/mtgrid\+1',
+        '^(?P<s>snap\d{5,7})/mtoroidal']
     commonpattern = ['gtc/tstep']
     post_template = 'tmpl_z111p'
 
@@ -415,13 +430,14 @@ class SnapshotFieldSpectrumDigger(Digger):
 
 
 class SnapshotFieldProfileDigger(Digger):
-    '''field and rms radius poloidal profile'''
+    '''field and rms or density radius poloidal profile'''
     __slots__ = []
     nitems = '+'
-    itemspattern = ['^(?P<section>snap\d{5,7})'
-                    + '/poloidata-(?P<field>(?:phi|apara|fluidne))',
-                    '^(?P<s>snap\d{5,7})/mpsi\+1',
-                    '^(?P<s>snap\d{5,7})/mtgrid\+1']
+    itemspattern = [
+        '^(?P<section>snap\d{5,7})'
+        + '/poloidata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))',
+        '^(?P<s>snap\d{5,7})/mpsi\+1',
+        '^(?P<s>snap\d{5,7})/mtgrid\+1']
     commonpattern = ['gtc/tstep']
     post_template = 'tmpl_z111p'
 
@@ -498,13 +514,14 @@ class SnapshotFieldProfileDigger(Digger):
 
 
 class SnapshotFieldmDigger(Digger):
-    '''profile of field_m'''
+    '''profile of field_m or density_m'''
     __slots__ = []
     nitems = '+'
-    itemspattern = ['^(?P<section>snap\d{5,7})'
-                    + '/poloidata-(?P<field>(?:phi|apara|fluidne))',
-                    '^(?P<s>snap\d{5,7})/mpsi\+1',
-                    '^(?P<s>snap\d{5,7})/mtgrid\+1']
+    itemspattern = [
+        '^(?P<section>snap\d{5,7})'
+        + '/poloidata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))',
+        '^(?P<s>snap\d{5,7})/mpsi\+1',
+        '^(?P<s>snap\d{5,7})/mtgrid\+1']
     commonpattern = ['gtc/tstep', 'gtc/arr2', 'gtc/a_minor']
     post_template = 'tmpl_line'
 
