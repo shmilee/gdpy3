@@ -75,7 +75,8 @@ setup(
     data_files=[],
     entry_points={
         'console_scripts': [
-            'gdpy3 = gdpy3.cli:cli_script',
+            'gdpy3 = gdpy3.__main__:entry_iface',
+            'gdpy3-cli = gdpy3.cli:cli_script',
         ],
         'gui_scripts': [
             'gdpy3-gui = gdpy3.GUI:gui_script',
