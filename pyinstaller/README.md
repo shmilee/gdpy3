@@ -38,26 +38,30 @@ pyinstaller --onefile gdpy3-app.spec
 
 ### Usage
 
-PyInstaller version, first create symbolic links, then run links.
+Staticx fully-static bundled version, need to set environment
+variable 'GDPY3_IFACE' in entry_iface_candidates or touch a file
+named **uppercase** entry_iface_candidates in current working
+directory(CWD) to run different cmds.
 
 ```shell
-for lk in cli gui ipy run; do
+entry_iface_candidates=(cli gui run ipy)
+GDPY3_IFACE=cli ./gdpy3-app [args]
+touch CLI # GUI, RUN, IPY
+./gdpy3-app [args]
+```
+
+PyInstaller version, besides 'GDPY3_IFACE' and special file name in CWD,
+we can also create links named entry_iface_candidates to run different cmds.
+
+```shell
+for lk in ${entry_iface_candidates[@]}; do
     ln -s gdpy3-app ./dist/gdpy3-app/gdpy3-$lk
 done
 
 ./dist/gdpy3-app/gdpy3-cli [args]
 ./dist/gdpy3-app/gdpy3-gui [args]
-./dist/gdpy3-app/gdpy3-ipy # run into ipython
 ./dist/gdpy3-app/gdpy3-run [./script.py] # run ./script.py
-```
-
-Staticx fully-static bundled version, need to touch a file
-named 'CLI', 'GUI', 'IPY' or 'RUN' in current working directory
-to run as cmd: 'gdpy3-cli', 'gdpy3-gui', 'gdpy3-ipy' or 'gdpy3-run'.
-
-```shell
-touch CLI # GUI, IPY, RUN
-./gdpy3-app [args]
+./dist/gdpy3-app/gdpy3-ipy # run into ipython
 ```
 
 

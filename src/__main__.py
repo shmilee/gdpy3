@@ -15,8 +15,8 @@ def entry_iface(candidates=('cli', 'gui'), default='gui'):
 
     There are 3 ways to set entry iface: program name, environment
     variable 'GDPY3_IFACE' and special file name in current working
-    directory (CWD). First, check if program name sys.argv[0] in
-    candidates; then if value of 'GDPY3_IFACE' in candidates;
+    directory (CWD). First, check if program name without 'gdpy3-'
+    in candidates; then if value of 'GDPY3_IFACE' in candidates;
     finally check if a file named of uppercase candidates in CWD.
     After all check failed, use default iface.
 
@@ -45,8 +45,8 @@ def entry_iface(candidates=('cli', 'gui'), default='gui'):
             iface = None
             for f in candidates:
                 if os.path.isfile(os.path.join(os.getcwd(), f.upper())):
-                    log.debug('Get iface %s from file name in CWD.' % iface)
                     iface = f
+                    log.debug('Get iface %s from file name in CWD.' % iface)
                     break
             if not iface:
                 # all failed, use default
