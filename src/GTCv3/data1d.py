@@ -387,7 +387,7 @@ class _Data1dMeanDigger(_Data1dDigger):
             ))
         acckwargs.update(dict(
             mean_select=select, mean_iflux=iflux,
-            mean_peak_limit=peak_limit, mean_peak_greedy=peak_greedy,
+            mean_peak_limit=round(peak_limit, 2), mean_peak_greedy=peak_greedy,
             mean_z_abs=z_abs, mean_smooth=smooth,
             mean_z_weight_order=weight_order))
         results.update(dict(
