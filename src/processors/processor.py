@@ -172,10 +172,10 @@ class Processor(object):
         core: Converter core instance
         id: bool
             When using multiprocessing,
-            *id* is True, processname is set to :arrt:`short_files`.
+            *id* is True, processname is set to :arrt:`Converter.groupnote`.
         '''
         if id:
-            multiprocessing.current_process().name = core.short_files
+            multiprocessing.current_process().name = core.groupnote
         return core.convert()
 
     def convert(self, add_desc=None):

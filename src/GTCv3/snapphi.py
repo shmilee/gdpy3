@@ -53,6 +53,10 @@ class SnapPhiZetaPsiConverter(Converter):
         r'phi_zeta_psi_%d'
     )
 
+    @property
+    def groupnote(self):
+        return '%s/phi_zeta_psi' % self._group
+
     def _convert(self):
         '''Read 'phi_dir/phi_zeta_psi_snap%05d_tor%04d.out'.'''
         phi = []

@@ -45,6 +45,10 @@ class Converter(BaseCore, metaclass=AppendDocstringMeta):
         return self._group
 
     @property
+    def groupnote(self):
+        return self._group
+
+    @property
     def short_files(self):
         return self._short_files
 
