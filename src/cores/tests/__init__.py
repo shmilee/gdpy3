@@ -11,9 +11,6 @@ class RawLoader(object):
         'p/s2_t0.out', 'p/s2_t1.out', 'p/s2_t2.out',
     ]
 
-    def key_location(self, f):
-        return '%s/%s' % ('test/rawlodaer', f)
-
 
 class PckLoader(object):
     path = 'test/pcklodaer'

@@ -54,6 +54,3 @@ class DirRawLoader(BaseRawLoader):
 
     def _special_get(self, pathobj, key):
         return open(os.path.join(self.path, key))
-
-    def key_location(self, key):
-        return os.path.join(self.path, key)

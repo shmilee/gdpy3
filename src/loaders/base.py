@@ -222,9 +222,6 @@ class BaseRawLoader(BaseLoader):
                 log.debug("Close file %s in path %s." % (key, self.path))
                 fileobj.close()
 
-    def key_location(self, key):
-        return '%s: %s' % (self.path, key)
-
     def beside_path(self, name):
         '''Get a path for *name*, join with :attr:`path`'''
         return os.path.join(self.path, name)

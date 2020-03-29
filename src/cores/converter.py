@@ -100,10 +100,9 @@ class Converter(BaseCore, metaclass=AppendDocstringMeta):
 
     def convert(self):
         '''Read raw data, convert them. Return a dict.'''
-        path = self.rawloader.key_location(self.short_files)
         try:
-            clog.info('Converting raw data in %s ...' % path)
+            clog.info('Converting raw data in %s ...' % self.short_files)
             return self._convert()
         except Exception:
-            clog.error('Failed to convert raw data in %s.' % path,
+            clog.error('Failed to convert raw data in %s.' % self.short_files,
                        exc_info=1)

@@ -119,9 +119,6 @@ class SftpRawLoader(BaseRawLoader):
         return io.TextIOWrapper(
             pathobj.open(self._sep.join([self.rmt_path, key]), 'r'))
 
-    def key_location(self, key):
-        return self._sep.join([self.path, key])
-
     def beside_path(self, name):
         return os.path.join(tempfile.tempdir, '%s-%s' % (
             self.rmt_path.replace('/', '-'), name))
