@@ -58,7 +58,7 @@ class Converter(BaseCore, metaclass=AppendDocstringMeta):
             for cc in ccs:
                 group_files.append((cc.group, cc.short_files))
             clog.debug("%s: loader, %s; %d group and files, %s."
-                       % (ccs[0].coreid, rawloader.path,
+                       % (ccs[0].clsname, rawloader.path,
                           len(group_files), group_files))
         return ccs
 

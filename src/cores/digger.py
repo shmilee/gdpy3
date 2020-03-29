@@ -101,7 +101,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
                         figlabels.append(dc.figlabel)
         if res:
             dlog.debug("%s: loader, %s; %d figlabels, %s."
-                       % (res[0].coreid, pckloader.path,
+                       % (res[0].clsname, pckloader.path,
                           len(figlabels), figlabels))
         return res
 
@@ -112,7 +112,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
             self._set_fignum(numseed=numseed)
         except Exception:
             dlog.error("%s: Failed to initialize object %s!"
-                       % (self.coreid, id(self)), exc_info=1)
+                       % (self.clsname, id(self)), exc_info=1)
             return False
         else:
             return True
@@ -180,7 +180,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
             results, acckwargs = self._dig(kwargs)
         except Exception:
             dlog.error("%s: can't dig data for %s!"
-                       % (self.coreid, self.figlabel), exc_info=1)
+                       % (self.clsname, self.figlabel), exc_info=1)
             results, acckwargs = {}, {}
         end = time.time()
         return results, self.str_dig_kwargs(acckwargs), end-start
@@ -198,6 +198,6 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
             new_results = self._post_dig(results)
         except Exception:
             dlog.error("%s: can't post-dig data for %s!"
-                       % (self.coreid, self.figlabel), exc_info=1)
+                       % (self.clsname, self.figlabel), exc_info=1)
             new_results = results
         return new_results

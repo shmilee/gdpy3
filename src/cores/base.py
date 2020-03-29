@@ -49,7 +49,7 @@ class BaseCore(object):
     commonpattern = []
 
     @property
-    def coreid(self):
+    def clsname(self):
         return type(self).__name__
 
     @classmethod
@@ -121,11 +121,11 @@ class BaseCore(object):
         if self.nitems == '?':
             if not len(items) == 1:
                 raise ValueError("%s: must passing only one item, not '%s'!"
-                                 % (self.coreid, len(items)))
+                                 % (self.clsname, len(items)))
         else:
             if not len(items) >= 1:
                 raise ValueError("%s: must passing >= 1 items, not '%s'!"
-                                 % (self.coreid, len(items)))
+                                 % (self.clsname, len(items)))
         self.items = items
         self.common = common
 
