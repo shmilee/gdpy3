@@ -28,9 +28,9 @@ class Converter(BaseCore, metaclass=AppendDocstringMeta):
     group: str
         group name of pickled data
     short_files: str
-        short files if list is too long
+        short files if :attr:`files` list is too long
     '''
-    __slots__ = ['_files', '_group', '_short_files']
+    __slots__ = ['_files', '_group']
 
     @property
     def rawloader(self):
@@ -48,9 +48,35 @@ class Converter(BaseCore, metaclass=AppendDocstringMeta):
     def groupnote(self):
         return self._group
 
+    # None,
+    # tuple ('items index 0', 'pat','repl'),
+    # etc
+    _short_files_subs = None
+
     @property
     def short_files(self):
-        return self._short_files
+        if self.nitems == '?':
+            return self.items[0]
+        # else nitems == '+'
+        if self._short_files_subs is None:
+            # default re sub, preserve section, filter all items
+            items = self.items
+            for idx, sect in enumerate(self.section, 65):
+                items = [re.sub(sect, '#ST%s#' % chr(idx), i) for i in items]
+            items = list({re.sub('\d', '*', i) for i in items})
+            res = items
+            for idx, sect in enumerate(self.section, 65):
+                res = [re.sub('#ST%s#' % chr(idx), sect, i) for i in res]
+            if len(res) == 1:
+                return res[0]
+            else:
+                return str(res)
+        else:
+            # use specified _short_files_subs
+            if self._short_files_subs[0] == 0:
+                pat, repl = self._short_files_subs[1:]
+                return re.sub(pat, repl, self.items[0])
+            # etc
 
     @classmethod
     def generate_cores(cls, rawloader):
@@ -70,29 +96,9 @@ class Converter(BaseCore, metaclass=AppendDocstringMeta):
         super(Converter, self).__init__(rawloader, section, items, common)
         if self.nitems == '?':
             self._files = self.items[0]
-            self._short_files = self.items[0]
         else:
             self._files = self.items
-            self._short_files = self._get_short_files()
         self._group = '/'.join(self.section)
-
-    def _get_short_files(self):
-        '''
-        When :attr:`files` is list, replace any decimal digit in it with '*'.
-        Return a short string of unique items.
-        '''
-        # preserve section
-        items = self.items
-        for idx, sect in enumerate(self.section, 65):
-            items = [re.sub(sect, '#SECT#%s#' % chr(idx), it) for it in items]
-        items = list({re.sub('\d', '*', it) for it in items})
-        res = items
-        for idx, sect in enumerate(self.section, 65):
-            res = [re.sub('#SECT#%s#' % chr(idx), sect, it) for it in res]
-        if len(res) == 1:
-            return res[0]
-        else:
-            return str(res)
 
     def _convert(self):
         '''Convert raw data.'''

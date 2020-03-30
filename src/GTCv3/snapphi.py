@@ -45,6 +45,7 @@ class SnapPhiZetaPsiConverter(Converter):
     nitems = '+'
     itemspattern = ['^phi_dir/phi_zeta_psi_(?P<section>snap\d{5})_tor\d{4}\.out$',
                     '.*/phi_dir/phi_zeta_psi_(?P<section>snap\d{5})_tor\d{4}\.out$']
+    _short_files_subs = (0, '^(.*psi_snap\d{5}_tor)\d{4}\.out$', r'\1*.out')
     _datakeys = (
         # 1. parameters
         'mzeach', 'msnap_nj', 'j_list',
