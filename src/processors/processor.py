@@ -164,19 +164,26 @@ class Processor(object):
         return "Raw data files in %s '%s'" % (
             self.rawloader.loader_type, self.rawloader.path)
 
-    @staticmethod
-    def _convert_worker(core, id=False):
+    def _convert_worker(self, core, lock, id=True):
         '''
         Parameters
         ----------
         core: Converter core instance
+        lock: multiprocessing lock
         id: bool
             When using multiprocessing,
             *id* is True, processname is set to :arrt:`Converter.groupnote`.
         '''
         if id:
             multiprocessing.current_process().name = core.groupnote
-        return core.convert()
+        data = core.convert()
+        lock.acquire()
+        try:
+            plog.info("Writing data in group %s ..." % core.groupnote)
+            with self.pcksaver:
+                self.pcksaver.write(core.group, data)
+        finally:
+            lock.release()
 
     def convert(self, add_desc=None):
         '''
@@ -199,20 +206,15 @@ class Processor(object):
         if self.multiproc > 1:
             nworkers = min(self.multiproc, len(self.converters))
             with get_glogger_work_initializer() as loginitializer:
+                lock = multiprocessing.Manager().RLock()
                 with multiprocessing.Pool(
                         processes=nworkers,
                         initializer=loginitializer) as pool:
-                    for i in range(0, len(self.converters), nworkers):
-                        results = [
-                            (core.group, pool.apply_async(
-                                self._convert_worker, (core,), {'id': True}))
-                            for core in self.converters[i:i+nworkers]
-                        ]
-                        # do not pool.close(); pool.join()
-                        # res.get blocks until `nworkers` results are ready
-                        with self.pcksaver:
-                            for group, res in results:
-                                self.pcksaver.write(group, res.get())
+                    results = [pool.apply_async(
+                        self._convert_worker, (core, lock))
+                        for core in self.converters]
+                    pool.close()
+                    pool.join()
         else:
             with self.pcksaver:
                 for core in self.converters:
