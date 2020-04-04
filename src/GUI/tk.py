@@ -52,15 +52,24 @@ class GTkApp(object):
         log.debug('Main frame packed.')
         # 1
         w_frame_proc = ttk.Labelframe(main, text='1. Processor:', width=width)
+        w_str_path = tkinter.StringVar(value='')
+        w_str_path.trace("w", self.save_case_path)
+        w_entry_path = ttk.Entry(
+            w_frame_proc, font=font, textvariable=w_str_path)
+        w_entry_path.grid(in_=w_frame_proc, row=0, column=0, padx=5, pady=5,
+                          sticky=W+E)
+        w_path = ttk.Button(
+            w_frame_proc, text='Path', width=0, command=self.ask_case_path)
+        w_path.grid(in_=w_frame_proc, row=0, column=1, padx=5, pady=5)
         w_str_proc = tkinter.StringVar()
         w_select_proc = ttk.Combobox(
             w_frame_proc, values=processor_names, font=font,
             textvariable=w_str_proc, state='readonly')
         w_str_proc.set(processor_names[0])
-        w_select_proc.grid(in_=w_frame_proc, row=0, column=0, padx=5, pady=5)
+        w_select_proc.grid(in_=w_frame_proc, row=1, column=0, padx=5, pady=5)
         w_pick = ttk.Button(
             w_frame_proc, text="Pick", width=0, command=self.after_pick)
-        w_pick.grid(in_=w_frame_proc, row=0, column=1, padx=5, pady=5)
+        w_pick.grid(in_=w_frame_proc, row=1, column=1, padx=5, pady=5)
         w_frame_proc.grid(row=0, column=0, padx=10, pady=5, sticky=W+E)
         # 2
         w_frame_fig = ttk.Labelframe(main, text='2. Figure:', width=width)
@@ -150,7 +159,8 @@ class GTkApp(object):
         self.figlabels = w_list_fig
         self.figlistbox = w_listbox_fig
         self.figkwframe = w_kw_in_frame
-        self.path = path
+        self.pathlabel = w_str_path
+        self.ask_sftp = ask_sftp
         self.processor = None
         self.figkwslib = {}  # all figure kwargs widgets, key is figlabel
         self.figkws = {}  # kwargs widgets mapped in panel
@@ -162,20 +172,25 @@ class GTkApp(object):
         w_entry_filter.bind("<Return>", self.after_filter)
         w_listbox_fig.bind("<<ListboxSelect>>", self.after_figlabel)
         # X - start
-        if not self.path:
-            self.path = self.ask_case_path(ask_sftp=ask_sftp)
-        if self.path and not self.path.startswith('sftp://'):
-            try:
-                with open(self.recent, 'w', encoding='utf-8') as rf:
-                    rf.write(self.path)
-            except Exception:
-                log.debug('Error of saving recent path.', exc_info=1)
+        if path:
+            self.path = path
+            self.save_case_path()
+        else:
+            self.ask_case_path(N=2)
         self.root.title('gdpy3 - %s' % self.path)
         if monitor:
             log.info('Start Tk mainloop on monitor %s.' % monitor.name)
         else:
             log.info('Start Tk mainloop.')
         self.root.mainloop()
+
+    def _get_path(self):
+        return self.pathlabel.get()
+
+    def _set_path(self, path):
+        self.pathlabel.set(path)
+
+    path = property(_get_path, _set_path)
 
     def center(self, win):
         win.update_idletasks()
@@ -189,9 +204,9 @@ class GTkApp(object):
             y = (win.winfo_screenheight() // 2) - (height // 2)
         win.geometry('{}x{}+{}+{}'.format(width, height, x, y))
 
-    def ask_case_path(self, ask_sftp):
-        N, path = 3, None
-        if ask_sftp:
+    def ask_case_path(self, N=1):
+        self.path = ''
+        if self.ask_sftp:
             for _ in range(N):
                 path = simpledialog.askstring(
                     "Input sftp path",
@@ -200,7 +215,8 @@ class GTkApp(object):
                     initialvalue='sftp://',
                     parent=self.root)
                 if path:
-                    return path
+                    self.path = path
+                    return
         else:
             initialdir = None
             if os.path.isfile(self.recent):
@@ -220,8 +236,17 @@ class GTkApp(object):
                 path = filedialog.askopenfilename(
                     parent=self.root, initialdir=initialdir)
                 if path:
-                    return path
-        return ''
+                    self.path = path
+                    self.save_case_path()
+                    return
+
+    def save_case_path(self, *args):
+        if self.path and not self.path.startswith('sftp://'):
+            try:
+                with open(self.recent, 'w', encoding='utf-8') as rf:
+                    rf.write(self.path)
+            except Exception:
+                log.debug('Error of saving recent path.', exc_info=1)
 
     def reset_panel(self, clear_lib=False):
         for n, w in self.figkws.items():
