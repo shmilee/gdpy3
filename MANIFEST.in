@@ -1,2 +1,2 @@
 include LICENSE README.rst
-recursive-exclude gdpy3/tests *
+#recursive-exclude tests *
