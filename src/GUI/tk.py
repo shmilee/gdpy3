@@ -34,9 +34,9 @@ class GTkApp(object):
         Parameters
         ----------
         path: str
-            case path
+            case path, default ''
         ask_sftp: bool
-            if no path given, ask for a sftp(not local) path.
+            if no path given, ask for a sftp(not local) path, default False
         '''
         root = tkinter.Tk(className='gdpy3-gui')
         img = tkinter.PhotoImage(file=os.path.join(
@@ -52,7 +52,7 @@ class GTkApp(object):
         log.debug('Main frame packed.')
         # 1
         w_frame_proc = ttk.Labelframe(main, text='1. Processor:', width=width)
-        w_str_path = tkinter.StringVar(value='')
+        w_str_path = tkinter.StringVar(value='')  # default path ''
         w_str_path.trace("w", self.save_case_path)
         w_entry_path = ttk.Entry(
             w_frame_proc, font=font, textvariable=w_str_path)
@@ -205,7 +205,6 @@ class GTkApp(object):
         win.geometry('{}x{}+{}+{}'.format(width, height, x, y))
 
     def ask_case_path(self, N=1):
-        self.path = ''
         if self.ask_sftp:
             for _ in range(N):
                 path = simpledialog.askstring(
