@@ -299,7 +299,7 @@ class HistoryFieldModeDigger(Digger):
             self.pckloader.get_many(*self.srckeys, *self.extrakeys[:-2])
         yreal, yimag = yreal[self._idx-1], yimag[self._idx-1]
         dt = tstep * ndiag
-        time = np.arange(1, ndstep + 1) * dt
+        time = np.around(np.arange(1, ndstep + 1) * dt, 8)
         n = nmodes[self._idx-1]
         m = mmodes[self._idx-1]
         try:
