@@ -27,18 +27,30 @@ from . import processor
 
 __all__ = ['get_processor', 'is_processor']
 
-_processorlib = {
-    'GTCv3': '..GTCv3',
-    'GTCv4': '..GTCv4',
-}
-processor_names = sorted(_processorlib.keys())
-alias_names = {
-    'G3': 'GTCv3',
-    'G4': 'GTCv4',
-}
+Processor_Lib = {}
+Processor_Names = []
+Processor_Alias = {}
 
 
-def get_processor(path=None, name='GTCv3', **kwargs):
+def register_processor(name, module_relative_path, alias=None):
+    '''
+    Add processor *name* module and its alias in *Processor_Lib*.
+    Processor_Lib[name] = (module_relative_path, {class_cache_dict})
+    '''
+    if name not in Processor_Lib:
+        Processor_Lib[name] = (module_relative_path, {})
+        # update names
+        Processor_Names.append(name)
+        Processor_Names.sort()
+        if alias:
+            Processor_Alias[alias] = name
+
+
+register_processor('GTCv3', '..GTCv3', 'G3')
+register_processor('GTCv4', '..GTCv4', 'G4')
+
+
+def get_processor(path=None, name='GTCv3', parallel='multiprocess', **kwargs):
     '''
     Generate a processor instance of *name*,
     then pick up raw data or converted data in *path*.
@@ -49,21 +61,37 @@ def get_processor(path=None, name='GTCv3', **kwargs):
     path: str
         data path
     name: str
-        valid processor names :data:`processor_names` or :data:`alias_names`
+        valid names :data:`Processor_Names` or :data:`Processor_Alias`
         default 'GTCv3'
+    parallel: str
+        'off', 'multiprocess' or 'mpi4py', default 'multiprocess'
     kwargs: parameters passed to :meth:`Processor.__init__`
     '''
-    if name in processor_names:
+    if name in Processor_Names:
         pname = name
-    elif name in alias_names:
-        pname = alias_names[name]
+    elif name in Processor_Alias:
+        pname = Processor_Alias[name]
     else:
         raise ValueError(
             'Invalid name: "%s"! Did you mean one of "%s" or alias "%s"?'
-            % (name, ', '.join(processor_names), ', '.join(alias_names)))
-    module_relative = _processorlib.get(pname)
-    ppack = importlib.import_module(module_relative, package=__name__)
-    gdpcls = getattr(ppack, pname)
+            % (name, ', '.join(Processor_Names), ', '.join(Processor_Alias)))
+    module_relative, class_cache = Processor_Lib.get(pname)
+    if parallel in class_cache:
+        gdpcls = class_cache[parallel]
+    else:
+        ppack = importlib.import_module(module_relative, package=__name__)
+        get_gdpcls = getattr(ppack, 'get_%s' % pname)
+        # which Base
+        if parallel == 'off':
+            from .processor import Processor as Base
+        elif parallel == 'multiprocess':
+            from .multiprocessor import MultiProcessor as Base
+        elif parallel == 'mpi4py':
+            raise ValueError('TODO %s' % parallel)
+        else:
+            raise ValueError('Unsupported parallel-lib: %s' % parallel)
+        gdpcls = get_gdpcls(Base)
+        Processor_Lib[name][1][parallel] = gdpcls
     if path:
         if kwargs:
             sig = inspect.signature(gdpcls)

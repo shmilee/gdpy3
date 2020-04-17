@@ -16,7 +16,7 @@ from distutils.version import LooseVersion
 from .. import __version__ as gdpy3_version
 from ..__about__ import __data_path__, __icon_name__
 from ..glogger import getGLogger
-from ..processors import get_processor, processor_names
+from ..processors import get_processor, Processor_Names
 
 __all__ = ['GTkApp']
 log = getGLogger('G')
@@ -63,9 +63,9 @@ class GTkApp(object):
         w_path.grid(in_=w_frame_proc, row=0, column=1, padx=5, pady=5)
         w_str_proc = tkinter.StringVar()
         w_select_proc = ttk.Combobox(
-            w_frame_proc, values=processor_names, font=font,
+            w_frame_proc, values=Processor_Names, font=font,
             textvariable=w_str_proc, state='readonly')
-        w_str_proc.set(processor_names[0])
+        w_str_proc.set(Processor_Names[0])
         w_select_proc.grid(in_=w_frame_proc, row=1, column=0, padx=5, pady=5)
         w_pick = ttk.Button(
             w_frame_proc, text="Pick", width=0, command=self.after_pick)

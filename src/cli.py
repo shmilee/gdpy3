@@ -12,7 +12,7 @@ import time
 import argparse
 
 from .glogger import logfile, getGLogger
-from .processors import processor_names, alias_names, get_processor
+from .processors import Processor_Names, Processor_Alias, get_processor
 from . import __version__ as gdpy3_version
 
 __all__ = ['cli_script']
@@ -54,7 +54,7 @@ def get_parser_base():
     arggrp.add_argument('casepath', nargs='*', type=str,
                         help='Case data path(s)')
     optgrp = parser.add_argument_group('common options')
-    _pnames = processor_names + list(alias_names.keys())
+    _pnames = Processor_Names + list(Processor_Alias.keys())
     optgrp.add_argument('--processor', type=str, metavar='ProcessorName',
                         choices=_pnames, default=_pnames[0],
                         help="Assign processor to work, "
@@ -133,11 +133,11 @@ def cli_script():
 
     if args.list:
         print("Available Processors:")
-        for i, n in enumerate(processor_names):
+        for i, n in enumerate(Processor_Names):
             print("%s%s" % (' ' * 4, n))
         print("Alias Processors:")
-        for i, apn in enumerate(alias_names):
-            print("%s%s -> %s" % (' ' * 4, apn, alias_names[apn]))
+        for i, apn in enumerate(Processor_Alias):
+            print("%s%s -> %s" % (' ' * 4, apn, Processor_Alias[apn]))
         sys.exit()
     if args.help:
         if args.subcmd:

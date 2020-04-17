@@ -10,7 +10,7 @@ import ipywidgets
 from IPython.display import display, HTML
 
 from ..__about__ import __data_path__
-from ..processors import get_processor, processor_names
+from ..processors import get_processor, Processor_Names
 
 __all__ = ['IpynbUI', 'ScrollTool']
 
@@ -27,8 +27,8 @@ class IpynbUI(object):
         self.processor = None
         self.widgets = dict(
             processor=ipywidgets.Dropdown(
-                options=processor_names,
-                value=processor_names[0],
+                options=Processor_Names,
+                value=Processor_Names[0],
                 description='Processor:'),
             pick=ipywidgets.Button(
                 description='', disabled=False,
