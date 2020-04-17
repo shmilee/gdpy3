@@ -26,65 +26,69 @@ from . import (
     trackparticle,
 )
 from ..processors.processor import Processor, plog
+from ..processors.multiprocessor import MultiProcessor
 
-__all__ = ['get_GTCv3']
+__all__ = ['GTCv3', 'MultiGTCv3']
 
 
-def get_GTCv3(Base):
-    assert issubclass(Base, Processor)
+class _Base_GTCv3(object):
+    __slots__ = []
+    ConverterCores = [
+        getattr(m, c)
+        for m in [
+            gtc,
+            data1d,
+            equilibrium,
+            history,
+            meshgrid,
+            simugrid,
+            snapphi,
+            snapshot,
+            trackparticle,
+        ] for c in m._all_Converters]
+    DiggerCores = [
+        getattr(m, d)
+        for m in [
+            gtc,
+            data1d,
+            equilibrium,
+            history,
+            meshgrid,
+            simugrid,
+            snapphi,
+            snapshot,
+            trackparticle,
+        ] for d in m._all_Diggers]
+    saltname = 'gtc.out'
+    dig_acceptable_time = 10
 
-    class GTCv3(Base):
-        __slots__ = []
-        ConverterCores = [
-            getattr(m, c)
-            for m in [
-                gtc,
-                data1d,
-                equilibrium,
-                history,
-                meshgrid,
-                simugrid,
-                snapphi,
-                snapshot,
-                trackparticle,
-            ] for c in m._all_Converters]
-        DiggerCores = [
-            getattr(m, d)
-            for m in [
-                gtc,
-                data1d,
-                equilibrium,
-                history,
-                meshgrid,
-                simugrid,
-                snapphi,
-                snapshot,
-                trackparticle,
-            ] for d in m._all_Diggers]
-        saltname = 'gtc.out'
-        dig_acceptable_time = 10
+    @property
+    def _rawsummary(self):
+        return "GTC '.out' files in %s '%s'" % (
+            self.rawloader.loader_type, self.rawloader.path)
 
-        @property
-        def _rawsummary(self):
-            return "GTC '.out' files in %s '%s'" % (
-                self.rawloader.loader_type, self.rawloader.path)
+    def _check_pckloader_backward_version(self, pckloader):
+        if 'version' in pckloader:
+            if pckloader.get('version') in [
+                    '110922', 'GTCV110922',
+                    'GTCV3.14-22']:
+                plog.info("Use an old version '%s' pckloader %s."
+                          % (pckloader.get('version'), pckloader.path))
+                return True
+        return False
 
-        def _check_pckloader_backward_version(self, pckloader):
-            if 'version' in pckloader:
-                if pckloader.get('version') in [
-                        '110922', 'GTCV110922',
-                        'GTCV3.14-22']:
-                    plog.info("Use an old version '%s' pckloader %s."
-                              % (pckloader.get('version'), pckloader.path))
-                    return True
-            return False
+    def _check_pckloader_forward_version(self, pckloader):
+        if 'processor' in pckloader:
+            if pckloader.get('processor') in ['GTCv4']:
+                plog.info("Use a new version '%s' pckloader %s."
+                          % (pckloader.get('processor'), pckloader.path))
+                return True
+        return False
 
-        def _check_pckloader_forward_version(self, pckloader):
-            if 'processor' in pckloader:
-                if pckloader.get('processor') in ['GTCv4']:
-                    plog.info("Use a new version '%s' pckloader %s."
-                              % (pckloader.get('processor'), pckloader.path))
-                    return True
-            return False
 
-    return GTCv3
+class GTCv3(_Base_GTCv3, Processor):
+    __slots__ = []
+
+
+class MultiGTCv3(_Base_GTCv3, MultiProcessor):
+    __slots__ = []

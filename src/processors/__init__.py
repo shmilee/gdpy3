@@ -80,17 +80,15 @@ def get_processor(path=None, name='GTCv3', parallel='multiprocess', **kwargs):
         gdpcls = class_cache[parallel]
     else:
         ppack = importlib.import_module(module_relative, package=__name__)
-        get_gdpcls = getattr(ppack, 'get_%s' % pname)
-        # which Base
+        # which one
         if parallel == 'off':
-            from .processor import Processor as Base
+            gdpcls = getattr(ppack, pname)
         elif parallel == 'multiprocess':
-            from .multiprocessor import MultiProcessor as Base
+            gdpcls = getattr(ppack, 'Multi%s' % pname)
         elif parallel == 'mpi4py':
             raise ValueError('TODO %s' % parallel)
         else:
             raise ValueError('Unsupported parallel-lib: %s' % parallel)
-        gdpcls = get_gdpcls(Base)
         Processor_Lib[name][1][parallel] = gdpcls
     if path:
         if kwargs:
