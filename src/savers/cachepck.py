@@ -7,6 +7,7 @@ Contains cache pickled dict saver class.
 '''
 
 from ..glogger import getGLogger
+from ..utils import is_dict_like
 from .base import BasePckSaver
 
 __all__ = ['CachePckSaver']
@@ -28,7 +29,7 @@ class CachePckSaver(BasePckSaver):
         return True
 
     def _check_path_exists(self):
-        return isinstance(self._storeobj, dict)
+        return is_dict_like(self._storeobj)
 
     def _open_append(self):
         return self._storeobj
@@ -42,7 +43,9 @@ class CachePckSaver(BasePckSaver):
                 self._storeobj.update(data)
             else:
                 if group in self._storeobj:
-                    self._storeobj[group].update(data)
+                    old = self._storeobj[group]
+                    old.update(data)
+                    self._storeobj[group] = old
                 else:
                     self._storeobj[group] = data
         except Exception:
@@ -54,3 +57,11 @@ class CachePckSaver(BasePckSaver):
     def get_store(self):
         '''Return store path or object.'''
         return self._storeobj
+
+    def set_store(self, obj):
+        '''Set store path and object.'''
+        self._storeobj.update(obj)
+        obj.update(self._storeobj)
+        self._storeobj = obj
+        if 'pathstr' not in obj:
+            self._storeobj['pathstr'] = self.path

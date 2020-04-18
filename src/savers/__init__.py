@@ -11,7 +11,8 @@ and methods
 :meth:`base.BasePckSaver.iopen`,
 :meth:`base.BasePckSaver.write`,
 :meth:`base.BasePckSaver.close`,
-:meth:`base.BasePckSaver.get_store`.
+:meth:`base.BasePckSaver.get_store`,
+:meth:`base.BasePckSaver.set_store`.
 '''
 
 import os

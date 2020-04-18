@@ -78,6 +78,10 @@ class BasePckSaver(object):
         '''Return store path or object.'''
         return self.path
 
+    def set_store(self, path):
+        '''Set store path and object.'''
+        self.__init__(path)
+
     def __init__(self, path):
         self.path = path
         self._storeobj = None
