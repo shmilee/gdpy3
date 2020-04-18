@@ -38,6 +38,7 @@ It contains two kinds of loaders.
 import os
 
 from . import base
+from ..utils import is_dict_like
 
 __all__ = ['get_rawloader', 'is_rawloader', 'get_pckloader', 'is_pckloader']
 rawloader_names = ['DirRawLoader', 'TarRawLoader', 'ZipRawLoader',
@@ -99,10 +100,10 @@ def get_pckloader(path, datagroups_filter=None):
     *path* types:
     1. '.npz' file
     2. '.hdf5' file
-    3. dict object
+    3. dict-like object
     '''
 
-    if isinstance(path, dict):
+    if is_dict_like(path):
         from .cachepck import CachePckLoader as Loader
     elif isinstance(path, str):
         path = os.path.expanduser(path)

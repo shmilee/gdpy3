@@ -7,6 +7,7 @@ Contains cache pickled dict loader class.
 '''
 
 from ..glogger import getGLogger
+from ..utils import is_dict_like
 from .base import BasePckLoader
 
 __all__ = ['CachePckLoader']
@@ -31,7 +32,7 @@ class CachePckLoader(BasePckLoader):
         return True
 
     def _special_check_path(self):
-        if isinstance(self.path, dict):
+        if is_dict_like(self.path):
             self.path = self.path.get('pathstr', 'dict.cache')
             return True
         else:
