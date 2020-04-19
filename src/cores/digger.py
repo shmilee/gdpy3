@@ -117,6 +117,10 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         else:
             return True
 
+    def __repr__(self):
+        return '<{0}.{1} object at {2} for {3}>'.format(
+            self.__module__, type(self).__name__, hex(id(self)), self.fignum)
+
     def check_needed_datakeys(self):
         '''Return Ture if all :attr:`neededpattern` matched.'''
         if self.neededpattern == 'ALL':
