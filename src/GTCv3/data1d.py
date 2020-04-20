@@ -196,7 +196,8 @@ class _Data1dDigger(Digger):
             self.srckeys[0], *self.extrakeys)
         y, x = data.shape
         dt = tstep * ndiag
-        X, Y = np.around(numpy.arange(1, x + 1) * dt, 8), numpy.arange(0, y)
+        X, Y = numpy.arange(1, x + 1) * dt, numpy.arange(0, y)
+        X = numpy.around(X, 8)
         if self.kwoptions is None:
             self.kwoptions = dict(
                 tcutoff=dict(widget='FloatRangeSlider',
