@@ -11,10 +11,9 @@ import re
 import time
 import pickle
 import hashlib
-import multiprocessing
 
 from .. import __version__ as gdpy3_version
-from ..glogger import getGLogger, get_glogger_work_initializer
+from ..glogger import getGLogger
 from ..loaders import is_rawloader, get_rawloader, is_pckloader, get_pckloader
 from ..savers import is_pcksaver, get_pcksaver
 from ..cores.exporter import (TmplLoader, ContourfExporter, LineExporter,
@@ -27,7 +26,7 @@ plog = getGLogger('P')
 
 class Processor(object):
     '''
-    Serial & Multiprocess Processor class.
+    Serial Processor class.
 
     Attributes
     ----------
@@ -59,15 +58,13 @@ class Processor(object):
        The :attr:`rawloader` must have exactly one salt file.
     2. :attr:`dig_acceptable_time` means if :meth:`dig` spends more
        time than this, the results will be saved in :attr:`resfilesaver`.
-    3. :attr:`multiproc` is the max number of worker processes,
-       default multiprocessing.cpu_count().
     '''
 
     @property
     def name(self):
         return type(self).__name__
 
-    multiproc = multiprocessing.cpu_count()
+    parallel = 'off'
 
     # # Start Convert Part
 
@@ -164,31 +161,7 @@ class Processor(object):
         return "Raw data files in %s '%s'" % (
             self.rawloader.loader_type, self.rawloader.path)
 
-    def _convert_worker(self, core, lock, id=True):
-        '''
-        Parameters
-        ----------
-        core: Converter core instance
-        lock: multiprocessing lock
-        id: bool
-            When using multiprocessing,
-            *id* is True, processname is set to :arrt:`Converter.groupnote`.
-        '''
-        if id:
-            multiprocessing.current_process().name = core.groupnote
-        data = core.convert()
-        lock.acquire()
-        try:
-            plog.info("Writing data in group %s ..." % core.groupnote)
-            with self.pcksaver:
-                self.pcksaver.write(core.group, data)
-        finally:
-            lock.release()
-
-    def convert(self, add_desc=None):
-        '''
-        Convert raw data in rawloader.path, and save them in pcksaver.
-        '''
+    def _pre_convert(self, add_desc=None):
         if not self.rawloader:
             plog.error("%s: Need a rawloader object!" % self.name)
             return
@@ -203,24 +176,20 @@ class Processor(object):
         with self.pcksaver:
             self.pcksaver.write('/', {'description': description,
                                       'processor': self.name})
-        if self.multiproc > 1:
-            nworkers = min(self.multiproc, len(self.converters))
-            with get_glogger_work_initializer() as loginitializer:
-                lock = multiprocessing.Manager().RLock()
-                with multiprocessing.Pool(
-                        processes=nworkers,
-                        initializer=loginitializer) as pool:
-                    results = [pool.apply_async(
-                        self._convert_worker, (core, lock))
-                        for core in self.converters]
-                    pool.close()
-                    pool.join()
-        else:
-            with self.pcksaver:
-                for core in self.converters:
-                    self.pcksaver.write(core.group, core.convert())
+
+    def _post_convert(self):
         plog.info("%s are converted to %s!"
                   % (self._rawsummary,  self.pcksaver.path))
+
+    def convert(self, add_desc=None):
+        '''
+        Convert raw data in rawloader.path, and save them in pcksaver.
+        '''
+        self._pre_convert(add_desc=add_desc)
+        with self.pcksaver:
+            for core in self.converters:
+                self.pcksaver.write(core.group, core.convert())
+        self._post_convert()
 
     # # End Convert Part
 
@@ -381,31 +350,31 @@ class Processor(object):
                            % (self.name, respath), exc_info=1)
                 self.resfilesaver = None
 
-    def _pre_find_digcore(self, figlabel):
+    def _before_new_dig(self, figlabel, redig, kwargs):
+        '''Get digcore, try old dig results'''
         if not self.pckloader:
             plog.error("%s: Need a pckloader object!" % self.name)
-            return None
+            return None, 'No pckloader', None
         if not self.ressaver:
             plog.error("%s: Need a results pcksaver object!" % self.name)
-            return None
+            return None, 'No pcksaver', None
         if figlabel not in self.availablelabels:
             plog.error("%s: Figure %s not found!" % (self.name, figlabel))
-            return None
-        return self._availablelabels_lib[figlabel]
-
-    def _find_old_dig(self, gotfiglabel, digcore):
-        '''get old dig results.'''
-        if gotfiglabel in self.resloader.datagroups:
-            # use resloader first
-            gotresloader, fileloader = self.resloader, False
-        elif (self.resfileloader and
-                gotfiglabel in self.resfileloader.datagroups):
-            gotresloader, fileloader = self.resfileloader, True
-        else:
-            gotresloader, fileloader = None, False
-            plog.error('%s: Not found %s in diggedlabels!'
-                       % (self.name, gotfiglabel))
-        if gotresloader:
+            return None, 'Invalid figlabel', None
+        digcore = self._availablelabels_lib[figlabel]
+        gotkwargstr = digcore.str_dig_kwargs(kwargs) or 'DEFAULT'
+        gotfiglabel = '%s/%s' % (figlabel, gotkwargstr)
+        if not redig and gotfiglabel in self.diggedlabels:
+            if gotfiglabel in self.resloader.datagroups:
+                # use resloader first
+                gotresloader, fileloader = self.resloader, False
+            elif (self.resfileloader and
+                    gotfiglabel in self.resfileloader.datagroups):
+                gotresloader, fileloader = self.resfileloader, True
+            else:
+                plog.error('%s: Not found %s in diggedlabels!'
+                           % (self.name, gotfiglabel))
+                return digcore, gotfiglabel, None
             plog.info('Find %s digged results in %s.' % (
                 gotfiglabel, os.path.basename(gotresloader.path)))
             if gotfiglabel.endswith('/DEFAULT'):
@@ -423,74 +392,50 @@ class Processor(object):
                 # reload kwoptions
                 digcore.kwoptions = pickle.loads(
                     results.pop('kwoptions', None))
-            return results
+            return digcore, gotfiglabel, results
         else:
-            return None
+            return digcore, gotfiglabel, None
 
-    def _save_new_dig(self, accfiglabel, gotfiglabel, results,
-                      digtime, digcore):
-        '''
-        Save dig results, link DEFAULT to accfiglabel.
+    def _do_new_dig(self, digcore, kwargs):
+        '''Dig new results.'''
+        results, acckwargstr, digtime = digcore.dig(**kwargs)
+        if not acckwargstr:
+            acckwargstr = 'DEFAULT'
+        accfiglabel = '%s/%s' % (digcore.figlabel, acckwargstr)
+        return accfiglabel, results, digtime
 
-        Returns
-        -------
-        1: need to update resloader
-        2: need to update resloader and resfileloader
-        '''
-
+    def _cachesave_new_dig(self, accfiglabel, gotfiglabel, results):
+        '''Cache dig results, link DEFAULT to accfiglabel.'''
         with self.ressaver:
             self.ressaver.write(accfiglabel, results)
             if (gotfiglabel.endswith('/DEFAULT')
                     and not accfiglabel.endswith('/DEFAULT')):
                 # link double cache
                 self.ressaver.write(gotfiglabel, dict(_LINK=accfiglabel))
-        # long execution time
-        if self.resfilesaver and digtime > self.dig_acceptable_time:
-            # also save kwoptions
-            kwopts = dict(kwoptions=pickle.dumps(digcore.kwoptions))
-            with self.resfilesaver:
-                shortpath = os.path.basename(self.resfilesaver.path)
-                plog.info('Save %s digged results in %s.' % (
-                    accfiglabel, shortpath))
-                self.resfilesaver.write(accfiglabel, results)
-                self.resfilesaver.write(accfiglabel, kwopts)
-                if (gotfiglabel.endswith('/DEFAULT')
-                        and not accfiglabel.endswith('/DEFAULT')):
-                    # link double cache
-                    plog.info('Save %s digged results in %s.' % (
-                        gotfiglabel, shortpath))
-                    self.resfilesaver.write(
-                        gotfiglabel, dict(_LINK=accfiglabel))
-            return 2
-        return 1
 
-    def _dig_worker(self, figlabel, redig, kwargs, id=False):
-        '''
-        Parameters
-        ----------
-        id: bool
-            When using multiprocessing,
-            *id* is True, processname is set to *figlabel*.
-        '''
-        if id:
-            multiprocessing.current_process().name = figlabel
-        digcore = self._pre_find_digcore(figlabel)
-        if not digcore:
-            return (None,)*6
-        gotkwargstr = digcore.str_dig_kwargs(kwargs) or 'DEFAULT'
-        gotfiglabel = '%s/%s' % (figlabel, gotkwargstr)
-        # find old
-        accfiglabel, res_from, results, digtime = gotfiglabel, 'old', None, 0
-        if not redig and gotfiglabel in self.diggedlabels:
-            results = self._find_old_dig(gotfiglabel, digcore)
-        # dig new
-        if results is None:
-            results, acckwargstr, digtime = digcore.dig(**kwargs)
-            res_from = 'new'
-            if not acckwargstr:
-                acckwargstr = 'DEFAULT'
-            accfiglabel = '%s/%s' % (figlabel, acckwargstr)
-        return accfiglabel, gotfiglabel, res_from, results, digtime, digcore
+    def _filesave_new_dig(self, accfiglabel, gotfiglabel, results, digcore):
+        '''Save dig results in file, link DEFAULT to accfiglabel.'''
+        # also save kwoptions
+        kwopts = dict(kwoptions=pickle.dumps(digcore.kwoptions))
+        with self.resfilesaver:
+            shortpath = os.path.basename(self.resfilesaver.path)
+            plog.info('Save %s digged results in %s.' % (
+                accfiglabel, shortpath))
+            self.resfilesaver.write(accfiglabel, results)
+            self.resfilesaver.write(accfiglabel, kwopts)
+            if (gotfiglabel.endswith('/DEFAULT')
+                    and not accfiglabel.endswith('/DEFAULT')):
+                # link double cache
+                plog.info('Save %s digged results in %s.' % (
+                    gotfiglabel, shortpath))
+                self.resfilesaver.write(
+                    gotfiglabel, dict(_LINK=accfiglabel))
+
+    def _after_save_new_dig(self, update_file=False):
+        '''Update resloader, resfileloader and diggedlabels'''
+        self.resloader = get_pckloader(self.ressaver.get_store())
+        if update_file:
+            self.resfileloader = get_pckloader(self.resfilesaver.get_store())
 
     def dig(self, figlabel, redig=False, post=True, callback=None, **kwargs):
         '''
@@ -512,113 +457,27 @@ class Processor(object):
         callback: a callable
             which accepts a single argument, post_dig or dig results
         '''
-        data = self._dig_worker(figlabel, redig, kwargs)
-        if data == (None,)*6:
-            return (None,)*3
-        accfiglabel, gotfiglabel, res_from, results, digtime, digcore = data
-        if res_from == 'new':
-            update = self._save_new_dig(accfiglabel, gotfiglabel, results,
-                                        digtime, digcore)
-            # update resloader & diggedlabels
-            self.resloader = get_pckloader(self.ressaver.get_store())
-            # update resfileloader & diggedlabels
-            if update == 2:
-                self.resfileloader = get_pckloader(
-                    self.resfilesaver.get_store())
+        data = self._before_new_dig(figlabel, redig, kwargs)
+        if data[0] is None:
+            return data
+        digcore, gotfiglabel, results = data
+        if results is None:
+            accfiglabel, results, digtime = self._do_new_dig(digcore, kwargs)
+            self._cachesave_new_dig(accfiglabel, gotfiglabel, results)
+            if self.resfilesaver and digtime > self.dig_acceptable_time:
+                # long execution time
+                self._filesave_new_dig(
+                    accfiglabel, gotfiglabel, results, digcore)
+                self._after_save_new_dig(update_file=True)
+            else:
+                self._after_save_new_dig(update_file=False)
+        else:
+            accfiglabel = gotfiglabel
         if post:
             results = digcore.post_dig(results)
         if callable(callback):
             callback(results)
         return accfiglabel, results, digcore.post_template
-
-    def multi_dig(self, *figlabels, redig=False, post=True, callback=None):
-        '''
-        Get digged results of *figlabels*.
-        Multiprocess version of :meth:`dig`.
-        Return a list of :meth:`dig` return.
-
-        Parameters
-        ----------
-        figlabels: list of figlabel
-            figlabel can be str or dict, like
-            {'figlabel': 'group/fignum', 'other kwargs': True}
-        others: see :meth:`dig`
-
-        Notes
-        -----
-        These are not multiprocessing:
-        1. *post*, because `post_dig` is expected to complete immediately.
-        2. *callback*, because it is user-defined,
-           and not supposed to be multiprocess safe.
-        3. Saving dig-results, because savers may be not multiprocess safe.
-        '''
-        couple_figlabels = []
-        for fl in figlabels:
-            if isinstance(fl, str):
-                couple_figlabels.append((fl, {}))
-            elif isinstance(fl, dict):
-                _label = fl.pop('figlabel', None)
-                if _label:
-                    couple_figlabels.append((_label, fl))
-                else:
-                    plog.warning("Must set 'figlabel' in %s" % fl)
-            else:
-                plog.warning("Parameter figlabel can be str or dict, "
-                             "not %s: %s" % (type(fl), fl))
-        if len(couple_figlabels) <= 0:
-            plog.warning("please pass at least one figlabel!")
-            return []
-        multi_results = []
-        if self.multiproc > 1:
-            nworkers = min(self.multiproc, len(couple_figlabels))
-            with get_glogger_work_initializer() as loginitializer:
-                with multiprocessing.Pool(
-                        processes=nworkers,
-                        initializer=loginitializer) as pool:
-                    # While _save_new_dig running, _dig_worker
-                    # call _find_old_dig, then writing and reading file
-                    # together may cause error.
-                    # So do not pool.close(); pool.join()
-                    for i in range(0, len(couple_figlabels), nworkers):
-                        async_results = [pool.apply_async(
-                            self._dig_worker,
-                            (figlabel, redig, kwargs), {'id': True})
-                            for figlabel, kwargs in couple_figlabels[i:i+nworkers]
-                        ]
-                        # res.get blocks until `nworkers` results are ready
-                        # save them together before next `nworkers` tasks.
-                        update = 1
-                        for data in [res.get() for res in async_results]:
-                            if data == (None,)*6:
-                                multi_results.append((None,)*3)
-                            else:
-                                accfiglabel, gotfiglabel, \
-                                    res_from, results, digtime, digcore = data
-                                if res_from == 'new':
-                                    update = self._save_new_dig(
-                                        accfiglabel, gotfiglabel,
-                                        results, digtime, digcore)
-                                if post:
-                                    results = digcore.post_dig(results)
-                                if callable(callback):
-                                    callback(results)
-                                multi_results.append(
-                                    (accfiglabel, results, digcore.post_template))
-                        # update resloader & diggedlabels
-                        self.resloader = get_pckloader(
-                            self.ressaver.get_store())
-                        # update resfileloader & diggedlabels
-                        if update == 2:
-                            self.resfileloader = get_pckloader(
-                                self.resfilesaver.get_store())
-        else:
-            # plog.error("Max number of worker processes must > 1!")
-            plog.warning("Max number of worker processes is one, "
-                         "use for loop to multi_dig!")
-            for fl, kws in couple_figlabels:
-                multi_results.append(self.dig(
-                    fl, redig=redig, post=post, callback=callback, **kws))
-        return multi_results
 
     def dig_doc(self, figlabel, see='help'):
         '''
