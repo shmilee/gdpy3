@@ -116,9 +116,11 @@ class MultiProcessor(Processor):
         else:
             return None, "Invalid couple_figlabel type"
 
-    def _dig_worker(self, couple_figlabel, redig, post, callback,
-                    rwlock, name_it=True):
+    def _dig_worker_with_rwlock(self, couple_figlabel, redig, post, callback,
+                                rwlock, name_it=True):
         '''
+        Find old dig results, dig new if needed, then save them.
+
         Parameters
         ----------
         couple_figlabel: figlabel str or dict contains figlabel
@@ -138,9 +140,9 @@ class MultiProcessor(Processor):
             data = self._before_new_dig(figlabel, redig, kwargs)
         finally:
             rwlock.reader_lock.release()
-        if data[0] is None:
-            return (*data, update)
         digcore, gotfiglabel, results = data
+        if digcore is None:
+            return (*data, update)
         if results is None:
             accfiglabel, results, digtime = self._do_new_dig(digcore, kwargs)
             try:
@@ -164,8 +166,40 @@ class MultiProcessor(Processor):
             callback(results)
         return accfiglabel, results, digcore.post_template, update
 
-    def multi_dig(self, *couple_figlabels, redig=False, post=True,
-                  callback=None):
+    def _dig_worker_with_lock(self, digcore, kwargs, gotfiglabel,
+                              post, callback, lock, name_it=True):
+        '''
+        Dig new results, and save them.
+
+        Parameters
+        ----------
+        lock: multiprocessing lock
+        name_it: bool
+            When using multiprocessing,
+            *name_it* is True, processname is set to *figlabel*.
+        '''
+        update = 1
+        if name_it:
+            multiprocessing.current_process().name = digcore.figlabel
+        accfiglabel, results, digtime = self._do_new_dig(digcore, kwargs)
+        try:
+            lock.acquire()
+            self._cachesave_new_dig(accfiglabel, gotfiglabel, results)
+            if self.resfilesaver and digtime > self.dig_acceptable_time:
+                # long execution time
+                self._filesave_new_dig(
+                    accfiglabel, gotfiglabel, results, digcore)
+                update = 2
+        finally:
+            lock.release()
+        if post:
+            results = digcore.post_dig(results)
+        if callable(callback):
+            callback(results)
+        return accfiglabel, results, digcore.post_template, update
+
+    def multi_dig(self, *couple_figlabels, whichlock='write',
+                  redig=False, post=True, callback=None):
         '''
         Get digged results of *couple_figlabels*.
         Multiprocess version of :meth:`dig`.
@@ -176,54 +210,118 @@ class MultiProcessor(Processor):
         couple_figlabels: list of couple_figlabel
             couple_figlabel can be figlabel str or dict, like
             {'figlabel': 'group/fignum', 'other kwargs': True}
+        whichlock: str, 'write' or 'read-write'
+            default 'write', means only using a write lock
         others: see :meth:`dig`
 
         Notes
         -----
-        Using a read write lock to avoid error about unpickle pckloader and
-        saving pcksaver together. So most codes like *post*, *callback* are
-        multiprocessing, except saving results:
-        1. *post*, `post_dig` is expected to complete immediately.
-        2. *callback*, it is user-defined, maybe not multiprocess safe.
-        3. Saving dig-results, because savers may be not multiprocess safe.
+        1. When using a write lock, only new_dig figlabel and its *post*,
+           *callback* will be multiprocessing, others like digged figlabel
+           and their *post*, *callback* are not!
+            1). *post*, `post_dig` is expected to complete immediately.
+            2). *callback*, it is user-defined, maybe not multiprocess safe.
+            3). Saving dig-results, savers may be not multiprocess safe.
+        2. If using a read write lock to avoid error about unpickle pckloader
+           and saving pcksaver together, most codes like *post*, *callback*
+           are multiprocessing, except saving results.
+        3. Useing a write lock or read write lock depends on how many digged
+           figlabels and where they saved.
         '''
         if len(couple_figlabels) == 0:
             plog.warning("please pass at least one figlabel!")
             return []
         multi_results = []
         if self.multiproc > 1:
-            nworkers = min(self.multiproc, len(couple_figlabels))
-            with get_glogger_work_initializer() as loginitializer:
-                rwlock = MP_RWLock(self.manager)
-                with multiprocessing.Pool(
-                        processes=nworkers,
-                        initializer=loginitializer) as pool:
-                    async_results = [pool.apply_async(
-                        self._dig_worker,
-                        (couple_figlabel, redig, post, callback, rwlock))
-                        for couple_figlabel in couple_figlabels]
-                    pool.close()
-                    pool.join()
-                update = 0
-                for res in async_results:
-                    data = res.get()
-                    multi_results.append(data[:3])
-                    update = max(data[3], update)
-            if update == 1:
-                self._after_save_new_dig(update_file=False)
-            elif update == 2:
-                self._after_save_new_dig(update_file=True)
+            if whichlock not in ('write', 'read-write'):
+                plog.warning("Set default write lock, not %s!" % whichlock)
+                whichlock = 'write'
+            if whichlock == 'write':
+                couple_todo = []
+                for idx, _couple in enumerate(couple_figlabels):
+                    figlabel, kwargs = self._filter_couple_figlabel(_couple)
+                    if figlabel is None:
+                        multi_results.append((None, kwargs, None))
+                    else:
+                        data = self._before_new_dig(figlabel, redig, kwargs)
+                        digcore, gotfiglabel, results = data
+                        if digcore is None:
+                            multi_results.append(data)
+                        else:
+                            if results is None:
+                                # tag new_dig figlabels
+                                multi_results.append(idx)
+                                couple_todo.append(
+                                    (idx, digcore, kwargs, gotfiglabel))
+                            else:
+                                # find saved dig results
+                                accfiglabel = gotfiglabel
+                                if post:
+                                    results = digcore.post_dig(results)
+                                if callable(callback):
+                                    callback(results)
+                                multi_results.append((accfiglabel, results,
+                                                      digcore.post_template))
+                # do new_dig figlabels
+                if len(couple_todo) > 0:
+                    nworkers = min(self.multiproc, len(couple_todo))
+                    with get_glogger_work_initializer() as loginitializer:
+                        plog.debug("Using a write lock!")
+                        lock = self.manager.RLock()
+                        with multiprocessing.Pool(
+                                processes=nworkers,
+                                initializer=loginitializer) as pool:
+                            async_results = [(idx, pool.apply_async(
+                                self._dig_worker_with_lock,
+                                (core, kws, gotfgl, post, callback, lock)))
+                                for idx, core, kws, gotfgl in couple_todo]
+                            pool.close()
+                            pool.join()
+                        update = 1
+                        for idx, res in async_results:
+                            data = res.get()
+                            assert multi_results[idx] == idx
+                            multi_results[idx] = data[:3]
+                            update = max(data[3], update)
+                        if update == 1:
+                            self._after_save_new_dig(update_file=False)
+                        elif update == 2:
+                            self._after_save_new_dig(update_file=True)
+            else:
+                # with 'read-write' lock
+                nworkers = min(self.multiproc, len(couple_figlabels))
+                with get_glogger_work_initializer() as loginitializer:
+                    plog.debug("Using a read-write lock!")
+                    rwlock = MP_RWLock(self.manager)
+                    with multiprocessing.Pool(
+                            processes=nworkers,
+                            initializer=loginitializer) as pool:
+                        async_results = [pool.apply_async(
+                            self._dig_worker_with_rwlock,
+                            (couple_figlabel, redig, post, callback, rwlock))
+                            for couple_figlabel in couple_figlabels]
+                        pool.close()
+                        pool.join()
+                    update = 0
+                    for res in async_results:
+                        data = res.get()
+                        multi_results.append(data[:3])
+                        update = max(data[3], update)
+                if update == 1:
+                    self._after_save_new_dig(update_file=False)
+                elif update == 2:
+                    self._after_save_new_dig(update_file=True)
         else:
             plog.warning("Max number of worker processes is one, "
                          "use for loop to multi_dig!")
             for _couple in couple_figlabels:
                 figlabel, kwargs = self._filter_couple_figlabel(_couple)
-            if figlabel is None:
-                multi_results.append((None, kwargs, None))
-            else:
-                multi_results.append(self.dig(
-                    figlabel, redig=redig, post=post, callback=callback,
-                    **kwargs))
+                if figlabel is None:
+                    multi_results.append((None, kwargs, None))
+                else:
+                    multi_results.append(self.dig(
+                        figlabel, redig=redig, post=post, callback=callback,
+                        **kwargs))
         return multi_results
 
     # # End Dig Part
