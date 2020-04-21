@@ -39,7 +39,7 @@ class NpzPckLoader(BasePckLoader):
             return False
 
     def _special_open(self):
-        return numpy.load(self.path)
+        return numpy.load(self.path, allow_pickle=True)
 
     def _special_close(self, pathobj):
         pathobj.close()
