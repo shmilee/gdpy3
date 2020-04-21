@@ -226,7 +226,7 @@ class MultiProcessor(Processor):
            and saving pcksaver together, most codes like *post*, *callback*
            are multiprocessing, except saving results.
         3. Useing a write lock or read write lock depends on how many digged
-           figlabels and where they saved.
+           figlabels, their results size and where they saved.
         '''
         if len(couple_figlabels) == 0:
             plog.warning("please pass at least one figlabel!")
