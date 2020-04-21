@@ -431,12 +431,6 @@ class Processor(object):
                 self.resfilesaver.write(
                     gotfiglabel, dict(_LINK=accfiglabel))
 
-    def _after_save_new_dig(self, update_file=False):
-        '''Update resloader, resfileloader and diggedlabels'''
-        self.resloader = get_pckloader(self.ressaver.get_store())
-        if update_file:
-            self.resfileloader = get_pckloader(self.resfilesaver.get_store())
-
     def dig(self, figlabel, redig=False, post=True, callback=None, **kwargs):
         '''
         Get digged results of *figlabel*.
@@ -464,13 +458,13 @@ class Processor(object):
         if results is None:
             accfiglabel, results, digtime = self._do_new_dig(digcore, kwargs)
             self._cachesave_new_dig(accfiglabel, gotfiglabel, results)
+            self.resloader = get_pckloader(self.ressaver.get_store())
             if self.resfilesaver and digtime > self.dig_acceptable_time:
                 # long execution time
                 self._filesave_new_dig(
                     accfiglabel, gotfiglabel, results, digcore)
-                self._after_save_new_dig(update_file=True)
-            else:
-                self._after_save_new_dig(update_file=False)
+                self.resfileloader = get_pckloader(
+                    self.resfilesaver.get_store())
         else:
             accfiglabel = gotfiglabel
         if post:

@@ -137,6 +137,8 @@ class MultiProcessor(Processor):
             multiprocessing.current_process().name = figlabel
         try:
             rwlock.reader_lock.acquire()
+            # after reopen resfileloader, then try to find old results
+            self.resfileloader = get_pckloader(self.resfilesaver.get_store())
             data = self._before_new_dig(figlabel, redig, kwargs)
         finally:
             rwlock.reader_lock.release()
@@ -178,7 +180,6 @@ class MultiProcessor(Processor):
             When using multiprocessing,
             *name_it* is True, processname is set to *figlabel*.
         '''
-        update = 1
         if name_it:
             multiprocessing.current_process().name = digcore.figlabel
         accfiglabel, results, digtime = self._do_new_dig(digcore, kwargs)
@@ -189,14 +190,13 @@ class MultiProcessor(Processor):
                 # long execution time
                 self._filesave_new_dig(
                     accfiglabel, gotfiglabel, results, digcore)
-                update = 2
         finally:
             lock.release()
         if post:
             results = digcore.post_dig(results)
         if callable(callback):
             callback(results)
-        return accfiglabel, results, digcore.post_template, update
+        return accfiglabel, results, digcore.post_template
 
     def multi_dig(self, *couple_figlabels, whichlock='write',
                   redig=False, post=True, callback=None):
@@ -268,6 +268,10 @@ class MultiProcessor(Processor):
                     with get_glogger_work_initializer() as loginitializer:
                         plog.debug("Using a write lock!")
                         lock = self.manager.RLock()
+                        # While resfilesaver is saving to the path,
+                        # fork will fail to reopen resfileloader.path.
+                        # Fortunately, resfileloader is useless in workers.
+                        self.resfileloader = None
                         with multiprocessing.Pool(
                                 processes=nworkers,
                                 initializer=loginitializer) as pool:
@@ -277,22 +281,22 @@ class MultiProcessor(Processor):
                                 for idx, core, kws, gotfgl in couple_todo]
                             pool.close()
                             pool.join()
-                        update = 1
                         for idx, res in async_results:
                             data = res.get()
                             assert multi_results[idx] == idx
-                            multi_results[idx] = data[:3]
-                            update = max(data[3], update)
-                        if update == 1:
-                            self._after_save_new_dig(update_file=False)
-                        elif update == 2:
-                            self._after_save_new_dig(update_file=True)
+                            multi_results[idx] = data
+                        self.resloader = get_pckloader(
+                            self.ressaver.get_store())
+                        self.resfileloader = get_pckloader(
+                            self.resfilesaver.get_store())
             else:
                 # with 'read-write' lock
                 nworkers = min(self.multiproc, len(couple_figlabels))
                 with get_glogger_work_initializer() as loginitializer:
                     plog.debug("Using a read-write lock!")
                     rwlock = MP_RWLock(self.manager)
+                    # resfileloader reopen in workers, not forking
+                    self.resfileloader = None
                     with multiprocessing.Pool(
                             processes=nworkers,
                             initializer=loginitializer) as pool:
@@ -307,10 +311,11 @@ class MultiProcessor(Processor):
                         data = res.get()
                         multi_results.append(data[:3])
                         update = max(data[3], update)
-                if update == 1:
-                    self._after_save_new_dig(update_file=False)
-                elif update == 2:
-                    self._after_save_new_dig(update_file=True)
+                # reset resfileloader in mainprocess
+                self.resfileloader = get_pckloader(
+                    self.resfilesaver.get_store())
+                if update > 0:
+                    self.resloader = get_pckloader(self.ressaver.get_store())
         else:
             plog.warning("Max number of worker processes is one, "
                          "use for loop to multi_dig!")
