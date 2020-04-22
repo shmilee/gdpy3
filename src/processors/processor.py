@@ -629,7 +629,8 @@ class Processor(object):
 
     visplter = property(_get_visplter, _set_visplter)
 
-    def visplt(self, figlabel, revis=False, show=True, **kwargs):
+    def visplt(self, figlabel, revis=False, show=True,
+               callback=None, **kwargs):
         '''
         Get results of *figlabel* and visualize(plot).
         Use :meth:`dig_doc` :meth:`export_doc` to see *kwargs* for *figlabel*.
@@ -641,11 +642,13 @@ class Processor(object):
             replot *figlabel* if it was already ploted
         show: bool
             display *figlabel* after it ploted
+        callback: see :meth:`dig`
         '''
         if not self.visplter:
             plog.error("%s: Need a visplter object!" % self.name)
             return
-        results = self.export(figlabel, what='axes', fmt='dict', **kwargs)
+        results = self.export(
+            figlabel, what='axes', fmt='dict', callback=callback, **kwargs)
         if results['status'] == 200:
             try:
                 figure = self.visplter.create_template_figure(

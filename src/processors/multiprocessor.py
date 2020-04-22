@@ -6,6 +6,7 @@
 Contains multiprocess processor class.
 '''
 
+import os
 import multiprocessing
 
 from .processor import Processor, plog
@@ -440,5 +441,104 @@ class MultiProcessor(Processor):
     # # End Export Part
 
     # # Start Visplt Part
+
+    def _visplt_worker(self, results, revis, savename, saveext, savepath,
+                       name_it=True):
+        '''
+        Use results create figure, then save it.
+
+        Parameters
+        ----------
+        name_it: bool
+            When using multiprocessing,
+            *name_it* is True, processname is set to figlabel.
+        '''
+        figlabel = results['figlabel']
+        if name_it:
+            multiprocessing.current_process().name = figlabel
+        if results['status'] == 200:
+            accfiglabel = results['accfiglabel']
+            try:
+                plog.debug("Start creating %s ..." % accfiglabel)
+                figure = self.visplter.create_template_figure(
+                    results, replace=revis)
+            except Exception:
+                plog.error("%s: Failed to create figure %s!" % (
+                    self.name, accfiglabel),  exc_info=1)
+                return False, accfiglabel, '(500) failed to create'
+            else:
+                _fl = accfiglabel if savename == 'accfiglabel' else figlabel
+                fname = '%s.%s' % (_fl.replace('/', '-'), saveext)
+                fpath = os.path.join(savepath, fname)
+                try:
+                    plog.debug("Saving %s ..." % accfiglabel)
+                    self.visplter.save_figure(accfiglabel, fpath)
+                except Exception:
+                    plog.error("%s: Failed to save figure %s!" % (
+                        self.name, accfiglabel),  exc_info=1)
+                    return False, accfiglabel, '(500) failed to save'
+                else:
+                    return True, accfiglabel, fname
+        else:
+            status, reason = results['status'], results['reason']
+            plog.error("%s: Failed to create figure %s: (%d) %s" % (
+                self.name, figlabel, status, reason),  exc_info=1)
+            return False, results['accfiglabel'], "(%d) %s" % (status, reason)
+
+    def multi_visplt(self, *couple_figlabels, revis=False,
+                     savename='figlabel', saveext='png', savepath='.',
+                     whichlock='write', callback=None):
+        '''
+        Get results of *couple_figlabels* and visualize(plot), save them.
+        Multiprocess version of :meth:`visplt`.
+
+        Returns
+        -------
+        two list:
+            1. [(accfiglabel, save file), ...]
+            2. [(accfiglabel, failed reason), ...]
+
+        Parameters
+        ----------
+        couple_figlabels: list of couple_figlabel
+            couple_figlabel can be figlabel str or dict, like
+            {'figlabel': 'group/fignum', 'other kwargs': True}
+        savename: str
+            'figlabel'(default) or 'accfiglabel'
+        saveext: str
+            figure type, 'png'(default), 'pdf', 'ps', 'eps', 'svg', 'jpg'
+        savepath: str
+            the directory to saving figures
+        whichlock: see :meth:`multi_dig`
+        callback: see :meth:`multi_dig`
+        others: see :meth:`visplt`
+        '''
+        if not self.visplter:
+            plog.error("%s: Need a visplter object!" % self.name)
+            return
+        multi_results = self.multi_export(
+            *couple_figlabels, what='axes', fmt='dict',
+            whichlock=whichlock, callback=callback)
+        success, fail = [], []
+        if not os.path.isdir(savepath):
+            os.mkdir(savepath)
+        nworkers = min(self.multiproc, len(couple_figlabels))
+        with get_glogger_work_initializer() as loginitializer:
+            with multiprocessing.Pool(
+                    processes=nworkers,
+                    initializer=loginitializer) as pool:
+                async_results = [pool.apply_async(
+                    self._visplt_worker,
+                    (results, revis, savename, saveext, savepath))
+                    for results in multi_results]
+                pool.close()
+                pool.join()
+            for res in async_results:
+                data = res.get()
+                if data[0]:
+                    success.append(data[1:])
+                else:
+                    fail.append(data[1:])
+        return success, fail
 
     # # End Visplt Part
