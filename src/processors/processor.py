@@ -431,7 +431,7 @@ class Processor(object):
                 self.resfilesaver.write(
                     gotfiglabel, dict(_LINK=accfiglabel))
 
-    def dig(self, figlabel, redig=False, post=True, callback=None, **kwargs):
+    def dig(self, figlabel, redig=False, callback=None, post=True, **kwargs):
         '''
         Get digged results of *figlabel*.
         Use :meth:`dig_doc` to see *kwargs* for *figlabel*.
@@ -446,10 +446,11 @@ class Processor(object):
             Recommend using '.hdf5' when *redig* is True or
             setting :attr:`resfilesaver.duplicate_name`=False to rebuild
             a new zip archive when we get duplicate names.
+        callback: a callable
+            It accepts a single argument, dig results before post_dig.
+            This can be used to get some numbers from results.
         post: bool
             call post_dig
-        callback: a callable
-            which accepts a single argument, post_dig or dig results
         '''
         data = self._before_new_dig(figlabel, redig, kwargs)
         if data[0] is None:
@@ -467,10 +468,10 @@ class Processor(object):
                     self.resfilesaver.get_store())
         else:
             accfiglabel = gotfiglabel
-        if post:
-            results = digcore.post_dig(results)
         if callable(callback):
             callback(results)
+        if post:
+            results = digcore.post_dig(results)
         return accfiglabel, results, digcore.post_template
 
     def dig_doc(self, figlabel, see='help'):
@@ -530,7 +531,8 @@ class Processor(object):
     def exportertemplates(self):
         return self._exportertemplates
 
-    def export(self, figlabel, what='axes', fmt='dict', **kwargs):
+    def export(self, figlabel, what='axes', fmt='dict',
+               callback=None, **kwargs):
         '''
         Get and assemble digged results, template of *figlabel*.
         Use :meth:`dig_doc` to see *kwargs* for *figlabel*.
@@ -550,6 +552,7 @@ class Processor(object):
             'options', options for GUI widgets
         fmt: str
             export format, 'dict'(default), 'pickle' or 'json'
+        callback: see :meth:`dig`, only for what='axes'
         '''
         if what not in ('axes', 'options'):
             waht = 'axes'
@@ -557,7 +560,8 @@ class Processor(object):
             fmt = 'dict'
         if figlabel in self.availablelabels:
             if what == 'axes':
-                label_kw, res, tmpl = self.dig(figlabel, post=True, **kwargs)
+                label_kw, res, tmpl = self.dig(
+                    figlabel, callback=callback, post=True, **kwargs)
                 if tmpl in self.exportertemplates:
                     exportcore = self._exporters_lib[tmpl]
                     return exportcore.export(

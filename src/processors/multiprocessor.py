@@ -116,7 +116,7 @@ class MultiProcessor(Processor):
         else:
             return None, "Invalid couple_figlabel type"
 
-    def _dig_worker_with_rwlock(self, couple_figlabel, redig, post, callback,
+    def _dig_worker_with_rwlock(self, couple_figlabel, redig, callback, post,
                                 rwlock, name_it=True):
         '''
         Find old dig results, dig new if needed, then save them.
@@ -162,15 +162,15 @@ class MultiProcessor(Processor):
                 rwlock.writer_lock.release()
         else:
             accfiglabel = gotfiglabel
-        if post:
-            results = digcore.post_dig(results)
         if callable(callback):
             callback(results)
+        if post:
+            results = digcore.post_dig(results)
         return (accfiglabel, results, digcore.post_template,
                 update, figlabel, digcore.kwoptions)
 
     def _dig_worker_with_lock(self, digcore, kwargs, gotfiglabel,
-                              post, callback, lock, name_it=True):
+                              callback, post, lock, name_it=True):
         '''
         Dig new results, and save them.
 
@@ -193,15 +193,15 @@ class MultiProcessor(Processor):
                     accfiglabel, gotfiglabel, results, digcore)
         finally:
             lock.release()
-        if post:
-            results = digcore.post_dig(results)
         if callable(callback):
             callback(results)
+        if post:
+            results = digcore.post_dig(results)
         return (accfiglabel, results, digcore.post_template,
                 digcore.kwoptions)
 
     def multi_dig(self, *couple_figlabels, whichlock='write',
-                  redig=False, post=True, callback=None):
+                  redig=False, callback=None, post=True):
         '''
         Get digged results of *couple_figlabels*.
         Multiprocess version of :meth:`dig`.
@@ -218,14 +218,16 @@ class MultiProcessor(Processor):
 
         Notes
         -----
-        1. When using a write lock, only new_dig figlabel and its *post*,
-           *callback* will be multiprocessing, others like digged figlabel
-           and their *post*, *callback* are not!
-            1). *post*, `post_dig` is expected to complete immediately.
-            2). *callback*, it is user-defined, maybe not multiprocess safe.
+        1. When using a write lock, only new_dig figlabel and its *callback*,
+           *post* will be multiprocessing, others like digged figlabel
+           and their *callback*, *post* are not!
+            1). *callback*, it is user-defined, maybe not multiprocess safe.
+                Recommand using :attr:`manager` to create a list or dict for
+                *callback* to store data.
+            2). *post*, `post_dig` is expected to complete immediately.
             3). Saving dig-results, savers may be not multiprocess safe.
         2. If using a read write lock to avoid error about unpickle pckloader
-           and saving pcksaver together, most codes like *post*, *callback*
+           and saving pcksaver together, most codes like *callback*, *post*
            are multiprocessing, except saving results.
         3. Useing a write lock or read write lock depends on how many digged
            figlabels, their results size and where they saved.
@@ -258,10 +260,10 @@ class MultiProcessor(Processor):
                             else:
                                 # find saved dig results
                                 accfiglabel = gotfiglabel
-                                if post:
-                                    results = digcore.post_dig(results)
                                 if callable(callback):
                                     callback(results)
+                                if post:
+                                    results = digcore.post_dig(results)
                                 multi_results.append((accfiglabel, results,
                                                       digcore.post_template))
                 # do new_dig figlabels
@@ -279,7 +281,7 @@ class MultiProcessor(Processor):
                                 initializer=loginitializer) as pool:
                             async_results = [(idx, core, pool.apply_async(
                                 self._dig_worker_with_lock,
-                                (core, kws, gotfgl, post, callback, lock)))
+                                (core, kws, gotfgl, callback, post, lock)))
                                 for idx, core, kws, gotfgl in couple_todo]
                             pool.close()
                             pool.join()
@@ -306,7 +308,7 @@ class MultiProcessor(Processor):
                             initializer=loginitializer) as pool:
                         async_results = [pool.apply_async(
                             self._dig_worker_with_rwlock,
-                            (couple_figlabel, redig, post, callback, rwlock))
+                            (couple_figlabel, redig, callback, post, rwlock))
                             for couple_figlabel in couple_figlabels]
                         pool.close()
                         pool.join()
@@ -333,7 +335,7 @@ class MultiProcessor(Processor):
                     multi_results.append((None, kwargs, None))
                 else:
                     multi_results.append(self.dig(
-                        figlabel, redig=redig, post=post, callback=callback,
+                        figlabel, redig=redig, callback=callback, post=post,
                         **kwargs))
         return multi_results
 
@@ -400,8 +402,8 @@ class MultiProcessor(Processor):
             _couple_dig = [_c[3] for _c in couple_todo]
             if what == 'axes':
                 multi_dig_res = self.multi_dig(
-                    *_couple_dig, post=True,
-                    whichlock=whichlock, callback=callback)
+                    *_couple_dig, whichlock=whichlock,
+                    callback=callback, post=True)
                 for jdx, (label_kw, res, tmpl) in enumerate(multi_dig_res):
                     idx, figlabel, kwargs = couple_todo[jdx][:3]
                     if tmpl in self.exportertemplates:
