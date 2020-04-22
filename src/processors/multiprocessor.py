@@ -443,7 +443,7 @@ class MultiProcessor(Processor):
     # # Start Visplt Part
 
     def _visplt_worker(self, results, revis, savename, saveext, savepath,
-                       name_it=True):
+                       mpl_backend, name_it=True):
         '''
         Use results create figure, then save it.
 
@@ -459,6 +459,8 @@ class MultiProcessor(Processor):
         if results['status'] == 200:
             accfiglabel = results['accfiglabel']
             try:
+                self.visplter.subprocess_fix_backend_etc(
+                    mpl_backend=mpl_backend)
                 plog.debug("Start creating %s ..." % accfiglabel)
                 figure = self.visplter.create_template_figure(
                     results, replace=revis)
@@ -487,7 +489,7 @@ class MultiProcessor(Processor):
 
     def multi_visplt(self, *couple_figlabels, revis=False,
                      savename='figlabel', saveext='png', savepath='.',
-                     whichlock='write', callback=None):
+                     mpl_backend='agg', whichlock='write', callback=None):
         '''
         Get results of *couple_figlabels* and visualize(plot), save them.
         Multiprocess version of :meth:`visplt`.
@@ -509,6 +511,9 @@ class MultiProcessor(Processor):
             figure type, 'png'(default), 'pdf', 'ps', 'eps', 'svg', 'jpg'
         savepath: str
             the directory to saving figures
+        mpl_backend: str, optional
+            Set matplotlib backend when :attr:`visplter` type is 'mpl::'.
+            Recommand using non_interactive backends, like 'agg', 'cairo' etc.
         whichlock: see :meth:`multi_dig`
         callback: see :meth:`multi_dig`
         others: see :meth:`visplt`
@@ -529,7 +534,8 @@ class MultiProcessor(Processor):
                     initializer=loginitializer) as pool:
                 async_results = [pool.apply_async(
                     self._visplt_worker,
-                    (results, revis, savename, saveext, savepath))
+                    (results, revis,
+                     savename, saveext, savepath, mpl_backend))
                     for results in multi_results]
                 pool.close()
                 pool.join()

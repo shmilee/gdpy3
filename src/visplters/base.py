@@ -272,6 +272,18 @@ class BaseVisplter(object):
         else:
             vlog.error("Figure %s is not created!" % num)
 
+    def subprocess_fix_backend_etc(self, *args, **kwargs):
+        '''
+        Fix issue in subprocess.
+
+        Examples
+        --------
+        1. With multiprocessing, if matplotlib using interactive backend
+           in mainprocess, it will hang during plotting in subprocess.
+           ref: https://stackoverflow.com/questions/47933420/
+        '''
+        pass
+
     template_available = (
         'tmpl_contourf',
         'tmpl_line',

@@ -175,6 +175,18 @@ class MatplotlibVisplter(BaseVisplter):
         '''Save *fig* to *fpath*.'''
         fig.savefig(fpath, **kwargs)
 
+    def subprocess_fix_backend_etc(self, *args, **kwargs):
+        oldbackend = matplotlib.get_backend()
+        backend = kwargs.get('mpl_backend', 'agg')
+        if backend not in matplotlib.rcsetup.all_backends:
+            vlog.warning("'%s' isn't a mpl backend. Use 'agg'." % backend)
+            backend = 'agg'
+        vlog.debug("Change mpl backend, '%s' -> '%s'" % (oldbackend, backend))
+        if backend in matplotlib.rcsetup.interactive_bk:
+            vlog.warning("'%s' is a interactive mpl backend, "
+                         "it may hang during plotting!" % backend)
+        matplotlib.use(backend)
+
     def _tmpl_contourf(
             self, X, Y, Z, title, xlabel, ylabel, aspect,
             plot_method, plot_method_args, plot_method_kwargs,
