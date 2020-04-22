@@ -546,54 +546,45 @@ class Processor(object):
         Parameters
         ----------
         what: str
-            'axes', results for visplter
+            'axes'(default), results for visplter
             'options', options for GUI widgets
         fmt: str
-            export format, 'dict', 'pickle' or 'json'
+            export format, 'dict'(default), 'pickle' or 'json'
         '''
-        if figlabel not in self.availablelabels:
-            plog.error("%s: Figure %s not found!" % (self.name, figlabel))
-            exportcore = self._exporters_lib[self.exportertemplates[0]]
-            return exportcore.fmt_export(
-                dict(status='figlabel not found',
-                     figlabel=figlabel,
-                     ), fmt=fmt)
-        if what == 'axes':
-            label_kw, res, tmpl = self.dig(figlabel, post=True, **kwargs)
-            if tmpl in self.exportertemplates:
-                exportcore = self._exporters_lib[tmpl]
-                return exportcore.export(
-                    res, otherinfo=dict(status='success',
-                                        figlabel=figlabel,
-                                        accfiglabel=label_kw,
-                                        ), fmt=fmt, **kwargs)
-            else:
-                return exportcore.fmt_export(
-                    dict(status='no template', figlabel=figlabel), fmt=fmt)
-        elif what == 'options':
-            digcore = self._availablelabels_lib[figlabel]
-            if digcore.kwoptions is None:
-                a, b, c = self.dig(figlabel, post=False, **kwargs)
-            if digcore.post_template in self.exportertemplates:
-                exportcore = self._exporters_lib[digcore.post_template]
-                return exportcore.export_options(
-                    digcore.kwoptions, otherinfo=dict(status='success',
-                                                      figlabel=figlabel,
-                                                      ), fmt=fmt)
-            else:
-                exportcore = self._exporters_lib[self.exportertemplates[0]]
-                return exportcore.fmt_export(
-                    dict(status='no visoptions',
-                         figlabel=figlabel,
-                         digoptions=digcore.kwoptions,
-                         ), fmt=fmt)
+        if what not in ('axes', 'options'):
+            waht = 'axes'
+        if fmt not in ('dict', 'pickle', 'json'):
+            fmt = 'dict'
+        if figlabel in self.availablelabels:
+            if what == 'axes':
+                label_kw, res, tmpl = self.dig(figlabel, post=True, **kwargs)
+                if tmpl in self.exportertemplates:
+                    exportcore = self._exporters_lib[tmpl]
+                    return exportcore.export(
+                        res, otherinfo=dict(status=200,
+                                            figlabel=figlabel,
+                                            accfiglabel=label_kw,
+                                            ), fmt=fmt, **kwargs)
+                else:
+                    status, reason = 500, 'invalid template'
+            elif what == 'options':
+                digcore = self._availablelabels_lib[figlabel]
+                if digcore.post_template in self.exportertemplates:
+                    if digcore.kwoptions is None:
+                        a, b, c = self.dig(figlabel, post=False, **kwargs)
+                    exportcore = self._exporters_lib[digcore.post_template]
+                    return exportcore.export_options(
+                        digcore.kwoptions, otherinfo=dict(status=200,
+                                                          figlabel=figlabel,
+                                                          ), fmt=fmt)
+                else:
+                    status, reason = 500, 'invalid template'
         else:
-            plog.error("%s: What to export, 'axes' or 'options'?" % self.name)
-            exportcore = self._exporters_lib[self.exportertemplates[0]]
-            return exportcore.fmt_export(
-                dict(status='what to export',
-                     figlabel=figlabel,
-                     ), fmt=fmt)
+            plog.error("%s: Figure %s not found!" % (self.name, figlabel))
+            status, reason = 404, 'figlabel not found'
+        exportcore = self._exporters_lib[self.exportertemplates[0]]
+        return exportcore.fmt_export(
+            dict(status=status, reason=reason, figlabel=figlabel), fmt=fmt)
 
     def export_doc(self, template, see='help'):
         '''
@@ -651,7 +642,7 @@ class Processor(object):
             plog.error("%s: Need a visplter object!" % self.name)
             return
         results = self.export(figlabel, what='axes', fmt='dict', **kwargs)
-        if results['status'] == 'success':
+        if results['status'] == 200:
             try:
                 figure = self.visplter.create_template_figure(
                     results, replace=revis)

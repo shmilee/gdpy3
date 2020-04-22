@@ -166,7 +166,8 @@ class MultiProcessor(Processor):
             results = digcore.post_dig(results)
         if callable(callback):
             callback(results)
-        return accfiglabel, results, digcore.post_template, update
+        return (accfiglabel, results, digcore.post_template,
+                update, figlabel, digcore.kwoptions)
 
     def _dig_worker_with_lock(self, digcore, kwargs, gotfiglabel,
                               post, callback, lock, name_it=True):
@@ -196,7 +197,8 @@ class MultiProcessor(Processor):
             results = digcore.post_dig(results)
         if callable(callback):
             callback(results)
-        return accfiglabel, results, digcore.post_template
+        return (accfiglabel, results, digcore.post_template,
+                digcore.kwoptions)
 
     def multi_dig(self, *couple_figlabels, whichlock='write',
                   redig=False, post=True, callback=None):
@@ -275,16 +277,18 @@ class MultiProcessor(Processor):
                         with multiprocessing.Pool(
                                 processes=nworkers,
                                 initializer=loginitializer) as pool:
-                            async_results = [(idx, pool.apply_async(
+                            async_results = [(idx, core, pool.apply_async(
                                 self._dig_worker_with_lock,
                                 (core, kws, gotfgl, post, callback, lock)))
                                 for idx, core, kws, gotfgl in couple_todo]
                             pool.close()
                             pool.join()
-                        for idx, res in async_results:
+                        for idx, core, res in async_results:
                             data = res.get()
                             assert multi_results[idx] == idx
-                            multi_results[idx] = data
+                            multi_results[idx] = data[:3]
+                            if core.kwoptions is None:
+                                core.kwoptions = data[3]
                         self.resloader = get_pckloader(
                             self.ressaver.get_store())
                         self.resfileloader = get_pckloader(
@@ -311,6 +315,10 @@ class MultiProcessor(Processor):
                         data = res.get()
                         multi_results.append(data[:3])
                         update = max(data[3], update)
+                        if data[3] > 0:
+                            core = self._availablelabels_lib[data[4]]
+                            if core.kwoptions is None:
+                                core.kwoptions = data[5]
                 # reset resfileloader in mainprocess
                 self.resfileloader = get_pckloader(
                     self.resfilesaver.get_store())
@@ -332,6 +340,100 @@ class MultiProcessor(Processor):
     # # End Dig Part
 
     # # Start Export Part
+
+    def multi_export(self, *couple_figlabels, what='axes', fmt='dict',
+                     whichlock='write', callback=None):
+        '''
+        Get and assemble digged results, template of *couple_figlabels*.
+        Multiprocess version of :meth:`export`.
+        Return a list of :meth:`export` return in format *fmt*.
+
+        Parameters
+        ----------
+        couple_figlabels: list of couple_figlabel
+            couple_figlabel can be figlabel str or dict, like
+            {'figlabel': 'group/fignum', 'other kwargs': True}
+        whichlock: see :meth:`multi_dig`
+        callback: see :meth:`multi_dig`, only for what='axes'
+        others: see :meth:`export`
+        '''
+        if what not in ('axes', 'options'):
+            what = 'axes'
+        if fmt not in ('dict', 'pickle', 'json'):
+            fmt = 'dict'
+        multi_results, couple_todo = [], []
+        for idx, _couple in enumerate(couple_figlabels):
+            figlabel, kwargs = self._filter_couple_figlabel(_couple)
+            if figlabel in self.availablelabels:
+                if what == 'axes':
+                    # todo
+                    multi_results.append(idx)
+                    couple_todo.append((idx, figlabel, kwargs, _couple))
+                elif what == 'options':
+                    digcore = self._availablelabels_lib[figlabel]
+                    if digcore.post_template in self.exportertemplates:
+                        if digcore.kwoptions is None:
+                            # todo
+                            multi_results.append(idx)
+                            couple_todo.append(
+                                (idx, figlabel, kwargs, _couple))
+                        else:
+                            ecore = self._exporters_lib[digcore.post_template]
+                            resopt = ecore.export_options(
+                                digcore.kwoptions, otherinfo=dict(
+                                    status=200, figlabel=figlabel))
+                            # add
+                            multi_results.append(resopt)
+                    else:
+                        status, reason = 500, 'invalid template'
+                        # add
+                        multi_results.append(dict(
+                            status=status, reason=reason, figlabel=figlabel))
+
+            else:
+                plog.error("%s: Figure %s not found!" % (self.name, figlabel))
+                status, reason = 404, 'figlabel not found'
+                # add
+                multi_results.append(
+                    dict(status=status, reason=reason, figlabel=figlabel))
+        if len(couple_todo) > 0:
+            _couple_dig = [_c[3] for _c in couple_todo]
+            if what == 'axes':
+                multi_dig_res = self.multi_dig(
+                    *_couple_dig, post=True,
+                    whichlock=whichlock, callback=callback)
+                for jdx, (label_kw, res, tmpl) in enumerate(multi_dig_res):
+                    idx, figlabel, kwargs = couple_todo[jdx][:3]
+                    if tmpl in self.exportertemplates:
+                        exportcore = self._exporters_lib[tmpl]
+                        # add
+                        assert multi_results[idx] == idx
+                        multi_results[idx] = exportcore.export(
+                            res, otherinfo=dict(status=200,
+                                                figlabel=figlabel,
+                                                accfiglabel=label_kw,
+                                                ), **kwargs)
+                    else:
+                        status, reason = 500, 'invalid template'
+                        if label_kw is None or tmpl is None:
+                            reason = res
+                        # add
+                        multi_results.append(dict(
+                            status=status, reason=reason, figlabel=figlabel))
+            elif what == 'options':
+                multi_dig_res = self.multi_dig(
+                    *_couple_dig, post=False, whichlock=whichlock)
+                for idx, figlabel, kwargs, _couple in couple_todo:
+                    digcore = self._availablelabels_lib[figlabel]
+                    exportcore = self._exporters_lib[digcore.post_template]
+                    # add
+                    assert multi_results[idx] == idx
+                    multi_results[idx] = exportcore.export_options(
+                        digcore.kwoptions, otherinfo=dict(
+                            status=200, figlabel=figlabel))
+        # format multi_results
+        exportcore = self._exporters_lib[self.exportertemplates[0]]
+        return exportcore.fmt_export(multi_results, fmt=fmt)
 
     # # End Export Part
 
