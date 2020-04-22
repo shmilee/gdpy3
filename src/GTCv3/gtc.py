@@ -70,7 +70,8 @@ class GtcConverter(Converter):
             r'a_minor=\s*?(?P<a_minor>' + self.numpat + r'?)\s+$',
             (r'\s*?nmodes=(?P<nmodes>(\s*?\d+)+)\s*$', 'int_arr'),
             (r'\s*?mmodes=(?P<mmodes>(\s*?\d+)+)\s*$', 'int_arr'),
-            # TODO me,trapped fraction
+            r'me=\s*?(?P<me>' + self.numpat + r'?)\s*,\s+trapped fraction'
+            + r'\s+?(?P<trapped_frac>' + self.numpat + r'?)\s+?',
             (r'TIME USAGE \(in SEC\):$\s*.+$\s*total\s*$\s*(?P<cputime>(\s*?'
              + self.numpat + r'){8})\s*$', 'float_arr'),
             r'Program starts at DATE=(?P<start_date>' + self.numpat + r'?)'
