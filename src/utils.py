@@ -5,7 +5,9 @@
 Utils.
 '''
 
-__all__ = ['is_dict_like', 'inherit_docstring']
+import subprocess
+
+__all__ = ['is_dict_like', 'inherit_docstring', 'run_child_cmd']
 
 
 def is_dict_like(obj):
@@ -46,3 +48,26 @@ def inherit_docstring(parents, func, template=None):
         return obj
 
     return decorator
+
+
+def run_child_cmd(args, **kwargs):
+    '''
+    Execute a child program *args*, return returncode, stdout, stderr.
+
+    Parameters
+    ----------
+    args: A string, or a sequence of program arguments.
+    kwargs: kwargs pass to subprocess.Popen
+    '''
+    d_kwargs = dict(close_fds=True,
+                    universal_newlines=True, text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE)
+    d_kwargs.update(kwargs)
+    try:
+        pipe = subprocess.Popen(args, **d_kwargs)
+        stdout, stderr = pipe.communicate()
+    except FileNotFoundError:
+        return 127, '', 'command not found'
+    else:
+        return pipe.returncode, stdout, stderr
