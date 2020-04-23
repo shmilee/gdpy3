@@ -10,9 +10,10 @@ import os
 import multiprocessing
 
 from .processor import Processor, plog
+from ._mp_rwlock import MP_RWLock
 from ..glogger import get_glogger_work_initializer
 from ..loaders import get_pckloader
-from ..utils import inherit_docstring, MP_RWLock
+from ..utils import inherit_docstring
 
 
 __all__ = ['MultiProcessor']
