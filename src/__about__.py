@@ -4,7 +4,7 @@
 
 import os
 
-VERSION = (0, 6, 1)
+VERSION = (0, 6, 2)
 
 __description__ = "Gyrokinetic Toroidal Code Data Processing tools written in python3"
 __url__ = "https://github.com/shmilee/gdpy3.git"
