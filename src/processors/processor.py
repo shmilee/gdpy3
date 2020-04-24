@@ -12,7 +12,7 @@ import time
 import pickle
 import hashlib
 
-from .. import __version__ as gdpy3_version
+from .. import __gversion__
 from ..glogger import getGLogger
 from ..loaders import is_rawloader, get_rawloader, is_pckloader, get_pckloader
 from ..savers import is_pcksaver, get_pcksaver
@@ -170,7 +170,7 @@ class Processor(object):
             return
         summary = "Pck data converted from %s." % self._rawsummary
         description = ("%s\nCreated by gdpy3 v%s.\nCreated on %s."
-                       % (summary, gdpy3_version, time.asctime()))
+                       % (summary, __gversion__, time.asctime()))
         if add_desc:
             description += '\n' + str(add_desc)
         with self.pcksaver:

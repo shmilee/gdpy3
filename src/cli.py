@@ -13,7 +13,7 @@ import argparse
 
 from .glogger import logfile, getGLogger
 from .processors import Processor_Names, Processor_Alias, get_processor
-from . import __version__ as gdpy3_version
+from .__about__ import __gversion__
 
 __all__ = ['cli_script']
 
@@ -21,7 +21,7 @@ log = getGLogger('G')
 
 
 def print_version():
-    print('gdpy3 version %s' % gdpy3_version)
+    print('gdpy3 version %s' % __gversion__)
     print('Copyright (C) %s shmilee' % time.strftime('%Y'))
 
 

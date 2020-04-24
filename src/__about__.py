@@ -111,3 +111,7 @@ def _git_versionstr_fmt(vfile):
 _git_versionstr_file = 'git-version'
 GITVERSION = _git_versionstr_fmt(
     os.path.join(__data_path__, _git_versionstr_file))
+if GITVERSION[4]:
+    __gversion__ = "%s.r%s" % (__version__, GITVERSION[3])
+else:
+    __gversion__ = __version__

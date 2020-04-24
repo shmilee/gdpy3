@@ -2,7 +2,7 @@
 
 # Copyright (c) 2020 shmilee
 
-from .__about__ import VERSION, GITVERSION, __version__
+from .__about__ import VERSION, GITVERSION, __version__, __gversion__
 from .__about__ import __description__, __url__, __status__
 from .__about__ import __author__, __email__, __license__, __copyright__
 

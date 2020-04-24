@@ -9,7 +9,7 @@ import os
 import sys
 import ctypes
 import argparse
-from ..__about__ import __version__, __author__
+from ..__about__ import __gversion__, __author__
 from ..glogger import logfile, getGLogger
 
 __all__ = ['gui_script']
@@ -47,7 +47,7 @@ def gui_script():
         sys.exit()
 
     if os.name == 'nt':
-        AppID = 'io.%s.%s.v%s' % (__author__, __name__, __version__)
+        AppID = 'io.%s.%s.v%s' % (__author__, __name__, __gversion__)
         log.debug('Set AppUserModelID %s for Windows.' % AppID)
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(AppID)
 

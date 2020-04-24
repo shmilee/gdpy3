@@ -13,8 +13,7 @@ from tkinter import ttk, simpledialog, filedialog, messagebox
 from tkinter.constants import *
 from distutils.version import LooseVersion
 
-from .. import __version__ as gdpy3_version
-from ..__about__ import __data_path__, __icon_name__
+from ..__about__ import __data_path__, __icon_name__, __gversion__
 from ..glogger import getGLogger
 from ..processors import get_processor, Processor_Names
 
@@ -137,10 +136,11 @@ class GTkApp(object):
         w_plot.pack(in_=w_frame_panel, side=BOTTOM, anchor=E, padx=5, pady=5)
         w_frame_panel.grid(row=2, column=0, padx=10, pady=5, sticky=W+E)
         # 4 - bottom
+        version_text = "Version %s" % __gversion__
         w_info = tkinter.Label(
-            main, relief=RIDGE, borderwidth=1, anchor=E, font=(font[0], 8),
-            text="Version %s\t© %s shmilee\t" % (
-                gdpy3_version, time.strftime('%Y')))
+            main, relief=RIDGE, borderwidth=1, anchor=CENTER,
+            font=(font[0], 8), text="%s\t© %s shmilee\t" % (
+                                    version_text, time.strftime('%Y')))
         w_info.grid(row=3, column=0, sticky=W+E)
         log.debug('Main frame filled.')
         # X - for share
@@ -176,7 +176,10 @@ class GTkApp(object):
             self.path = path
             self.save_case_path()
         else:
-            self.ask_case_path(N=2)
+            if self.ask_sftp:
+                self.ask_case_path(N=2)
+            else:
+                self.ask_case_path(N=1)
         self.root.title('gdpy3 - %s' % self.path)
         if monitor:
             log.info('Start Tk mainloop on monitor %s.' % monitor.name)
