@@ -4,8 +4,8 @@
 
 import os
 from setuptools import setup, find_packages
-from setuptools.command.build_py import build_py
 from setuptools.command.sdist import sdist
+from setuptools.command.build_py import build_py
 
 here = os.path.abspath(os.path.dirname(__file__))
 about = {}
@@ -25,24 +25,33 @@ _git_versionstr_file = about['_git_versionstr_file']
 _git_versionstr_write = about['_git_versionstr_write']
 
 
-class my_build_py(build_py):
-    def run(self):
-        target_dir = os.path.join(self.build_lib, 'gdpy3', data_dir)
-        self.mkpath(target_dir)
-        target_file = os.path.join(target_dir, _git_versionstr_file)
-        print('creating git version file', target_file)
-        _git_versionstr_write(target_file)
-        super(my_build_py, self).run()
-
-
 class my_sdist(sdist):
     def make_release_tree(self, base_dir, files):
-        target_dir = os.path.join(base_dir, 'src', data_dir)
-        self.mkpath(target_dir)
-        target_file = os.path.join(target_dir, _git_versionstr_file)
-        print('creating git version file', target_file)
-        _git_versionstr_write(target_file)
+        if not self.dry_run:
+            target_dir = os.path.join(base_dir, 'src', data_dir)
+            self.mkpath(target_dir)
+            target_file = os.path.join(target_dir, _git_versionstr_file)
+            print('creating git version file', target_file)
+            _git_versionstr_write(target_file)
         super(my_sdist, self).make_release_tree(base_dir, files)
+
+
+class my_build_py(build_py):
+    def run(self):
+        # for idx, attr in enumerate(dir(self)):
+        #    print('---', idx, attr, ':', getattr(self, attr))
+        if not self.dry_run:
+            #print('---', os.listdir(os.path.join('src', data_dir)))
+            source_file = os.path.join('src', data_dir, _git_versionstr_file)
+            target_dir = os.path.join(self.build_lib, 'gdpy3', data_dir)
+            self.mkpath(target_dir)
+            target_file = os.path.join(target_dir, _git_versionstr_file)
+            if os.path.isfile(source_file):
+                self.copy_file(source_file, target_file)
+            else:
+                print('creating git version file', target_file)
+                _git_versionstr_write(target_file)
+        super(my_build_py, self).run()
 
 
 setup(
@@ -92,8 +101,8 @@ setup(
         'gui.tk': ['screeninfo>=0.4.1'],
     },
     cmdclass={
-        'build_py': my_build_py,
         'sdist': my_sdist,
+        'build_py': my_build_py,
     },
     package_data={
         'gdpy3': ['%s/%s' % (data_dir, f) for f in [
