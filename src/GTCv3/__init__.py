@@ -25,13 +25,12 @@ from . import (
     snapshot,
     trackparticle,
 )
-from ..processors.processor import Processor, plog
-from ..processors.multiprocessor import MultiProcessor
+from ..processors.processor import plog
 
-__all__ = ['GTCv3', 'MultiGTCv3']
+__all__ = ['Base_GTCv3']
 
 
-class _Base_GTCv3(object):
+class Base_GTCv3(object):
     __slots__ = []
     ConverterCores = [
         getattr(m, c)
@@ -84,11 +83,3 @@ class _Base_GTCv3(object):
                           % (pckloader.get('processor'), pckloader.path))
                 return True
         return False
-
-
-class GTCv3(_Base_GTCv3, Processor):
-    __slots__ = []
-
-
-class MultiGTCv3(_Base_GTCv3, MultiProcessor):
-    __slots__ = []
