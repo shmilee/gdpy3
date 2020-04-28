@@ -3,6 +3,7 @@
 # Copyright (c) 2020 shmilee
 
 import os
+import sys
 
 VERSION = (0, 6, 2)
 
@@ -30,7 +31,6 @@ def _get_beside_path(name):
 
 def _get_data_path(name):
     '''Get the path to *name*.'''
-    import sys
 
     path = _get_beside_path(name)
     if os.path.isdir(path):
@@ -58,6 +58,32 @@ __icon_name__ = 'gdpy3_128'
 __icon_path__ = os.path.join(__data_path__, 'icon', '%s.png' % __icon_name__)
 
 
+# see: sysconfig._getuserbase()
+def _get_userbase():
+    env_base = os.getenv("GDPY3_USERBASE", None)
+    if env_base:
+        return env_base
+
+    def joinuser(*args):
+        return os.path.expanduser(os.path.join(*args))
+
+    if os.name == "nt":
+        base = os.environ.get("APPDATA") or "~"
+        return joinuser(base, "Gdpy3")
+    if sys.platform == "darwin" and sys._framework:
+        return joinuser("~", "Library", "Gdpy3")
+    return joinuser("~", ".Gdpy3")
+
+
+__ENABLE_USERBASE__ = True
+__userbase__ = _get_userbase()
+if __ENABLE_USERBASE__:
+    if not os.path.exists(__userbase__):
+        os.mkdir(__userbase__)
+    if __userbase__ not in sys.path:
+        sys.path.append(__userbase__)
+
+
 def _git_versionstr_read(vfile):
     '''read versionstr, v{X}.{Y}.{Z}-{N}-g{commit}'''
     if os.path.isfile(vfile):
@@ -77,7 +103,7 @@ def _git_versionstr_read(vfile):
                 [git, 'describe', '--tags', '--abbrev=40'],
                 cwd=os.path.dirname(upath))
             if code == 0:
-                # example, v0.6.1-21-gbed56cc
+                # example, v0.6.1-21-gbed56cc...
                 return stdout
     # fallback
     return ''
