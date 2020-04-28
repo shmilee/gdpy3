@@ -67,7 +67,7 @@ def register_user_Processors(dirname):
             alias = None
             if os.path.isfile(alias_f):
                 with open(alias_f, 'r') as f:
-                    alias = f.readline()
+                    alias = f.readline().strip()
             register_Processor(dname, mod_path, alias=alias)
 
 
