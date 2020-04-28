@@ -21,33 +21,11 @@ and has methods
 '''
 
 import inspect
-import importlib
 
 from . import processor
+from .lib import Processor_Names, Processor_Alias, find_Processor
 
 __all__ = ['get_processor', 'is_processor']
-
-Processor_Lib = {}
-Processor_Names = []
-Processor_Alias = {}
-
-
-def register_processor(name, module_relative_path, alias=None):
-    '''
-    Add processor *name* module and its alias in *Processor_Lib*.
-    Processor_Lib[name] = (module_relative_path, {class_cache_dict})
-    '''
-    if name not in Processor_Lib:
-        Processor_Lib[name] = (module_relative_path, {})
-        # update names
-        Processor_Names.append(name)
-        Processor_Names.sort()
-        if alias:
-            Processor_Alias[alias] = name
-
-
-register_processor('GTCv3', '..GTCv3', 'G3')
-register_processor('GTCv4', '..GTCv4', 'G4')
 
 
 def get_processor(path=None, name='GTCv3', parallel='multiprocess', **kwargs):
@@ -68,28 +46,14 @@ def get_processor(path=None, name='GTCv3', parallel='multiprocess', **kwargs):
     kwargs: parameters passed to :meth:`Processor.__init__`
     '''
     if name in Processor_Names:
-        pname = name
+        pass
     elif name in Processor_Alias:
-        pname = Processor_Alias[name]
+        name = Processor_Alias[name]
     else:
         raise ValueError(
             'Invalid name: "%s"! Did you mean one of "%s" or alias "%s"?'
             % (name, ', '.join(Processor_Names), ', '.join(Processor_Alias)))
-    module_relative, class_cache = Processor_Lib.get(pname)
-    if parallel in class_cache:
-        gdpcls = class_cache[parallel]
-    else:
-        ppack = importlib.import_module(module_relative, package=__name__)
-        # which one
-        if parallel == 'off':
-            gdpcls = getattr(ppack, pname)
-        elif parallel == 'multiprocess':
-            gdpcls = getattr(ppack, 'Multi%s' % pname)
-        elif parallel == 'mpi4py':
-            raise ValueError('TODO %s' % parallel)
-        else:
-            raise ValueError('Unsupported parallel-lib: %s' % parallel)
-        Processor_Lib[name][1][parallel] = gdpcls
+    gdpcls = find_Processor(name, parallel)
     if path:
         if kwargs:
             sig = inspect.signature(gdpcls)
