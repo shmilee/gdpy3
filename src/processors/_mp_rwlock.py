@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2020 shmilee
+# Copyright (c) unhappydog
 '''
 multiprocessing read_write_lock, optional lock for MultiProcessor.
 
