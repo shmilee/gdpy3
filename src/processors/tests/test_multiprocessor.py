@@ -51,14 +51,16 @@ class TestMultiprocessProcessor(unittest.TestCase):
 
     def test_processor_multi_dig_visplt_callback(self):
         gdp = get_processor(self.tmp, name='TDP', parallel='multiprocess')
+        global X2, get_X  # fix: Can't pickle local object
+        X2 = gdp.manager.list()
+
+        def get_X(res):
+            X2.append((res['x'], os.getpid()))
+
+        accfiglabels = gdp.multi_visplt(
+            *([self.figlabel]*2), savepath=self.tmp, callback=get_X)
         out = gdp.multi_dig(self.figlabel, post=False)
         a, results, t = out[0]
         X1 = [results['x']]
-        X2 = []
-
-        def get_X(res):
-            X2.append(res['x'])
-
-        accfiglabels = gdp.multi_visplt(
-            self.figlabel, savepath=self.tmp, callback=get_X)
-        self.assertListEqual(X1[0], X2[0])
+        self.assertListEqual(X1[0], X2[0][0])  # same result
+        self.assertNotEqual(X2[0][1], X2[1][1])  # different pid
