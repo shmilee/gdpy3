@@ -14,7 +14,7 @@ import matplotlib.pyplot
 import mpl_toolkits.mplot3d
 
 from ..glogger import getGLogger
-from ..__about__ import __data_path__
+from ..__about__ import __data_path__, __ENABLE_USERBASE__, __userbase__
 from .base import BaseVisplter
 
 __all__ = ['MatplotlibVisplter']
@@ -36,11 +36,18 @@ _Mpl_Axes_Structure = '''
 '''
 
 
-def _get_mplstyle_library(path):
+def _get_mplstyle_library(dirname='mpl-stylelib'):
     available = matplotlib.style.available.copy()
-    for path, name in matplotlib.style.core.iter_style_files(path):
-        available.append(name)
-    return available
+    read_style_directory = matplotlib.style.core.read_style_directory
+    _path1 = os.path.join(__data_path__, dirname)
+    lib = {sty: '_1_' for sty in read_style_directory(_path1).keys()}
+    if __ENABLE_USERBASE__:
+        _path2 = os.path.join(__userbase__, dirname)
+        # use user '_2_' first
+        lib.update({s: '_2_' for s in read_style_directory(_path2).keys()})
+    available.extend(lib.keys())
+    lib.update({'_1_': _path1, '_2_': _path2})
+    return available, lib
 
 
 class MatplotlibVisplter(BaseVisplter):
@@ -48,8 +55,7 @@ class MatplotlibVisplter(BaseVisplter):
     Use matplotlib to create figures.
     '''
     __slots__ = []
-    _STYLE_LIBPATH = os.path.join(__data_path__, 'mpl-stylelib')
-    style_available = _get_mplstyle_library(_STYLE_LIBPATH)
+    style_available, style_ext_library = _get_mplstyle_library()
 
     def __init__(self, name):
         super(MatplotlibVisplter, self).__init__(
@@ -69,7 +75,8 @@ class MatplotlibVisplter(BaseVisplter):
 
     def _filter_style(self, sty):
         '''Change *sty* str to absolute path.'''
-        return os.path.join(self._STYLE_LIBPATH, sty + '.mplstyle')
+        _pstr = self.style_ext_library[sty]  # '_1_' or '_2_'
+        return os.path.join(self.style_ext_library[_pstr], sty + '.mplstyle')
 
     def _param_from_style(self, param):
         if param in matplotlib.rcParams:
