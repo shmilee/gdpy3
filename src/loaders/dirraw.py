@@ -9,19 +9,27 @@ Contains directory raw loader class.
 import os
 
 from ..glogger import getGLogger
-from .base import BaseRawLoader
+from ..utils import inherit_docstring
+from .base import BaseRawLoader, _raw_copydoc_func
 
 __all__ = ['DirRawLoader']
 log = getGLogger('L')
 
 
+@inherit_docstring((BaseRawLoader,), _raw_copydoc_func, template=None)
 class DirRawLoader(BaseRawLoader):
     '''
     Load raw data from a directory. Return a dictionary-like object.
 
+    Attributes
+    {Attributes}
+
+    Parameters
+    {Parameters}
+
     Notes
-    -----
-    Directory tree maxdepth is 2.
+    {Notes}
+    3. Directory tree maxdepth is 2.
     '''
     __slots__ = []
     loader_type = 'directory'

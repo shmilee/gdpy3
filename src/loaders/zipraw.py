@@ -11,16 +11,27 @@ import io
 import zipfile
 
 from ..glogger import getGLogger
-from .base import BaseRawLoader
+from ..utils import inherit_docstring
+from .base import BaseRawLoader, _raw_copydoc_func
 
 __all__ = ['ZipRawLoader']
 log = getGLogger('L')
 
 
+@inherit_docstring((BaseRawLoader,), _raw_copydoc_func, template=None)
 class ZipRawLoader(BaseRawLoader):
     # https://docs.python.org/3/library/zipfile.html
     '''
     Load raw data from a ZIP archive. Return a dictionary-like object.
+
+    Attributes
+    {Attributes}
+
+    Parameters
+    {Parameters}
+
+    Notes
+    {Notes}
     '''
     __slots__ = []
     loader_type = 'zipfile'

@@ -12,6 +12,7 @@ import types
 import contextlib
 
 from ..glogger import getGLogger
+from ..utils import simple_parse_doc
 
 __all__ = ['BaseLoader', 'BaseRawLoader', 'BasePckLoader']
 log = getGLogger('L')
@@ -148,6 +149,13 @@ class BaseLoader(object):
         for name, value in state:
             setattr(self, name, value)
         self.pathobj = self._special_open()
+
+
+def _raw_copydoc_func(docs):
+    name, doc = docs[0]
+    assert name == 'BaseRawLoader'
+    return (), simple_parse_doc(
+        doc, ('Attributes', 'Parameters', 'Notes'), strip=None)
 
 
 class BaseRawLoader(BaseLoader):

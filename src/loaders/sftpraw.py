@@ -18,27 +18,31 @@ except ImportError as exc:
         'SftpRawLoader requires paramiko. But %s' % exc) from None
 
 from ..glogger import getGLogger
+from ..utils import inherit_docstring
 from ..getpasswd import GetPasswd
-from .base import BaseRawLoader
+from .base import BaseRawLoader, _raw_copydoc_func
 
 __all__ = ['SftpRawLoader']
 log = getGLogger('L')
 
 
+@inherit_docstring((BaseRawLoader,), _raw_copydoc_func, template=None)
 class SftpRawLoader(BaseRawLoader):
     '''
     Load raw data from a directory in remote SSH server.
     Return a dictionary-like object.
 
+    Attributes
+    {Attributes}
+
     Parameters
-    ----------
-    path: str
-        format: 'sftp://username@host[:port]##remote/path'
-        example: 'sftp://Bob@192.168.1.10:2233##test/case/'
+    {Parameters}
 
     Notes
-    -----
-    Directory tree maxdepth is 2.
+    {Notes}
+    3. Directory tree maxdepth is 2.
+    4. path format: 'sftp://username@host[:port]##remote/path'
+       example: 'sftp://Bob@192.168.1.10:2233##test/case/'
     '''
     __slots__ = ['user', '__passwd', 'host', 'port', 'rmt_path', 'transport']
     _sep = '/'  # unix sep
