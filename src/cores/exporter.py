@@ -201,9 +201,9 @@ class LineExporter(Exporter):
              xlabel
     or
              title
-             /|\
-           /  |  \
-         /    |    \
+             /|\ 
+           /  |  \ 
+         /    |    \ 
         |    / \    |
         |  /     \  | zlabel
         |/  Line   \|

@@ -456,9 +456,9 @@ class BaseVisplter(object):
                    xlabel
         or
                    title
-                   /|\
-                 /  |  \
-               /    |    \
+                   /|\ 
+                 /  |  \ 
+               /    |    \ 
               |    / \    |
               |  /     \  | zlabel
               |/  Line   \|
