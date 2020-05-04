@@ -9,9 +9,17 @@ Contains saver base class.
 import os
 
 from ..glogger import getGLogger
+from ..utils import simple_parse_doc
 
 __all__ = ['BasePckSaver']
 log = getGLogger('S')
+
+
+def _copydoc_func(docs):
+    name, doc = docs[0]
+    assert name == 'BasePckSaver'
+    return (), simple_parse_doc(
+        doc, ('Attributes', 'Parameters', 'Notes'), strip=None)
 
 
 class BasePckSaver(object):

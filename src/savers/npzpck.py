@@ -12,12 +12,14 @@ import zipfile
 import tempfile
 
 from ..glogger import getGLogger
-from .base import BasePckSaver
+from ..utils import inherit_docstring
+from .base import BasePckSaver, _copydoc_func
 
 __all__ = ['NpzPckSaver']
 log = getGLogger('S')
 
 
+@inherit_docstring((BasePckSaver,), _copydoc_func, template=None)
 class NpzPckSaver(BasePckSaver):
     # https://docs.scipy.org/doc/numpy/reference/generated/numpy.savez_compressed.html
     # /usr/lib/python3.x/site-packages/numpy/lib/npyio.py, funtion _savez
@@ -25,10 +27,15 @@ class NpzPckSaver(BasePckSaver):
     Save dict data with a group name to a NumPy compressed archive file.
 
     Attributes
-    ----------
+    {Attributes}
     duplicate_name: bool
         allow "zipfile.py: UserWarning: Duplicate name ..." or not
 
+    Parameters
+    {Parameters}
+
+    Notes
+    {Notes}
     '''
     __slots__ = ['duplicate_name']
     _extension = '.npz'

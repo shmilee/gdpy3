@@ -7,20 +7,27 @@ Contains cache pickled dict saver class.
 '''
 
 from ..glogger import getGLogger
-from ..utils import is_dict_like
-from .base import BasePckSaver
+from ..utils import is_dict_like, inherit_docstring
+from .base import BasePckSaver, _copydoc_func
 
 __all__ = ['CachePckSaver']
 log = getGLogger('S')
 
 
+@inherit_docstring((BasePckSaver,), _copydoc_func, template=None)
 class CachePckSaver(BasePckSaver):
     '''
     Save dict data with a group name to a cache dict.
 
+    Attributes
+    {Attributes}
+
     Parameters
     ----------
     path: dict, store object
+
+    Notes
+    {Notes}
     '''
     __slots__ = []
     _extension = '.cache'
