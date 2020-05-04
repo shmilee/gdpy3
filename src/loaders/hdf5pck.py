@@ -15,15 +15,23 @@ except ImportError as exc:
         'Hdf5PckLoader requires h5py(bindings for HDF5). But %s' % exc) from None
 
 from ..glogger import getGLogger
-from .base import BasePckLoader
+from ..utils import inherit_docstring
+from .base import BasePckLoader, _pck_copydoc_func
 
 __all__ = ['Hdf5PckLoader']
 log = getGLogger('L')
 
 
+@inherit_docstring((BasePckLoader,), _pck_copydoc_func, template=None)
 class Hdf5PckLoader(BasePckLoader):
     '''
     Load datasets from ``.hdf5`` file. Return a dictionary-like object.
+
+    Attributes
+    {Attributes}
+
+    Parameters
+    {Parameters}
 
     Notes
     -----

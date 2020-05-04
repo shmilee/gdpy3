@@ -10,15 +10,23 @@ import numpy
 import zipfile
 
 from ..glogger import getGLogger
-from .base import BasePckLoader
+from ..utils import inherit_docstring
+from .base import BasePckLoader, _pck_copydoc_func
 
 __all__ = ['NpzPckLoader']
 log = getGLogger('L')
 
 
+@inherit_docstring((BasePckLoader,), _pck_copydoc_func, template=None)
 class NpzPckLoader(BasePckLoader):
     '''
     Load pickled data from ``.npz`` file. Return a dictionary-like object.
+
+    Attributes
+    {Attributes}
+
+    Parameters
+    {Parameters}
 
     Notes
     -----

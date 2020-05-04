@@ -7,16 +7,23 @@ Contains cache pickled dict loader class.
 '''
 
 from ..glogger import getGLogger
-from ..utils import is_dict_like
-from .base import BasePckLoader
+from ..utils import is_dict_like, inherit_docstring
+from .base import BasePckLoader, _pck_copydoc_func
 
 __all__ = ['CachePckLoader']
 log = getGLogger('L')
 
 
+@inherit_docstring((BasePckLoader,), _pck_copydoc_func, template=None)
 class CachePckLoader(BasePckLoader):
     '''
     Load datasets from cache dict. Return a dictionary-like object.
+
+    Attributes
+    {Attributes}
+
+    Parameters
+    {Parameters}
 
     Notes
     -----

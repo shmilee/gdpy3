@@ -235,6 +235,12 @@ class BaseRawLoader(BaseLoader):
         return os.path.join(self.path, name)
 
 
+def _pck_copydoc_func(docs):
+    name, doc = docs[0]
+    assert name == 'BasePckLoader'
+    return (), simple_parse_doc(doc, ('Attributes', 'Parameters'), strip=None)
+
+
 class BasePckLoader(BaseLoader):
     '''
     Load arrays data from a pickled(packaged) data file or cache.
