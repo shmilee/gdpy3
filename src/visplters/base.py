@@ -9,9 +9,16 @@ Contains visplters base class.
 import numpy
 
 from ..glogger import getGLogger
+from ..utils import simple_parse_doc
 
 __all__ = ['BaseVisplter']
 vlog = getGLogger('V')
+
+
+def _copydoc_func(docs):
+    name, doc = docs[0]
+    assert name == 'BaseVisplter'
+    return (), simple_parse_doc(doc, ('Attributes', 'Notes'), strip=None)
 
 
 class BaseVisplter(object):
@@ -35,8 +42,8 @@ class BaseVisplter(object):
 
     Notes
     -----
-    The visplter instance is callable.
-    instance() is equivalent to instance.create_figure().
+    1. The visplter instance is callable.
+       instance() is equivalent to instance.create_figure().
     '''
     __slots__ = ['name', 'example_axes', '_style', '_figureslib']
     style_available = []

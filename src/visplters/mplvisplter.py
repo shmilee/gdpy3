@@ -15,7 +15,8 @@ import mpl_toolkits.mplot3d
 
 from ..glogger import getGLogger
 from ..__about__ import __data_path__, __ENABLE_USERBASE__, __userbase__
-from .base import BaseVisplter
+from ..utils import inherit_docstring
+from .base import BaseVisplter, _copydoc_func
 
 __all__ = ['MatplotlibVisplter']
 vlog = getGLogger('V')
@@ -50,9 +51,18 @@ def _get_mplstyle_library(dirname='mpl-stylelib'):
     return available, lib
 
 
+@inherit_docstring((BaseVisplter,), _copydoc_func, template=None)
 class MatplotlibVisplter(BaseVisplter):
     '''
     Use matplotlib to create figures.
+
+    Attributes
+    {Attributes}
+
+    Notes
+    {Notes}
+    2. User defined styles are in :attr:`style_ext_library`['_2_'],
+       and visplter will use them first.
     '''
     __slots__ = []
     style_available, style_ext_library = _get_mplstyle_library()
