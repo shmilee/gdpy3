@@ -167,6 +167,7 @@ class BaseRawLoader(BaseLoader):
     ----------
     path: str
         path of directory or archive file
+    pathobj: opened path object
     filenames: tuple
         filenames in the directory or archive file
 
@@ -250,6 +251,7 @@ class BasePckLoader(BaseLoader):
     ----------
     path: str
         path of the file or cache
+    pathobj: opened path object
     datakeys: tuple
         keys in the loader, contain group name
     datagroups: tuple
