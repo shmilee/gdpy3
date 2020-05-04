@@ -7,7 +7,11 @@ Utils.
 
 import subprocess
 
-__all__ = ['is_dict_like', 'inherit_docstring', 'run_child_cmd']
+__all__ = [
+    'is_dict_like',
+    'inherit_docstring', 'simple_parse_doc',
+    'run_child_cmd',
+]
 
 
 def is_dict_like(obj):
@@ -48,6 +52,53 @@ def inherit_docstring(parents, func, template=None):
         return obj
 
     return decorator
+
+
+def simple_parse_doc(doc, sections, strip=None):
+    '''
+    Extract the docstring text from the ordered sections.
+    Return a dict of sections.
+
+    Parameters
+    ----------
+    doc: str, docstring
+    sections: tuple of ordered sections
+    strip: str or None.
+        If strip is None, remove leading and trailing whitespace in sections.
+        Else, remove characters in strip instead.
+
+    Example
+    -------
+    doc = ('\n    summary\n\n    ABC\n    ---\n    abcdefg\n'
+            '\n    HIJ\n    ---\n    hijklmn\n    ')
+    sections = ('ABC', 'HIJ')
+
+    return doc_sections = {
+        'ABC': '---\n    abcdefg',
+        'HIJ': '---\n    hijklmn'
+    }
+    '''
+    idxs = []
+    start = 0
+    for sect in sections:
+        idx = doc.find(sect + '\n', start)
+        if idx == -1:
+            idxs.append(None)
+        else:
+            start = idx + len(sect) + 1
+            idxs.append((idx, start))
+    doc_sections = {}
+    zip_sections = [(sections[i], *idxs[i])
+                    for i in range(len(sections)) if idxs[i] is not None]
+    for i, zip_sect in enumerate(zip_sections):
+        sect, idx, start = zip_sect
+        if i == len(zip_sections) - 1:
+            doc_sect = doc[start:]
+        else:
+            idx_next = zip_sections[i+1][1]
+            doc_sect = doc[start:idx_next]
+        doc_sections[sect] = doc_sect.strip(strip)
+    return doc_sections
 
 
 def run_child_cmd(args, **kwargs):
