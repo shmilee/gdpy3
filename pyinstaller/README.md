@@ -65,6 +65,29 @@ done
 ```
 
 
+centos7
+-------
+
+1. run a new docker container
+
+```bash
+docker build --rm -t gdpy3/centos7:$(date +%y%m%d) -f centos7.Dockerfile .
+cd ..
+python setup.py bdist_wheel
+cp ./dist/gdpy3-*-any.whl pyinstaller/
+docker run --rm -i -t -v $PWD/pyinstaller:/gdpy3-pyinstaller \
+    gdpy3/centos7:$(date +%y%m%d) bash
+```
+
+2. install and freeze gdpy3 in container
+
+```bash
+cd /gdpy3-pyinstaller
+pip3 install ./gdpy3-*-any.whl
+pyinstaller --onefile gdpy3-app.spec
+```
+
+
 macos
 -----
 
