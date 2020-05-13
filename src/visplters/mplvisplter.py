@@ -39,13 +39,14 @@ _Mpl_Axes_Structure = '''
 
 def _get_mplstyle_library(dirname='mpl-stylelib'):
     available = matplotlib.style.available.copy()
-    read_style_directory = matplotlib.style.core.read_style_directory
+    read_style_dir = matplotlib.style.core.read_style_directory
     _path1 = os.path.join(__data_path__, dirname)
-    lib = {sty: '_1_' for sty in read_style_directory(_path1).keys()}
+    lib = {sty: '_1_' for sty in read_style_dir(_path1).keys()}
     if __ENABLE_USERBASE__:
         _path2 = os.path.join(__userbase__, dirname)
         # use user '_2_' first
-        lib.update({s: '_2_' for s in read_style_directory(_path2).keys()})
+        if os.path.isdir(_path2):
+            lib.update({s: '_2_' for s in read_style_dir(_path2).keys()})
     available.extend(lib.keys())
     lib.update({'_1_': _path1, '_2_': _path2})
     return available, lib
