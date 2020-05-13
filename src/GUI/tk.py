@@ -3,6 +3,7 @@
 # Copyright (c) 2020 shmilee
 
 import os
+import sys
 import time
 import numpy
 import tempfile
@@ -41,7 +42,7 @@ class GTkApp(object):
         img = tkinter.PhotoImage(file=os.path.join(
             __data_path__, 'icon', '%s.gif' % __icon_name__))
         root.tk.call('wm', 'iconphoto', root._w, "-default", img)
-        root.protocol("WM_DELETE_WINDOW", root.destroy)
+        root.protocol("WM_DELETE_WINDOW", self.close_app)
         style = ttk.Style()
         font = ('Microsoft YaHei', 10)
         width = 0
@@ -186,6 +187,15 @@ class GTkApp(object):
         else:
             log.info('Start Tk mainloop.')
         self.root.mainloop()
+        log.info('Quit, bye!')
+        sys.exit()
+
+    def close_app(self):
+        # close and destroy fig windows
+        self.close_figwindows(destroy=True)
+        # close root window
+        log.debug('Destroy root window.')
+        self.root.destroy()
 
     def _get_path(self):
         return self.pathlabel.get()
@@ -264,10 +274,13 @@ class GTkApp(object):
 
     def close_figwindows(self, destroy=False):
         for n, w in self.figwindows.items():
-            w.wm_withdraw()
-        if destroy:
-            for n, w in self.figwindows.items():
+            if destroy:
+                log.debug('Destroy figure window of %s' % n)
                 w.destroy()
+            else:
+                log.debug('Hide figure window of %s' % n)
+                w.wm_withdraw()
+        if destroy:
             self.figwindows = {}
             self.next_figwindows_index = 0
 
@@ -285,6 +298,7 @@ class GTkApp(object):
             gdp = gdpcls(self.path)
             self.root.title('gdpy3 - %s' % self.path)
             if gdp.pckloader:
+                log.debug('Set processor for %s' % self.path)
                 self.processor = gdp
                 self.figlabel_filter.set('^.*/.*$')
                 self.figlabels.set(gdp.availablelabels)
