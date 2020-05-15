@@ -56,6 +56,7 @@ class Processor(object):
     -----
     1. :attr:`saltname` means base name of salt file for `saver.path`.
        The :attr:`rawloader` must have exactly one salt file.
+       :attr:`saltstr` is the salt string generated from salt file.
     2. :attr:`dig_acceptable_time` means if :meth:`dig` spends more
        time than this, the results will be saved in :attr:`resfilesaver`.
     '''
@@ -68,7 +69,7 @@ class Processor(object):
 
     # # Start Convert Part
 
-    __slots__ = ['_rawloader', '_pcksaver', '_converters']
+    __slots__ = ['_rawloader', '_pcksaver', '_converters', '_saltstr']
     ConverterCores = []
     saltname = ''
 
@@ -141,6 +142,7 @@ class Processor(object):
                 plog.warning("Failed to read salt file '%s'!" % saltfile)
                 salt = hashlib.sha1(saltfile.encode('utf-8')).hexdigest()
         plog.debug("Get salt string: '%s'." % salt)
+        self._saltstr = salt
         # prefix
         prefix = self.rawloader.beside_path(self.name.lower())
         # savetype
@@ -155,6 +157,10 @@ class Processor(object):
         # assemble
         savepath = '%s-%s.%s%s' % (prefix, salt[:6], ext2, savetype)
         self.pcksaver = get_pcksaver(savepath)
+
+    @property
+    def saltstr(self):
+        return self._saltstr
 
     @property
     def _rawsummary(self):
