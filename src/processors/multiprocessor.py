@@ -100,7 +100,7 @@ class MultiProcessor(Processor):
         super(MultiProcessor, self).set_prefer_ressaver(
             ext2=ext2, oldext2=oldext2, overwrite=overwrite)
         D = self.manager.dict()
-        plog.debug("Changing %s data cache store to '%s'." % (ext2, D))
+        plog.debug("Changing %s data cache store to '%r'." % (ext2, D))
         self.ressaver.set_store(D)
         self.resloader = get_pckloader(D)
 
