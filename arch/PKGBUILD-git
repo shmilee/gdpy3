@@ -13,7 +13,7 @@ source "$_old_p"
 
 _pkgname=gdpy3
 pkgname=gdpy3-git
-pkgver=0.6.3.r0.gxxx
+pkgver=0.6.4.r0.gxxx
 makedepends+=('git')
 conflicts=("$_pkgname")
 source[0]="git+file://$PWD/../../$_pkgname"
