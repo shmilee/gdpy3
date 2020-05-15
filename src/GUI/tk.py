@@ -3,7 +3,6 @@
 # Copyright (c) 2020 shmilee
 
 import os
-import sys
 import time
 import numpy
 import tempfile
@@ -162,12 +161,17 @@ class GTkApp(object):
         self.figkwframe = w_kw_in_frame
         self.pathlabel = w_str_path
         self.ask_sftp = ask_sftp
+        # cache processor instances, key (type(processor).__name__, self.path)
+        self.cache_processors = {}
         self.processor = None
-        self.figkwslib = {}  # all figure kwargs widgets, key is figlabel
+        # cache all figure kwargs widgets of different processors
+        # key [processor.name-processor.saltstr][figlabel]
+        self.cache_figkwslib = {}
         self.figkws = {}  # kwargs widgets mapped in panel
-        # TODO: choose accfiglabel or figlabel
-        self.figwindows = {}  # all plotted figure windows, key is accfiglabel
-        self.next_figwindows_index = 0
+        # cache all plotted figure windows of different processors
+        # key of window: [processor.name-processor.saltstr][accfiglabel]
+        self.cache_figwindows = {}
+        self.next_figwindow_index = 0
         # X - events
         w_select_proc.bind("<<ComboboxSelected>>", self.after_processor_name)
         w_entry_filter.bind("<Return>", self.after_filter)
@@ -187,15 +191,19 @@ class GTkApp(object):
         else:
             log.info('Start Tk mainloop.')
         self.root.mainloop()
-        log.info('Quit, bye!')
-        sys.exit()
 
     def close_app(self):
-        # close and destroy fig windows
-        self.close_figwindows(destroy=True)
+        # close and destroy all fig windows
+        for key in self.cache_figwindows.keys():
+            log.debug('Destroy figure windows of %s' % key)
+            for n, w in self.cache_figwindows[key].items():
+                log.debug('Destroy window: %s' % n)
+                w.destroy()
         # close root window
         log.debug('Destroy root window.')
         self.root.destroy()
+        log.info('Quit, bye!')
+        self.root.quit()
 
     def _get_path(self):
         return self.pathlabel.get()
@@ -260,29 +268,20 @@ class GTkApp(object):
             except Exception:
                 log.debug('Error of saving recent path.', exc_info=1)
 
-    def reset_panel(self, clear_lib=False):
+    def reset_panel(self):
         for n, w in self.figkws.items():
             w.grid_forget()
             w.pack_forget()
             w.place_forget()
         self.figkws = {}
-        if clear_lib:
-            for figlabel in self.figkwslib:
-                for n, w in self.figkwslib[figlabel].items():
-                    w.destroy()
-            self.figkwslib = {}
 
-    def close_figwindows(self, destroy=False):
-        for n, w in self.figwindows.items():
-            if destroy:
-                log.debug('Destroy figure window of %s' % n)
-                w.destroy()
-            else:
-                log.debug('Hide figure window of %s' % n)
+    def close_figwindows(self, processor):
+        key = '%s-%s' % (processor.name, processor.saltstr)
+        if key in self.cache_figwindows:
+            log.debug('Hide figure windows of %s' % key)
+            for n, w in self.cache_figwindows[key].items():
+                log.debug('Hide window: %s' % n)
                 w.wm_withdraw()
-        if destroy:
-            self.figwindows = {}
-            self.next_figwindows_index = 0
 
     def after_pick(self):
         if self.processor_name.get():
@@ -295,18 +294,25 @@ class GTkApp(object):
                 GetPasswd.CALLBACK = _passwd_CALLBACK
             if self.path.endswith(gdpcls.saltname):
                 self.path = self.path[:-len(gdpcls.saltname)]
-            gdp = gdpcls(self.path)
+            # close and hide old fig windows
+            if self.processor:
+                self.close_figwindows(self.processor)
+            key = (gdpcls.__name__, self.path)
+            if key in self.cache_processors:
+                gdp = self.cache_processors[key]
+            else:
+                gdp = gdpcls(self.path)
             self.root.title('gdpy3 - %s' % self.path)
             if gdp.pckloader:
                 log.debug('Set processor for %s' % self.path)
                 self.processor = gdp
+                if key not in self.cache_processors:
+                    self.cache_processors[key] = gdp
                 self.figlabel_filter.set('^.*/.*$')
                 self.figlabels.set(gdp.availablelabels)
                 self.figlistbox.selection_clear(0, END)
-                # reset panel, clear kw widgets
-                self.reset_panel(clear_lib=True)
-                # close and destroy fig windows
-                self.close_figwindows(destroy=True)
+                # reset panel, hide kw widgets
+                self.reset_panel()
             else:
                 messagebox.showerror(message='Failed to get processor!')
         else:
@@ -339,14 +345,17 @@ class GTkApp(object):
         else:
             messagebox.showerror(message='Failed to get figure object!')
             return
-        if accfiglabel in self.figwindows:
+        key = '%s-%s' % (self.processor.name, self.processor.saltstr)
+        if key not in self.cache_figwindows:
+            self.cache_figwindows[key] = {}
+        if accfiglabel in self.cache_figwindows[key]:
             log.debug('Raise old figure window.')
-            self.figwindows[accfiglabel].wm_deiconify()
+            self.cache_figwindows[key][accfiglabel].wm_deiconify()
         else:
             log.debug('Get new figure window.')
-            index = self.next_figwindows_index
-            self.next_figwindows_index += 1
-            self.figwindows[accfiglabel] = MplFigWindow(
+            index = self.next_figwindow_index
+            self.next_figwindow_index += 1
+            self.cache_figwindows[key][accfiglabel] = MplFigWindow(
                 figure, accfiglabel, index, self, class_='gdpy3-gui')
 
     def after_processor_name(self, event):
@@ -356,7 +365,8 @@ class GTkApp(object):
         # reset panel
         self.reset_panel()
         # close fig windows
-        self.close_figwindows()
+        if self.processor:
+            self.close_figwindows(self.processor)
 
     def get_figkws_widgets(self, options):
         controls = {}
@@ -392,9 +402,12 @@ class GTkApp(object):
             figlabel = self.figlabels.get()[self.figlistbox.curselection()[0]]
             # update panel
             self.reset_panel()
-            if figlabel in self.figkwslib:
+            key = '%s-%s' % (self.processor.name, self.processor.saltstr)
+            if key not in self.cache_figkwslib:
+                self.cache_figkwslib[key] = {}
+            if figlabel in self.cache_figkwslib[key]:
                 log.debug("Use old widgets")
-                self.figkws = self.figkwslib[figlabel]
+                self.figkws = self.cache_figkwslib[key][figlabel]
             else:
                 log.debug("Gen new widgets")
                 result = self.processor.export(figlabel, what='options')
@@ -403,7 +416,7 @@ class GTkApp(object):
                     self.figkws = self.get_figkws_widgets(options)
                 else:
                     self.figkws = {}
-                self.figkwslib[figlabel] = self.figkws
+                self.cache_figkwslib[key][figlabel] = self.figkws
             for n, w in self.figkws.items():
                 w.pack(anchor=W, padx=5, pady=5)
 
