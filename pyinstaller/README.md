@@ -85,7 +85,25 @@ docker run --rm -i -t -v $PWD/pyinstaller:/gdpy3-pyinstaller \
 cd /gdpy3-pyinstaller
 pip3 install ./gdpy3-*-any.whl
 pyinstaller --onefile gdpy3-app.spec
+for lk in ${entry_iface_candidates[@]}; do
+    ln -s gdpy3-app ./dist/gdpy3-app/gdpy3-$lk
+done
+cd dist/
+tar czvf gdpy3-app-pkg.tar.gz gdpy3-app/
 ```
+
+3. decompress in cluster and create shell wrappers
+
+```bash
+tar zxvf gdpy3-app-pkg.tar.gz -C ~/.local/lib/
+for lk in ${entry_iface_candidates[@]}; do
+    echo '#!/bin/bash' > ~/.local/bin/gdpy3-$lk
+    echo "exec ~/.local/lib/gdpy3-app/gdpy3-$lk \"\$@\"" >> ~/.local/bin/gdpy3-$lk
+    chmod +x ~/.local/bin/gdpy3-$lk
+done
+```
+
+Keep an eye on [exe outside dir](https://github.com/pyinstaller/pyinstaller/issues/1048)
 
 
 macos
