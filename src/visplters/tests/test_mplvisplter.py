@@ -204,10 +204,11 @@ class TestMatplotlibVisplter(unittest.TestCase):
         self.assertListEqual(
             self.visplter.check_style(['seaborn', '-rm', {'figure.dpi': 80}]),
             ['seaborn', {'figure.dpi': 80}])
+        libpath = self.visplter.style_ext_library['gdpy3-notebook']
+        libpath = self.visplter.style_ext_library[libpath]
         self.assertListEqual(
             self.visplter.filter_style(['seaborn', 'gdpy3-notebook']),
-            ['seaborn', os.path.join(
-                self.visplter._STYLE_LIBPATH, 'gdpy3-notebook.mplstyle')])
+            ['seaborn', os.path.join(libpath, 'gdpy3-notebook.mplstyle')])
         self.assertEqual(self.visplter.param_from_style('image.cmap'), 'jet')
         self.assertFalse(self.visplter.param_from_style('image.cmapNone'))
         self.visplter.style = ['gdpy3-notebook', {'image.cmap': 'hot'}]
