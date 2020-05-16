@@ -1,0 +1,58 @@
+# gdpy3 paper aip context
+# https://aip.scitation.org/php/authors/manuscript
+
+# one column
+figure.figsize : 3.3, 5.3
+# double column
+#figure.figsize : 6.6, 4.0
+
+figure.dpi : 600
+figure.autolayout : True
+#figure.subplot.hspace : 0.08
+
+axes.titlesize : 9
+axes.labelsize : 9
+#axes.labelweight : bold
+#axes.titleweight : bold
+axes.formatter.limits : -4, 4
+axes.formatter.use_mathtext : True
+
+xtick.labelsize : 9
+ytick.labelsize : 9
+xtick.major.width : 1
+ytick.major.width : 1
+xtick.minor.visible : True
+ytick.minor.visible : True
+xtick.minor.width : 0.5
+ytick.minor.width : 0.5
+xtick.major.pad : 7
+ytick.major.pad : 7
+xtick.direction : in
+ytick.direction : in
+
+lines.linewidth : 1
+lines.markersize : 4
+legend.fontsize : 9
+legend.fancybox : True
+
+axes.grid : True
+grid.linestyle : --
+grid.linewidth : 0.5
+
+font.size : 9
+#font.weight : bold
+#font.family : STIXGeneral
+#font.family : serif
+#font.serif : cm10
+
+#text.usetex : True
+mathtext.fontset : stix
+#text.latex.preamble : \usepackage{bm}
+
+# https://link.springer.com/chapter/10.1007%2F978-3-642-10520-3_9
+# https://matplotlib.org/tutorials/colors/colormaps.html#diverging
+image.cmap : seismic
+
+# transparency
+grid.alpha : 1.0
+legend.framealpha : 1.0
