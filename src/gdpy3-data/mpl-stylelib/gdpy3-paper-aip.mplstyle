@@ -33,7 +33,9 @@ ytick.direction : in
 lines.linewidth : 1
 lines.markersize : 4
 legend.fontsize : 9
+#legend.frameon : False
 legend.fancybox : True
+patch.linewidth : 0.5
 
 axes.grid : True
 grid.linestyle : --
