@@ -31,7 +31,8 @@ pyinstaller --onefile gdpy3-app.spec
 
 * Error `fc-list: relocation error: /tmp/staticx-nlLmnE/libc.so.6: symbol _dl_exception_create, version GLIBC_PRIVATE not defined in file ld-linux-x86-64.so.2 with link time reference`
     - glibc, python3, matplotlib too new, disable matplotlib
-    - TODO: [build app on the oldest version of Linux to support](https://pythonhosted.org/PyInstaller/usage.html#making-linux-apps-forward-compatible)
+    - [build app on the oldest version of Linux to support](https://pythonhosted.org/PyInstaller/usage.html#making-linux-apps-forward-compatible)
+      example, build app in centos7 docker container
 
 * Error staticx: Library 'libc.so.6' already exists in archive`
     - ignore: https://github.com/JonathonReinhart/staticx/issues/92
