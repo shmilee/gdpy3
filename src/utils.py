@@ -69,14 +69,15 @@ def simple_parse_doc(doc, sections, strip=None):
 
     Example
     -------
-    doc = ('\n    summary\n\n    ABC\n    ---\n    abcdefg\n'
-            '\n    HIJ\n    ---\n    hijklmn\n    ')
-    sections = ('ABC', 'HIJ')
+    .. code:: python
 
-    return doc_sections = {
-        'ABC': '---\n    abcdefg',
-        'HIJ': '---\n    hijklmn'
-    }
+        doc = ('\\n    summary\\n\\n    ABC\\n    ---\\n    abcdefg\\n'
+               '\\n    HIJ\\n    ---\\n    hijklmn\\n    ')
+        sections = ('ABC', 'HIJ')
+        return_doc_sections = {
+            'ABC': '---\\n    abcdefg',
+            'HIJ': '---\\n    hijklmn'
+        }
     '''
     idxs = []
     start = 0

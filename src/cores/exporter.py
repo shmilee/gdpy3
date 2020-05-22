@@ -134,11 +134,11 @@ class ContourfExporter(Exporter):
     --------
     .. code::
 
-             title
-           +----------+ +-+
-    ylabel | contourf | |-|colorbar
-           +----------+ +-+
-             xlabel
+               title
+             +----------+ +-+
+      ylabel | contourf | |-|colorbar
+             +----------+ +-+
+               xlabel
     '''
     __slots__ = []
     itemspattern = ['^(?P<section>tmpl)_contourf$']
@@ -194,22 +194,22 @@ class LineExporter(Exporter):
     --------
     .. code::
 
-             title
-           +--------+
-    ylabel | Line2D |
-           +--------+
-             xlabel
-    or
-             title
-             /|\ 
-           /  |  \ 
-         /    |    \ 
-        |    / \    |
-        |  /     \  | zlabel
-        |/  Line   \|
-         \   3D    /
-    xlabel \     / ylabel
-             \ /
+               title
+             +--------+
+      ylabel | Line2D |
+             +--------+
+               xlabel
+      or
+               title
+               /|\ 
+             /  |  \ 
+           /    |    \ 
+          |    / \    |
+          |  /     \  | zlabel
+          |/  Line   \|
+           \   3D    /
+      xlabel \     / ylabel
+               \ /
 
     '''
     __slots__ = []
@@ -248,13 +248,13 @@ class SharexTwinxExporter(Exporter):
     --------
     .. code::
 
-             title
-           +--------+
-    ylabel | axes 1 | ylabel
-           +--------+
-    ylabel | axes 2 | ylabel
-           +--------+
-             xlabel
+               title
+             +--------+
+      ylabel | axes 1 | ylabel
+             +--------+
+      ylabel | axes 2 | ylabel
+             +--------+
+               xlabel
     '''
     __slots__ = []
     itemspattern = ['^(?P<section>tmpl)_sharextwinx$']

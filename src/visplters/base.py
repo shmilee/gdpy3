@@ -461,7 +461,7 @@ class BaseVisplter(object):
           ylabel | Line2D |
                  +--------+
                    xlabel
-        or
+          or
                    title
                    /|\ 
                  /  |  \ 
