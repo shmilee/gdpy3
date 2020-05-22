@@ -16,6 +16,8 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
+# Use installed module
+import gdpy3
 
 # -- Project information -----------------------------------------------------
 
@@ -24,9 +26,9 @@ copyright = '2020, shmilee'
 author = 'shmilee'
 
 # The short X.Y version
-version = '0.4.2'
-# The full version, including alpha/beta/rc tags
-release = 'v0.4.2'
+version = gdpy3.__version__
+# The full version, including alpha/beta/rc tags -> git version
+release = gdpy3.__gversion__
 
 
 # -- General configuration ---------------------------------------------------
@@ -37,7 +39,7 @@ release = 'v0.4.2'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.intersphinx',
+    #'sphinx.ext.intersphinx',
     'sphinx.ext.todo',
     'sphinx.ext.coverage',
     'sphinx.ext.mathjax',
@@ -130,7 +132,7 @@ texinfo_documents = [
 # -- Options for intersphinx extension ---------------------------------------
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
+#intersphinx_mapping = {'https://docs.python.org/': None}
 
 # -- Options for todo extension ----------------------------------------------
 

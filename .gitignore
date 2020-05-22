@@ -58,6 +58,7 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
+docs/source/gdpy3*.rst
 
 # PyBuilder
 target/
