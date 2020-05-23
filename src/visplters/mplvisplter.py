@@ -164,7 +164,7 @@ class MatplotlibVisplter(BaseVisplter):
     def _create_figure(self, num, axesstructures, figstyle):
         '''Create object *fig*.'''
         with matplotlib.style.context(self.filter_style(figstyle)):
-            fig = matplotlib.pyplot.figure(num=num)
+            fig = matplotlib.pyplot.figure(num='%s - %s' % (num, self.ruid))
             for i, axstructure in enumerate(axesstructures, 1):
                 vlog.debug("Picking AxesStructure %d ..." % i)
                 self.add_axes(fig, axstructure)

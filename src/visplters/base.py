@@ -29,6 +29,8 @@ class BaseVisplter(object):
     ----------
     name: str
         visplter name
+    ruid: str
+        reverse visplter's unique identity(id)
     style_available: list of str
         available styles for this visplter
     style: list of str
@@ -45,11 +47,12 @@ class BaseVisplter(object):
     1. The visplter instance is callable.
        instance() is equivalent to instance.create_figure().
     '''
-    __slots__ = ['name', 'example_axes', '_style', '_figureslib']
+    __slots__ = ['name', 'ruid', 'example_axes', '_style', '_figureslib']
     style_available = []
 
     def __init__(self, name, style=[], example_axes=None):
         self.name = name
+        self.ruid = ('%x' % id(self))[::-1]
         self.style = style
         self.example_axes = example_axes
         self._figureslib = {}
