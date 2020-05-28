@@ -5,12 +5,14 @@
 Utils.
 '''
 
+import types
+import importlib
 import subprocess
 
 __all__ = [
     'is_dict_like',
     'inherit_docstring', 'simple_parse_doc',
-    'run_child_cmd',
+    'run_child_cmd', 'find_available_module',
 ]
 
 
@@ -123,3 +125,21 @@ def run_child_cmd(args, **kwargs):
         return 127, '', 'command not found'
     else:
         return pipe.returncode, stdout, stderr
+
+
+def find_available_module(*candidates):
+    '''
+    Return first available module object in the candidates or None.
+    '''
+    for c in candidates:
+        if type(c) is types.ModuleType:
+            #print('[Pass] module type %s, found!' % c)
+            return c
+        try:
+            module = importlib.import_module(c)
+            #print('[Pass] module %s, found!' % c)
+            return module
+        except Exception:
+            #print('[Pass] module %s, not available!' % c)
+            pass
+    return None
