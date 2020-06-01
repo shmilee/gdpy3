@@ -6,13 +6,15 @@ Utils.
 '''
 
 import types
+import shutil
 import importlib
 import subprocess
 
 __all__ = [
     'is_dict_like',
     'inherit_docstring', 'simple_parse_doc',
-    'run_child_cmd', 'find_available_module',
+    'which_cmds', 'run_child_cmd',
+    'find_available_module',
 ]
 
 
@@ -104,27 +106,63 @@ def simple_parse_doc(doc, sections, strip=None):
     return doc_sections
 
 
-def run_child_cmd(args, **kwargs):
+def which_cmds(*candidates):
     '''
-    Execute a child program *args*, return returncode, stdout, stderr.
+    Return first available command in the candidates or None.
+
+    Parameters
+    ----------
+    candidate: string, or a list of command arguments
+    '''
+    for c in candidates:
+        find = None
+        if isinstance(c, list) and len(c) >= 1:
+            find = shutil.which(c[0])
+            if find:
+                return [find] + c[1:]
+        else:
+            find = shutil.which(c)
+            if find:
+                return find
+    return None
+
+
+def run_child_cmd(args, input=None, **kwargs):
+    '''
+    Execute a child program *args*.
+
+    Returns
+    -------
+    A tuple: returncode, stdout, stderr
+        If no input, stdout, stderr are string.
+        If input is bytes, stdout, stderr are bytes too.
 
     Parameters
     ----------
     args: A string, or a sequence of program arguments.
+    input: str or bytes
+        "input" pass to subprocess.Popen.communicate
     kwargs: kwargs pass to subprocess.Popen
     '''
     d_kwargs = dict(close_fds=True,
                     universal_newlines=True, text=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE)
+    if isinstance(input, bytes):
+        d_kwargs['stdin'] = subprocess.PIPE
+        d_kwargs['universal_newlines'] = False
+        d_kwargs['text'] = False
     d_kwargs.update(kwargs)
     try:
-        pipe = subprocess.Popen(args, **d_kwargs)
-        stdout, stderr = pipe.communicate()
+        proc = subprocess.Popen(args, **d_kwargs)
+        stdout, stderr = proc.communicate(input=input)
     except FileNotFoundError:
-        return 127, '', 'command not found'
+        if isinstance(input, bytes):
+            return 127, b'', b'command not found'
+        else:
+            return 127, '', 'command not found'
     else:
-        return pipe.returncode, stdout, stderr
+        return proc.returncode, stdout, stderr
 
 
 def find_available_module(*candidates):
