@@ -648,11 +648,17 @@ class Processor(object):
             replot *figlabel* if it was already ploted
         show: bool
             display *figlabel* after it ploted
+        _show_kwargs: parameters pick from *kwargs*
+            They startswith('_show_') for :attr:`visplter`.show_figure,
+            like '_show_width', '_show_mod' etc.
         callback: see :meth:`dig`
         '''
         if not self.visplter:
             plog.error("%s: Need a visplter object!" % self.name)
             return
+        # pop show kwargs
+        shkws = {k[6:]: kwargs.pop(k)
+                 for k in tuple(kwargs.keys()) if k.startswith('_show_')}
         results = self.export(
             figlabel, what='axes', fmt='dict', callback=callback, **kwargs)
         if results['status'] == 200:
@@ -664,7 +670,7 @@ class Processor(object):
                     self.name, results['accfiglabel']),  exc_info=1)
             else:
                 if show:
-                    self.visplter.show_figure(results['accfiglabel'])
+                    self.visplter.show_figure(results['accfiglabel'], **shkws)
                 return results['accfiglabel']
         else:
             plog.error("%s: Failed to create figure %s: %s" % (
