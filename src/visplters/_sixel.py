@@ -10,7 +10,6 @@ import io
 import os
 import sys
 import struct
-import matplotlib.pyplot
 
 from ..glogger import getGLogger
 from ..utils import find_available_module, which_cmds, run_child_cmd
@@ -86,6 +85,7 @@ class DisplaySIXEL(object):
         max display width in pixels, default 1366
     '''
     __slots__ = ['_sixel_bin', '_sixel_mod', '_output', 'max_width']
+    Image = find_available_module('PIL.Image')
 
     def __init__(self, output=sys.stdout, max_width=1366):
         self.sixel_bin = ('imgcat', 'img2sixel')
@@ -125,7 +125,21 @@ class DisplaySIXEL(object):
     def attty(self):
         return os.isatty(self.output.fileno())
 
-    def display(self, in_put, width=None, height=None, mod=False):
+    def auto_mod(self, intype):
+        '''Auto choose :meth:`mod_display` or :meth:`bin_display`.'''
+        if self.sixel_mod and self.sixel_mod.__name__ == 'libsixel':
+            if self.Image:
+                return True
+            if intype == 'mplf':
+                return True
+        if self.sixel_bin:
+            return False
+        if self.sixel_mod and self.sixel_mod.__name__ == 'sixel':
+            return True
+        vlog.warning("Cannot auto-choose display method!")
+        return False
+
+    def display(self, in_put, width=None, height=None, auto=True, mod=False):
         '''
         Use :attr:`sixel_bin` command or :attr:`sixel_mod` to display.
 
@@ -138,19 +152,26 @@ class DisplaySIXEL(object):
             width of image, not for :meth:`bin_display` imgcat
         height: int
             height of image, not for :meth:`bin_display` imgcat
+        auto: bool
+            Use :meth:`auto_mod` to set *mod* or not
         mod: bool
             Use :meth:`mod_display` or :meth:`bin_display`. default False
+            Can be auto-set when *auto* is True
         '''
         if isinstance(in_put, str) and os.path.isfile(in_put):
             intype = 'path'
         elif isinstance(in_put, bytes):
             intype = 'byte'
-        elif isinstance(in_put, matplotlib.pyplot.Figure):
-            intype = 'mplf'
         else:
-            vlog.error("Invalid input, not a path, bytes, "
-                       "or matplotlib.figure.Figure instance!")
-            return
+            import matplotlib.figure
+            if isinstance(in_put, matplotlib.figure.Figure):
+                intype = 'mplf'
+            else:
+                vlog.error("Invalid input, not a path, bytes, "
+                           "or matplotlib.figure.Figure instance!")
+                return
+        if auto:
+            mod = self.auto_mod(intype)
         try:
             if mod:
                 if self.sixel_mod:
@@ -227,14 +248,13 @@ class DisplaySIXEL(object):
                 # assert isinstance(data) == bytes
                 data = fig.canvas.buffer_rgba().tobytes()
             else:
-                Image = find_available_module('PIL.Image')
-                if not Image:
+                if not self.Image:
                     vlog.error("Display in Terminal requires Pillow.")
                     return
                 if intype == 'path':
-                    im = Image.open(in_put)
+                    im = self.Image.open(in_put)
                 elif intype == 'byte':
-                    im = Image.open(io.BytesIO(in_put))
+                    im = self.Image.open(io.BytesIO(in_put))
                 mode = im.mode
                 oldsize = im.size
                 if im.format == 'EPS' and im.width < self.max_width//2:
