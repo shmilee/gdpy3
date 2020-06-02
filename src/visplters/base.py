@@ -10,6 +10,7 @@ import numpy
 
 from ..glogger import getGLogger
 from ..utils import simple_parse_doc
+from ._sixel import DisplaySIXEL
 
 __all__ = ['BaseVisplter']
 vlog = getGLogger('V')
@@ -41,13 +42,16 @@ class BaseVisplter(object):
         example structure of an axes
     template_available: tuple
         all available templates
+    displaysixel: object
+        DisplaySIXEL instance to display DEC SIXEL graphics
 
     Notes
     -----
     1. The visplter instance is callable.
        instance() is equivalent to instance.create_figure().
     '''
-    __slots__ = ['name', 'ruid', 'example_axes', '_style', '_figureslib']
+    __slots__ = ['name', 'ruid', 'example_axes', '_style', '_figureslib',
+                 'displaysixel']
     style_available = []
 
     def __init__(self, name, style=[], example_axes=None):
@@ -56,6 +60,7 @@ class BaseVisplter(object):
         self.style = style
         self.example_axes = example_axes
         self._figureslib = {}
+        self.displaysixel = DisplaySIXEL()
 
     def __repr__(self):
         return '<{0} object at {1} named {2}>'.format(
@@ -214,6 +219,7 @@ class BaseVisplter(object):
         figure = self._create_figure(num, axesstructures, figstyle)
         if figure:
             self._figureslib[num] = figure
+            vlog.debug("Figure %s created and cached!" % num)
             return figure
         else:
             return None
@@ -231,16 +237,25 @@ class BaseVisplter(object):
         else:
             return None
 
-    def _show_figure(self, fig):
+    def _show_figure(self, fig, **kwargs):
         '''Display figure object *fig*.'''
         raise NotImplementedError()
 
-    def show_figure(self, num):
+    def show_figure(self, num, **kwargs):
         '''
         Display figure *num* if already created.
+
+        kwargs
+        ------
+        usesixel: bool
+            use :attr:`displaysixel` or not
+        width, height: int
+            for :attr:`displaysixel` method `display`
+        auto, mod: bool
+            for :attr:`displaysixel` method `display`
         '''
         if num in self._figureslib:
-            return self._show_figure(self._figureslib[num])
+            return self._show_figure(self._figureslib[num], **kwargs)
         else:
             vlog.error("Figure %s is not created!" % num)
 
@@ -253,15 +268,11 @@ class BaseVisplter(object):
         Close figure *num* if already created.
         ``close_figure('all')`` closes all the figure
         '''
-        if num == 'all':
-            for n in tuple(self._figureslib.keys()):
-                fig = self._figureslib.pop(n, None)
-                if fig:
-                    self._close_figure(fig)
-                del fig
-        elif num in self._figureslib:
-            fig = self._figureslib.pop(num, None)
+        labels = list(self._figureslib.keys()) if num == 'all' else [num]
+        for n in labels:
+            fig = self._figureslib.pop(n, None)
             if fig:
+                vlog.debug("Closing figure %s!" % n)
                 self._close_figure(fig)
             del fig
 

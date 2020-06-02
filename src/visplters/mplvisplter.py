@@ -170,15 +170,22 @@ class MatplotlibVisplter(BaseVisplter):
                 self.add_axes(fig, axstructure)
         return fig
 
-    def _show_figure(self, fig):
+    def _show_figure(self, fig, **kwargs):
         '''Display *fig*.'''
         if matplotlib.get_backend() in (
                 'nbAgg',
                 'nbagg',
                 'notebook',
                 'module://ipykernel.pylab.backend_inline'):
+            vlog.debug('Show in notebook, just return figure object!')
             return fig
+        elif self.displaysixel.attty and kwargs.get('usesixel', False):
+            vlog.debug('Show in a terminal which support sixel graphics!')
+            kws = {k: kwargs[k]
+                   for k in ['width', 'height', 'auto', 'mod'] if k in kwargs}
+            self.displaysixel.display(fig, **kws)
         else:
+            vlog.debug('Show in GUI application or an IPython shell!')
             return fig.show()
 
     def _close_figure(self, fig):
@@ -202,7 +209,8 @@ class MatplotlibVisplter(BaseVisplter):
         vlog.debug("Change mpl backend, '%s' -> '%s'" % (oldbackend, backend))
         if backend in matplotlib.rcsetup.interactive_bk:
             vlog.warning("'%s' is a interactive mpl backend, "
-                         "it may hang during plotting!" % backend)
+                         "it may hang during plotting in subprocess!"
+                         % backend)
         matplotlib.use(backend)
 
     def _tmpl_contourf(
