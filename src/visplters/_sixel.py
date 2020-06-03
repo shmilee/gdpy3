@@ -10,12 +10,26 @@ import io
 import os
 import sys
 import struct
+import tempfile
 
 from ..glogger import getGLogger
 from ..utils import find_available_module, which_cmds, run_child_cmd
 
-__all__ = ['get_imgwh', 'DisplaySIXEL']
+__all__ = ['get_imgfmt', 'get_imgwh', 'DisplaySIXEL']
 vlog = getGLogger('V')
+
+
+def get_imgfmt(data):
+    '''Read the format from a PNG/JPEG/GIF header.'''
+    assert type(data) == bytes
+    if data[:8] == b'\x89PNG\r\n\x1a\n':
+        return 'PNG'
+    elif data[:2] == b'\xff\xd8':
+        return 'JPEG'
+    elif data[:6] in (b'GIF87a', b'GIF89a'):
+        return 'GIF'
+    else:
+        raise ValueError('unexpected image bytes!')
 
 
 def get_imgwh(data):
@@ -34,11 +48,12 @@ def get_imgwh(data):
         entire image bytes
     '''
     assert type(data) == bytes
-    if data[:8] == b'\x89PNG\r\n\x1a\n':
+    fmt = get_imgfmt(data)
+    if fmt == 'PNG':
         ihdr = data.index(b'IHDR')
         # next 8 bytes are width/height
         return struct.unpack('>ii', data[ihdr+4:ihdr+12])
-    elif data[:2] == b'\xff\xd8':
+    elif fmt == 'JPEG':
         # adapted from http://www.64lines.com/jpeg-width-height
         idx = 4
         while True:
@@ -53,7 +68,7 @@ def get_imgwh(data):
                 idx += 2
         h, w = struct.unpack('>HH', data[iSOF+5:iSOF+9])
         return w, h
-    elif data[:6] in (b'GIF87a', b'GIF89a'):
+    elif fmt == 'GIF':
         return struct.unpack('<HH', data[6:10])
     else:
         raise ValueError('unexpected image bytes!')
@@ -69,12 +84,14 @@ class DisplaySIXEL(object):
     1. https://github.com/saitoha/libsixel
     2. https://github.com/saitoha/PySixel
     3. https://github.com/elsteveogrande/PySixel
-    4. https://www.iterm2.com/documentation-images.html
+    4. https://www.enlightenment.org/docs/apps/terminology.md#tycat
+    5. https://www.iterm2.com/documentation-images.html
 
     Attributes
     ----------
     sixel_bin: str or sequence of program arguments
-        program can be imgcat or img2sixel
+        program can be tycat, imgcat or img2sixel
+        tycat only works in terminology, nothing to do with SIXEL.
     sixel_mod: module
         SIXEL module object, libsixel or sixel
     output: output file object
@@ -84,19 +101,25 @@ class DisplaySIXEL(object):
     max_width: int
         max display width in pixels, default 1366
     '''
-    __slots__ = ['_sixel_bin', '_sixel_mod', '_output', 'max_width']
+    __slots__ = ['_sixel_bin', '_sixel_mod', '_output', 'max_width', '_cache']
     Image = find_available_module('PIL.Image')
 
     def __init__(self, output=sys.stdout, max_width=1366):
-        self.sixel_bin = ('imgcat', 'img2sixel')
+        if os.getenv('TERMINOLOGY') == '1':
+            self.sixel_bin = 'tycat'
+        else:
+            self.sixel_bin = ('imgcat', 'img2sixel')
         self.sixel_mod = ('libsixel', 'sixel')
         self.output = output
         self.max_width = max_width
+        self._cache = set()
 
     def _get_sixel_bin(self):
         return self._sixel_bin
 
     def _set_sixel_bin(self, candidates):
+        if isinstance(candidates, str):
+            candidates = (candidates,)
         self._sixel_bin = which_cmds(*candidates)
 
     sixel_bin = property(_get_sixel_bin, _set_sixel_bin)
@@ -105,6 +128,8 @@ class DisplaySIXEL(object):
         return self._sixel_mod
 
     def _set_sixel_mod(self, candidates):
+        if isinstance(candidates, str):
+            candidates = (candidates,)
         self._sixel_mod = find_available_module(*candidates)
 
     sixel_mod = property(_get_sixel_mod, _set_sixel_mod)
@@ -125,9 +150,44 @@ class DisplaySIXEL(object):
     def attty(self):
         return os.isatty(self.output.fileno())
 
-    def auto_mod(self, intype):
+    def __del__(self):
+        for fname in self._cache:
+            try:
+                os.remove(fname)
+            except Exception:
+                pass
+
+    def _resize_imgwh(self, oldsize, width=None, height=None):
+        if width and width > self.max_width:
+            vlog.debug("Resize image max width: %d -> %d"
+                       % (width, self.max_width))
+            new_h = int(oldsize[1] * self.max_width / oldsize[0])
+            return self.max_width, new_h
+        if width and height:
+            return width, height
+        else:
+            if width:
+                return width, int(oldsize[1] * width / oldsize[0])
+            elif height:
+                return int(oldsize[0] * height / oldsize[1]), height
+            else:
+                return oldsize
+
+    @staticmethod
+    def _isgif(in_put, intype):
+        if (intype == 'path' and os.path.splitext(in_put)[1].lower() == '.gif'
+                or intype == 'byte' and get_imgfmt(in_put) == 'GIF'):
+            return True
+        return False
+
+    def auto_mod(self, in_put, intype):
         '''Auto choose :meth:`mod_display` or :meth:`bin_display`.'''
+        if (os.getenv('TERMINOLOGY') == '1'
+                and self.sixel_bin.endswith('tycat')):
+            return False
         if self.sixel_mod and self.sixel_mod.__name__ == 'libsixel':
+            if self._isgif(in_put, intype):
+                return False
             if self.Image:
                 return True
             if intype == 'mplf':
@@ -171,7 +231,7 @@ class DisplaySIXEL(object):
                            "or matplotlib.figure.Figure instance!")
                 return
         if auto:
-            mod = self.auto_mod(intype)
+            mod = self.auto_mod(in_put, intype)
         try:
             if mod:
                 if self.sixel_mod:
@@ -196,38 +256,94 @@ class DisplaySIXEL(object):
 
     def _bin_display(self, in_put, width, height, intype):
         '''Use :attr:`sixel_bin` command to display.'''
+        if isinstance(self.sixel_bin, list):
+            cmd = self.sixel_bin
+        else:
+            cmd = [self.sixel_bin]
+        methattr = getattr(self, '_bin_%s' % os.path.basename(cmd[0]), None)
+        if not methattr:
+            methattr = getattr(self, '_bin_default')
+        args, in_put, intype, kwargs = methattr(in_put, width, height, intype)
+        cmd += args
+        if intype == 'path':
+            cmd += [in_put]
+            vlog.info('Running command: %s' % ' '.join(cmd))
+            code, out, err = run_child_cmd(cmd, **kwargs)
+        else:
+            cmdline = ' '.join(cmd)
+            vlog.info('Running command: %s, with bytes input.' % cmdline)
+            code, out, err = run_child_cmd(cmd, input=in_put, **kwargs)
+            if out:
+                out = out.decode('ascii')
+            err = err.decode()
+        if code == 0:
+            if out:
+                self.output.write(out)
+        else:
+            vlog.error('Failed to display: (%d) %s' % (code, err))
+
+    def _bin_default(self, in_put, width, height, intype):
+        '''all intype -> path, ignore width height'''
+        args = []
+        if intype == 'byte':
+            fmt = get_imgfmt(in_put)
+            ipath = tempfile.mktemp(suffix='.%s' % fmt.lower())
+            with open(ipath, 'wb') as f:
+                f.write(in_put)
+            self._cache.add(ipath)
+            in_put = ipath
+        elif intype == 'mplf':
+            ipath = tempfile.mktemp(suffix='.png')
+            in_put.savefig(ipath, format='png')
+            self._cache.add(ipath)
+            in_put = ipath
+        return args, in_put, 'path', {}
+
+    def _bin_img2sixel(self, in_put, width, height, intype):
+        '''Use img2sixel to display.'''
+        assert self.sixel_bin.endswith('img2sixel') is True
+        w = str(width) if isinstance(width, int) else 'auto'
+        h = str(height) if isinstance(height, int) else 'auto'
+        if isinstance(width, int) and width > self.max_width:
+            vlog.debug("Resize image max width: %d -> %d"
+                       % (width, self.max_width))
+            w, h = str(self.max_width), 'auto'
+        args = ['-w', w, '-h', h]
         if intype == 'mplf':
             # in_put: mplf --> bytes
             ib = io.BytesIO()
             in_put.savefig(ib, format='png')
             in_put = ib.getvalue()
             intype = 'byte'
-        if isinstance(self.sixel_bin, list):
-            cmd = self.sixel_bin
-        else:
-            cmd = [self.sixel_bin]
-        if cmd[0].endswith('img2sixel'):
-            w = str(width) if isinstance(width, int) else 'auto'
-            h = str(height) if isinstance(height, int) else 'auto'
+        kwargs = {}
+        if self._isgif(in_put, intype):
+            args += ['-l', 'disable']
+            kwargs['stdout'] = None
+        return args, in_put, intype, kwargs
+
+    def _bin_tycat(self, in_put, width, height, intype):
+        ''''Use tycat to display.
+        :attr:`output` is useless. Set stdout None to avoid blocking.'''
+        assert self.sixel_bin.endswith('tycat') is True
+        args = []
+        if width or height:
             if isinstance(width, int) and width > self.max_width:
-                vlog.debug("Resize image max width: %d -> %d"
-                           % (width, self.max_width))
-                w, h = str(self.max_width), 'auto'
-            cmd += ['-w', w, '-h', h]
-        cmdline = ' '.join(cmd)
-        if intype == 'path':
-            cmd += [in_put]
-            vlog.info('Running command: %s' % cmdline)
-            code, out, err = run_child_cmd(cmd)
-        else:
-            vlog.info('Running command: %s, with bytes input.' % cmdline)
-            code, out, err = run_child_cmd(cmd, input=in_put)
-            out = out.decode('ascii')
-            err = err.decode()
-        if out:
-            self.output.write(out)
-        else:
-            vlog.error('Failed to display: (%d) %s' % (code, err))
+                width = self.max_width
+            if intype == 'path':
+                with open(in_put, 'rb') as f:
+                    oldsize = get_imgwh(f.read())
+            elif intype == 'byte':
+                oldsize = get_imgwh(in_put)
+            elif intype == 'mplf':
+                oldsize = tuple(map(int, in_put.bbox.size))
+            width, height = self._resize_imgwh(oldsize, width, height)
+            if (width, height) != oldsize:
+                args += ['-g', '%dx%d' % (width, height)]
+        default_args, in_put, intype, kwargs = self._bin_default(
+            in_put, width, height, intype)
+        args += default_args
+        kwargs['stdout'] = None
+        return args, in_put, intype, kwargs
 
     def _mod_display(self, in_put, width, height, intype):
         '''Use module :attr:`sixel_mod` to display.'''
@@ -289,22 +405,6 @@ class DisplaySIXEL(object):
                 width, height = self._resize_imgwh(oldsize, width, height)
             writer = sixel.SixelWriter()
             writer.draw(ib, w=width, h=height, output=self.output)
-
-    def _resize_imgwh(self, oldsize, width=None, height=None):
-        if width and width > self.max_width:
-            vlog.debug("Resize image max width: %d -> %d"
-                       % (width, self.max_width))
-            new_h = int(oldsize[1] * self.max_width / oldsize[0])
-            return self.max_width, new_h
-        if width and height:
-            return width, height
-        else:
-            if width:
-                return width, int(oldsize[1] * width / oldsize[0])
-            elif height:
-                return int(oldsize[0] * height / oldsize[1]), height
-            else:
-                return oldsize
 
     @staticmethod
     def _libsixel_convert(libsixel, data, w, h, output, mode):
