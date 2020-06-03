@@ -145,13 +145,13 @@ def run_child_cmd(args, input=None, **kwargs):
     kwargs: kwargs pass to subprocess.Popen
     '''
     d_kwargs = dict(close_fds=True,
-                    universal_newlines=True, text=True,
+                    universal_newlines=True,  # text=True, added in py 3.7
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE)
     if isinstance(input, bytes):
         d_kwargs['stdin'] = subprocess.PIPE
         d_kwargs['universal_newlines'] = False
-        d_kwargs['text'] = False
+        #d_kwargs['text'] = False
     d_kwargs.update(kwargs)
     try:
         proc = subprocess.Popen(args, **d_kwargs)
