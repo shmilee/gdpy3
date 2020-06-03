@@ -360,9 +360,13 @@ class DisplaySIXEL(object):
                     fig.canvas.draw()
                 if not hasattr(fig.canvas, 'renderer'):
                     fig.canvas.draw()
+                data = fig.canvas.buffer_rgba()
                 # issue, https://github.com/fastai/fastai/issues/2170
                 # assert isinstance(data) == bytes
-                data = fig.canvas.buffer_rgba().tobytes()
+                if type(data) == memoryview:
+                    data = data.tobytes()  # mpl >= 3.1.0, memoryview
+                else:
+                    pass  # mpl <= 3.0.3, bytes
             else:
                 if not self.Image:
                     vlog.error("Display in Terminal requires Pillow.")
