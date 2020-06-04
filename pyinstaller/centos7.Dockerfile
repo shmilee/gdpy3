@@ -13,8 +13,29 @@ ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 \
 RUN yum -y install python3-pip python3-tkinter glibc \
     && yum clean all
 RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} numpy matplotlib==3.0.3
-RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} h5py paramiko scipy screeninfo
-RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} ipython notebook ipywidgets
+
+RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} h5py paramiko scipy screeninfo ipython
+#RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} notebook ipywidgets
+
+RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} pillow \
+    && yum -y install libcurl libjpeg-turbo libpng \
+    && yum clean all
+RUN yum -y install gcc make python3-devel libcurl-devel libjpeg-turbo-devel libpng-devel \
+    && yum clean all \
+    && curl -fLC - --retry 3 --retry-delay 3 -o /tmp/libsixel-1.8.6.tar.gz https://github.com/saitoha/libsixel/archive/v1.8.6.tar.gz \
+    && tar zxvf /tmp/libsixel-1.8.6.tar.gz -C /tmp/ \
+    && cd /tmp/libsixel-1.8.6/ \
+    && ./configure --disable-python --prefix=/usr/local \
+    && make \
+    && make install \
+    && echo '/usr/local/lib' > /etc/ld.so.conf.d/usrlocal.conf \
+    && ldconfig \
+    && cd python/ \
+    && python3 setup.py install \
+    && rm -rf /tmp/libsixel-1.8.6/ /tmp/libsixel-1.8.6.tar.gz \
+    && yum -y history undo last \
+    && yum clean all
+
 RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} pyinstaller
 
 CMD ["/bin/bash"]
