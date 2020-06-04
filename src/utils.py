@@ -5,6 +5,8 @@
 Utils.
 '''
 
+import os
+import sys
 import types
 import shutil
 import importlib
@@ -114,14 +116,25 @@ def which_cmds(*candidates):
     ----------
     candidate: string, or a list of command arguments
     '''
+    # pyinstaller frozen check
+    if getattr(sys, 'frozen', None):
+        path = '{}:{}{sep}bin'.format(*((sys._MEIPASS,)*2), sep=os.sep)
+    else:
+        path = None
     for c in candidates:
         find = None
         if isinstance(c, list) and len(c) >= 1:
-            find = shutil.which(c[0])
+            if path:
+                find = shutil.which(c[0], path=path)
+            if not find:
+                find = shutil.which(c[0])
             if find:
                 return [find] + c[1:]
         else:
-            find = shutil.which(c)
+            if path:
+                find = shutil.which(c, path=path)
+            if not find:
+                find = shutil.which(c)
             if find:
                 return find
     return None
