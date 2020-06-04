@@ -10,7 +10,6 @@ import numpy
 
 from ..glogger import getGLogger
 from ..utils import simple_parse_doc
-from ._sixel import DisplaySIXEL
 
 __all__ = ['BaseVisplter']
 vlog = getGLogger('V')
@@ -60,7 +59,7 @@ class BaseVisplter(object):
         self.style = style
         self.example_axes = example_axes
         self._figureslib = {}
-        self.displaysixel = DisplaySIXEL()
+        self.displaysixel = None
 
     def __repr__(self):
         return '<{0} object at {1} named {2}>'.format(
@@ -255,9 +254,26 @@ class BaseVisplter(object):
             for :attr:`displaysixel` method `display`
         '''
         if num in self._figureslib:
+            if kwargs.get('usesixel', False) and not self.displaysixel:
+                from ._sixel import DisplaySIXEL
+                self.displaysixel = DisplaySIXEL()
             return self._show_figure(self._figureslib[num], **kwargs)
         else:
             vlog.error("Figure %s is not created!" % num)
+
+    def __getstate__(self):
+        # TypeError: cannot pickle 'module' object.
+        # self.displaysixel has 'module' objects,
+        # disable it when use multiprocessing.
+        return [(name, getattr(self, name))
+                for cls in type(self).__mro__
+                for name in getattr(cls, '__slots__', [])
+                if name != 'displaysixel']
+
+    def __setstate__(self, state):
+        for name, value in state:
+            setattr(self, name, value)
+        self.displaysixel = None
 
     def _close_figure(self, fig):
         '''Close figure object *fig*.'''
