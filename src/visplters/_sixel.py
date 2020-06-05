@@ -104,13 +104,13 @@ class DisplaySIXEL(object):
     __slots__ = ['_sixel_bin', '_sixel_mod', '_output', 'max_width', '_cache']
     Image = find_available_module('PIL.Image')
 
-    def __init__(self, output=sys.stdout, max_width=1366):
+    def __init__(self, output=None, max_width=1366):
         if os.getenv('TERMINOLOGY') == '1':
             self.sixel_bin = 'tycat'
         else:
             self.sixel_bin = ('imgcat', 'img2sixel')
         self.sixel_mod = ('libsixel', 'sixel')
-        self.output = output
+        self.output = output or sys.stdout
         self.max_width = max_width
         self._cache = set()
 
