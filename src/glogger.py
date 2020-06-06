@@ -39,8 +39,8 @@ def get_glogger_config(c, logfile=None, queue=None):
         needed when c is 'work'
     '''
     if c in ['main', 'listen']:
-        pn = '{%(processName)s}' if c == 'listen' else ''
-        msg = '%s %%(message)s' % pn
+        pn = '{%(processName)s} ' if c == 'listen' else ''
+        msg = '%s%%(message)s' % pn
         detailed_fmt = '%(asctime)s - %(name)s:%(module)s:%(lineno)d:%(levelname)s - ' + msg
         simple_fmt = '[%(name)s]%(levelname)-7s - ' + msg
         formatters = {
