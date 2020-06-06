@@ -55,9 +55,14 @@ def get_parser_base():
                         help='Case data path(s)')
     optgrp = parser.add_argument_group('common options')
     _pnames = Processor_Names + list(Processor_Alias.keys())
-    optgrp.add_argument('--processor', type=str, metavar='ProcessorName',
+    optgrp.add_argument('--processor', type=str, metavar='Name',
                         choices=_pnames, default=_pnames[0],
                         help="Assign processor to work, "
+                        "(default: %(default)s)")
+    optgrp.add_argument('--parallel', type=str,
+                        choices=['off', 'multiprocess'],  # 'mpi4py'],
+                        default='multiprocess',
+                        help="Parallel processing or not, "
                         "(default: %(default)s)")
     optgrp.add_argument('-h', '--help', action='store_true',
                         help='Show this help message and exit')
@@ -176,6 +181,7 @@ def cli_script():
                 gdp = get_processor(
                     path,
                     name=args.processor,
+                    parallel=args.parallel,
                     add_desc=args.add_desc,
                     filenames_filter=args.filenames_filter,
                     savetype=args.savetype,
@@ -189,6 +195,7 @@ def cli_script():
                 gdp = get_processor(
                     path,
                     name=args.processor,
+                    parallel=args.parallel,
                     add_desc=args.add_desc,
                     filenames_filter=args.filenames_filter,
                     savetype=args.savetype,
@@ -219,18 +226,24 @@ def cli_script():
                 if not os.path.isdir(figdir):
                     os.mkdir(figdir)
                 M = len(figurelabels)
-                for j, flabel in enumerate(sorted(figurelabels), 1):
-                    log.info("Case(%d/%d), Figure(%d/%d): %s"
-                             % (i, N, j, M, flabel))
-                    fname = '%s.%s' % (flabel.replace('/', '-'), args.figext)
-                    try:
-                        accfiglabel = gdp.visplt(flabel, show=False)
-                        if accfiglabel:
-                            gdp.visplter.save_figure(
-                                accfiglabel, os.path.join(figdir, fname))
-                    except Exception:
-                        continue
-                    gdp.visplter.close_figure('all')
+                if args.parallel == 'off':
+                    for j, _fl in enumerate(sorted(figurelabels), 1):
+                        log.info("Case(%d/%d), Figure(%d/%d): %s"
+                                 % (i, N, j, M, _fl))
+                        fname = '%s.%s' % (_fl.replace('/', '-'), args.figext)
+                        try:
+                            accfiglabel = gdp.visplt(_fl, show=False)
+                            if accfiglabel:
+                                gdp.visplter.save_figure(
+                                    accfiglabel, os.path.join(figdir, fname))
+                        except Exception:
+                            continue
+                        gdp.visplter.close_figure('all')
+                else:
+                    log.info("Case(%d/%d), %d figures to plot." % (i, N, M))
+                    gdp.multi_visplt(
+                        *figurelabels, savename='figlabel',
+                        saveext=args.figext, savepath=figdir)
             else:
                 pass
         except Exception:
