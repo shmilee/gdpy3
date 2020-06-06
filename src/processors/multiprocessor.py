@@ -42,9 +42,23 @@ class MultiProcessor(Processor):
     def name(self):
         return type(self).__name__[5:]
 
+    def _count_task_done(self, lock, count, total, desc):
+        '''
+        Parameters
+        ----------
+        lock: multiprocessing lock
+        count: multiprocessing value number of completed tasks
+        total: total number of tasks
+        desc: description of task
+        '''
+        with lock:
+            count.value += 1
+            done = count.value
+        plog.info("Task: %s (%d/%d) done." % (desc, done, total))
+
     # # Start Convert Part
 
-    def _convert_worker(self, core, lock, name_it=True):
+    def _convert_worker(self, core, lock, count, total, name_it=True):
         '''
         Parameters
         ----------
@@ -63,6 +77,7 @@ class MultiProcessor(Processor):
             with self.pcksaver:
                 self.pcksaver.write(core.group, data)
         finally:
+            self._count_task_done(lock, count, total, 'Convert')
             lock.release()
 
     def convert(self, add_desc=None):
@@ -75,11 +90,13 @@ class MultiProcessor(Processor):
             plog.debug('%d processes to work!' % nworkers)
             with get_glogger_work_initializer() as loginitializer:
                 lock = self.manager.RLock()
+                count = self.manager.Value('i', 0, lock=False)
+                total = len(self.converters)
                 with multiprocessing.Pool(
                         processes=nworkers,
                         initializer=loginitializer) as pool:
                     results = [pool.apply_async(
-                        self._convert_worker, (core, lock))
+                        self._convert_worker, (core, lock, count, total))
                         for core in self.converters]
                     pool.close()
                     pool.join()
@@ -119,7 +136,7 @@ class MultiProcessor(Processor):
             return None, "Invalid couple_figlabel type"
 
     def _dig_worker_with_rwlock(self, couple_figlabel, redig, callback, post,
-                                rwlock, name_it=True):
+                                rwlock, lock, count, total, name_it=True):
         '''
         Find old dig results, dig new if needed, then save them.
 
@@ -134,6 +151,7 @@ class MultiProcessor(Processor):
         update = 0
         figlabel, kwargs = self._filter_couple_figlabel(couple_figlabel)
         if figlabel is None:
+            self._count_task_done(lock, count, total, 'Dig')
             return None, kwargs, None, update
         if name_it:
             multiprocessing.current_process().name = figlabel
@@ -146,6 +164,7 @@ class MultiProcessor(Processor):
             rwlock.reader_lock.release()
         digcore, gotfiglabel, results = data
         if digcore is None:
+            self._count_task_done(lock, count, total, 'Dig')
             return (*data, update)
         if results is None:
             accfiglabel, results, digtime = self._do_new_dig(digcore, kwargs)
@@ -164,6 +183,7 @@ class MultiProcessor(Processor):
                 rwlock.writer_lock.release()
         else:
             accfiglabel = gotfiglabel
+        self._count_task_done(lock, count, total, 'Dig')
         if callable(callback):
             callback(results)
         if post:
@@ -171,8 +191,8 @@ class MultiProcessor(Processor):
         return (accfiglabel, results, digcore.post_template,
                 update, figlabel, digcore.kwoptions)
 
-    def _dig_worker_with_lock(self, digcore, kwargs, gotfiglabel,
-                              callback, post, lock, name_it=True):
+    def _dig_worker_with_lock(self, digcore, kwargs, gotfiglabel, callback,
+                              post, lock, count, total, name_it=True):
         '''
         Dig new results, and save them.
 
@@ -194,6 +214,7 @@ class MultiProcessor(Processor):
                 self._filesave_new_dig(
                     accfiglabel, gotfiglabel, results, digcore)
         finally:
+            self._count_task_done(lock, count, total, 'Dig')
             lock.release()
         if callable(callback):
             callback(results)
@@ -274,6 +295,8 @@ class MultiProcessor(Processor):
                     with get_glogger_work_initializer() as loginitializer:
                         plog.debug("Using a write lock!")
                         lock = self.manager.RLock()
+                        count = self.manager.Value('i', 0, lock=False)
+                        total = len(couple_todo)
                         # While resfilesaver is saving to the path,
                         # fork will fail to reopen resfileloader.path.
                         # Fortunately, resfileloader is useless in workers.
@@ -283,7 +306,8 @@ class MultiProcessor(Processor):
                                 initializer=loginitializer) as pool:
                             async_results = [(idx, core, pool.apply_async(
                                 self._dig_worker_with_lock,
-                                (core, kws, gotfgl, callback, post, lock)))
+                                (core, kws, gotfgl, callback, post, lock,
+                                    count, total)))
                                 for idx, core, kws, gotfgl in couple_todo]
                             pool.close()
                             pool.join()
@@ -303,6 +327,9 @@ class MultiProcessor(Processor):
                 with get_glogger_work_initializer() as loginitializer:
                     plog.debug("Using a read-write lock!")
                     rwlock = MP_RWLock(self.manager)
+                    lock = self.manager.RLock()  # for count
+                    count = self.manager.Value('i', 0, lock=False)
+                    total = len(couple_figlabels)
                     # resfileloader reopen in workers, not forking
                     self.resfileloader = None
                     with multiprocessing.Pool(
@@ -310,7 +337,8 @@ class MultiProcessor(Processor):
                             initializer=loginitializer) as pool:
                         async_results = [pool.apply_async(
                             self._dig_worker_with_rwlock,
-                            (couple_figlabel, redig, callback, post, rwlock))
+                            (couple_figlabel, redig, callback, post, rwlock,
+                                lock, count, total))
                             for couple_figlabel in couple_figlabels]
                         pool.close()
                         pool.join()
@@ -444,7 +472,7 @@ class MultiProcessor(Processor):
     # # Start Visplt Part
 
     def _visplt_worker(self, results, revis, savename, saveext, savepath,
-                       mpl_backend, name_it=True):
+                       mpl_backend, lock, count, total, name_it=True):
         '''
         Use results create figure, then save it.
 
@@ -468,6 +496,7 @@ class MultiProcessor(Processor):
             except Exception:
                 plog.error("%s: Failed to create figure %s!" % (
                     self.name, accfiglabel),  exc_info=1)
+                self._count_task_done(lock, count, total, 'Visplt')
                 return False, accfiglabel, '(500) failed to create'
             else:
                 _fl = accfiglabel if savename == 'accfiglabel' else figlabel
@@ -479,13 +508,16 @@ class MultiProcessor(Processor):
                 except Exception:
                     plog.error("%s: Failed to save figure %s!" % (
                         self.name, accfiglabel),  exc_info=1)
+                    self._count_task_done(lock, count, total, 'Visplt')
                     return False, accfiglabel, '(500) failed to save'
                 else:
+                    self._count_task_done(lock, count, total, 'Visplt')
                     return True, accfiglabel, fname
         else:
             status, reason = results['status'], results['reason']
             plog.error("%s: Failed to create figure %s: (%d) %s" % (
                 self.name, figlabel, status, reason),  exc_info=1)
+            self._count_task_done(lock, count, total, 'Visplt')
             return False, results['accfiglabel'], "(%d) %s" % (status, reason)
 
     def multi_visplt(self, *couple_figlabels, revis=False,
@@ -528,15 +560,18 @@ class MultiProcessor(Processor):
         success, fail = [], []
         if not os.path.isdir(savepath):
             os.mkdir(savepath)
-        nworkers = min(self.multiproc, len(couple_figlabels))
+        nworkers = min(self.multiproc, len(multi_results))
         with get_glogger_work_initializer() as loginitializer:
+            lock = self.manager.RLock()
+            count = self.manager.Value('i', 0, lock=False)
+            total = len(multi_results)
             with multiprocessing.Pool(
                     processes=nworkers,
                     initializer=loginitializer) as pool:
                 async_results = [pool.apply_async(
                     self._visplt_worker,
-                    (results, revis,
-                     savename, saveext, savepath, mpl_backend))
+                    (results, revis, savename, saveext, savepath,
+                        mpl_backend, lock, count, total))
                     for results in multi_results]
                 pool.close()
                 pool.join()
