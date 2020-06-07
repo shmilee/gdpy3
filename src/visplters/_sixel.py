@@ -86,11 +86,12 @@ class DisplaySIXEL(object):
     3. https://github.com/elsteveogrande/PySixel
     4. https://www.enlightenment.org/docs/apps/terminology.md#tycat
     5. https://www.iterm2.com/documentation-images.html
+    6. https://sw.kovidgoyal.net/kitty/graphics-protocol.html
 
     Attributes
     ----------
     sixel_bin: str or sequence of program arguments
-        program can be tycat, imgcat or img2sixel
+        program can be tycat, kitty, imgcat or img2sixel
         tycat only works in terminology, nothing to do with SIXEL.
     sixel_mod: module
         SIXEL module object, libsixel or sixel
@@ -107,6 +108,8 @@ class DisplaySIXEL(object):
     def __init__(self, output=None, max_width=1366):
         if os.getenv('TERMINOLOGY') == '1':
             self.sixel_bin = 'tycat'
+        elif os.getenv('TERM') == 'xterm-kitty':
+            self.sixel_bin = 'kitty'
         else:
             self.sixel_bin = ('imgcat', 'img2sixel')
         self.sixel_mod = ('libsixel', 'sixel')
@@ -185,6 +188,9 @@ class DisplaySIXEL(object):
         if (os.getenv('TERMINOLOGY') == '1'
                 and self.sixel_bin.endswith('tycat')):
             return False
+        if (os.getenv('TERM') == 'xterm-kitty'
+                and self.sixel_bin.endswith('kitty')):
+            return False
         if self.sixel_mod and self.sixel_mod.__name__ == 'libsixel':
             if self._isgif(in_put, intype):
                 return False
@@ -257,7 +263,7 @@ class DisplaySIXEL(object):
     def _bin_display(self, in_put, width, height, intype):
         '''Use :attr:`sixel_bin` command to display.'''
         if isinstance(self.sixel_bin, list):
-            cmd = self.sixel_bin
+            cmd = self.sixel_bin.copy()
         else:
             cmd = [self.sixel_bin]
         methattr = getattr(self, '_bin_%s' % os.path.basename(cmd[0]), None)
@@ -321,6 +327,13 @@ class DisplaySIXEL(object):
             kwargs['stdout'] = None
         return args, in_put, intype, kwargs
 
+    def _bin_kitty(self, in_put, width, height, intype):
+        ''''Use kitty to display.'''
+        default_args, in_put, intype, kwargs = self._bin_default(
+            in_put, width, height, intype)
+        args = ['+kitten', 'icat']
+        return args, in_put, intype, kwargs
+
     def _bin_tycat(self, in_put, width, height, intype):
         ''''Use tycat to display.
         :attr:`output` is useless. Set stdout None to avoid blocking.'''
@@ -344,6 +357,12 @@ class DisplaySIXEL(object):
         args += default_args
         kwargs['stdout'] = None
         return args, in_put, intype, kwargs
+
+    def _mod_kitty(self, TODO):
+        '''TODO'''
+        if (os.getenv('TERM') == 'xterm-kitty'
+                and not self.sixel_bin.endswith('kitty')):
+            pass
 
     def _mod_display(self, in_put, width, height, intype):
         '''Use module :attr:`sixel_mod` to display.'''
