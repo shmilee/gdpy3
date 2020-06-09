@@ -9,10 +9,10 @@ from .__about__ import __author__, __email__, __license__, __copyright__
 __doc__ = __description__
 __all__ = [
     'get_rawloader', 'get_pckloader', 'get_pcksaver',
-    'get_visplter', 'get_displaysixel', 'get_processor',
+    'get_visplter', 'get_imcat', 'get_processor',
 ]
 
 from .loaders import get_rawloader, get_pckloader
 from .savers import get_pcksaver
-from .visplters import get_visplter, get_displaysixel
+from .visplters import get_visplter, get_imcat
 from .processors import get_processor

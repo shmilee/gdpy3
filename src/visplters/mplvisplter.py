@@ -179,11 +179,11 @@ class MatplotlibVisplter(BaseVisplter):
                 'module://ipykernel.pylab.backend_inline'):
             vlog.debug('Show in notebook, just return figure object!')
             return fig
-        elif kwargs.get('usesixel', False) and self.displaysixel.attty:
-            vlog.debug('Show in a terminal which support sixel graphics!')
+        elif kwargs.get('usecat', False) and self.imcat.attty:
+            vlog.debug('Show in terminal which supports display graphics!')
             kws = {k: kwargs[k]
-                   for k in ['width', 'height', 'auto', 'mod'] if k in kwargs}
-            self.displaysixel.display(fig, **kws)
+                   for k in ['width', 'height', 'usemod'] if k in kwargs}
+            self.imcat.display(fig, **kws)
         else:
             vlog.debug('Show in GUI application or an IPython shell!')
             return fig.show()

@@ -41,8 +41,9 @@ class BaseVisplter(object):
         example structure of an axes
     template_available: tuple
         all available templates
-    displaysixel: object
-        DisplaySIXEL instance to display DEC SIXEL graphics
+    imcat: object
+        "I'm cat", "imgcat", "imagecat"
+        :py:class:`imgcat.Display` instance to display graphics in terminal
 
     Notes
     -----
@@ -50,7 +51,7 @@ class BaseVisplter(object):
        instance() is equivalent to instance.create_figure().
     '''
     __slots__ = ['name', 'ruid', 'example_axes', '_style', '_figureslib',
-                 'displaysixel']
+                 'imcat']
     style_available = []
 
     def __init__(self, name, style=[], example_axes=None):
@@ -59,7 +60,7 @@ class BaseVisplter(object):
         self.style = style
         self.example_axes = example_axes
         self._figureslib = {}
-        self.displaysixel = None
+        self.imcat = None
 
     def __repr__(self):
         return '<{0} object at {1} named {2}>'.format(
@@ -246,34 +247,34 @@ class BaseVisplter(object):
 
         kwargs
         ------
-        usesixel: bool
-            use :attr:`displaysixel` or not
+        usecat: bool
+            use :attr:`imcat` or not
         width, height: int
-            for :attr:`displaysixel` method `display`
-        auto, mod: bool
-            for :attr:`displaysixel` method `display`
+            for :py:meth:`imgcat.Display.display`
+        usemod: bool
+            for :py:meth:`imgcat.Display.display`
         '''
         if num in self._figureslib:
-            if kwargs.get('usesixel', False) and not self.displaysixel:
-                from ._sixel import DisplaySIXEL
-                self.displaysixel = DisplaySIXEL()
+            if kwargs.get('usecat', False) and not self.imcat:
+                from .imgcat import Display
+                self.imcat = Display()
             return self._show_figure(self._figureslib[num], **kwargs)
         else:
             vlog.error("Figure %s is not created!" % num)
 
     def __getstate__(self):
         # TypeError: cannot pickle 'module' object.
-        # self.displaysixel has 'module' objects,
+        # self.imcat has 'module' objects,
         # disable it when use multiprocessing.
         return [(name, getattr(self, name))
                 for cls in type(self).__mro__
                 for name in getattr(cls, '__slots__', [])
-                if name != 'displaysixel']
+                if name != 'imcat']
 
     def __setstate__(self, state):
         for name, value in state:
             setattr(self, name, value)
-        self.displaysixel = None
+        self.imcat = None
 
     def _close_figure(self, fig):
         '''Close figure object *fig*.'''

@@ -18,7 +18,7 @@ and has methods
 
 from . import base
 
-__all__ = ['get_visplter', 'is_visplter', 'get_displaysixel']
+__all__ = ['get_visplter', 'is_visplter', 'get_imcat']
 
 visplter_names = ['MatplotlibVisplter']
 visplter_types = ['mpl::']
@@ -62,9 +62,9 @@ def is_visplter(obj):
     return isinstance(obj, base.BaseVisplter)
 
 
-def get_displaysixel(output=None, max_width=1366):
+def get_imcat(output=None, max_width=1366):
     '''
-    Get a DisplaySIXEL instance to display DEC SIXEL graphics.
+    Get a :py:class:`imgcat.Display` instance to display graphics in terminal.
 
     Parameters
     ----------
@@ -73,5 +73,5 @@ def get_displaysixel(output=None, max_width=1366):
     max_width: int
         max display width in pixels, default 1366
     '''
-    from ._sixel import DisplaySIXEL
-    return DisplaySIXEL(output=output, max_width=max_width)
+    from .imgcat import Display
+    return Display(output=output, max_width=max_width)
