@@ -94,12 +94,10 @@ setup(
         'matplotlib>=2.2.0',
     ],
     extras_require={
-        'pck.hdf5': ['h5py>=2.6.0'],
-        'raw.ssh': ['paramiko>=2.4.1'],
-        'core.tools': ['scipy>=0.14.0'],
-        'gui.tk': ['screeninfo>=0.4.1'],
-        'gui.ipynb': ['ipython[notebook]', 'ipywidgets'],
-        'vis.sixel': ['pillow>=6.2.0', 'libsixel-python>=0.5.0'],
+        'data': ['h5py>=2.6.0', 'paramiko>=2.4.1', 'scipy>=0.14.0'],
+        'tkui': ['screeninfo>=0.4.1'],
+        'nbui': ['ipython[notebook]', 'ipywidgets'],
+        'imcat': ['pillow>=6.2.0', 'libsixel-python>=0.5.0'],
     },
     cmdclass={
         'sdist': my_sdist,
