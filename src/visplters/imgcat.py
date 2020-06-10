@@ -15,74 +15,45 @@ import tempfile
 from ..glogger import getGLogger
 from ..utils import which_cmds, run_child_cmd, find_available_module
 
-__all__ = ['get_imgfmt', 'get_imgwh', 'Display']
+__all__ = ['get_imgfwh', 'resize_imgwh', 'convert_img', 'Display']
 vlog = getGLogger('V')
 TEMPPREFIX = 'gdpy3-imgcat-temp-%s-' % tempfile.mktemp(prefix='', dir='')
 
 
-def _img_path2data(img, size=None):
-    '''convert image path *img* to image data *size* bytes'''
-    data = None
-    if type(img) == str:
-        if os.path.isfile(img):
-            with open(img, 'rb') as im:
-                data = im.read(size)
-        else:
-            vlog.error('ValueError: unexpected image path %s!' % img)
-    elif type(img) == bytes:
-        data = img
-    else:
-        vlog.error("Unexpected image type %s!" % type(img))
-    return data
-
-
-def get_imgfmt(img):
+def get_imgfwh(img):
     '''
-    Read the format from a PNG/JPEG/GIF header.
-
-    Parameters
-    ----------
-    img: path or bytes
-        image path or entire image bytes
-    '''
-    data = _img_path2data(img, size=10)
-    if data and len(data) >= 10:
-        if data[:8] == b'\x89PNG\r\n\x1a\n':
-            return 'PNG'
-        elif data[:2] == b'\xff\xd8':
-            return 'JPEG'
-        elif data[:6] in (b'GIF87a', b'GIF89a'):
-            return 'GIF'
-        else:
-            vlog.error('ValueError: unexpected image format!')
-            return None
-    else:
-        return None
-
-
-def get_imgwh(img):
-    '''
-    Read the (width, height) from a PNG/JPEG/GIF header.
+    Read the (format, (width, height)) from a PNG/JPEG/GIF/EPS header.
 
     Notes
     -----
     1. Adapted from :mod:`IPython.core.display`
     2. https://en.wikipedia.org/wiki/Portable_Network_Graphics
     3. http://giflib.sourceforge.net/whatsinagif/bits_and_bytes.html
+    4. https://www.adobe.com/content/dam/acom/en/devnet/actionscript/articles/5002.EPSF_Spec.pdf
 
     Parameters
     ----------
     img: path or bytes
         image path or entire image bytes
     '''
-    data = _img_path2data(img, size=-1)
-    if data and len(data) >= 10:
-        fmt = get_imgfmt(data)
-        if fmt == 'PNG':
+    if type(img) == str:
+        if os.path.isfile(img):
+            with open(img, 'rb') as im:
+                data = im.read()
+        else:
+            vlog.error('ValueError: unexpected image path %s!' % img)
+            return None, (None,)*2
+    elif type(img) == bytes:
+        data = img
+    else:
+        vlog.error("ValueError: Unexpected image type %s!" % type(img))
+        return None, (None,)*2
+    if data and len(data) >= 30:
+        if data[:8] == b'\x89PNG\r\n\x1a\n':
             ihdr = data.index(b'IHDR')
             # next 8 bytes are width/height
-            return struct.unpack('>ii', data[ihdr+4:ihdr+12])
-        elif fmt == 'JPEG':
+            return 'PNG', struct.unpack('>ii', data[ihdr+4:ihdr+12])
+        elif data[:2] == b'\xff\xd8':
             # adapted from http://www.64lines.com/jpeg-width-height
             idx = 4
             while True:
@@ -96,16 +67,27 @@ def get_imgwh(img):
                     # read another block
                     idx += 2
             h, w = struct.unpack('>HH', data[iSOF+5:iSOF+9])
-            return w, h
-        elif fmt == 'GIF':
-            return struct.unpack('<HH', data[6:10])
+            return 'JPEG', (w, h)
+        elif data[:6] in (b'GIF87a', b'GIF89a'):
+            return 'GIF', struct.unpack('<HH', data[6:10])
+        elif (data[:12], data[15:21]) == (b'%!PS-Adobe-3', b'EPSF-3'):
+            idx = data.index(b'%%BoundingBox:')
+            end = data[idx:].index(b'\n')
+            box = data[idx+14:idx+end].decode().split()
+            llx, lly, urx, ury = list(map(float, box))
+            return 'EPS', (int(urx-llx), int(ury-lly))
         else:
-            pass
-    return None, None
+            vlog.error('ValueError: unexpected image format!')
+            return None, (None,)*2
+    else:
+        vlog.error("ValueError: broken image!")
+        return None, (None,)*2
 
 
 def resize_imgwh(oldsize, w=None, h=None, max_width=1366):
     '''Resize image width, height and keep aspect ratio.'''
+    if not oldsize[0] or not oldsize[1]:
+        return oldsize
     if w and h:
         if w / oldsize[0] <= h / oldsize[1]:
             h = None  # ignore height
@@ -132,6 +114,33 @@ def resize_imgwh(oldsize, w=None, h=None, max_width=1366):
             return oldsize
 
 
+def _load_eps(img, intype, max_width, savefp=None, savefmt='PNG'):
+    '''Open EPS, resize it if needed. intype: path, data, Image.'''
+    Image = find_available_module('PIL.Image')
+    if not Image:
+        vlog.error("Display EPS in Terminal requires Pillow.")
+        return None, None
+    if intype == 'path':
+        im = Image.open(img)
+    elif intype == 'data':
+        im = Image.open(io.BytesIO(img))
+    elif intype == 'Image':
+        assert isinstance(img, Image.Image)
+        im = img
+    else:
+        vlog.error("Invalid EPS intype: %s!" % intype)
+        return None, None
+    oldsize = im.size
+    if im.width < max_width//2:
+        scale = max_width // im.width
+        im.load(scale=scale)
+        vlog.debug("Load vector image with enough resolution. "
+                   "scale: %d, size: %s -> %s" % (scale, oldsize, im.size))
+    if savefp:
+        im.save(savefp, format=savefmt)
+    return im, savefp
+
+
 def convert_img(img, typecandidates, width=None, height=None, max_width=1366):
     '''
     Convert image *img* to outype and resize image if needed.
@@ -143,10 +152,10 @@ def convert_img(img, typecandidates, width=None, height=None, max_width=1366):
         2. entire image bytes
         3. matplotlib.figure.Figure instance
     typecandidates: tuple of valid out types
-        1. 'path', return (path, width, height, None)
-        2. 'data', return (entire image bytes, width, height, None)
-        3. 'rawdata', return (raw image data, width, height, mode)
-        4. 'BytesIO', return (io.BytesIO object, width, height, None)
+        1. 'path', return (path, fmt, width, height, None)
+        2. 'data', return (entire image bytes, fmt, width, height, None)
+        3. 'rawdata', return (raw image data, fmt, width, height, mode)
+        4. 'BytesIO', return (io.BytesIO object, fmt, width, height, None)
     width: int
         width of out image, resize if needed.
     height: int
@@ -165,7 +174,7 @@ def convert_img(img, typecandidates, width=None, height=None, max_width=1366):
         else:
             vlog.error("Invalid input, not a image path, entire image bytes "
                        "or matplotlib.figure.Figure instance!")
-            return (None,)*4
+            return (None,)*5
 
     validcandidates = ('path', 'data', 'rawdata', 'BytesIO')
     typecandidates = tuple(c for c in typecandidates if c in validcandidates)
@@ -175,57 +184,65 @@ def convert_img(img, typecandidates, width=None, height=None, max_width=1366):
         outype = typecandidates[0]
 
     if outype == 'path':
-        if intype == 'path':
-            path = img
-            oldsize = get_imgwh(img)
-        elif intype == 'data':
-            fmt = get_imgfmt(img).lower()
-            path = tempfile.mktemp(suffix='.%s' % fmt, prefix=TEMPPREFIX)
-            with open(path, 'wb') as im:
-                im.write(img)
-            oldsize = get_imgwh(img)
+        if intype in ('path', 'data'):
+            fmt, oldsize = get_imgfwh(img)
+            path = None
+            if fmt == 'EPS':
+                path = tempfile.mktemp(suffix='.PNG', prefix=TEMPPREFIX)
+                im, path = _load_eps(img, intype, max_width, savefp=path)
+                if im:
+                    fmt, oldsize = 'PNG', im.size
+            if not path and intype == 'path':
+                path = img
+            elif not path and intype == 'data':
+                path = tempfile.mktemp(suffix='.%s' % fmt, prefix=TEMPPREFIX)
+                with open(path, 'wb') as im:
+                    im.write(img)
         elif intype == 'mplf':
-            path = tempfile.mktemp(suffix='.png', prefix=TEMPPREFIX)
+            fmt, oldsize = 'PNG', tuple(map(int, img.bbox.size))
+            path = tempfile.mktemp(suffix='.PNG', prefix=TEMPPREFIX)
             img.savefig(path, format='png')
-            oldsize = tuple(map(int, img.bbox.size))
         else:
             pass  # new intype
         w, h = resize_imgwh(oldsize, w=width, h=height, max_width=max_width)
-        return path, w, h, None
+        return path, fmt, w, h, None
     elif outype == 'data':
-        if intype == 'path':
-            with open(img, 'rb') as im:
-                data = im.read()
-            oldsize = get_imgwh(data)
-        elif intype == 'data':
-            data = img
-            oldsize = get_imgwh(img)
+        if intype in ('path', 'data'):
+            if intype == 'path':
+                with open(img, 'rb') as im:
+                    data = im.read()
+                fmt, oldsize = get_imgfwh(data)
+            elif intype == 'data':
+                data = img
+                fmt, oldsize = get_imgfwh(img)
+            if fmt == 'EPS':
+                ib = io.BytesIO()
+                im, ib = _load_eps(img, intype, max_width, savefp=ib)
+                if im:
+                    fmt, oldsize = 'PNG', im.size
+                    data = ib.getvalue()
         elif intype == 'mplf':
             ib = io.BytesIO()
             img.savefig(ib, format='png')
             data = ib.getvalue()
-            oldsize = tuple(map(int, img.bbox.size))
+            fmt, oldsize = 'PNG', tuple(map(int, img.bbox.size))
         else:
             pass  # new intype
         w, h = resize_imgwh(oldsize, w=width, h=height, max_width=max_width)
-        return data, w, h, None
+        return data, fmt, w, h, None
     elif outype == 'rawdata':
         if intype in ('path', 'data'):
             Image = find_available_module('PIL.Image')
             if not Image:
                 vlog.error("Display rawdata in Terminal requires Pillow.")
-                return (None,)*4
+                return (None,)*5
             if intype == 'path':
                 im = Image.open(img)
             elif intype == 'data':
                 im = Image.open(io.BytesIO(img))
-            oldsize, mode = im.size, im.mode
-            if im.format == 'EPS' and im.width < max_width//2:
-                scale = max_width // im.width
-                im.load(scale=scale)
-                vlog.debug("Load vector image with enough resolution. "
-                           "scale: %d, size: %s -> %s"
-                           % (scale, oldsize, im.size))
+            fmt, oldsize, mode = im.format, im.size, im.mode
+            if im.format == 'EPS':
+                im, _ = _load_eps(im, 'Image', max_width, savefp=None)
                 oldsize = im.size
             wh = resize_imgwh(oldsize, w=width, h=height, max_width=max_width)
             if wh != oldsize:
@@ -236,7 +253,7 @@ def convert_img(img, typecandidates, width=None, height=None, max_width=1366):
                 rawdata = im.tostring()
         elif intype == 'mplf':
             fig, mode = img, 'RGBA'
-            oldsize = tuple(map(int, fig.bbox.size))
+            fmt, oldsize = 'PNG', tuple(map(int, fig.bbox.size))
             wh = resize_imgwh(oldsize, w=width, h=height, max_width=max_width)
             if wh != oldsize:
                 fig.set_size_inches(wh[0]/fig.dpi, wh[1]/fig.dpi)
@@ -252,24 +269,31 @@ def convert_img(img, typecandidates, width=None, height=None, max_width=1366):
                 rawdata = buffer_  # mpl <= 3.0.3, bytes
         else:
             pass  # new intype
-        return (rawdata, *wh, mode)
+        return (rawdata, fmt, *wh, mode)
     elif outype == 'BytesIO':
         ib = io.BytesIO()
-        if intype == 'path':
-            with open(img, 'rb') as im:
-                data = im.read()
-                oldsize = get_imgwh(data)
+        if intype in ('path', 'data'):
+            if intype == 'path':
+                with open(img, 'rb') as im:
+                    data = im.read()
+            elif intype == 'data':
+                data = img
+            fmt, oldsize = get_imgfwh(data)
+            if fmt == 'EPS':
+                im, _ = _load_eps(data, 'data', max_width, savefp=ib)
+                if im:
+                    fmt, oldsize = 'PNG', im.size
+                else:
+                    ib.write(data)
+            else:
                 ib.write(data)
-        elif intype == 'data':
-            oldsize = get_imgwh(img)
-            ib.write(img)
         elif intype == 'mplf':
-            oldsize = tuple(map(int, img.bbox.size))
+            fmt, oldsize = 'PNG', tuple(map(int, img.bbox.size))
             img.savefig(ib, format='png')
         else:
             pass  # new intype
         w, h = resize_imgwh(oldsize, w=width, h=height, max_width=max_width)
-        return ib, w, h, None
+        return ib, fmt, w, h, None
     else:
         raise ValueError('unexpected image outype!')
 
@@ -358,12 +382,24 @@ class Display(object):
     def attty(self):
         return os.isatty(self.output.fileno())
 
+    def show_attr_info(self):
+        for attr in ('cmd', 'mod', 'output', 'attty', 'max_width'):
+            self.output.write(' -> %s: %s\n' % (attr, getattr(self, attr)))
+
     def __del__(self):
         for fname in self._cache:
             try:
                 os.remove(fname)
             except Exception:
                 pass
+
+    def _cache_add(self, path):
+        if not path:
+            return
+        if not isinstance(path, str):
+            return
+        if os.path.basename(path).startswith(TEMPPREFIX):
+            self._cache.add(path)
 
     def display(self, img, width=None, height=None, usemod=False):
         '''
@@ -386,25 +422,20 @@ class Display(object):
         whkwargs = dict(width=width, height=height, max_width=self.max_width)
         if self.cmd and self.cmd.endswith('tycat'):
             vlog.debug("Use tycat to display.")
-            path, w, h, _ = convert_img(img, ('path',), **whkwargs)
-            if not path:
-                return
-            if os.path.basename(path).startswith(TEMPPREFIX):
-                self._cache.add(path)
+            path, _, w, h, _ = convert_img(img, ('path',), **whkwargs)
+            self._cache_add(path)
+            args = ['-g', '%dx%d' % (w, h)] if w and h else []
             # :attr:`output` is useless. Set stdout None to avoid blocking.
-            args, kwargs = ['-g', '%dx%d' % (w, h)], {'stdout': None}
-            self._cmd_display(args, path, kwargs)
+            self._cmd_display(args, path, {'stdout': None})
         elif self.cmd and self.cmd.endswith('kitty'):
             vlog.debug("Use kitty to display.")
-            put, w, h, _ = convert_img(img, ('data', 'path'), **whkwargs)
-            if not put:
-                return
+            put, _, w, h, _ = convert_img(img, ('data', 'path'), **whkwargs)
+            self._cache_add(put)
             self._cmd_display(['+kitten', 'icat'], put, {})
         elif self.cmd and self.cmd.endswith('imgcat'):
             vlog.debug("Use imgcat to display.")
-            put, w, h, _ = convert_img(img, ('data', 'path'), **whkwargs)
-            if not put:
-                return
+            put, _, w, h, _ = convert_img(img, ('data', 'path'), **whkwargs)
+            self._cache_add(put)
             self._cmd_display([], put, {})
         elif (self.cmd and self.cmd.endswith('img2sixel')
                 or self.mod and self.mod.__name__ in ('libsixel', 'sixel')):
@@ -428,32 +459,28 @@ class Display(object):
             if use == 12:
                 use = 1 if self.mod.__name__ == 'libsixel' else 2
             # start
-            isGIF = False
-            if type(img) in (str, bytes) and get_imgfmt(img) == 'GIF':
-                isGIF = True
             if use == 1:
                 vlog.info("Use libsixel to display.")
-                if isGIF:
+                rawdata, fmt, w, h, mode = convert_img(
+                    img, ('rawdata',), **whkwargs)
+                if fmt == 'GIF':
                     vlog.error("libsixel cannot display GIF for now!")
                     return
-                rawda, w, h, mode = convert_img(img, ('rawdata',), **whkwargs)
-                if not rawda:
-                    return
-                self._libsixel_display(rawda, w, h, mode)
+                self._libsixel_display(rawdata, w, h, mode)
             elif use == 2:
                 vlog.info("Use PySixel to display.")
-                put, w, h, _ = convert_img(
+                put, _, w, h, _ = convert_img(
                     img, ('BytesIO', 'path'), **whkwargs)
-                if not put:
-                    return
+                self._cache_add(put)
                 self._sixel_display(put, w, h)
             else:
                 vlog.debug("Use img2sixel to display.")
-                put, w, h, _ = convert_img(img, ('data', 'path'), **whkwargs)
-                if not put:
-                    return
-                args, kwargs = ['-w', str(w), '-h', str(h)], {}
-                if isGIF:
+                put, fmt, w, h, _ = convert_img(
+                    img, ('data', 'path'), **whkwargs)
+                self._cache_add(put)
+                args = ['-w', str(w), '-h', str(h)] if w and h else []
+                kwargs = {}
+                if fmt == 'GIF':
                     args += ['-l', 'disable']
                     kwargs['stdout'] = None
                 self._cmd_display(args, put, kwargs)
@@ -461,17 +488,16 @@ class Display(object):
             if self.cmd:
                 # default run cmd
                 vlog.debug("Use %s to display." % self.cmd)
-                path, w, h, _ = convert_img(img, ('path',), **whkwargs)
-                if not path:
-                    return
-                if os.path.basename(path).startswith(TEMPPREFIX):
-                    self._cache.add(path)
+                path, _, w, h, _ = convert_img(img, ('path',), **whkwargs)
+                self._cache_add(path)
                 self._cmd_display([], path, {})
             else:
                 vlog.error("No display method found!")
 
     def _cmd_display(self, args, put, kwargs):
         '''Use command with *args* to display *put*.'''
+        if not put:
+            return
         if isinstance(self.cmd, list):
             cmd = self.cmd.copy()
         else:
@@ -505,6 +531,8 @@ class Display(object):
         such as a width*height long array of RGBA values.
         '''
         assert self.mod.__name__ == 'libsixel'
+        if not rawdata:
+            return
         lib = self.mod
         ncolors = 256
         if mode == 'RGBA':
@@ -526,5 +554,7 @@ class Display(object):
 
     def _sixel_display(self, put, w, h):
         assert self.mod.__name__ == 'sixel'
+        if not put:
+            return
         writer = self.mod.SixelWriter()
         writer.draw(put, w=w, h=h, output=self.output)
