@@ -38,4 +38,9 @@ RUN yum -y install gcc make python3-devel libcurl-devel libjpeg-turbo-devel libp
 
 RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} pyinstaller
 
+ADD 0001-FIX-protect-shared_memory-server-from-SIGINT.patch /
+RUN yum -y install patch && yum clean all \
+    && patch /usr/lib64/python3.6/multiprocessing/managers.py -i /0001-FIX-protect-shared_memory-server-from-SIGINT.patch \
+    && yum -y history undo last
+
 CMD ["/bin/bash"]

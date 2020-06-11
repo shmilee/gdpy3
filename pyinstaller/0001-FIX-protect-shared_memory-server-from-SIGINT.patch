@@ -1,0 +1,33 @@
+From bf84e10d84ceedd361d40df48241072e486283fe Mon Sep 17 00:00:00 2001
+From: Pierre Glaser <pierreglaser@msn.com>
+From: https://bugs.python.org/issue36368
+From: https://github.com/python/cpython/commit/bf84e10d84ceedd361d40df48241072e486283fe.patch#diff-74e77ef33f5181a57386fc1b73c69cd3
+Date: Tue, 19 Mar 2019 17:36:39 +0100
+Subject: [PATCH] FIX protect shared_memory server from SIGINT
+
+---
+ Lib/multiprocessing/managers.py | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/Lib/multiprocessing/managers.py b/Lib/multiprocessing/managers.py
+index 22abd47fb1f23..2bad636855fe6 100644
+--- a/Lib/multiprocessing/managers.py
++++ b/Lib/multiprocessing/managers.py
+@@ -17,6 +17,7 @@
+ 
+ import sys
+ import threading
++import signal
+ import array
+ import queue
+ import time
+@@ -596,6 +597,9 @@ def _run_server(cls, registry, address, authkey, serializer, writer,
+         '''
+         Create a server, report its address and run it
+         '''
++        # bpo-36368: protect server process from KeyboardInterrupt signals
++        signal.signal(signal.SIGINT, signal.SIG_IGN)
++
+         if initializer is not None:
+             initializer(*initargs)
+ 
