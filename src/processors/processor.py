@@ -142,7 +142,6 @@ class Processor(object):
                 plog.warning("Failed to read salt file '%s'!" % saltfile)
                 salt = hashlib.sha1(saltfile.encode('utf-8')).hexdigest()
         plog.debug("Get salt string: '%s'." % salt)
-        self._saltstr = salt
         # prefix
         prefix = self.rawloader.beside_path(self.name.lower())
         # savetype
@@ -156,11 +155,24 @@ class Processor(object):
             savetype = '.cache'
         # assemble
         savepath = '%s-%s.%s%s' % (prefix, salt[:6], ext2, savetype)
+        self._saltstr = salt
         self.pcksaver = get_pcksaver(savepath)
 
     @property
     def saltstr(self):
-        return self._saltstr
+        if getattr(self, '_saltstr', None):
+            # has rawloader, pcksaver
+            return self._saltstr
+        elif getattr(self, 'pckloader', None):
+            # no rawloader, pcksaver
+            if 'saltstr' in self.pckloader:
+                return self.pckloader.get('saltstr')
+            else:
+                m = re.match('.*-(.{6})\.converted\..*', self.pckloader.path)
+                if m:
+                    return m.groups()[0]
+        # fallback
+        return '123456'
 
     @property
     def _rawsummary(self):
@@ -181,6 +193,7 @@ class Processor(object):
             description += '\n' + str(add_desc)
         with self.pcksaver:
             self.pcksaver.write('/', {'description': description,
+                                      'saltstr': self.saltstr,
                                       'processor': self.name})
 
     def _post_convert(self):
