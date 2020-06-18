@@ -63,8 +63,8 @@ from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
 
 _all_Converters = ['Data1dConverter']
-_all_Diggers = ['Data1dFluxDigger', 'Data1dMeanFluxDigger',
-                'Data1dFieldDigger', 'Data1dMeanFieldDigger']
+_all_Diggers = ['Data1dFluxDigger', 'Data1dFieldDigger',
+                'Data1dMeanFluxDigger', 'Data1dMeanFieldDigger']
 __all__ = _all_Converters + _all_Diggers
 
 
@@ -258,6 +258,61 @@ class _Data1dDigger(Digger):
         results.update(xlabel=r'time($R_0/c_s$)')
         return results
 
+    def _get_title(self):
+        raise NotImplementedError()
+
+
+class Data1dFluxDigger(_Data1dDigger):
+    '''particle, energy and momentum flux of ion, electron, fastion.'''
+    __slots__ = ['particle']
+    itemspattern = ['^(?P<s>data1d)/(?P<particle>(?:i|e|f))'
+                    + r'-(?P<flux>(?:particle|energy|momentum))-flux']
+    commonpattern = ['gtc/tstep', 'gtc/ndiag']
+    __particles = dict(i='ion', e='electron', f='fastion')
+
+    def _set_fignum(self, numseed=None):
+        self.particle = self.__particles[self.section[1]]
+        self._fignum = '%s_%s_flux' % (self.particle, self.section[2])
+        self.kwoptions = None
+
+    def _get_title(self):
+        title = '%s %s flux' % (self.particle, self.section[2])
+        if self.particle == 'ion':
+            return 'thermal %s' % title
+        elif self.particle == 'fastion':
+            return title.replace('fastion', 'fast ion')
+        else:
+            return title
+
+
+field_tex_str = {
+    'phi': r'\phi',
+    'apara': r'A_{\parallel}',
+    'fluidne': r'fluid n_e'
+}
+
+
+class Data1dFieldDigger(_Data1dDigger):
+    '''field00 and fieldrms of phi, a_para, fluidne'''
+    __slots__ = []
+    itemspattern = ['^(?P<s>data1d)/field(?P<par>(?:00|rms))'
+                    + '-(?P<field>(?:phi|apara|fluidne))']
+    commonpattern = ['gtc/tstep', 'gtc/ndiag']
+    __cnames = dict(phi='flow', apara='current', fluidne='fluidne')
+
+    def _set_fignum(self, numseed=None):
+        if self.section[1] == '00':
+            self._fignum = 'zonal_%s' % self.__cnames[self.section[2]]
+        else:
+            self._fignum = '%s_rms' % self.section[2]
+        self.kwoptions = None
+
+    def _get_title(self):
+        if self.section[1] == '00':
+            return self.fignum.replace('_', ' ')
+        else:
+            return r'$%s rms$' % field_tex_str[self.section[2]]
+
 
 class _Data1dMeanDigger(_Data1dDigger):
     '''
@@ -414,29 +469,6 @@ class _Data1dMeanDigger(_Data1dDigger):
         return dict(zip_results=zip_results)
 
 
-class Data1dFluxDigger(_Data1dDigger):
-    '''particle, energy and momentum flux of ion, electron, fastion.'''
-    __slots__ = ['particle']
-    itemspattern = ['^(?P<s>data1d)/(?P<particle>(?:i|e|f))'
-                    + r'-(?P<flux>(?:particle|energy|momentum))-flux']
-    commonpattern = ['gtc/tstep', 'gtc/ndiag']
-    __particles = dict(i='ion', e='electron', f='fastion')
-
-    def _set_fignum(self, numseed=None):
-        self.particle = self.__particles[self.section[1]]
-        self._fignum = '%s_%s_flux' % (self.particle, self.section[2])
-        self.kwoptions = None
-
-    def _get_title(self):
-        title = '%s %s flux' % (self.particle, self.section[2])
-        if self.particle == 'ion':
-            return 'thermal %s' % title
-        elif self.particle == 'fastion':
-            return title.replace('fastion', 'fast ion')
-        else:
-            return title
-
-
 class Data1dMeanFluxDigger(_Data1dMeanDigger, Data1dFluxDigger):
     '''particle, energy and momentum mean flux of ion, electron, fastion.'''
     __slots__ = []
@@ -444,35 +476,6 @@ class Data1dMeanFluxDigger(_Data1dMeanDigger, Data1dFluxDigger):
     def _set_fignum(self, numseed=None):
         super(Data1dMeanFluxDigger, self)._set_fignum(numseed=numseed)
         self._fignum = '%s_mean' % self._fignum
-
-
-field_tex_str = {
-    'phi': r'\phi',
-    'apara': r'A_{\parallel}',
-    'fluidne': r'fluid n_e'
-}
-
-
-class Data1dFieldDigger(_Data1dDigger):
-    '''field00 and fieldrms of phi, a_para, fluidne'''
-    __slots__ = []
-    itemspattern = ['^(?P<s>data1d)/field(?P<par>(?:00|rms))'
-                    + '-(?P<field>(?:phi|apara|fluidne))']
-    commonpattern = ['gtc/tstep', 'gtc/ndiag']
-    __cnames = dict(phi='flow', apara='current', fluidne='fluidne')
-
-    def _set_fignum(self, numseed=None):
-        if self.section[1] == '00':
-            self._fignum = 'zonal_%s' % self.__cnames[self.section[2]]
-        else:
-            self._fignum = '%s_rms' % self.section[2]
-        self.kwoptions = None
-
-    def _get_title(self):
-        if self.section[1] == '00':
-            return self.fignum.replace('_', ' ')
-        else:
-            return r'$%s rms$' % field_tex_str[self.section[2]]
 
 
 class Data1dMeanFieldDigger(_Data1dMeanDigger, Data1dFieldDigger):
