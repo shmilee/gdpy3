@@ -127,9 +127,10 @@ class MultiProcessor(Processor):
         if isinstance(_couple, str):
             return _couple, {}
         elif isinstance(_couple, dict):
-            figlabel = _couple.pop('figlabel', None)
+            copy = _couple.copy()
+            figlabel = copy.pop('figlabel', None)
             if figlabel:
-                return figlabel, _couple
+                return figlabel, copy
             else:
                 return None, "No figlabel in couple_figlabel"
         else:
