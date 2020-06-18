@@ -12,7 +12,7 @@ from .glogger import getGLogger
 
 __all__ = ['max_subarray', 'fitline', 'argrelextrema', 'intersection_4points',
            'near_peak', 'high_envelope',
-           'fft', 'savgol_golay_filter', 'findflat', 'findgrowth',
+           'fft', 'fft2', 'savgol_golay_filter', 'findflat', 'findgrowth',
            'correlation',
            ]
 log = getGLogger('C')
@@ -217,6 +217,34 @@ def fft(dt, signal):
     else:
         log.error("'dt' must be 'float', 'signal' must be 'np.ndarray'!")
         return None, None, None
+
+
+def fft2(dt, dx, signal):
+    '''
+    FFT in two dimension
+    signal.shape == (X.size, T.size)
+    '''
+    if (isinstance(dt, float) and isinstance(dx, float)
+            and isinstance(signal, np.ndarray)
+            and len(signal.shape) == 2):
+        xsize, tsize = signal.shape
+        if xsize % 2 == 0:
+            xf = np.linspace(-0.5, 0.5, xsize, endpoint=False)
+        else:
+            xf = np.linspace(-0.5, 0.5, xsize, endpoint=True)
+        if tsize % 2 == 0:
+            tf = np.linspace(-0.5, 0.5, tsize, endpoint=False)
+        else:
+            tf = np.linspace(-0.5, 0.5, tsize, endpoint=True)
+        xf = 2 * np.pi / dx * xf
+        tf = 2 * np.pi / dt * tf
+        af = np.fft.fftshift(np.fft.fft2(signal))
+        pf = abs(af)
+        return tf, xf, af, pf
+    else:
+        log.error("'dt', 'dx' must be 'float', "
+                  "'signal' must be 2D 'np.ndarray'!")
+        return None, None, None, None
 
 
 def savgol_golay_filter(x, window_size=None, polyorder=None, deriv=0,
