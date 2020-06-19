@@ -64,7 +64,8 @@ from ..cores.digger import Digger, dlog
 
 _all_Converters = ['Data1dConverter']
 _all_Diggers = ['Data1dFluxDigger', 'Data1dFieldDigger',
-                'Data1dMeanFluxDigger', 'Data1dMeanFieldDigger']
+                'Data1dMeanFluxDigger', 'Data1dMeanFieldDigger',
+                'Data1dFFTFluxDigger', 'Data1dFFTFieldDigger']
 __all__ = _all_Converters + _all_Diggers
 
 
@@ -309,7 +310,7 @@ class Data1dFieldDigger(_Data1dDigger):
 
     def _get_title(self):
         if self.section[1] == '00':
-            return self.fignum.replace('_', ' ')
+            return 'zonal %s' % self.__cnames[self.section[2]]
         else:
             return r'$%s rms$' % field_tex_str[self.section[2]]
 
@@ -485,3 +486,170 @@ class Data1dMeanFieldDigger(_Data1dMeanDigger, Data1dFieldDigger):
     def _set_fignum(self, numseed=None):
         super(Data1dMeanFieldDigger, self)._set_fignum(numseed=numseed)
         self._fignum = '%s_mean' % self._fignum
+
+
+class _Data1dFFTDigger(_Data1dDigger):
+    '''
+    :meth:`_dig` for Data1dFFTFluxDigger, Data1dFFTFieldDigger
+    '''
+    __slots__ = []
+    post_template = 'tmpl_z111p'
+
+    def _dig(self, kwargs):
+        '''*fft_tselect*: [t0,t1], t0 float
+            X[x0:x1], data[:,x0:x1] where t0<=X[x0:x1]<=t1
+        *fft_pselect*: [p0,p1], p0 int
+            Y[y0:y1], data[y0:y1,:] where p0<=Y[y0:y1]<=p1
+        *fft_ymaxlimit*: float, default 0
+            if (ymax of power line) < fft_ymaxlimit * (ymax of power lines),
+            then remove it.
+        '''
+        results, acckwargs = super(_Data1dFFTDigger, self)._dig(kwargs)
+        X, Y, Z = results['X'], results['Y'], results['Z']
+        tcutoff = acckwargs['tcutoff']
+        pcutoff = acckwargs['pcutoff']
+        use_ra = acckwargs['use_ra']
+        fft_tselect = kwargs.get('fft_tselect', tcutoff)
+        fft_pselect = kwargs.get('fft_pselect', pcutoff)
+        fft_ymaxlimit = kwargs.get('fft_ymaxlimit', 0.0)
+        if 'fft_tselect' not in self.kwoptions:
+            self.kwoptions.update(dict(
+                fft_tselect=dict(
+                    widget='FloatRangeSlider',
+                    rangee=self.kwoptions['tcutoff']['rangee'].copy(),
+                    value=self.kwoptions['tcutoff']['value'].copy(),
+                    description='FFT time select:'),
+                fft_pselect=dict(
+                    widget='IntRangeSlider',
+                    rangee=self.kwoptions['pcutoff']['rangee'].copy(),
+                    value=self.kwoptions['pcutoff']['value'].copy(),
+                    description='FFT mpsi select:'),
+                fft_ymaxlimit=dict(
+                    widget='FloatSlider',
+                    rangee=(0, 1, 0.05),
+                    value=0.0,
+                    description='FFT ymaxlimit:'),
+            ))
+        # fft_tselect
+        it0, it1, dt = 0, X.size, X[1] - X[0]
+        acckwargs['fft_tselect'] = tcutoff
+        if (fft_tselect != tcutoff
+                and fft_tselect[0] >= tcutoff[0]
+                and fft_tselect[1] <= tcutoff[1]):
+            s0, s1 = fft_tselect
+            index = numpy.where((X >= s0) & (X <= s1))[0]
+            if index.size > 0:
+                it0, it1 = index[0], index[-1]+1
+                acckwargs['fft_tselect'] = [X[it0], X[it1-1]]
+            else:
+                dlog.warning("Can't select: %s <= fft time <= %s!" % (s0, s1))
+        # fft_pselect
+        ip0, ip1 = 0, Y.size
+        dy = numpy.diff(Y).mean() if use_ra else 1.0
+        acckwargs['fft_pselect'] = pcutoff
+        if (fft_pselect != pcutoff
+                and fft_pselect[0] >= pcutoff[0]
+                and fft_pselect[1] <= pcutoff[1]):
+            s0, s1 = fft_pselect
+            pY = numpy.arange(pcutoff[0], pcutoff[1]+1)
+            if use_ra and pY.size != Y.size:
+                # arr2 lost 2 points
+                if pY.size - Y.size == 1:
+                    pY = pY[1:] if pcutoff[0] == 0 else pY[:-1]
+                elif pY.size - Y.size == 2:
+                    pY = pY[1:-1]
+                else:
+                    dlog.error("Wrong pY size: %d != %d" % (pY.size, Y.size))
+            index = numpy.where((pY >= s0) & (pY <= s1))[0]
+            if index.size > 0:
+                ip0, ip1 = index[0], index[-1]+1
+                acckwargs['fft_pselect'] = [pY[ip0], pY[ip1-1]]
+            else:
+                dlog.warning("Can't select: %s <= fft ipsi <= %s!" % (s0, s1))
+        # select FFT data
+        if (it0, it1) == (0, X.size) and (ip0, ip1) == (0, Y.size):
+            select_Z = Z
+            select_X, select_Y = None, None
+        else:
+            select_Z = Z[ip0:ip1, it0:it1]
+            select_X = X[[it0, it1-1, it1-1, it0, it0]]
+            select_Y = Y[[ip0, ip0, ip1-1, ip1-1, ip0]]
+        tf, yf, af, pf = tools.fft2(dt, dy, select_Z)
+        # fft_ymaxlimit
+        acckwargs['fft_ymaxlimit'] = 0.0
+        pf_tmax = pf.max(axis=0)
+        pf_ymax = pf.max(axis=1)
+        pf_max = pf_tmax.max()
+        if isinstance(fft_ymaxlimit, float) and 0 < fft_ymaxlimit < 1:
+            acckwargs['fft_ymaxlimit'] = fft_ymaxlimit
+            maxlimit = pf_max * fft_ymaxlimit
+            pf_tpass = pf_tmax >= maxlimit
+            pf_ypass = pf_ymax >= maxlimit
+            pf_tlist = [i for i, j in enumerate(pf_tpass) if j]
+            pf_ylist = [i for i, j in enumerate(pf_ypass) if j]
+        else:
+            pf_tlist, pf_ylist = 'all', 'all'
+        # tf, yf xlimit
+        minlimit = pf_max * 5.0e-2
+        idx_t = numpy.where(pf_tmax >= minlimit)[0][-1]
+        idx_y = numpy.where(pf_ymax >= minlimit)[0][-1]
+        tf_xlimit, yf_xlimit = round(tf[idx_t], 2),  round(yf[idx_y], 2)
+        results.update(dict(
+            select_X=select_X, select_Y=select_Y,
+            tf=tf, yf=yf, pf=pf, tf_label=r'$\omega$($c_s/R_0$)',
+            yf_label=r'$k_r$(1/a)' if use_ra else r'$k_r$(1/mpsi)',
+            pf_tlist=pf_tlist, pf_ylist=pf_ylist,
+            tf_xlimit=tf_xlimit, yf_xlimit=yf_xlimit,
+        ))
+        return results, acckwargs
+
+    def _post_dig(self, results):
+        r = results
+        zip_results = [('tmpl_contourf', 221, dict(
+            X=r['X'], Y=r['Y'], Z=r['Z'], title=r['title'],
+            xlabel=r'time($R_0/c_s$)', ylabel=r['ylabel']))]
+        if r['select_X'] is not None:
+            zip_results.append(
+                ('tmpl_line', 221, dict(
+                    LINE=[(r['select_X'], r['select_Y'], 'FFT region')]))
+                # legend_kwargs=dict(loc='upper left'),
+            )
+        title2 = r'FFT of %s' % r['title']
+        zip_results.append(
+            ('tmpl_contourf', 222, dict(
+                X=r['tf'], Y=r['yf'], Z=r['pf'], title=title2,
+                xlabel=r['tf_label'], ylabel=r['yf_label']))
+        )
+        if r['pf_tlist'] == 'all':
+            my, mt = r['pf'].shape
+            pf_tlist, pf_ylist = range(mt), range(my)
+        else:
+            pf_tlist, pf_ylist = r['pf_tlist'], r['pf_ylist']
+        tf_hf, yf_hf = r['tf'].size//2, r['yf'].size//2
+        LINEt = [(r['tf'][tf_hf:], r['pf'][j, tf_hf:]) for j in pf_ylist]
+        LINEy = [(r['yf'][yf_hf:], r['pf'][yf_hf:, j]) for j in pf_tlist]
+        zip_results.extend([
+            ('tmpl_line', 223, dict(LINE=LINEt, xlabel=r['tf_label'],
+                                    xlim=[0, r['tf_xlimit']])),
+            ('tmpl_line', 224, dict(LINE=LINEy, xlabel=r['yf_label'],
+                                    xlim=[0, r['yf_xlimit']])),
+        ])
+        return dict(zip_results=zip_results)
+
+
+class Data1dFFTFluxDigger(_Data1dFFTDigger, Data1dFluxDigger):
+    '''FFT particle, energy and momentum flux of ion, electron, fastion.'''
+    __slots__ = []
+
+    def _set_fignum(self, numseed=None):
+        super(Data1dFFTFluxDigger, self)._set_fignum(numseed=numseed)
+        self._fignum = '%s_fft' % self._fignum
+
+
+class Data1dFFTFieldDigger(_Data1dFFTDigger, Data1dFieldDigger):
+    '''FFT field00 and fieldrms of phi, a_para, fluidne'''
+    __slots__ = []
+
+    def _set_fignum(self, numseed=None):
+        super(Data1dFFTFieldDigger, self)._set_fignum(numseed=numseed)
+        self._fignum = '%s_fft' % self._fignum
