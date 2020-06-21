@@ -54,13 +54,15 @@ class TestMultiprocessProcessor(unittest.TestCase):
         global X2, get_X  # fix: Can't pickle local object
         X2 = gdp.manager.list()
 
-        def get_X(res):
-            X2.append((res['x'], os.getpid()))
+        def get_X(accfiglabel, res):
+            X2.append((accfiglabel, res['x'], os.getpid()))
 
         accfiglabels = gdp.multi_visplt(
             *([self.figlabel]*2), savepath=self.tmp, callback=get_X)
         out = gdp.multi_dig(self.figlabel, post=False)
         a, results, t = out[0]
-        X1 = [results['x']]
-        self.assertListEqual(X1[0], X2[0][0])  # same result
-        self.assertNotEqual(X2[0][1], X2[1][1])  # different pid
+        self.assertEqual(a, X2[0][0])  # same accfiglabel
+        self.assertEqual(a, X2[1][0])  # same accfiglabel
+        self.assertListEqual(results['x'], X2[0][1])  # same result
+        self.assertListEqual(results['x'], X2[1][1])  # same result
+        self.assertNotEqual(X2[0][2], X2[1][2])  # different pid

@@ -186,7 +186,7 @@ class MultiProcessor(Processor):
             accfiglabel = gotfiglabel
         self._count_task_done(lock, count, total, 'Dig')
         if callable(callback):
-            callback(results)
+            callback(accfiglabel, results)
         if post:
             results = digcore.post_dig(results)
         return (accfiglabel, results, digcore.post_template,
@@ -218,7 +218,7 @@ class MultiProcessor(Processor):
             self._count_task_done(lock, count, total, 'Dig')
             lock.release()
         if callable(callback):
-            callback(results)
+            callback(accfiglabel, results)
         if post:
             results = digcore.post_dig(results)
         return (accfiglabel, results, digcore.post_template,
@@ -285,7 +285,7 @@ class MultiProcessor(Processor):
                                 # find saved dig results
                                 accfiglabel = gotfiglabel
                                 if callable(callback):
-                                    callback(results)
+                                    callback(accfiglabel, results)
                                 if post:
                                     results = digcore.post_dig(results)
                                 multi_results.append((accfiglabel, results,

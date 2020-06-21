@@ -466,8 +466,8 @@ class Processor(object):
             setting :attr:`resfilesaver.duplicate_name`=False to rebuild
             a new zip archive when we get duplicate names.
         callback: a callable
-            It accepts a single argument, dig results before post_dig.
-            This can be used to get some numbers from results.
+            It accepts two arguments, accfiglabel and dig results before
+            post_dig. This can be used to get some numbers from results.
         post: bool
             call post_dig
         '''
@@ -488,7 +488,7 @@ class Processor(object):
         else:
             accfiglabel = gotfiglabel
         if callable(callback):
-            callback(results)
+            callback(accfiglabel, results)
         if post:
             results = digcore.post_dig(results)
         return accfiglabel, results, digcore.post_template

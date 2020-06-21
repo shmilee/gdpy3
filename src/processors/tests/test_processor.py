@@ -78,11 +78,12 @@ class TestSerialProcessor(unittest.TestCase):
     def test_processor_dig_visplt_callback(self):
         gdp = get_processor(self.tmp, name='TDP', parallel='off')
         a, results, t = gdp.dig(self.figlabel, post=False)
-        X1 = [results['x']]
+        X1 = [(a, results['x'])]
         X2 = []
 
-        def get_X(res):
-            X2.append(res['x'])
+        def get_X(accfiglabel, res):
+            X2.append((accfiglabel, res['x']))
 
         accfiglabel = gdp.visplt(self.figlabel, show=False, callback=get_X)
-        self.assertListEqual(X1[0], X2[0])
+        self.assertEqual(X1[0][0], X2[0][0])
+        self.assertListEqual(X1[0][1], X2[0][1])
