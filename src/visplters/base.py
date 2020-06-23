@@ -404,6 +404,8 @@ class BaseVisplter(object):
         results['xlabel']: str, optional
         results['ylabel']: str, optional
         results['aspect']: str, optional
+        results['xlim']: (`left`, `right`), optional
+        results['ylim']: (`up`, `down`), optional
         results['plot_method']: str, optional
             'contourf', 'pcolor', 'pcolormesh', or 'plot_surface'
             default 'contourf', if 'Z' all zeros, default is 'pcolor'
@@ -447,6 +449,7 @@ class BaseVisplter(object):
         title, xlabel, ylabel, aspect = self._get_my_optional_vals(
             results, ('title', str, None), ('xlabel', str, None),
             ('ylabel', str, None), ('aspect', str, None))
+        xlim, ylim = self._get_my_points(results, 'xlim', 'ylim')
         plot_method, plot_method_args, plot_method_kwargs, \
             colorbar, grid_alpha, plot_surface_shadow = \
             self._get_my_optional_vals(results,
@@ -470,12 +473,12 @@ class BaseVisplter(object):
             plot_method, plot_method_args, plot_method_kwargs,
             colorbar, grid_alpha, plot_surface_shadow])
         return self._tmpl_contourf(
-            X, Y, Z, title, xlabel, ylabel, aspect,
+            X, Y, Z, title, xlabel, ylabel, aspect, xlim, ylim,
             plot_method, plot_method_args, plot_method_kwargs,
             colorbar, grid_alpha, plot_surface_shadow)
 
     def _tmpl_contourf(
-            self, X, Y, Z, title, xlabel, ylabel, aspect,
+            self, X, Y, Z, title, xlabel, ylabel, aspect, xlim, ylim,
             plot_method, plot_method_args, plot_method_kwargs,
             colorbar, grid_alpha, plot_surface_shadow):
         '''For :meth:`tmpl_contourf`.'''

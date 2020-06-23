@@ -214,7 +214,7 @@ class MatplotlibVisplter(BaseVisplter):
         matplotlib.use(backend)
 
     def _tmpl_contourf(
-            self, X, Y, Z, title, xlabel, ylabel, aspect,
+            self, X, Y, Z, title, xlabel, ylabel, aspect, xlim, ylim,
             plot_method, plot_method_args, plot_method_kwargs,
             colorbar, grid_alpha, plot_surface_shadow):
         '''For :meth:`tmpl_contourf`.'''
@@ -253,6 +253,10 @@ class MatplotlibVisplter(BaseVisplter):
             layoutkw['xlabel'] = xlabel
         if ylabel:
             layoutkw['ylabel'] = ylabel
+        if xlim:
+            layoutkw['xlim'] = xlim
+        if ylim:
+            layoutkw['ylim'] = ylim
         # not currently possible to manually set the aspect on 3D axes
         if aspect and plot_method != 'plot_surface':
             layoutkw['aspect'] = aspect
