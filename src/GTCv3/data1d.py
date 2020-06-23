@@ -503,6 +503,8 @@ class _Data1dFFTDigger(_Data1dDigger):
         *fft_ymaxlimit*: float, default 0
             if (ymax of power line) < fft_ymaxlimit * (ymax of power lines),
             then remove it.
+        *fft_autoxlimit*: bool
+            auto set short xlimt for FFT results or not, default True
         '''
         results, acckwargs = super(_Data1dFFTDigger, self)._dig(kwargs)
         X, Y, Z = results['X'], results['Y'], results['Z']
@@ -512,6 +514,7 @@ class _Data1dFFTDigger(_Data1dDigger):
         fft_tselect = kwargs.get('fft_tselect', tcutoff)
         fft_pselect = kwargs.get('fft_pselect', pcutoff)
         fft_ymaxlimit = kwargs.get('fft_ymaxlimit', 0.0)
+        fft_autoxlimit = kwargs.get('fft_autoxlimit', True)
         if 'fft_tselect' not in self.kwoptions:
             self.kwoptions.update(dict(
                 fft_tselect=dict(
@@ -529,6 +532,10 @@ class _Data1dFFTDigger(_Data1dDigger):
                     rangee=(0, 1, 0.05),
                     value=0.0,
                     description='FFT ymaxlimit:'),
+                fft_autoxlimit=dict(
+                    widget='Checkbox',
+                    value=True,
+                    description='FFT xlimit: auto'),
             ))
         # fft_tselect
         it0, it1, dt = 0, X.size, X[1] - X[0]
@@ -576,7 +583,6 @@ class _Data1dFFTDigger(_Data1dDigger):
             select_Y = Y[[ip0, ip0, ip1-1, ip1-1, ip0]]
         tf, yf, af, pf = tools.fft2(dt, dy, select_Z)
         # fft_ymaxlimit
-        acckwargs['fft_ymaxlimit'] = 0.0
         pf_tmax = pf.max(axis=0)
         pf_ymax = pf.max(axis=1)
         pf_max = pf_tmax.max()
@@ -588,12 +594,18 @@ class _Data1dFFTDigger(_Data1dDigger):
             pf_tlist = [i for i, j in enumerate(pf_tpass) if j]
             pf_ylist = [i for i, j in enumerate(pf_ypass) if j]
         else:
+            acckwargs['fft_ymaxlimit'] = 0.0
             pf_tlist, pf_ylist = 'all', 'all'
         # tf, yf xlimit
-        minlimit = pf_max * 5.0e-2
-        idx_t = numpy.where(pf_tmax >= minlimit)[0][-1]
-        idx_y = numpy.where(pf_ymax >= minlimit)[0][-1]
-        tf_xlimit, yf_xlimit = round(tf[idx_t], 2),  round(yf[idx_y], 2)
+        if fft_autoxlimit:
+            acckwargs['fft_autoxlimit'] = True
+            minlimit = pf_max * 5.0e-2
+            idx_t = numpy.where(pf_tmax >= minlimit)[0][-1]
+            idx_y = numpy.where(pf_ymax >= minlimit)[0][-1]
+            tf_xlimit, yf_xlimit = round(tf[idx_t], 2),  round(yf[idx_y], 2)
+        else:
+            acckwargs['fft_autoxlimit'] = False
+            tf_xlimit, yf_xlimit = None, None
         results.update(dict(
             select_X=select_X, select_Y=select_Y,
             tf=tf, yf=yf, pf=pf, tf_label=r'$\omega$($c_s/R_0$)',
@@ -615,10 +627,19 @@ class _Data1dFFTDigger(_Data1dDigger):
                 # legend_kwargs=dict(loc='upper left'),
             )
         title2 = r'FFT of %s' % r['title']
+        if r['tf_xlimit']:
+            tf_xlimit, yf_xlimit = r['tf_xlimit'], r['yf_xlimit']
+            tf_xlimit2 = min(tf_xlimit*2.0, r['tf'][-1])
+            yf_xlimit2 = min(yf_xlimit*2.0, r['yf'][-1])
+        else:
+            tf_xlimit, yf_xlimit = r['tf'][-1], r['yf'][-1]
+            tf_xlimit2, yf_xlimit2 = tf_xlimit, yf_xlimit
         zip_results.append(
             ('tmpl_contourf', 222, dict(
                 X=r['tf'], Y=r['yf'], Z=r['pf'], title=title2,
-                xlabel=r['tf_label'], ylabel=r['yf_label']))
+                xlabel=r['tf_label'], ylabel=r['yf_label'],
+                xlim=[-tf_xlimit2, tf_xlimit2],
+                ylim=[-yf_xlimit2, yf_xlimit2]))
         )
         if r['pf_tlist'] == 'all':
             my, mt = r['pf'].shape
@@ -630,9 +651,9 @@ class _Data1dFFTDigger(_Data1dDigger):
         LINEy = [(r['yf'][yf_hf:], r['pf'][yf_hf:, j]) for j in pf_tlist]
         zip_results.extend([
             ('tmpl_line', 223, dict(LINE=LINEt, xlabel=r['tf_label'],
-                                    xlim=[0, r['tf_xlimit']])),
+                                    xlim=[0, tf_xlimit])),
             ('tmpl_line', 224, dict(LINE=LINEy, xlabel=r['yf_label'],
-                                    xlim=[0, r['yf_xlimit']])),
+                                    xlim=[0, yf_xlimit])),
         ])
         return dict(zip_results=zip_results)
 
