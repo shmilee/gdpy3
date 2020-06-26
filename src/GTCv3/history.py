@@ -338,7 +338,7 @@ class HistoryFieldModeDigger(Digger):
             dlog.parm("Find growth time: [%s,%s], index: [%s,%s]."
                       % (time[start], time[end], start, end))
             # polyfit growth region
-            resparm, fitya = tools.fitline(
+            resparm, fitya = tools.line_fit(
                 time[start:end+1], logya[start:end+1], 1,
                 info='[%s,%s] growth time' % (time[start], time[end]))
             growth = resparm[0][0]

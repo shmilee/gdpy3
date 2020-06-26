@@ -10,7 +10,7 @@ import numpy as np
 
 from .glogger import getGLogger
 
-__all__ = ['max_subarray', 'fitline', 'curve_fit',
+__all__ = ['max_subarray', 'line_fit', 'curve_fit',
            'argrelextrema', 'intersection_4points',
            'near_peak', 'high_envelope',
            'fft', 'fft2', 'savgol_golay_filter',
@@ -31,13 +31,13 @@ def max_subarray(A):
     return max_so_far
 
 
-def fitline(X, Y, deg, info=''):
+def line_fit(X, Y, deg, info=None):
     '''
     One-dimensional polynomial fit
     '''
     fitresult = np.polyfit(X, Y, deg, full=True)
-    log.debug("Fitting line '%s' result:" % info)
-    log.debug("%s" % (fitresult,))
+    info = ("line '%s'" % info) if info else "line"
+    log.debug("Fitting %s result: %s" % (info, fitresult))
     fit_p = np.poly1d(fitresult[0])
     return fitresult, fit_p(X)
 
