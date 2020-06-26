@@ -10,9 +10,11 @@ import numpy as np
 
 from .glogger import getGLogger
 
-__all__ = ['max_subarray', 'fitline', 'argrelextrema', 'intersection_4points',
+__all__ = ['max_subarray', 'fitline', 'curve_fit',
+           'argrelextrema', 'intersection_4points',
            'near_peak', 'high_envelope',
-           'fft', 'fft2', 'savgol_golay_filter', 'findflat', 'findgrowth',
+           'fft', 'fft2', 'savgol_golay_filter',
+           'findflat', 'findgrowth',
            'correlation',
            ]
 log = getGLogger('C')
@@ -38,6 +40,51 @@ def fitline(X, Y, deg, info=''):
     log.debug("%s" % (fitresult,))
     fit_p = np.poly1d(fitresult[0])
     return fitresult, fit_p(X)
+
+
+def curve_fit(f, X, Y, info=None, **kwargs):
+    '''
+    Call `scipy.optimize.curve_fit`. Use non-linear least squares
+    to fit a function, f, to data. Return popt, pcov, fitY.
+
+    f: callable or string name of preset-functions.
+        'power', Y = a*X^b + c + eps
+        'exp', 'exponential', Y = a*e^(b*x) + c + eps
+        'ln', 'log', 'lograrithmic', Y = a*ln(x) + b + eps
+        'gauss', 'gaussian', Y = a*e^(-(x-b)^2/(2*c^2)) + d + eps
+    kwargs: passed to `scipy.optimize.curve_fit`
+    '''
+    try:
+        from scipy.optimize import curve_fit
+    except ImportError:
+        log.error("'curve_fit' needs package 'scipy'!'")
+        return (None,)*3
+    info = ("curve '%s'" % info) if info else "curve"
+    func = None
+    if isinstance(f, str):
+        if f == 'power':
+            def func(x, a, b, c): return (a*np.power(x, b)+c)
+        elif f in ('exp', 'exponential'):
+            def func(x, a, b, c): return (a*np.exp(b*x)+c)
+        elif f in ('ln', 'log', 'lograrithmic'):
+            def func(x, a, b): return (a*np.log(x)+b)
+        elif f in ('gauss', 'gaussian'):
+            def func(x, a, b, c, d): return (a*np.exp(-(x-b)**2/(2*c**2))+d)
+            if 'p0' not in kwargs:
+                Ymax, Ymin = np.max(Y), np.min(Y)
+                x_Ymax = X[np.where(Y[:] == Ymax)[0]]
+                kwargs['p0'] = np.array([Ymax, x_Ymax[0], np.std(X), Ymin])
+                log.debug("Initial guess parameters for fitting 'gaussian': "
+                          "p0=%s" % kwargs['p0'])
+    elif callable(f):
+        func = f
+    if func is None:
+        log.error("Invalid arg 'f', not callable or available strings!")
+        return (None,)*3
+    popt, pcov = curve_fit(func, X, Y, **kwargs)
+    log.debug("Fitting %s result: popt=%s, pcov=%s" % (info, popt, pcov))
+    fitY = np.array([func(i, *popt) for i in X])
+    return popt, pcov, fitY
 
 
 def argrelextrema(X, m='both', recheck=False):
