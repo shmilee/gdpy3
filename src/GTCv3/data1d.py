@@ -396,11 +396,10 @@ class _Data1dMeanDigger(_Data1dDigger):
             upY, downY = numpy.array(upY), numpy.array(downY)
             midY, meanZ = numpy.array(midY), numpy.array(meanZ)
             if smooth:
-                upY = tools.savgol_golay_filter(numpy.array(upY), info='up')
-                downY = tools.savgol_golay_filter(
-                    numpy.array(downY), info='down')
-                maxY = tools.savgol_golay_filter(Y[maxidx], info='max')
-                midY = tools.savgol_golay_filter(numpy.array(midY), info='mid')
+                upY = tools.savgolay_filter(numpy.array(upY), info='up')
+                downY = tools.savgolay_filter(numpy.array(downY), info='down')
+                maxY = tools.savgolay_filter(Y[maxidx], info='max')
+                midY = tools.savgolay_filter(numpy.array(midY), info='mid')
                 # min(Y) <= up, down, max, mid <= max(Y)
                 ymin, ymax = Y.min(), Y.max()
                 upY[upY > ymax] = ymax
@@ -410,7 +409,7 @@ class _Data1dMeanDigger(_Data1dDigger):
                 midY[midY > ymax] = ymax
                 midY[midY < ymin] = ymin
         if smooth:
-            meanZ = tools.savgol_golay_filter(meanZ, info='Z mean')
+            meanZ = tools.savgolay_filter(meanZ, info='Z mean')
         if 'mean_select' not in self.kwoptions:
             self.kwoptions.update(dict(
                 mean_select=dict(

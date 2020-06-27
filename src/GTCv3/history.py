@@ -318,7 +318,7 @@ class HistoryFieldModeDigger(Digger):
             title2 += r', $k_{\theta}\rho_0$=%.6f' % ktr
         ya = np.sqrt(yreal**2 + yimag**2)
         if ya.any():
-            logya = tools.savgol_golay_filter(np.log(ya), info='log(Amp)')
+            logya = tools.savgolay_filter(np.log(ya), info='log(Amp)')
             start, end = None, None
             if 'growth_time' in kwargs:
                 start, end = kwargs['growth_time']
@@ -403,7 +403,7 @@ class HistoryFieldModeDigger(Digger):
         return results, acckwargs
 
     def __get_omega(self, y, time, growth, start, end):
-        normy = tools.savgol_golay_filter(
+        normy = tools.savgolay_filter(
             np.divide(y, np.exp(growth * time)), info='Amp_normalized')
         index = [i for i in tools.argrelextrema(normy, m='both')
                  if 0.9*start + 0.1 * end <= i < 0.1*start + 0.9 * end]
