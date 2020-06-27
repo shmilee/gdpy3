@@ -31,15 +31,29 @@ def max_subarray(A):
     return max_so_far
 
 
-def line_fit(X, Y, deg, info=None):
+def line_fit(X, Y, deg, fitX=None, info=None, **kwargs):
     '''
     One-dimensional polynomial fit
+
+    Parameters
+    ----------
+    X, Y, deg, kwargs: passed to `numpy.polyfit`
+    fitX: array
+        new X data used to calculate fitY
+    info: str
+        info of line
     '''
-    fitresult = np.polyfit(X, Y, deg, full=True)
+    if 'full' not in kwargs:
+        kwargs['full'] = True
+    fitresult = np.polyfit(X, Y, deg, **kwargs)
     info = ("line '%s'" % info) if info else "line"
     log.debug("Fitting %s result: %s" % (info, fitresult))
-    fit_p = np.poly1d(fitresult[0])
-    return fitresult, fit_p(X)
+    if kwargs['full']:
+        fit_p = np.poly1d(fitresult[0])
+    else:
+        fit_p = np.poly1d(fitresult)
+    newX = X if fitX is None else fitX
+    return fitresult, fit_p(newX)
 
 
 def curve_fit(f, X, Y, info=None, **kwargs):
