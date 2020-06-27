@@ -56,17 +56,25 @@ def line_fit(X, Y, deg, fitX=None, info=None, **kwargs):
     return fitresult, fit_p(newX)
 
 
-def curve_fit(f, X, Y, info=None, **kwargs):
+def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
     '''
     Call `scipy.optimize.curve_fit`. Use non-linear least squares
     to fit a function, f, to data. Return popt, pcov, fitY.
 
+    Parameters
+    ----------
     f: callable or string name of preset-functions.
         'power', Y = a*X^b + c + eps
         'exp', 'exponential', Y = a*e^(b*x) + c + eps
         'ln', 'log', 'lograrithmic', Y = a*ln(x) + b + eps
         'gauss', 'gaussian', Y = a*e^(-(x-b)^2/(2*c^2)) + d + eps
-    kwargs: passed to `scipy.optimize.curve_fit`
+    X, Y, kwargs: passed to `scipy.optimize.curve_fit`
+    fitX: array
+        new X data used to calculate fitY
+    f_constant: number
+        set preset-function's constant parameter, like 'exp' c, 'gauss' d
+    info: str
+        info of curve
     '''
     try:
         from scipy.optimize import curve_fit
@@ -77,17 +85,34 @@ def curve_fit(f, X, Y, info=None, **kwargs):
     func = None
     if isinstance(f, str):
         if f == 'power':
-            def func(x, a, b, c): return (a*np.power(x, b)+c)
+            if f_constant is None:
+                def func(x, a, b, c): return (a*np.power(x, b)+c)
+            else:
+                def func(x, a, b): return (a*np.power(x, b)+f_constant)
         elif f in ('exp', 'exponential'):
-            def func(x, a, b, c): return (a*np.exp(b*x)+c)
+            if f_constant is None:
+                def func(x, a, b, c): return (a*np.exp(b*x)+c)
+            else:
+                def func(x, a, b): return (a*np.exp(b*x)+f_constant)
         elif f in ('ln', 'log', 'lograrithmic'):
-            def func(x, a, b): return (a*np.log(x)+b)
+            if f_constant is None:
+                def func(x, a, b): return (a*np.log(x)+b)
+            else:
+                def func(x, a): return (a*np.log(x)+f_constant)
         elif f in ('gauss', 'gaussian'):
-            def func(x, a, b, c, d): return (a*np.exp(-(x-b)**2/(2*c**2))+d)
+            if f_constant is None:
+                def func(x, a, b, c, d): return (
+                    a*np.exp(-(x-b)**2/(2*c**2))+d)
+            else:
+                def func(x, a, b, c): return (
+                    a*np.exp(-(x-b)**2/(2*c**2))+f_constant)
             if 'p0' not in kwargs:
                 Ymax, Ymin = np.max(Y), np.min(Y)
-                x_Ymax = X[np.where(Y[:] == Ymax)[0]]
-                kwargs['p0'] = np.array([Ymax, x_Ymax[0], np.std(X), Ymin])
+                idx_Ymax = np.where(Y[:] == Ymax)[0][0]
+                guess_p0 = [Ymax, X[idx_Ymax], np.std(X)]
+                if f_constant is None:
+                    guess_p0.append(Ymin)
+                kwargs['p0'] = np.array(guess_p0)
                 log.debug("Initial guess parameters for fitting 'gaussian': "
                           "p0=%s" % kwargs['p0'])
     elif callable(f):
@@ -97,7 +122,8 @@ def curve_fit(f, X, Y, info=None, **kwargs):
         return (None,)*3
     popt, pcov = curve_fit(func, X, Y, **kwargs)
     log.debug("Fitting %s result: popt=%s, pcov=%s" % (info, popt, pcov))
-    fitY = np.array([func(i, *popt) for i in X])
+    newX = X if fitX is None else fitX
+    fitY = np.array([func(i, *popt) for i in newX])
     return popt, pcov, fitY
 
 
