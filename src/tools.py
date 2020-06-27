@@ -33,7 +33,7 @@ def max_subarray(A):
 
 def line_fit(X, Y, deg, fitX=None, info=None, **kwargs):
     '''
-    One-dimensional polynomial fit
+    One-dimensional polynomial fit. Return polyfit returns and fitY.
 
     Parameters
     ----------
@@ -48,7 +48,8 @@ def line_fit(X, Y, deg, fitX=None, info=None, **kwargs):
     fitresult = np.polyfit(X, Y, deg, **kwargs)
     info = ("line '%s'" % info) if info else "line"
     log.debug("Fitting %s result: %s" % (info, fitresult))
-    if kwargs['full']:
+    if (kwargs['full']
+            or (not kwargs['full'] and kwargs['cov'])):
         fit_p = np.poly1d(fitresult[0])
     else:
         fit_p = np.poly1d(fitresult)
@@ -79,7 +80,7 @@ def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
     try:
         from scipy.optimize import curve_fit
     except ImportError:
-        log.error("'curve_fit' needs package 'scipy'!'")
+        log.error("'%s' needs package 'scipy'!'" % 'curve_fit')
         return (None,)*3
     info = ("curve '%s'" % info) if info else "curve"
     func = None
@@ -127,58 +128,29 @@ def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
     return popt, pcov, fitY
 
 
-def argrelextrema(X, m='both', recheck=False):
+def argrelextrema(X, m='both'):
     '''
-    Index of relative extrema
-    Try to import `scipy.signal.argrelextrema`.
-    If failed, use an lame one.
+    Call `scipy.signal.argrelextrema`, get indexes of relative extrema.
+
+    Parameters
+    ----------
+    m: str
+        'max', 'min' or 'both', default 'both'
     '''
     try:
-        from scipy.signal import argrelextrema as relextrema
-        if m == 'max':
-            index = relextrema(X, np.greater)[0]
-        elif m == 'min':
-            index = relextrema(X, np.less)[0]
-        else:
-            g, l = relextrema(X, np.greater)[0], relextrema(X, np.less)[0]
-            index = np.sort(np.append(g, l))
+        from scipy.signal import argrelextrema
     except ImportError:
-        tmp = np.diff(np.sign(np.gradient(X)))
-        if m == 'max':
-            index = (tmp < 0).nonzero()[0]
-        elif m == 'min':
-            index = (tmp > 0).nonzero()[0]
-        else:
-            index = tmp.nonzero()[0]
-    if not recheck:
-        return index
-    # recheck
+        log.error("'%s' needs package 'scipy'!'" % 'argrelextrema')
+        return None
+    if not isinstance(X, np.ndarray):
+        X = np.array(X)
     if m == 'max':
-        for j, i in enumerate(index):
-            if i == 0 or i == (len(X) - 1):
-                continue
-            if X[i] < X[i + 1]:
-                index[j] = i + 1
-            if X[i] < X[i - 1]:
-                index[j] = i - 1
-    if m == 'min':
-        for j, i in enumerate(index):
-            if i == 0 or i == (len(X) - 1):
-                continue
-            if X[i] > X[i + 1]:
-                index[j] = i + 1
-            if X[i] > X[i - 1]:
-                index[j] = i - 1
-    if m == 'both':
-        for j, i in enumerate(index):
-            if i in [0, 1, (len(X) - 2), (len(X) - 1)]:
-                continue
-            if (X[i] - X[i + 1]) * (X[i] - X[i - 1]) < 0:
-                if (X[i + 1] - X[i + 2]) * (X[i + 1] - X[i]) > 0:
-                    index[j] = i + 1
-                    continue
-                if (X[i - 1] - X[i]) * (X[i - 1] - X[i - 2]) > 0:
-                    index[j] = i - 1
+        index = argrelextrema(X, np.greater)[0]
+    elif m == 'min':
+        index = argrelextrema(X, np.less)[0]
+    else:
+        g, l = argrelextrema(X, np.greater)[0], argrelextrema(X, np.less)[0]
+        index = np.sort(np.append(g, l))
     return index
 
 
