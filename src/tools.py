@@ -230,11 +230,22 @@ def near_peak(Y, X=None, intersection=False, lowerlimit=1.0/np.e,
         return res[0]
 
 
-def high_envelope(Y, X=None, add_indexs=[], kind='linear'):
+def high_envelope(Y, X=None, add_indexs=[], **kwargs):
     '''
-    Return high envelope of Y.
-    Specifies the *kind* of interpolation as a string, if use scipy.
+    Call `scipy.interpolate.interp1d`, return high envelope of Y.
+
+    Parameters
+    ----------
+    add_indexs: list
+        extend indexes of relative extrema
+    kwargs: passed to `scipy.interpolate.interp1d`
+        like *kind* of interpolation, *fill_value*, etc.
     '''
+    try:
+        from scipy.interpolate import interp1d
+    except ImportError:
+        log.error("'%s' needs package 'scipy'!'" % 'high_envelope')
+        return None
     old_indexs = argrelextrema(Y, m='max')
     uadd = []
     if 0 not in add_indexs:
@@ -249,12 +260,13 @@ def high_envelope(Y, X=None, add_indexs=[], kind='linear'):
     # print(new_indexs,type(new_indexs[0]))
     if X is None:
         X = np.array(range(len(Y)))
-    try:
-        from scipy.interpolate import interp1d
-    except ImportError:
-        return np.interp(X, X[new_indexs], Y[new_indexs])
-    Yinterp = interp1d(X[new_indexs], Y[new_indexs], kind=kind,
-                       bounds_error=False, fill_value=0.0)
+    if 'kind' not in kwargs:
+        kwargs['kind'] = 'linear'
+    if 'bounds_error' not in kwargs:
+        kwargs['bounds_error'] = False
+    if 'fill_value' not in kwargs:
+        kwargs['fill_value'] = 0.0
+    Yinterp = interp1d(X[new_indexs], Y[new_indexs], **kwargs)
     return Yinterp(X)
 
 
