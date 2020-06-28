@@ -17,6 +17,7 @@ __all__ = [
     'inherit_docstring', 'simple_parse_doc',
     'which_cmds', 'run_child_cmd',
     'find_available_module',
+    'GetPasswd',
 ]
 
 
@@ -194,3 +195,21 @@ def find_available_module(*candidates):
             #print('[Pass] module %s, not available!' % c)
             pass
     return None
+
+
+class GetPasswd(object):
+    '''Prompt for a password'''
+    _call_func = None
+
+    @classmethod
+    def set(cls, func):
+        '''Set GUI or special function to get password.'''
+        cls._call_func = func if callable(func) else None
+
+    @classmethod
+    def getpasswd(cls, prompt='Password: '):
+        if cls._call_func:
+            return cls._call_func(prompt)
+        else:
+            import getpass
+            return getpass.getpass(prompt)

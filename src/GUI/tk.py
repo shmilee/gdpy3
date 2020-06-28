@@ -287,11 +287,11 @@ class GTkApp(object):
         if self.processor_name.get():
             gdpcls = get_processor(name=self.processor_name.get())
             if self.path.startswith('sftp://'):
-                def _passwd_CALLBACK(prompt):
+                def tk_gepasswd(prompt):
                     return simpledialog.askstring(
                         "Input Password", prompt, show='*', parent=self.root)
-                from ..getpasswd import GetPasswd
-                GetPasswd.CALLBACK = _passwd_CALLBACK
+                from ..utils import GetPasswd
+                GetPasswd.set(tk_gepasswd)
             if self.path.endswith(gdpcls.saltname):
                 self.path = self.path[:-len(gdpcls.saltname)]
             # close and hide old fig windows

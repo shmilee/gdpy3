@@ -18,8 +18,7 @@ except ImportError as exc:
         'SftpRawLoader requires paramiko. But %s' % exc) from None
 
 from ..glogger import getGLogger
-from ..utils import inherit_docstring
-from ..getpasswd import GetPasswd
+from ..utils import inherit_docstring, GetPasswd
 from .base import BaseRawLoader, _raw_copydoc_func
 
 __all__ = ['SftpRawLoader']
