@@ -160,8 +160,8 @@ class TestBaseVisplter(unittest.TestCase):
             plot_surface_shadow=['a', 'x', 'c', 'z'],
         )
         axstruct, add_style = fun(calculation)
-        self.assertEqual('contourf', axstruct[7])
-        self.assertIsNotNone(axstruct[8])
+        self.assertEqual('contourf', axstruct[9])
+        self.assertIsNotNone(axstruct[10])
         self.assertListEqual(['x', 'z'], axstruct[-1])
 
     def test_visplter_tmpl_line(self):
