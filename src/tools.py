@@ -168,11 +168,18 @@ def intersection_4points(P1x, P1y, P2x, P2y, P3x, P3y, P4x, P4y):
 def near_peak(Y, X=None, intersection=False, lowerlimit=1.0/np.e,
               select='all', greedy=False):
     '''
-    Find 1D Y values >= lowerlimit * peak value, near the peak
+    Find 1D Y values >= lowerlimit * peak value, near the peak.
     Return new sub array X and Y, if no X given, use index.
-    If select='all', get all peaks, else only get the max peak.
-    If select not 'all' and greedy is True,
-    search from edge where Y values >= lowerlimit * peak value.
+
+    Parameters
+    ----------
+    intersection: bool
+        add intersection in result
+    select: str
+        default 'all', get all peaks; others, only get the max peak
+    greedy: bool
+        If select not 'all' and greedy is True,
+        search from edge where Y values >= lowerlimit * peak value.
     '''
     if select == 'all':
         indexs = argrelextrema(Y, m='max')
@@ -272,7 +279,7 @@ def high_envelope(Y, X=None, add_indexs=[], **kwargs):
 
 def fft(dt, signal):
     '''
-    FFT in one dimension
+    FFT in one dimension, return tf, af, pf
     '''
     if isinstance(dt, float) and isinstance(signal, np.ndarray):
         size = signal.size
@@ -292,7 +299,7 @@ def fft(dt, signal):
 
 def fft2(dt, dx, signal):
     '''
-    FFT in two dimension
+    FFT in two dimension, return tf, xf, af, pf
     signal.shape == (X.size, T.size)
     '''
     if (isinstance(dt, float) and isinstance(dx, float)
@@ -348,7 +355,7 @@ def savgolay_filter(x, window_size=None, polyorder=None, info=None, **kwargs):
     return savgol_filter(x, window_size, polyorder, **kwargs)
 
 
-def findflat(X, upperlimit, info='data'):
+def findflat(X, upperlimit, info=None):
     '''
     Return flat region: start, len. *upperlimit* limits abs(gradient(X))
     '''
@@ -363,7 +370,7 @@ def findflat(X, upperlimit, info='data'):
     return _start, _len
 
 
-def findgrowth(X, lowerlimit, info='data'):
+def findgrowth(X, lowerlimit, info=None):
     '''
     Return growth region: start, len. *lowerlimit* limits gradient(X)
     '''
@@ -382,16 +389,23 @@ def correlation(data, r0, r1, c0, c1, dr, dc,
                 ruler_r=None, ruler_r_use='little',
                 ruler_c=None, ruler_c_use='little'):
     '''
-    correlation length
-    autocorrelation time
+    Calculate correlation length or autocorrelation time
     xiao2010, POP, 17, 022302
 
+    Parameters
+    ----------
     data: 2d array, like delta_phi(zeta,psi)
     r0, r1, c0, c1: select data[r0:r1, c0:c1]
     dr, dc: correlation matrix size
     ruler_r, ruler_c: index [0,dr] [0,dc] -> value [vdr0, vdr1] [vdc0, vdc1]
         (ruler_r.size, ruler_c.size) == data.shape
     ruler_r_use, ruler_c_use: use ruler little or big endian
+
+    Returns
+    -------
+    tau: correlation 2d array, tau.shape == (vdr.size, vdc.size)
+    vdr: delta row array
+    vdc: delta column array
     '''
     tau = np.zeros((dr, dc))
     logstep = round(dr/10)
