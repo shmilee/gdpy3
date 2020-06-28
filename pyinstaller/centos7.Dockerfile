@@ -12,9 +12,9 @@ ENV LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 \
 
 RUN yum -y install python3-pip python3-tkinter glibc \
     && yum clean all
-RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} numpy matplotlib==3.0.3
+RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} numpy scipy matplotlib==3.0.3
 
-RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} h5py paramiko scipy screeninfo ipython
+RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} h5py paramiko screeninfo ipython
 #RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} notebook ipywidgets
 
 RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} pillow \

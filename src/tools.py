@@ -80,7 +80,7 @@ def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
     try:
         from scipy.optimize import curve_fit
     except ImportError:
-        log.error("'%s' needs package 'scipy'!'" % 'curve_fit')
+        log.error("'%s' needs package 'scipy'!'" % 'curve_fit', exc_info=1)
         return (None,)*3
     info = ("curve '%s'" % info) if info else "curve"
     func = None
@@ -140,7 +140,8 @@ def argrelextrema(X, m='both'):
     try:
         from scipy.signal import argrelextrema
     except ImportError:
-        log.error("'%s' needs package 'scipy'!'" % 'argrelextrema')
+        log.error("'%s' needs package 'scipy'!'" % 'argrelextrema',
+                  exc_info=1)
         return None
     if not isinstance(X, np.ndarray):
         X = np.array(X)
@@ -251,7 +252,8 @@ def high_envelope(Y, X=None, add_indexs=[], **kwargs):
     try:
         from scipy.interpolate import interp1d
     except ImportError:
-        log.error("'%s' needs package 'scipy'!'" % 'high_envelope')
+        log.error("'%s' needs package 'scipy'!'" % 'high_envelope',
+                  exc_info=1)
         return None
     old_indexs = argrelextrema(Y, m='max')
     uadd = []
@@ -342,7 +344,8 @@ def savgolay_filter(x, window_size=None, polyorder=None, info=None, **kwargs):
     try:
         from scipy.signal import savgol_filter
     except ImportError:
-        log.error("'%s' needs package 'scipy'!'" % 'savgol_filter')
+        log.error("'%s' needs package 'scipy'!'" % 'savgol_filter',
+                  exc_info=1)
         return None
     if not window_size:
         window_size = min(51, len(x))
