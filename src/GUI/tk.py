@@ -28,7 +28,7 @@ class GTkApp(object):
     recent = os.path.join(
         tempfile.gettempdir(), 'gdpy3-%s-recent' % getpass.getuser())
 
-    def __init__(self, path=None, ask_sftp=False):
+    def __init__(self, path=None, ask_sftp=False, parallel='off'):
         '''
         Parameters
         ----------
@@ -36,6 +36,8 @@ class GTkApp(object):
             case path, default ''
         ask_sftp: bool
             if no path given, ask for a sftp(not local) path, default False
+        parallel: str
+            'off', 'multiprocess' or 'mpi4py', default 'off'
         '''
         root = tkinter.Tk(className='gdpy3-gui')
         img = tkinter.PhotoImage(file=os.path.join(
@@ -161,6 +163,7 @@ class GTkApp(object):
         self.figkwframe = w_kw_in_frame
         self.pathlabel = w_str_path
         self.ask_sftp = ask_sftp
+        self.parallel = parallel
         # cache processor instances, key (type(processor).__name__, self.path)
         self.cache_processors = {}
         self.processor = None
@@ -285,7 +288,8 @@ class GTkApp(object):
 
     def after_pick(self):
         if self.processor_name.get():
-            gdpcls = get_processor(name=self.processor_name.get())
+            gdpcls = get_processor(
+                name=self.processor_name.get(), parallel=self.parallel)
             if self.path.startswith('sftp://'):
                 def tk_gepasswd(prompt):
                     return simpledialog.askstring(

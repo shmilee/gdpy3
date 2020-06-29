@@ -36,6 +36,11 @@ def gui_script():
     optgrp.add_argument('--ask_sftp', action='store_true',
                         help='If no casepath given, '
                              'ask for a sftp directory, not local path.')
+    optgrp.add_argument('--parallel', type=str,
+                        choices=['off', 'multiprocess'],  # 'mpi4py'],
+                        default='off',
+                        help="Parallel processing or not, "
+                        "(default: %(default)s)")
     optgrp.add_argument('-h', '--help', action='store_true',
                         help='Show this help message and exit')
 
@@ -53,6 +58,7 @@ def gui_script():
 
     if args.backend == 'tk':
         from .tk import GTkApp
-        GTkApp(path=args.casepath, ask_sftp=args.ask_sftp)
+        GTkApp(path=args.casepath,
+               ask_sftp=args.ask_sftp, parallel=args.parallel)
     else:
         pass

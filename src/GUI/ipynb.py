@@ -22,8 +22,9 @@ class IpynbUI(object):
     __slots__ = ['path', 'processor', 'widgets', 'panel_widgets',
                  'grouplabels', 'figlabel']
 
-    def __init__(self, path):
+    def __init__(self, path, parallel='off'):
         self.path = path
+        self.parallel = parallel
         self.processor = None
         self.widgets = dict(
             processor=ipywidgets.Dropdown(
@@ -70,8 +71,9 @@ class IpynbUI(object):
 
     def update_group(self, *args):
         with self.widgets['terminal']:
-            gdp = get_processor(
-                self.path, name=self.widgets['processor'].value)
+            gdp = get_processor(path=self.path,
+                                name=self.widgets['processor'].value,
+                                parallel=self.parallel)
         if gdp.pckloader:
             self.processor = gdp
             self.grouplabels = {}
