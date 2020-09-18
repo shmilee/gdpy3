@@ -159,7 +159,44 @@ class HistoryConverter(Converter):
         return sd
 
 
-class HistoryParticleDigger(Digger):
+class _TimeCutoff(Digger):
+    '''
+    :meth:`_dig` for HistoryParticleDigger, HistoryFieldDigger, HistoryFieldModeDigger
+    cutoff time in results
+    '''
+    __slots__ = []
+
+    def _dig(self, kwargs):
+        '''
+        kwargs
+        ------
+        *tcutoff*: [t0,t1], t0 float
+            t0<=time[x0:x1]<=t1
+        '''
+        ndstep, tstep, ndiag = self.pckloader.get_many(*self.extrakeys[:3])
+        dt = tstep * ndiag
+        time = np.around(np.arange(1, ndstep + 1) * dt, 8)
+        if self.kwoptions is None:
+            self.kwoptions = dict(
+                tcutoff=dict(widget='FloatRangeSlider',
+                             rangee=[time[0], time[-1], dt],
+                             value=[time[0], time[-1]],
+                             description='time cutoff:'))
+        acckwargs = {'tcutoff': [time[0], time[-1]]}
+        x0, x1 = 0, time.size
+        if 'tcutoff' in kwargs:
+            t0, t1 = kwargs['tcutoff']
+            index = np.where((time >= t0) & (time < t1 + dt))[0]
+            if index.size > 0:
+                x0, x1 = index[0], index[-1]+1
+                acckwargs['tcutoff'] = [time[x0], time[x1-1]]
+                time = time[x0:x1]
+            else:
+                dlog.warning('Cannot cutoff: %s <= time <= %s!' % (t0, t1))
+        return time, x0, x1, acckwargs
+
+
+class HistoryParticleDigger(_TimeCutoff):
     '''
     ion, electron, fastion history
     1. density, entropy, flow, energy
@@ -173,28 +210,29 @@ class HistoryParticleDigger(Digger):
 
     def _set_fignum(self, numseed=None):
         self._fignum = ''.join((self.section[1], numseed))
+        self.kwoptions = None
 
     def _dig(self, kwargs):
-        data, ndstep, tstep, ndiag = self.pckloader.get_many(
-            self.srckeys[0], *self.extrakeys)
+        time, x0, x1, acckws = super(HistoryParticleDigger, self)._dig(kwargs)
+        data = self.pckloader.get_many(self.srckeys[0])[0][:, x0:x1]
         if self.fignum == self.section[1]:
             return dict(
-                time=np.arange(1, ndstep + 1) * tstep * ndiag,
+                time=time,
                 density=data[0],
                 entropy=data[1],
                 flow=data[2],
                 deltau=data[3],
                 energy=data[4],
                 deltaE=data[5],
-                title='particle %s' % self.fignum), {}
+                title='particle %s' % self.fignum), acckws
         else:
             # flux
             return dict(
-                time=np.arange(1, ndstep + 1) * tstep * ndiag,
+                time=time,
                 particle=data[6],
                 momentum=data[7],
                 energy=data[8],
-                title='particle %s' % self.fignum), {}
+                title='particle %s' % self.fignum), acckws
 
     def _post_dig(self, results):
         r = results
@@ -230,7 +268,7 @@ field_tex_str = {
 }
 
 
-class HistoryFieldDigger(Digger):
+class HistoryFieldDigger(_TimeCutoff):
     '''phi, apara, fluidne history'''
     __slots__ = ['_fstr', '_fstr00']
     itemspattern = [r'^(?P<s>history)/fieldtime-' +
@@ -242,19 +280,20 @@ class HistoryFieldDigger(Digger):
         self._fignum = self.section[1]
         self._fstr = field_tex_str[self._fignum]
         self._fstr00 = field_tex_str[self._fignum + '00']
+        self.kwoptions = None
 
     def _dig(self, kwargs):
-        data, ndstep, tstep, ndiag = self.pckloader.get_many(
-            self.srckeys[0], *self.extrakeys)
+        time, x0, x1, acckws = super(HistoryFieldDigger, self)._dig(kwargs)
+        data = self.pckloader.get_many(self.srckeys[0])[0][:, x0:x1]
         return dict(
-            time=np.arange(1, ndstep + 1) * tstep * ndiag,
+            time=time,
             field=data[0],
             field00=data[1],
             field00rms=data[2],
             fieldrms=data[3],
             title=r'$%s (\theta=\zeta=0), %s (i=iflux)$' % (
                 self._fstr, self._fstr00)
-        ), {}
+        ), acckws
 
     def _post_dig(self, results):
         r = results
@@ -268,7 +307,7 @@ class HistoryFieldDigger(Digger):
                     xlabel=r'time($R_0/c_s$)', xlim=[0, np.max(r['time'])])
 
 
-class HistoryFieldModeDigger(Digger):
+class HistoryFieldModeDigger(_TimeCutoff):
     '''field modes: phi, apara, fluidne, 1-8'''
     __slots__ = ['_idx']
     nitems = '+'
@@ -287,19 +326,17 @@ class HistoryFieldModeDigger(Digger):
         self.kwoptions = None
 
     def _dig(self, kwargs):
-        '''
-        kwargs
-        ------
-        *growth_time*: [start, end]
+        '''*growth_time*: [start, end]
             set growth time, in time unit(float)
         '''
-        acckwargs = {}
+        dlog.debug('input kwargs: %s ' % kwargs)
+        _timedata = super(HistoryFieldModeDigger, self)._dig(kwargs)
+        time, x0, x1, acckwargs = _timedata
         fstr = field_tex_str[self.section[1]]
         yreal, yimag, ndstep, tstep, ndiag, nmodes, mmodes, rho0 = \
             self.pckloader.get_many(*self.srckeys, *self.extrakeys[:-2])
-        yreal, yimag = yreal[self._idx-1], yimag[self._idx-1]
+        yreal, yimag = yreal[self._idx-1, x0:x1], yimag[self._idx-1, x0:x1]
         dt = tstep * ndiag
-        time = np.around(np.arange(1, ndstep + 1) * dt, 8)
         n = nmodes[self._idx-1]
         m = mmodes[self._idx-1]
         try:
@@ -325,16 +362,19 @@ class HistoryFieldModeDigger(Digger):
                 index = np.where((time >= start) & (time <= end))[0]
                 if index.size > 0:
                     start, end = index[0], index[-1]
+                    # dlog.debug('growth_time_end(1): %s ' % time[end])
                 else:
                     dlog.warning('Cannot set growth time: %s <= time <= %s!'
                                  % (start, end))
                     start, end = None, None
-            if not start:
+            # dlog.debug('growth_time: start=%s ' % start)
+            if start is None:
                 start, region_len = tools.findgrowth(logya, 1e-4)
                 if region_len == 0:
                     start, region_len = 0, max(ndstep // 4, 2)
                 end = start + region_len - 1
-            acckwargs = dict(growth_time=[time[start], time[end]])
+                # dlog.debug('growth_time_end(2): %s ' % time[end])
+            acckwargs['growth_time'] = [time[start], time[end]]
             dlog.parm("Find growth time: [%s,%s], index: [%s,%s]."
                       % (time[start], time[end], start, end))
             # polyfit growth region
@@ -349,13 +389,13 @@ class HistoryFieldModeDigger(Digger):
             start, end = 0, 1
             fitya = logya[:2]
             growth = 0
-        if self.kwoptions is None:
+        if 'growth_time' not in self.kwoptions:
             fixend = (time.size - 1) if end > time.size - 1 else end
-            self.kwoptions = dict(growth_time=dict(
+            self.kwoptions['growth_time'] = dict(
                 widget='FloatRangeSlider',
                 rangee=(time[0], time[-1], dt),
                 value=[time[start], time[fixend]],
-                description='growth time:'))
+                description='growth time:')
         results.update(
             logya=logya,
             fittime=time[start:end+1],
@@ -400,6 +440,7 @@ class HistoryFieldModeDigger(Digger):
             spectrum_index=index,
             title4=r'$\phi=e^{-i(\omega*t+m*\theta-n*\zeta)}$',
         )
+        dlog.debug('output kwargs: %s ' % acckwargs)
         return results, acckwargs
 
     def __get_omega(self, y, time, growth, start, end):
