@@ -24,6 +24,7 @@ vlog = getGLogger('V')
 _Mpl_Axes_Structure = '''
 {
     'data': [
+        [-1, 'Omitted Axes plot func', (args,), {'kwargs'}],
         [1, 'Axes plot func', (args,), {'kwargs'}],
         [2, 'plot', (xarray, yarray, 'ro-'), {'label': 'line'}],
         [4, 'legend', (), dict(loc='upper right')],
@@ -128,6 +129,9 @@ class MatplotlibVisplter(BaseVisplter):
             # use data
             axesdict, artistdict = {0: ax}, {}
             for index, axfunc, fargs, fkwargs in data:
+                if index < 0:
+                    vlog.debug("Ignore artist %s: %s ..." % (index, axfunc))
+                    continue
                 if axfunc in ('twinx', 'twiny'):
                     vlog.debug("Creating twin axes %s: %s ..."
                                % (index, axfunc))

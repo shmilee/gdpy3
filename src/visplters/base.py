@@ -197,7 +197,8 @@ class BaseVisplter(object):
            Each `AxesStructure` is a dict which has 3 keys:
            'data', 'layout' and 'axstyle'. 'axstyle' is optional.
         2. Value of 'data' is a list of plot items. items[0] is an order
-           number. items[1] is a name of plot method. It can be any plot
+           number. If items[0] is negative, this item will be ignored.
+           items[1] is a name of plot method. It can be any plot
            function supported by the backend. items[2] is a tuple of args
            for plot function. items[3] is a dict of kwargs for plot function.
         3. Value of 'layout' is a list of two elements. layout[0] is
