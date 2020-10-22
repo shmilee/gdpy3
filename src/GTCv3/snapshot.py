@@ -38,9 +38,10 @@ from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
 
 _all_Converters = ['SnapshotConverter']
-_all_Diggers = ['SnapshotProfilePdfDigger', 'SnapshotFieldFluxDigger',
-                'SnapshotFieldPoloidalDigger', 'SnapshotFieldSpectrumDigger',
-                'SnapshotFieldProfileDigger', 'SnapshotFieldmDigger']
+_all_Diggers = ['SnapshotProfileDigger', 'SnapshotPdfDigger',
+                'SnapshotFieldFluxDigger', 'SnapshotFieldPoloidalDigger',
+                'SnapshotFieldSpectrumDigger', 'SnapshotFieldProfileDigger',
+                'SnapshotFieldmDigger']
 __all__ = _all_Converters + _all_Diggers
 
 
@@ -56,8 +57,8 @@ class SnapshotConverter(Converter):
     2) ion, electron, EP distribution function in:
        energy, pitch angle of fullf and delf.
        pdf 2d array is pdf[nvgrid,4].
-       4 pdf order: fullf energy, delf energy,
-       fullf pitch angle, delf pitch angle.
+       4 pdf order: fullf in energy, delf in energy,
+       fullf in pitch angle, delf in pitch angle.
     3) phi, a_para, fluidne on poloidal plane
        poloidata 2d array is poloidata[theta,r].
     4) phi, a_para, fluidne on flux surface
@@ -166,70 +167,95 @@ def _snap_get_timestr(snapgroup, pckloader):
     return r'istep=%d, time=%s$R_0/c_s$' % (istep, istep * tstep)
 
 
-class SnapshotProfilePdfDigger(Digger):
-    '''ion, electron, fastion radial profiles and pdf.'''
+class SnapshotProfileDigger(Digger):
+    '''ion, electron, fastion radial profiles.'''
     __slots__ = []
     nitems = '+'
     itemspattern = ['^(?P<section>snap\d{5,7})'
-                    + '/(?P<particle>(?:ion|electron|fastion))'
-                    + '-(?P<pf>(?:profile|pdf))$',
-                    '^(?P<s>snap\d{5,7})/mpsi\+1',
-                    '^(?P<s>snap\d{5,7})/nvgrid']
+                    + '/(?P<particle>(?:ion|electron|fastion))-profile$',
+                    '^(?P<s>snap\d{5,7})/mpsi\+1']
     commonpattern = ['gtc/tstep']
     post_template = 'tmpl_sharextwinx'
 
     def _set_fignum(self, numseed=None):
-        self._fignum = '%s_%s' % self.section[1:]
+        self._fignum = '%s_profile' % self.section[1]
 
     def _dig(self, kwargs):
-        title = '%s %s, %s' % (self.section[1], self.section[2],
+        title = '%s %s, %s' % (self.section[1], 'profile',
                                _snap_get_timestr(self.group, self.pckloader))
-        data, x1, x2 = self.pckloader.get_many(*self.srckeys)
+        data, x1 = self.pckloader.get_many(*self.srckeys)
         data = data.T
-        if self.section[2] == 'profile':
-            return dict(
-                ipsi=np.arange(x1),
-                density=data[0],
-                densitydf=data[1],
-                flow=data[2],
-                flowdf=data[3],
-                energy=data[4],
-                energydf=data[5],
-                title=title,
-                xlabel='r (mpsi)'), {}
-        else:
-            return dict(
-                jvgrid=np.arange(x2),
-                energy=data[0],
-                energydf=data[1],
-                pitchangle=data[2],
-                pitchangledf=data[3],
-                title=title,
-                xlabel='nvgrid'), {}
+        return dict(
+            ipsi=np.arange(x1),
+            density=data[0],
+            densitydf=data[1],
+            flow=data[2],
+            flowdf=data[3],
+            energy=data[4],
+            energydf=data[5],
+            title=title,
+            xlabel='r (mpsi)'), {}
 
     def _post_dig(self, results):
         r = results
-        if self.section[2] == 'profile':
-            X = r['ipsi']
-            YINFO = [{'left': [(r['density'], 'density f')],
-                      'right': [(r['densitydf'], r'density $\delta f$')],
-                      'lylabel': '$f$', 'rylabel': r'$\delta f$'},
-                     {'left': [(r['flow'], 'flow f')],
-                      'right': [(r['flowdf'], r'flow $\delta f$')],
-                      'lylabel': '$f$', 'rylabel': r'$\delta f$'},
-                     {'left': [(r['energy'], 'energy f')],
-                      'right': [(r['energydf'], r'energy $\delta f$')],
-                      'lylabel': '$f$', 'rylabel': r'$\delta f$'}]
-        else:
-            X = r['jvgrid']
-            YINFO = [{'left': [(r['energy'], 'energy f')],
-                      'right': [(r['energydf'], r'energy $\delta f$')],
-                      'lylabel': '$f$', 'rylabel': r'$\delta f$'},
-                     {'left': [(r['pitchangle'], 'pitch angle f')],
-                      'right': [(r['pitchangledf'], r'pitch angle $\delta f$')],
-                      'lylabel': '$f$', 'rylabel': r'$\delta f$'}]
-        return dict(X=X, YINFO=YINFO, title=r['title'],
-                    xlabel=r['xlabel'], xlim=[0, np.max(X)])
+        YINFO = [{'left': [(r['density'], 'density f')],
+                  'right': [(r['densitydf'], r'density $\delta f$')],
+                  'lylabel': '$f$', 'rylabel': r'$\delta f$'},
+                 {'left': [(r['flow'], 'flow f')],
+                  'right': [(r['flowdf'], r'flow $\delta f$')],
+                  'lylabel': '$f$', 'rylabel': r'$\delta f$'},
+                 {'left': [(r['energy'], 'energy f')],
+                  'right': [(r['energydf'], r'energy $\delta f$')],
+                  'lylabel': '$f$', 'rylabel': r'$\delta f$'}]
+        return dict(X=r['ipsi'], YINFO=YINFO, title=r['title'],
+                    xlabel=r['xlabel'], xlim=[0, np.max(r['ipsi'])])
+
+
+class SnapshotPdfDigger(Digger):
+    '''ion, electron, fastion pdf in E or pitch angle.'''
+    __slots__ = []
+    nitems = '+'
+    itemspattern = ['^(?P<section>snap\d{5,7})'
+                    + '/(?P<particle>(?:ion|electron|fastion))-pdf$',
+                    '^(?P<s>snap\d{5,7})/nvgrid',
+                    '^(?P<s>snap\d{5,7})/T_up']
+    commonpattern = ['gtc/tstep']
+    post_template = 'tmpl_z111p'
+
+    def _set_fignum(self, numseed=None):
+        self._fignum = '%s_pdf' % self.section[1]
+
+    def _dig(self, kwargs):
+        title = '%s %s, %s' % (self.section[1], 'distribution function',
+                               _snap_get_timestr(self.group, self.pckloader))
+        data, nvgrid, T_up = self.pckloader.get_many(*self.srckeys)
+        dE = T_up / nvgrid
+        xE = np.linspace(0.0+dE/2.0, T_up-dE/2.0, nvgrid)
+        dpitch = 2.0 / nvgrid
+        xpitch = np.linspace(-1.0+dpitch/2.0, 1.0-dpitch/2.0, nvgrid)
+        data = data.T
+        return dict(
+            xE=xE, T_up=T_up, efullf=data[0], edf=data[1],
+            xpitch=xpitch, pafullf=data[2], padf=data[3],
+            title=title), {}
+
+    def _post_dig(self, results):
+        r = results
+        ax1_calc = dict(X=r['xE'], YINFO=[
+                        {'left': [(r['efullf'], '$f$')],
+                         'right': [(r['edf'], r'$\delta f$')],
+                         'lylabel': '$f$', 'rylabel': r'$\delta f$'}],
+                        xlabel=r'$E/T_{%s0}$' % self.section[1][0],
+                        xlim=[0, r['T_up']])
+        ax2_calc = dict(X=r['xpitch'], YINFO=[
+                        {'left': [(r['pafullf'], '$f$')],
+                         'right': [(r['padf'], r'$\delta f$')],
+                            'lylabel': '$f$', 'rylabel': r'$\delta f$'}],
+                        xlabel=r'pitch angle $\zeta=v_{\parallel}/v$',
+                        xlim=[-1.0, 1.0])
+        return dict(zip_results=[('tmpl_sharextwinx', 211, ax1_calc),
+                                 ('tmpl_sharextwinx', 212, ax2_calc)],
+                    suptitle=r['title'])
 
 
 field_tex_str = {
