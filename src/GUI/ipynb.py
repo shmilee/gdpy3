@@ -19,7 +19,7 @@ class IpynbUI(object):
     '''
     UI(User Interface) used in Jupyter notebook.
     '''
-    __slots__ = ['path', 'processor', 'widgets', 'panel_widgets',
+    __slots__ = ['path', 'parallel', 'processor', 'widgets', 'panel_widgets',
                  'grouplabels', 'figlabel']
 
     def __init__(self, path, parallel='off'):
