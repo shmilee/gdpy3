@@ -55,7 +55,8 @@ class Processor(object):
     Notes
     -----
     1. :attr:`saltname` means base name of salt file for `saver.path`.
-       The :attr:`rawloader` must have exactly one salt file.
+       The :attr:`rawloader` must have at least one salt file.
+       If more than one salt files, the one with min path depth will be used.
        :attr:`saltstr` is the salt string generated from salt file.
     2. :attr:`dig_acceptable_time` means if :meth:`dig` spends more
        time than this, the results will be saved in :attr:`resfilesaver`.
@@ -83,18 +84,32 @@ class Processor(object):
                        % (self.name, self.saltname, rawloader.path))
             return False
         elif len(saltfiles) > 1:
-            plog.error("%s: More than one '%s' found in '%s'!"
-                       % (self.name, self.saltname, rawloader.path))
-            return False
-        else:
-            return saltfiles[0]
+            plog.warning(
+                "%s: More than one '%s' %s found in '%s'!"
+                % (self.name, self.saltname, saltfiles, rawloader.path))
+            lth = [len(f.split('/')) for f in saltfiles]
+            idx = lth.index(min(lth))  # min path depth
+            ignore_dirs = [os.path.dirname(saltfiles[i])
+                           for i in range(len(saltfiles)) if i != idx]
+            plog.warning(
+                "%s: Use '%s' as salt file, ignore other files in %s!"
+                % (self.name, saltfiles[idx], ignore_dirs))
+
+            def _ff(name):
+                for d in ignore_dirs:
+                    if name.startswith(d):
+                        return False
+                return True
+            rawloader = get_rawloader(rawloader.path, filenames_filter=_ff)
+        return rawloader
 
     def _get_rawloader(self):
         return self._rawloader
 
     def _set_rawloader(self, rawloader):
         self._converters = []
-        if rawloader and self.__check_rawloader(rawloader):
+        rawloader = self.__check_rawloader(rawloader)
+        if rawloader:
             self._rawloader = rawloader
             for Cc in self.ConverterCores:
                 self._converters.extend(Cc.generate_cores(rawloader))
