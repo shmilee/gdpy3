@@ -38,10 +38,11 @@ from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
 
 _all_Converters = ['SnapshotConverter']
-_all_Diggers = ['SnapshotProfileDigger', 'SnapshotPdfDigger',
-                'SnapshotFieldFluxDigger', 'SnapshotFieldPoloidalDigger',
-                'SnapshotFieldSpectrumDigger', 'SnapshotFieldProfileDigger',
-                'SnapshotFieldmDigger']
+_all_Diggers = [
+    'SnapshotProfileDigger', 'SnapshotPdfDigger',
+    'SnapshotFieldFluxDigger', 'SnapshotFieldPoloidalDigger',
+    'SnapshotFieldSpectrumDigger', 'SnapshotTimeFieldSpectrumDigger',
+    'SnapshotFieldProfileDigger', 'SnapshotFieldmDigger']
 __all__ = _all_Converters + _all_Diggers
 
 
@@ -385,18 +386,23 @@ class SnapshotFieldSpectrumDigger(Digger):
         self._fignum = '%s_spectrum' % self.section[1]
         self.kwoptions = None
 
-    def _dig(self, kwargs):
-        '''
-        kwargs
-        ------
-        *mmode*, *pmode*: int
-            set poloidal or parallel range
-        '''
-        fluxdata, mtgrid1, mtoroidal = self.pckloader.get_many(*self.srckeys)
-        if fluxdata.shape != (mtgrid1, mtoroidal):
-            log.error("Invalid fluxdata shape!")
-            return
-        mtgrid = mtgrid1 - 1
+    def _get_spectrum(self, mmode, pmode, fluxdata, mtgrid, mtoroidal):
+        Y1, Y2 = np.zeros(mmode), np.zeros(pmode)
+        for i in range(mtoroidal):
+            yy = np.fft.fft(fluxdata[:, i])
+            Y1[0] = Y1[0] + (abs(yy[0]))**2
+            for j in range(1, mmode):
+                Y1[j] = Y1[j] + (abs(yy[j]))**2 + (abs(yy[mtgrid - j]))**2
+        Y1 = np.sqrt(Y1 / mtoroidal) / mtgrid
+        for i in range(mtgrid):
+            yy = np.fft.fft(fluxdata[i, :])
+            Y2[0] = Y2[0] + (abs(yy[0]))**2
+            for j in range(1, pmode):
+                Y2[j] = Y2[j] + (abs(yy[j]))**2 + (abs(yy[mtoroidal - j]))**2
+        Y2 = np.sqrt(Y2 / mtgrid) / mtoroidal
+        return Y1, Y2
+
+    def _set_params(self, kwargs, mtgrid, mtoroidal):
         maxmmode = int(mtgrid / 2 + 1)
         maxpmode = int(mtoroidal / 2 + 1)
         mmode, pmode = kwargs.get('mmode', None), kwargs.get('pmode', None)
@@ -419,20 +425,23 @@ class SnapshotFieldSpectrumDigger(Digger):
                     rangee=(1, maxpmode, 1),
                     value=pmode,
                     description='pmode:'))
-        X1, Y1 = np.arange(1, mmode + 1), np.zeros(mmode)
-        X2, Y2 = np.arange(1, pmode + 1), np.zeros(pmode)
-        for i in range(mtoroidal):
-            yy = np.fft.fft(fluxdata[:, i])
-            Y1[0] = Y1[0] + (abs(yy[0]))**2
-            for j in range(1, mmode):
-                Y1[j] = Y1[j] + (abs(yy[j]))**2 + (abs(yy[mtgrid - j]))**2
-        Y1 = np.sqrt(Y1 / mtoroidal) / mtgrid
-        for i in range(mtgrid):
-            yy = np.fft.fft(fluxdata[i, :])
-            Y2[0] = Y2[0] + (abs(yy[0]))**2
-            for j in range(1, pmode):
-                Y2[j] = Y2[j] + (abs(yy[j]))**2 + (abs(yy[mtoroidal - j]))**2
-        Y2 = np.sqrt(Y2 / mtgrid) / mtoroidal
+        return mmode, pmode, acckwargs
+
+    def _dig(self, kwargs):
+        '''
+        kwargs
+        ------
+        *mmode*, *pmode*: int
+            set poloidal or parallel range
+        '''
+        fluxdata, mtgrid1, mtoroidal = self.pckloader.get_many(*self.srckeys)
+        if fluxdata.shape != (mtgrid1, mtoroidal):
+            log.error("Invalid fluxdata shape!")
+            return
+        mtgrid = mtgrid1 - 1
+        mmode, pmode, acckwargs = self._set_params(kwargs, mtgrid, mtoroidal)
+        X1, X2 = np.arange(1, mmode + 1), np.arange(1, pmode + 1)
+        Y1, Y2 = self._get_spectrum(mmode, pmode, fluxdata, mtgrid, mtoroidal)
         fstr = field_tex_str[self.section[1]]
         timestr = _snap_get_timestr(self.group, self.pckloader)
         return dict(
@@ -453,6 +462,96 @@ class SnapshotFieldSpectrumDigger(Digger):
             ('tmpl_line', 211, ax1_calc),
             ('tmpl_line', 212, ax2_calc),
         ], suptitle=r'%s, m=%d, p=%d' % (r['title'], r['mmode'], r['pmode']))
+
+
+class SnapshotTimeFieldSpectrumDigger(SnapshotFieldSpectrumDigger):
+    '''field or density poloidal and parallel spectra as time varied.'''
+    __slots__ = []
+    itemspattern = [
+        '^(?P<section>snap)\d{5,7}'
+        + '/fluxdata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))',
+        '^(?P<s>snap)\d{5,7}/mtgrid\+1',
+        '^(?P<s>snap)\d{5,7}/mtoroidal']
+
+    def _dig(self, kwargs):
+        '''
+        kwargs
+        ------
+        *tcutoff*: [t0,t1], t0 float
+            t0<=time[x0:x1]<=t1
+        *mmode*, *pmode*: int
+            set poloidal or parallel range
+        '''
+        assert len(self.srckeys) % 3 == 0
+        index = len(self.srckeys) // 3
+        mtgrid1, mtoroidal = self.pckloader.get_many(
+            self.srckeys[index], self.srckeys[2*index])
+        mtgrid = mtgrid1 - 1
+        mmode, pmode, acckwargs = self._set_params(kwargs, mtgrid, mtoroidal)
+        X1, X2 = np.arange(1, mmode + 1), np.arange(1, pmode + 1)
+        # rm first item in fluxdata
+        all_fluxdata = self.pckloader.get_many(*self.srckeys[1:index])
+
+        tstep = self.pckloader.get('gtc/tstep')
+        time = [self.srckeys[idx].split('/')[0] for idx in range(index)]
+        time = np.around(np.array(  # rm first item in time
+            [int(t.replace('snap', '')) * tstep for t in time[1:]]), 5)
+        dt = time[-1] - time[-2]
+        if 'tcutoff' not in self.kwoptions:
+            self.kwoptions['tcutoff'] = dict(
+                widget='FloatRangeSlider',
+                rangee=[time[0], time[-1], dt],
+                value=[time[0], time[-1]],
+                description='time cutoff:')
+        acckwargs['tcutoff'] = [time[0], time[-1]]
+        i0, i1 = 0, time.size
+        if 'tcutoff' in kwargs:
+            t0, t1 = kwargs['tcutoff']
+            idx = np.where((time >= t0) & (time < t1 + dt))[0]
+            if idx.size > 0:
+                i0, i1 = idx[0], idx[-1]+1
+                acckwargs['tcutoff'] = [time[i0], time[i1-1]]
+                time = time[i0:i1]
+            else:
+                dlog.warning('Cannot cutoff: %s <= time <= %s!' % (t0, t1))
+
+        YT1, YT2 = [], []
+        dlog.info('%d snapshot fluxdata to do ...' % (i1 - i0))
+        _idxlog = (i1 - i0) // 10
+        for idx in range(i0, i1):
+            if idx % _idxlog == 0 or idx == i1 - 1:
+                dlog.info('Calculating [%d/%d] %s' % (
+                    idx+1-i0, i1 - i0, self.srckeys[idx]))
+            fluxdata = all_fluxdata[idx]
+            if fluxdata.shape != (mtgrid1, mtoroidal):
+                log.error("Invalid fluxdata shape!")
+                return
+            Y1, Y2 = self._get_spectrum(
+                mmode, pmode, fluxdata, mtgrid, mtoroidal)
+            YT1.append(Y1)
+            YT2.append(Y2)
+        YT1, YT2 = np.array(YT1).T, np.array(YT2).T
+        fstr = field_tex_str[self.section[1]]
+        return dict(
+            m=X1, poloidal_spectrum=YT1, mmode=mmode,
+            n=X2, parallel_spectrum=YT2, pmode=pmode,
+            time=time, fstr=r'$%s$' % fstr,
+        ), acckwargs
+
+    def _post_dig(self, results):
+        r = results
+        ax1_calc = dict(X=r['time'], Y=r['m'], Z=r['poloidal_spectrum'],
+                        xlabel=r't $R_0/c_s$', ylabel='m',
+                        title=r'poloidal spectrum of %s' % r['fstr'],
+                        xlim=[r['time'][0], r['time'][-1]])
+        ax2_calc = dict(X=r['time'], Y=r['n'], Z=r['parallel_spectrum'],
+                        xlabel=r't $R_0/c_s$', ylabel='n',
+                        title=r'parallel spectrum of %s' % r['fstr'],
+                        xlim=[r['time'][0], r['time'][-1]])
+        return dict(zip_results=[
+            ('tmpl_contourf', 211, ax1_calc),
+            ('tmpl_contourf', 212, ax2_calc),
+        ])
 
 
 class SnapshotFieldProfileDigger(Digger):
