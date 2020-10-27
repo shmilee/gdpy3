@@ -146,7 +146,7 @@ class TestBasePckLoader(unittest.TestCase):
         self.assertEqual(len(loader.cache), 0)
         loader = ImpBasePckLoader(
             self.tmpfile,
-            datagroups_filter=lambda g: False if g == 'g2' else True)
+            datagroups_exclude=[r'^g2$'])
         self.assertSetEqual(
             set(loader.datagroups), {'g3', 'g4/sg4'})
 

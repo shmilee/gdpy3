@@ -43,7 +43,7 @@ class TestDirRawLoader(unittest.TestCase):
                             {'f1.ignore', 'f1.out', 'd1/f2.out'})
         loader = self.DirRawLoader(
             self.tmpdir,
-            filenames_filter=lambda n: True if n.endswith('.out') else False)
+            filenames_exclude=[r'(?!^.*\.out$)'])
         self.assertSetEqual(set(loader.filenames), {'f1.out', 'd1/f2.out'})
 
     def test_dirloader_get(self):

@@ -8,8 +8,10 @@ It contains two kinds of loaders.
 
 1. ``RawLoader``, get by :func:`get_rawloader`.
    ``RawLoader`` has attributes
-   :attr:`RawLoader.path``,
-   :attr:`RawLoader.filenames`
+   :attr:`RawLoader.path`,
+   :attr:`RawLoader.pathobj`,
+   :attr:`RawLoader.filenames`,
+   :attr:`RawLoader.filenames_exclude`,
    and methods
    :meth:`RawLoader.keys`,
    :meth:`RawLoader.get`,
@@ -20,9 +22,11 @@ It contains two kinds of loaders.
 
 2. ``PckLoader``, get by :func:`get_pckloader`.
    ``PckLoader`` has attributes
-   :attr:`PckLoader.path``,
+   :attr:`PckLoader.path`,
+   :attr:`PckLoader.pathobj`,
    :attr:`PckLoader.datakeys`,
    :attr:`PckLoader.datagroups`,
+   :attr:`PckLoader.datagroups_exclude`,
    :attr:`PckLoader.description`,
    :attr:`PckLoader.cache`,
    and methods
@@ -48,7 +52,7 @@ pckloader_names = ['CachePckLoader', 'NpzPckLoader', 'Hdf5PckLoader']
 pckloader_types = ['.cache', '.npz', '.hdf5']
 
 
-def get_rawloader(path, filenames_filter=None):
+def get_rawloader(path, filenames_exclude=None):
     '''
     Given a path, return a raw loader instance.
     Raises IOError if path not found, ValueError if path type not supported.
@@ -80,7 +84,7 @@ def get_rawloader(path, filenames_filter=None):
                              % (path, ', '.join(rawloader_types[1:-1])))
     else:
         raise IOError("Can't find path '%s'!" % path)
-    return Loader(path, filenames_filter=filenames_filter)
+    return Loader(path, filenames_exclude=filenames_exclude)
 
 
 def is_rawloader(obj):
@@ -90,7 +94,7 @@ def is_rawloader(obj):
     return isinstance(obj, base.BaseRawLoader)
 
 
-def get_pckloader(path, datagroups_filter=None):
+def get_pckloader(path, datagroups_exclude=None):
     '''
     Given a file path or dict cache, return a pickled loader instance.
     Raises IOError if path not found, ValueError if path type not supported.
@@ -121,7 +125,7 @@ def get_pckloader(path, datagroups_filter=None):
             raise IOError("Can't find path '%s'!" % path)
     else:
         raise ValueError("Var *path* should be str or dict object!")
-    return Loader(path, datagroups_filter=datagroups_filter)
+    return Loader(path, datagroups_exclude=datagroups_exclude)
 
 
 def is_pckloader(obj):

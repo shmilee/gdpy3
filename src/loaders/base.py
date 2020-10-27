@@ -8,7 +8,6 @@ Contains loader base class.
 
 import os
 import re
-import types
 import contextlib
 
 from ..glogger import getGLogger
@@ -111,7 +110,7 @@ class BaseLoader(object):
         '''
         pat = re.compile(pattern)
         return tuple(filter(
-            lambda k: True if re.match(pat, k) else False, self.keys()))
+            lambda k: True if pat.match(k) else False, self.keys()))
 
     def __contains__(self, item):
         '''
@@ -170,14 +169,16 @@ class BaseRawLoader(BaseLoader):
     pathobj: opened path object
     filenames: tuple
         filenames in the directory or archive file
+    filenames_exclude: list
+        list of filenames or regular expressions
 
     Parameters
     ----------
     path: str
         path of directory or file
-    filenames_filter: function
-        a function to filter filenames, example:
-        lambda name: True if name.endswith('.out') else False
+    filenames_exclude: list
+        a list of filenames or regular expressions to exclude filenames,
+        example: [r'.*\.txt$', 'bigdata.out'] or [r'(?!^include\.out$)']
 
     Notes
     -----
@@ -185,22 +186,27 @@ class BaseRawLoader(BaseLoader):
     2. File-like object which returned by *get()* must has close method,
        and read, readline, or readlines.
     '''
-    __slots__ = ['filenames']
+    __slots__ = ['filenames', 'filenames_exclude']
 
-    def __init__(self, path, filenames_filter=None):
+    def __init__(self, path, filenames_exclude=None):
         super(BaseRawLoader, self).__init__(path)
-        self.update(filenames_filter=filenames_filter)
+        if isinstance(filenames_exclude, (tuple, list)):
+            self.filenames_exclude = filenames_exclude
+        else:
+            self.filenames_exclude = []
+        self.update()
 
-    def update(self, filenames_filter=None):
+    def update(self):
         self.close()
         self.filenames = None
         try:
             log.debug("Open path %s." % self.path)
             pathobj = self._special_open()
             log.debug("Getting filenames from %s ..." % self.path)
-            filenames = tuple(self._special_getkeys(pathobj))
-            if isinstance(filenames_filter, types.FunctionType):
-                filenames = [k for k in filenames if filenames_filter(k)]
+            filenames = self._special_getkeys(pathobj)
+            for pat in self.filenames_exclude:
+                pat = re.compile(pat)
+                filenames = [k for k in filenames if not pat.match(k)]
             self.pathobj = pathobj
             self.filenames = tuple(sorted(filenames))
         except (IOError, ValueError):
@@ -256,6 +262,8 @@ class BasePckLoader(BaseLoader):
         keys in the loader, contain group name
     datagroups: tuple
         groups of datakeys
+    datagroups_exclude: list
+        list of filenames or regular expressions
     description: str or None
         description of the data, if 'description' is in datakeys
     desc: alias description
@@ -266,11 +274,11 @@ class BasePckLoader(BaseLoader):
     ----------
     path: str
         path to open
-    datagroups_filter: function
-        a function to filter datagroups
-        example, lambda group: False if group in ['ex1', 'ex2'] else True
+    datagroups_exclude: list
+        a list of datagroups or regular expressions to exclude datagroups,
+        example: [r'sanp\d+$', 'bigdata']
     '''
-    __slots__ = ['datakeys', 'datagroups',
+    __slots__ = ['datakeys', 'datagroups', 'datagroups_exclude',
                  'desc', 'description', 'cache']
 
     def _special_getgroups(self, pathobj):
@@ -279,11 +287,15 @@ class BasePckLoader(BaseLoader):
         '''
         return set(os.path.dirname(k) for k in self.datakeys)
 
-    def __init__(self, path, datagroups_filter=None):
+    def __init__(self, path, datagroups_exclude=None):
         super(BasePckLoader, self).__init__(path)
-        self.update(datagroups_filter=datagroups_filter)
+        if isinstance(datagroups_exclude, (tuple, list)):
+            self.datagroups_exclude = datagroups_exclude
+        else:
+            self.datagroups_exclude = []
+        self.update()
 
-    def update(self, datagroups_filter=None):
+    def update(self):
         self.close()
         self.datakeys, self.datagroups = None, None
         self.description, self.desc = None, None
@@ -294,12 +306,19 @@ class BasePckLoader(BaseLoader):
             log.debug("Getting datakeys from %s ..." % self.path)
             self.datakeys = tuple(self._special_getkeys(pathobj))
             log.debug("Getting datagroups from %s ..." % self.path)
-            datagroups = list(self._special_getgroups(pathobj))
-            if isinstance(datagroups_filter, types.FunctionType):
-                datagroups = list(filter(datagroups_filter, datagroups))
-            if '' in datagroups:
-                datagroups.remove('')
+            all_datagroups = set(self._special_getgroups(pathobj))
+            if '' in all_datagroups:
+                all_datagroups.remove('')
+            datagroups = list(all_datagroups)
+            for pat in self.datagroups_exclude:
+                pat = re.compile(pat)
+                datagroups = [k for k in datagroups if not pat.match(k)]
             self.datagroups = tuple(sorted(datagroups))
+            exc_datagroups = all_datagroups - set(datagroups)
+            if exc_datagroups:
+                for grp in exc_datagroups:
+                    self.datakeys = tuple(
+                        k for k in self.datakeys if not k.startswith(grp))
             log.debug("Getting description of %s ..." % self.path)
             if 'description' in self.datakeys:
                 self.desc = str(self._special_get(pathobj, 'description'))
