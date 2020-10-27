@@ -436,8 +436,8 @@ class SnapshotFieldSpectrumDigger(Digger):
         '''
         fluxdata, mtgrid1, mtoroidal = self.pckloader.get_many(*self.srckeys)
         if fluxdata.shape != (mtgrid1, mtoroidal):
-            log.error("Invalid fluxdata shape!")
-            return
+            dlog.error("Invalid fluxdata shape!")
+            return {}, {}
         mtgrid = mtgrid1 - 1
         mmode, pmode, acckwargs = self._set_params(kwargs, mtgrid, mtoroidal)
         X1, X2 = np.arange(1, mmode + 1), np.arange(1, pmode + 1)
@@ -496,6 +496,9 @@ class SnapshotTimeFieldSpectrumDigger(SnapshotFieldSpectrumDigger):
         time = [self.srckeys[idx].split('/')[0] for idx in range(index)]
         time = np.around(np.array(  # rm first item in time
             [int(t.replace('snap', '')) * tstep for t in time[1:]]), 5)
+        if len(time) < 2:
+            dlog.error("Less than 3 snapshots!")
+            return {}, {}
         dt = time[-1] - time[-2]
         if 'tcutoff' not in self.kwoptions:
             self.kwoptions['tcutoff'] = dict(
@@ -524,8 +527,8 @@ class SnapshotTimeFieldSpectrumDigger(SnapshotFieldSpectrumDigger):
                     idx+1-i0, i1 - i0, self.srckeys[idx]))
             fluxdata = all_fluxdata[idx]
             if fluxdata.shape != (mtgrid1, mtoroidal):
-                log.error("Invalid fluxdata shape!")
-                return
+                dlog.error("Invalid fluxdata shape!")
+                return {}, {}
             Y1, Y2 = self._get_spectrum(
                 mmode, pmode, fluxdata, mtgrid, mtoroidal)
             YT1.append(Y1)
@@ -579,8 +582,8 @@ class SnapshotFieldProfileDigger(Digger):
         '''
         pdata, mpsi1, mtgrid1 = self.pckloader.get_many(*self.srckeys)
         if pdata.shape != (mtgrid1, mpsi1):
-            log.error("Invalid poloidata shape!")
-            return
+            dlog.error("Invalid poloidata shape!")
+            return {}, {}
         jtgrid, ipsi = kwargs.get('jtgrid', None), kwargs.get('ipsi', None)
         if not (isinstance(jtgrid, int) and jtgrid < mtgrid1):
             jtgrid = 0
@@ -660,8 +663,8 @@ class SnapshotFieldmDigger(Digger):
         pdata, mpsi1, mtgrid1, dt, arr2, a = self.pckloader.get_many(
             *self.srckeys, *self.common)
         if pdata.shape != (mtgrid1, mpsi1):
-            log.error("Invalid poloidata shape!")
-            return
+            dlog.error("Invalid poloidata shape!")
+            return {}, {}
         rr = arr2[:, 1] / a
         fieldm = []
         for ipsi in range(1, mpsi1 - 1):

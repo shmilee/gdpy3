@@ -199,9 +199,12 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         Return new results match with template name in exporter
         '''
         try:
-            new_results = self._post_dig(results)
+            if results:
+                new_results = self._post_dig(results)
+            else:
+                return {}
         except Exception:
             dlog.error("%s: can't post-dig data for %s!"
                        % (self.clsname, self.figlabel), exc_info=1)
-            new_results = results
+            return results
         return new_results

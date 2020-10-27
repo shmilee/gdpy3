@@ -317,8 +317,8 @@ class SnapPhiFieldnDigger(SnapshotFieldmDigger):
             *self.srckeys, *self.common)
         Lz, Lr = data.shape
         if Lr != mpsi1:
-            log.error("Invalid phi(zeta,psi) shape!")
-            return
+            dlog.error("Invalid phi(zeta,psi) shape!")
+            return {}, {}
         rr = arr2[:, 1] / a
         fieldn = []
         for ipsi in range(1, mpsi1 - 1):
