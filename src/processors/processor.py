@@ -94,13 +94,10 @@ class Processor(object):
             plog.warning(
                 "%s: Use '%s' as salt file, ignore other files in %s!"
                 % (self.name, saltfiles[idx], ignore_dirs))
-
-            def _ff(name):
-                for d in ignore_dirs:
-                    if name.startswith(d):
-                        return False
-                return True
-            rawloader = get_rawloader(rawloader.path, filenames_filter=_ff)
+            _old_fe = rawloader.filenames_exclude
+            _new_fe = [r'^%s.*$' % d for d in ignore_dirs]
+            rawloader = get_rawloader(
+                rawloader.path, filenames_exclude=_old_fe + _new_fe)
         return rawloader
 
     def _get_rawloader(self):
@@ -724,9 +721,9 @@ class Processor(object):
         return '<\n {0}.{1} object at {2},\n{3}\n>'.format(
             self.__module__, type(self).__name__, hex(id(self)), i)
 
-    def __init__(self, path, add_desc=None, filenames_filter=None,
+    def __init__(self, path, add_desc=None, filenames_exclude=None,
                  savetype='.npz', overwrite=False, Sid=False,
-                 datagroups_filter=None, add_visplter='mpl::'):
+                 datagroups_exclude=None, add_visplter='mpl::'):
         '''
         Pick up raw data or converted data in *path*,
         set processor's rawloader, pcksaver and pckloader, etc.
@@ -737,8 +734,8 @@ class Processor(object):
             path of raw data or converted data to open
         add_desc: str
             additional description of raw data
-        filenames_filter: function
-            function to filter filenames in rawloader
+        filenames_exclude: list
+            regular expressions to exclude filenames in rawloader
         savetype: '.npz' or '.hdf5'
             extension of pcksaver.path, default '.npz'
             when pcksaver.path isn't writable, use '.cache'
@@ -749,8 +746,8 @@ class Processor(object):
             and converted to a .npz or .hdf5 file if needed. And any other
             codes(like Buzz Lightyear) will be omitted(destroyed).
             Default False.
-        datagroups_filter: function
-            function to filter datagroups in pckloader
+        datagroups_exclude: list
+            regular expressions to exclude datagroups in pckloader
         add_visplter: str
             add visplter by type *add_visplter*, default 'mpl::'
         '''
@@ -782,7 +779,7 @@ class Processor(object):
                 return
             try:
                 self.pckloader = get_pckloader(
-                    path, datagroups_filter=datagroups_filter)
+                    path, datagroups_exclude=datagroups_exclude)
             except Exception:
                 plog.error("%s: Invalid pckloader path '%s'!"
                            % (self.name, path), exc_info=1)
@@ -801,7 +798,7 @@ class Processor(object):
             # rawloader.path
             try:
                 self.rawloader = get_rawloader(
-                    path, filenames_filter=filenames_filter)
+                    path, filenames_exclude=filenames_exclude)
             except Exception:
                 plog.error("%s: Invalid rawloader path '%s'!"
                            % (self.name, path), exc_info=1)
@@ -828,7 +825,7 @@ class Processor(object):
                 return
             try:
                 self.pckloader = get_pckloader(
-                    self.pcksaver.get_store(), datagroups_filter=datagroups_filter)
+                    self.pcksaver.get_store(), datagroups_exclude=datagroups_exclude)
             except Exception:
                 plog.error("%s: Invalid pckloader path '%s'!"
                            % (self.name, path), exc_info=1)

@@ -82,8 +82,9 @@ def get_parser_convert(subparsers, parents=[]):
     optgrp = parser.add_argument_group('convert options')
     optgrp.add_argument('--add_desc', type=str, metavar='Desc',
                         help='Additional description of raw data')
-    optgrp.add_argument('--filenames_filter', type=eval, metavar='Filter',
-                        help='Function(str) to filter filenames in raw data')
+    optgrp.add_argument(
+        '--filenames_exclude', type=str, action='append', metavar='Pattern',
+        help='Regular expressions to exclude filenames in raw data')
     optgrp.add_argument('--savetype', type=str,
                         choices=['.npz', '.hdf5'], default='.npz',
                         help="Extension of savefile, (default: %(default)s)")
@@ -106,8 +107,8 @@ def get_parser_plot(subparsers, parents=[]):
     )
     optgrp = parser.add_argument_group('plot options')
     optgrp.add_argument(
-        '--datagroups_filter', type=eval, metavar='Filter',
-        help='Function(str) to filter datagroups in pickled data')
+        '--datagroups_exclude', type=str, action='append', metavar='Pattern',
+        help='Regular expressions to exclude datagroups in pickled data')
     optgrp.add_argument('--select', type=str,
                         action='append', metavar='Pattern',
                         help="Patterns for selecting figures to plot")
@@ -183,7 +184,7 @@ def cli_script():
                     name=args.processor,
                     parallel=args.parallel,
                     add_desc=args.add_desc,
-                    filenames_filter=args.filenames_filter,
+                    filenames_exclude=args.filenames_exclude,
                     savetype=args.savetype,
                     overwrite=args.overwrite,
                     Sid=True,
@@ -197,11 +198,11 @@ def cli_script():
                     name=args.processor,
                     parallel=args.parallel,
                     add_desc=args.add_desc,
-                    filenames_filter=args.filenames_filter,
+                    filenames_exclude=args.filenames_exclude,
                     savetype=args.savetype,
                     overwrite=args.overwrite,
                     Sid=False,
-                    datagroups_filter=args.datagroups_filter,
+                    datagroups_exclude=args.datagroups_exclude,
                     add_visplter='mpl::',
                 )
                 if gdp.pckloader is None or gdp.visplter is None:
