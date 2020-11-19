@@ -207,7 +207,10 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
             Zz = tools.savgolay_filter(Zz, info='phi(zeta)')
             index = (np.diff(np.sign(np.gradient(Zz))) < 0).nonzero()[0]
             mdzeta = int(np.diff(index).mean())
-            mdzeta *= 3 if mdzeta < y//32 else 2
+            # print(Zz,index)
+            # print('---------------')
+            #print(mdzeta, mdzeta < y//32, y//8)
+            mdzeta *= 4 if mdzeta < y//32 else 3
             mdzeta = min(mdzeta, y//8)
         acckwargs = dict(mdpsi=mdpsi, mdzeta=mdzeta, use_ra=use_ra)
         dlog.parm("Use dpsi dzeta range: mdpsi=%s, mdzeta=%s. "
@@ -266,9 +269,28 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
         else:
             title2 = r'$\phi$ $C(\Delta\psi)$, $C(\Delta\psi=%.3f)=1/e$' % Lpsi
             dlog.parm("Find correlation length: Lpsi=%.3f" % Lpsi)
+        mtauz, Lz, title3 = self._find_correLz(tau, Y)
         return dict(X=X, Y=Y, tau=tau, mtau=mtau, L=L, Lpsi=Lpsi,
                     xlabel=xlabel, title1=title1, title2=title2,
-                    xname=r'r' if use_ra else r'\psi'), acckwargs
+                    xname=r'r' if use_ra else r'\psi',
+                    Lr=L, mtauz=mtauz, Lz=Lz, title3=title3), acckwargs
+
+    @staticmethod
+    def _find_correLz(tau, Y):
+        mtau = tau.max(axis=1)
+        index = np.where(mtau <= 1.0/np.e)[0]
+        if index.size > 0:
+            # line intersection
+            i, j = index[0] - 1,  index[0]
+            Lz, y = tools.intersection_4points(
+                Y[i], mtau[i], Y[j], mtau[j],
+                Y[i], 1.0/np.e, Y[j], 1.0/np.e)
+        else:
+            Lz = Y[-1]  # over mdzeta
+            dlog.parm("Increase mdzeta to find correlation length!")
+        title3 = r'$\phi$ $C(\Delta\zeta)$, $C(\Delta\zeta=%.3f)=1/e$' % Lz
+        dlog.parm("Find correlation length: Lzeta=%.3f" % Lz)
+        return mtau, Lz, title3
 
     def _post_dig(self, results):
         r = results
@@ -284,9 +306,25 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
             xlim=[r['X'][0], r['X'][-1]],
             ylim=[0 if r['mtau'].min() > 0 else r['mtau'].min(), 1],
         )
+        if 'mtauz' in results and 'Lz' in results:
+            mtauz, Lz, title3 = r['mtauz'], r['Lz'], r['title3']
+        else:
+            # maybe old results, without Lz
+            mtauz, Lz, title3 = self._find_correLz(r['tau'], r['Y'])
+        ax3_calc = dict(
+            LINE=[
+                (r['Y'], mtauz, r'$C_r(\Delta\zeta)$'),
+                ([r['Y'][0], r['Y'][-1]], [1/np.e, 1/np.e], '1/e'),
+            ],
+            title=title3,
+            xlabel=r'$\Delta\zeta$',
+            xlim=[r['Y'][0], r['Y'][-1]],
+            ylim=[0 if mtauz.min() > 0 else mtauz.min(), 1],
+        )
         return dict(zip_results=[
             ('tmpl_contourf', 211, ax1_calc),
-            ('tmpl_line', 212, ax2_calc),
+            ('tmpl_line', 223, ax2_calc),
+            ('tmpl_line', 224, ax3_calc),
         ])
 
 
