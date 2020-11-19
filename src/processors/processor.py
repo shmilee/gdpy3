@@ -75,6 +75,8 @@ class Processor(object):
     saltname = ''
 
     def __check_rawloader(self, rawloader):
+        if rawloader is None:
+            return False
         if not is_rawloader(rawloader):
             plog.error("%s: Not a rawloader object!" % self.name)
             return False
