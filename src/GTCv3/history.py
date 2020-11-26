@@ -486,9 +486,10 @@ class HistoryFieldModeDigger(_TimeCutoff):
         )
         ymin = min(min(r['measurereal']), min(r['measureimag']))
         ymax = max(max(r['measurereal']), max(r['measureimag']))
-        if (min(min(r['normyreal']), min(r['normyimag'])) < 20 * ymin
-                or max(max(r['normyreal']), max(r['normyimag'])) > 20 * ymax):
-            ax3_calc['ylim'] = [3 * ymin, 3 * ymax]
+        _y = max(abs(ymin), abs(ymax))
+        if (abs(min(min(r['normyreal']), min(r['normyimag']))) > 9 * _y
+                or abs(max(max(r['normyreal']), max(r['normyimag']))) > 9 * _y):
+            ax3_calc['ylim'] = [-3 * _y, 3 * _y]
         max_p, min_p = max(r['spectrum_p']), min(r['spectrum_p'])
         ax4_calc = dict(
             LINE=[(r['spectrum_x'], r['spectrum_p'], 'power spectral'),
