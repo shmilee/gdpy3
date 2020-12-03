@@ -26,11 +26,15 @@ import numpy as np
 
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
-from .snapshot import _snap_get_timestr, SnapshotFieldmDigger
+from .snapshot import (
+    _snap_get_timestr,
+    SnapshotFieldSpectrumDigger, SnapshotFieldmDigger
+)
 from .. import tools
 
 _all_Converters = ['SnapPhiZetaPsiConverter']
 _all_Diggers = ['SnapPhiZetaPsiDigger', 'SnapPhiCorrLenDigger',
+                'SnapPhiSpectrumDigger', 'SnapPhiTimeSpectrumDigger',
                 'SnapPhiFieldnDigger']
 __all__ = _all_Converters + _all_Diggers
 
@@ -113,6 +117,8 @@ class SnapPhiZetaPsiDigger(Digger):
 
     def _dig(self, kwargs):
         '''
+        kwargs
+        ------
         *use_ra*: bool
             use psi or r/a, default False
         '''
@@ -150,7 +156,11 @@ class SnapPhiZetaPsiDigger(Digger):
         return results
 
 
-class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
+class BreakDigDoc(Digger):
+    pass
+
+
+class SnapPhiCorrLenDigger(BreakDigDoc, SnapPhiZetaPsiDigger):
     '''phi(zeta,psi) correlation (d_zeta, d_psi) at at theta=j/mtdiag*2pi'''
     __slots__ = []
     post_template = 'tmpl_z111p'
@@ -326,6 +336,181 @@ class SnapPhiCorrLenDigger(SnapPhiZetaPsiDigger):
             ('tmpl_line', 223, ax2_calc),
             ('tmpl_line', 224, ax3_calc),
         ])
+
+
+class SnapPhiSpectrumDigger(BreakDigDoc, SnapPhiZetaPsiDigger,
+                            SnapshotFieldSpectrumDigger):
+    '''field phi toroidal or r spectra.'''
+    __slots__ = []
+    nitems = '+'
+    itemspattern = ['^(?P<section>snap\d{5})/phi_zeta_psi_(?P<j>\d+)',
+                    '^(?P<section>snap\d{5})/j_list',
+                    '^(?P<s>snap\d{5})/mtoroidal',
+                    '^(?P<s>snap\d{5})/mzeach',
+                    '^(?P<s>snap\d{5})/mpsi\+1']
+    post_template = 'tmpl_z111p'
+
+    def _set_fignum(self, numseed=None):
+        super(SnapPhiSpectrumDigger, self)._set_fignum(numseed=numseed)
+        self._fignum = 'phi_%03d_spectrum' % round(self._part*360)
+        self.kwoptions = None
+
+    def _dig(self, kwargs):
+        '''
+        kwargs
+        ------
+        *nmode*, *rmode*: int
+            set toroidal or radial range
+        *smooth*: bool, default False
+            smooth spectrum results or not
+        *norm*: bool, default False
+            normalize spectrum results or not
+        '''
+        data, _, mtor, mzeach, mpsi1 = self.pckloader.get_many(*self.srckeys)
+        mtgrid = mtor*mzeach  # toroidal grids
+        if data.shape != (mtgrid, mpsi1):
+            dlog.error("Invalid phi data shape!")
+            return {}, {}
+        acckwargs = self._set_params(
+            kwargs, mtgrid, mpsi1,
+            mkey='nmode', pkey='rmode', mtext='Toroidal', ptext='radial')
+        nmode, rmode = acckwargs['nmode'], acckwargs['rmode']
+        X1, X2 = np.arange(1, nmode + 1), np.arange(1, rmode + 1)
+        smooth, norm = acckwargs['smooth'], acckwargs['norm']
+        Y1, Y2, idx1, idx2 = self._get_spectrum(
+            nmode, rmode, data, mtgrid, mpsi1, smooth, norm)
+        n, rp = X1[idx1], X2[idx2]
+        return dict(
+            nX=X1, toroidal_spectrum=Y1, nmode=nmode, n=n,
+            rX=X2, radial_spectrum=Y2, rmode=rmode, rp=rp,
+            title=r'$\phi$(%s), %s' % (self.theta, self.timestr),
+        ), acckwargs
+
+    def _post_dig(self, results):
+        r = results
+        max_p = 1.05 * r['toroidal_spectrum'].max()
+        ax1_calc = dict(LINE=[
+            (r['nX'], r['toroidal_spectrum']),
+            ([r['n'], r['n']], [0, max_p], r'$n_{pmax}=%d$' % r['n'])],
+            xlabel='n', ylabel='toroidal spectrum',
+            xlim=[0, r['nmode']])
+        max_p = 1.05 * r['radial_spectrum'].max()
+        ax2_calc = dict(LINE=[
+            (r['rX'], r['radial_spectrum']),
+            ([r['rp'], r['rp']], [0, max_p], r'$rp_{pmax}=%d$' % r['rp'])],
+            xlabel='r(psi)', ylabel='radial spectrum',
+            xlim=[1, r['rmode']])
+        return dict(zip_results=[
+            ('tmpl_line', 211, ax1_calc),
+            ('tmpl_line', 212, ax2_calc),
+        ], suptitle=r'%s, n=%d, rp=%d' % (r['title'], r['n'], r['rp']))
+
+
+class SnapPhiTimeSpectrumDigger(SnapPhiSpectrumDigger):
+    '''field phi toroidal or r spectra as time varied.'''
+    __slots__ = ['msnap']
+    nitems = '+'
+    itemspattern = ['^(?P<section>snap)\d{5}/phi_zeta_psi_(?P<j>\d+)',
+                    '^(?P<section>snap)\d{5}/j_list',
+                    '^(?P<s>snap)\d{5}/mtoroidal',
+                    '^(?P<s>snap)\d{5}/mzeach',
+                    '^(?P<s>snap)\d{5}/mpsi\+1']
+
+    def _set_fignum(self, numseed=None):
+        assert len(self.srckeys) % len(self.itemspattern) == 0
+        self.msnap = len(self.srckeys) // len(self.itemspattern)
+        j_list = self.pckloader.get(self.srckeys[self.msnap])
+        j = int(self.section[1])
+        assert j in j_list
+        # j_list[-1] is mtdiag
+        self._part = j / j_list[-1]
+        self._fignum = 'phi_%03d_spectrum' % round(self._part*360)
+        self.theta = r'$\theta=%.3f=%g^\circ$' % (
+            round(self._part*2*np.pi, ndigits=3), self._part*360)
+        self.kwoptions = None
+
+    def _dig(self, kwargs):
+        '''*tcutoff*: [t0,t1], t0 t1 float
+            t0<=time[x0:x1]<=t1
+        '''
+        mtor, mzeach, mpsi1 = self.pckloader.get_many(
+            self.srckeys[2*self.msnap], self.srckeys[3*self.msnap],
+            self.srckeys[4*self.msnap])
+        mtgrid = mtor*mzeach  # toroidal grids
+        acckwargs = self._set_params(
+            kwargs, mtgrid, mpsi1,
+            mkey='nmode', pkey='rmode', mtext='Toroidal', ptext='radial')
+        nmode, rmode = acckwargs['nmode'], acckwargs['rmode']
+        X1, X2 = np.arange(1, nmode + 1), np.arange(1, rmode + 1)
+        # rm first item in data
+        all_data = self.pckloader.get_many(*self.srckeys[1:self.msnap])
+        tstep = self.pckloader.get('gtc/tstep')
+        time = [self.srckeys[idx].split('/')[0] for idx in range(self.msnap)]
+        time = np.around(np.array(  # rm first item in time
+            [int(t.replace('snap', '')) * tstep for t in time[1:]]), 5)
+        if len(time) < 2:
+            dlog.error("Less than 3 phi snapshots!")
+            return {}, {}
+        dt = time[-1] - time[-2]
+        if 'tcutoff' not in self.kwoptions:
+            self.kwoptions['tcutoff'] = dict(
+                widget='FloatRangeSlider',
+                rangee=[time[0], time[-1], dt],
+                value=[time[0], time[-1]],
+                description='time cutoff:')
+        acckwargs['tcutoff'] = [time[0], time[-1]]
+        i0, i1 = 0, time.size
+        if 'tcutoff' in kwargs:
+            t0, t1 = kwargs['tcutoff']
+            idx = np.where((time >= t0) & (time < t1 + dt))[0]
+            if idx.size > 0:
+                i0, i1 = idx[0], idx[-1]+1
+                acckwargs['tcutoff'] = [time[i0], time[i1-1]]
+                time = time[i0:i1]
+            else:
+                dlog.warning('Cannot cutoff: %s <= time <= %s!' % (t0, t1))
+        YT1, YT2, nY, rpY = [], [], [], []
+        dlog.info('%d snapshot phi data to do ...' % (i1 - i0))
+        _idxlog = (i1 - i0) // 10
+        for idx in range(i0, i1):
+            if idx % _idxlog == 0 or idx == i1 - 1:
+                dlog.info('Calculating [%d/%d] %s' % (
+                    idx+1-i0, i1 - i0, self.srckeys[idx]))
+            data = all_data[idx]
+            if data.shape != (mtgrid, mpsi1):
+                dlog.error("Invalid phi data shape!")
+                return {}, {}
+            Y1, Y2, idx1, idx2 = self._get_spectrum(
+                nmode, rmode, data, mtgrid, mpsi1,
+                acckwargs['smooth'], acckwargs['norm'])
+            YT1.append(Y1)
+            YT2.append(Y2)
+            nY.append(X1[idx1])
+            rpY.append(X2[idx2])
+        YT1, YT2 = np.array(YT1).T, np.array(YT2).T
+        nY, rpY = np.array(nY), np.array(rpY)
+        return dict(
+            nX=X1, nY=nY, toroidal_spectrum=YT1, nmode=nmode,
+            rX=X2, rpY=rpY, radial_spectrum=YT2, rmode=rmode,
+            time=time, title=r'$\phi$(%s)' % self.theta,
+        ), acckwargs
+
+    def _post_dig(self, results):
+        r = results
+        ax1_calc = dict(X=r['time'], Y=r['nX'], Z=r['toroidal_spectrum'],
+                        xlabel=r'time($R_0/c_s$)', ylabel='n',
+                        title=r'toroidal spectrum of %s' % r'$\phi$',
+                        xlim=[r['time'][0], r['time'][-1]])
+        ax2_calc = dict(X=r['time'], Y=r['rX'], Z=r['radial_spectrum'],
+                        xlabel=r'time($R_0/c_s$)', ylabel='r(psi)',
+                        title=r'radial spectrum of %s' % r'$\phi$',
+                        xlim=[r['time'][0], r['time'][-1]])
+        return dict(zip_results=[
+            ('tmpl_contourf', 211, ax1_calc),
+            ('tmpl_line', 211, dict(LINE=[(r['time'], r['nY'], 'max n')])),
+            ('tmpl_contourf', 212, ax2_calc),
+            ('tmpl_line', 212, dict(LINE=[(r['time'], r['rpY'], 'max rp')])),
+        ], suptitle=r['title'])
 
 
 class SnapPhiFieldnDigger(SnapshotFieldmDigger):
