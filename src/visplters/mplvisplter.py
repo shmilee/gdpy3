@@ -223,16 +223,16 @@ class MatplotlibVisplter(BaseVisplter):
             colorbar, grid_alpha, plot_surface_shadow):
         '''For :meth:`tmpl_contourf`.'''
         vlog.debug("Getting contourf Axes %s ..." % 111)
-        Zmax = max(abs(Z.max()), abs(Z.min()))
+        Zmax, Zmin = Z.max(), Z.min()
         layoutkw, plotkw, plotarg, order, data = {}, {}, [], 1, []
         if plot_method == 'plot_surface':
-            layoutkw = {'projection': '3d', 'zlim': [-Zmax, Zmax]}
+            layoutkw = {'projection': '3d', 'zlim': [Zmin, Zmax]}
             plotkw.update(rstride=1, cstride=1, linewidth=1, antialiased=True,
                           cmap=self.param_from_style('image.cmap'))
             if plot_surface_shadow:
-                _offsetd = {'x': np.min(X), 'y': np.max(Y), 'z': -Zmax}
+                _offsetd = {'x': np.min(X), 'y': np.max(Y), 'z': Zmin}
                 _limd = {'x': [np.min(X), np.max(X)],
-                         'y': [np.min(Y), np.max(Y)], 'z': [-Zmax, Zmax]}
+                         'y': [np.min(Y), np.max(Y)], 'z': [Zmin, Zmax]}
                 for x in plot_surface_shadow:
                     order += 1
                     layoutkw['%slim' % x] = _limd[x]
@@ -248,7 +248,12 @@ class MatplotlibVisplter(BaseVisplter):
         plotarg.extend(plot_method_args)
         if not plot_method_args and plot_method == 'contourf':
             plotarg.extend([100])
-        plotkw.update(vmin=-Zmax, vmax=Zmax)
+        plotkw.update(vmin=Zmin, vmax=Zmax)
+        if Zmax * Zmin < 0:
+            ZZmax = max(abs(Zmax), abs(Zmin))
+            ZZmin = min(abs(Zmax), abs(Zmin))
+            if ZZmin/ZZmax > 0.3:
+                plotkw.update(vmin=-ZZmax, vmax=ZZmax)
         plotkw.update(plot_method_kwargs)
         data.insert(0,  [1, plot_method, [X, Y, Z] + plotarg, plotkw])
         if title:
