@@ -386,7 +386,8 @@ class SnapshotFieldSpectrumDigger(Digger):
         self._fignum = '%s_spectrum' % self.section[1]
         self.kwoptions = None
 
-    def _get_spectrum(self, mmode, pmode, fluxdata, mtgrid, mtoroidal):
+    def _get_spectrum(self, mmode, pmode, fluxdata, mtgrid, mtoroidal,
+                      smooth, norm):
         Y1, Y2 = np.zeros(mmode), np.zeros(pmode)
         for i in range(mtoroidal):
             yy = np.fft.fft(fluxdata[:, i])
@@ -400,32 +401,47 @@ class SnapshotFieldSpectrumDigger(Digger):
             for j in range(1, pmode):
                 Y2[j] = Y2[j] + (abs(yy[j]))**2 + (abs(yy[mtoroidal - j]))**2
         Y2 = np.sqrt(Y2 / mtgrid) / mtoroidal
-        return Y1, Y2
+        if smooth:
+            Y1 = tools.savgolay_filter(Y1, info='spectrum')
+            Y2 = tools.savgolay_filter(Y2, info='spectrum')
+        if norm:
+            Y1, Y2 = Y1/Y1.max(), Y2/Y2.max()
+        idx1, idx2 = np.argmax(Y1), np.argmax(Y2)
+        return Y1, Y2, idx1, idx2
 
-    def _set_params(self, kwargs, mtgrid, mtoroidal):
+    def _set_params(self, kwargs, mtgrid, mtoroidal,
+                    mkey='mmode', pkey='pmode',
+                    mtext='Poloidal', ptext='parallel'):
         maxmmode = int(mtgrid / 2 + 1)
         maxpmode = int(mtoroidal / 2 + 1)
-        mmode, pmode = kwargs.get('mmode', None), kwargs.get('pmode', None)
+        mmode, pmode = kwargs.get(mkey, None), kwargs.get(pkey, None)
         if not (isinstance(mmode, int) and mmode <= maxmmode):
             mmode = mtgrid // 5
         if not (isinstance(pmode, int) and pmode <= maxpmode):
             pmode = mtoroidal // 3
-        acckwargs = dict(mmode=mmode, pmode=pmode)
-        dlog.parm("Poloidal and parallel range: m=%s, p=%s. Maximal m=%s, p=%s"
-                  % (mmode, pmode, maxmmode, maxpmode))
+        dlog.parm("%s and %s range: %s=%s, %s=%s. Maximal %s=%s, %s=%s"
+                  % (mtext, ptext, mkey, mmode, pkey, pmode,
+                     mkey, maxmmode, pkey, maxpmode))
+        smooth, norm = kwargs.get('smooth', False), kwargs.get('norm', False)
+        acckwargs = {mkey: mmode, pkey: pmode,
+                     'smooth': bool(smooth), 'norm': bool(norm)}
         if self.kwoptions is None:
-            self.kwoptions = dict(
-                mmode=dict(
-                    widget='IntSlider',
-                    rangee=(1, maxmmode, 1),
-                    value=mmode,
-                    description='mmode:'),
-                pmode=dict(
-                    widget='IntSlider',
-                    rangee=(1, maxpmode, 1),
-                    value=pmode,
-                    description='pmode:'))
-        return mmode, pmode, acckwargs
+            self.kwoptions = {
+                mkey: dict(widget='IntSlider',
+                           rangee=(1, maxmmode, 1),
+                           value=mmode,
+                           description='%s:' % mkey),
+                pkey: dict(widget='IntSlider',
+                           rangee=(1, maxpmode, 1),
+                           value=pmode,
+                           description='%s:' % pkey),
+                'smooth': dict(widget='Checkbox',
+                               value=bool(smooth),
+                               description='smooth spectrum:'),
+                'norm': dict(widget='Checkbox',
+                             value=bool(norm),
+                             description='normalize spectrum:')}
+        return acckwargs
 
     def _dig(self, kwargs):
         '''
@@ -433,35 +449,49 @@ class SnapshotFieldSpectrumDigger(Digger):
         ------
         *mmode*, *pmode*: int
             set poloidal or parallel range
+        *smooth*: bool, default False
+            smooth spectrum results or not
+        *norm*: bool, default False
+            normalize spectrum results or not
         '''
         fluxdata, mtgrid1, mtoroidal = self.pckloader.get_many(*self.srckeys)
         if fluxdata.shape != (mtgrid1, mtoroidal):
             dlog.error("Invalid fluxdata shape!")
             return {}, {}
         mtgrid = mtgrid1 - 1
-        mmode, pmode, acckwargs = self._set_params(kwargs, mtgrid, mtoroidal)
+        acckwargs = self._set_params(kwargs, mtgrid, mtoroidal)
+        mmode, pmode = acckwargs['mmode'], acckwargs['pmode']
         X1, X2 = np.arange(1, mmode + 1), np.arange(1, pmode + 1)
-        Y1, Y2 = self._get_spectrum(mmode, pmode, fluxdata, mtgrid, mtoroidal)
+        smooth, norm = acckwargs['smooth'], acckwargs['norm']
+        Y1, Y2, idx1, idx2 = self._get_spectrum(
+            mmode, pmode, fluxdata, mtgrid, mtoroidal, smooth, norm)
+        m, p = X1[idx1], X2[idx2]
         fstr = field_tex_str[self.section[1]]
         timestr = _snap_get_timestr(self.group, self.pckloader)
         return dict(
-            jtgrid=X1, poloidal_spectrum=Y1, mmode=mmode,
-            ktoroidal=X2, parallel_spectrum=Y2, pmode=pmode,
+            mX=X1, poloidal_spectrum=Y1, mmode=mmode, m=m,
+            pX=X2, parallel_spectrum=Y2, pmode=pmode, p=p,
             title=r'$%s$, %s' % (fstr, timestr),
         ), acckwargs
 
     def _post_dig(self, results):
         r = results
-        ax1_calc = dict(LINE=[(r['jtgrid'], r['poloidal_spectrum'])],
-                        xlabel='mtgrid', ylabel='poloidal spectrum',
-                        xlim=[0, r['mmode']])
-        ax2_calc = dict(LINE=[(r['ktoroidal'], r['parallel_spectrum'])],
-                        xlabel='mtoroidal', ylabel='parallel spectrum',
-                        xlim=[1, r['pmode']])
+        max_p = 1.05 * r['poloidal_spectrum'].max()
+        ax1_calc = dict(LINE=[
+            (r['mX'], r['poloidal_spectrum']),
+            ([r['m'], r['m']], [0, max_p], r'$m_{pmax}=%d$' % r['m'])],
+            xlabel='m', ylabel='poloidal spectrum',
+            xlim=[0, r['mmode']])
+        max_p = 1.05 * r['parallel_spectrum'].max()
+        ax2_calc = dict(LINE=[
+            (r['pX'], r['parallel_spectrum']),
+            ([r['p'], r['p']], [0, max_p], r'$p_{pmax}=%d$' % r['p'])],
+            xlabel='ktoroidal', ylabel='parallel spectrum',
+            xlim=[0, r['pmode']])
         return dict(zip_results=[
             ('tmpl_line', 211, ax1_calc),
             ('tmpl_line', 212, ax2_calc),
-        ], suptitle=r'%s, m=%d, p=%d' % (r['title'], r['mmode'], r['pmode']))
+        ], suptitle=r'%s, m=%d, p=%d' % (r['title'], r['m'], r['p']))
 
 
 class SnapshotTimeFieldSpectrumDigger(SnapshotFieldSpectrumDigger):
@@ -474,24 +504,19 @@ class SnapshotTimeFieldSpectrumDigger(SnapshotFieldSpectrumDigger):
         '^(?P<s>snap)\d{5,7}/mtoroidal']
 
     def _dig(self, kwargs):
-        '''
-        kwargs
-        ------
-        *tcutoff*: [t0,t1], t0 float
+        '''*tcutoff*: [t0,t1], t0 t1 float
             t0<=time[x0:x1]<=t1
-        *mmode*, *pmode*: int
-            set poloidal or parallel range
         '''
         assert len(self.srckeys) % 3 == 0
         index = len(self.srckeys) // 3
         mtgrid1, mtoroidal = self.pckloader.get_many(
             self.srckeys[index], self.srckeys[2*index])
         mtgrid = mtgrid1 - 1
-        mmode, pmode, acckwargs = self._set_params(kwargs, mtgrid, mtoroidal)
+        acckwargs = self._set_params(kwargs, mtgrid, mtoroidal)
+        mmode, pmode = acckwargs['mmode'], acckwargs['pmode']
         X1, X2 = np.arange(1, mmode + 1), np.arange(1, pmode + 1)
         # rm first item in fluxdata
         all_fluxdata = self.pckloader.get_many(*self.srckeys[1:index])
-
         tstep = self.pckloader.get('gtc/tstep')
         time = [self.srckeys[idx].split('/')[0] for idx in range(index)]
         time = np.around(np.array(  # rm first item in time
@@ -517,8 +542,7 @@ class SnapshotTimeFieldSpectrumDigger(SnapshotFieldSpectrumDigger):
                 time = time[i0:i1]
             else:
                 dlog.warning('Cannot cutoff: %s <= time <= %s!' % (t0, t1))
-
-        YT1, YT2 = [], []
+        YT1, YT2, mY, pY = [], [], [], []
         dlog.info('%d snapshot fluxdata to do ...' % (i1 - i0))
         _idxlog = (i1 - i0) // 10
         for idx in range(i0, i1):
@@ -529,31 +553,37 @@ class SnapshotTimeFieldSpectrumDigger(SnapshotFieldSpectrumDigger):
             if fluxdata.shape != (mtgrid1, mtoroidal):
                 dlog.error("Invalid fluxdata shape!")
                 return {}, {}
-            Y1, Y2 = self._get_spectrum(
-                mmode, pmode, fluxdata, mtgrid, mtoroidal)
+            Y1, Y2, idx1, idx2 = self._get_spectrum(
+                mmode, pmode, fluxdata, mtgrid, mtoroidal,
+                acckwargs['smooth'], acckwargs['norm'])
             YT1.append(Y1)
             YT2.append(Y2)
+            mY.append(X1[idx1])
+            pY.append(X2[idx2])
         YT1, YT2 = np.array(YT1).T, np.array(YT2).T
+        mY, pY = np.array(mY), np.array(pY)
         fstr = field_tex_str[self.section[1]]
         return dict(
-            m=X1, poloidal_spectrum=YT1, mmode=mmode,
-            n=X2, parallel_spectrum=YT2, pmode=pmode,
+            mX=X1, mY=mY, poloidal_spectrum=YT1, mmode=mmode,
+            pX=X2, pY=pY, parallel_spectrum=YT2, pmode=pmode,
             time=time, fstr=r'$%s$' % fstr,
         ), acckwargs
 
     def _post_dig(self, results):
         r = results
-        ax1_calc = dict(X=r['time'], Y=r['m'], Z=r['poloidal_spectrum'],
-                        xlabel=r't $R_0/c_s$', ylabel='m',
+        ax1_calc = dict(X=r['time'], Y=r['mX'], Z=r['poloidal_spectrum'],
+                        xlabel=r'time($R_0/c_s$)', ylabel='m',
                         title=r'poloidal spectrum of %s' % r['fstr'],
                         xlim=[r['time'][0], r['time'][-1]])
-        ax2_calc = dict(X=r['time'], Y=r['n'], Z=r['parallel_spectrum'],
-                        xlabel=r't $R_0/c_s$', ylabel='n',
+        ax2_calc = dict(X=r['time'], Y=r['pX'], Z=r['parallel_spectrum'],
+                        xlabel=r'time($R_0/c_s$)', ylabel='n',
                         title=r'parallel spectrum of %s' % r['fstr'],
                         xlim=[r['time'][0], r['time'][-1]])
         return dict(zip_results=[
             ('tmpl_contourf', 211, ax1_calc),
+            ('tmpl_line', 211, dict(LINE=[(r['time'], r['mY'], 'max m')])),
             ('tmpl_contourf', 212, ax2_calc),
+            ('tmpl_line', 212, dict(LINE=[(r['time'], r['pY'], 'max n')])),
         ])
 
 
