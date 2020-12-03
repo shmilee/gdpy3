@@ -139,6 +139,11 @@ class AppendDocstringMeta(type):
     docstring of method(xxyyzz), because that will mess up their subclasses'
     method docstrings. Instead, we must actually copy the functions,
     and then modify the docstring for each subclasses.
+
+    The subclass must have method(_xxyyzz) and its docstring is not None,
+    otherwise nothing is modified in this subclass. Only choose the first
+    baseclass which has method(xxyyzz) in subclass.__mro__,
+    copy its method(xxyyzz) and combine docstrings.
     """
     _xxyyzz_methods = ['_convert', '_dig', '_export']
 
@@ -146,7 +151,11 @@ class AppendDocstringMeta(type):
         attr_todo = [an for an in attrs if an in meta._xxyyzz_methods]
         for attr_name in attr_todo:
             # print('found', attr_name, 'in', name)
+            apdoc = attrs[attr_name].__doc__
+            if not apdoc:
+                continue
             sattr_name = attr_name[1:]
+            # print(name, 'bases to check', bases)
             for base in bases:
                 original = getattr(base, sattr_name, None)
                 if original:
@@ -154,8 +163,7 @@ class AppendDocstringMeta(type):
                     # copy function
                     copy = _copy_func(original)
                     ordoc = original.__doc__
-                    apdoc = attrs[attr_name].__doc__
-                    copy.__doc__ = '%s%s' % (ordoc, apdoc) if apdoc else ordoc
+                    copy.__doc__ = '%s%s' % (ordoc, apdoc)
                     attrs[sattr_name] = copy
                     break
         return type.__new__(meta, name, bases, attrs)
