@@ -15,10 +15,10 @@ It contains two kinds of loaders.
    and methods
    :meth:`RawLoader.keys`,
    :meth:`RawLoader.get`,
-   :meth:`Loader.find`,
-   :meth:`Loader.refind`,
-   :meth:`Loader.update`,
-   :meth:`Loader.all_in_loader`.
+   :meth:`RawLoader.find`,
+   :meth:`RawLoader.refind`,
+   :meth:`RawLoader.update`,
+   :meth:`RawLoader.all_in_loader`.
 
 2. ``PckLoader``, get by :func:`get_pckloader`.
    ``PckLoader`` has attributes
@@ -33,10 +33,11 @@ It contains two kinds of loaders.
    :meth:`PckLoader.keys`,
    :meth:`PckLoader.get`,
    :meth:`PckLoader.get_many`,
-   :meth:`Loader.find`,
-   :meth:`Loader.refind`,
-   :meth:`Loader.update`,   
-   :meth:`Loader.all_in_loader`.
+   :meth:`PckLoader.get_by_group`,
+   :meth:`PckLoader.find`,
+   :meth:`PckLoader.refind`,
+   :meth:`PckLoader.update`,   
+   :meth:`PckLoader.all_in_loader`.
 '''
 
 import os

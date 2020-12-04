@@ -380,5 +380,16 @@ class BasePckLoader(BaseLoader):
             raise
         return tuple(result)
 
+    def get_by_group(self, group):
+        '''
+        Get all values by ``keys`` in group.
+        Return a dict of keys' basenames and values.
+        '''
+        allkeys = self.refind('^%s/' % re.escape(group))
+        basekeys = [os.path.basename(k) for k in allkeys]
+        resultstuple = self.get_many(*allkeys)
+        results = {k: v for k, v in zip(basekeys, resultstuple)}
+        return results
+
     def clear_cache(self):
         self.cache = {}

@@ -163,6 +163,10 @@ class TestBasePckLoader(unittest.TestCase):
         self.assertEqual(loader.get_many('k1', 'g2/k2'), (1, 2))
         self.assertTrue('k1' in loader.cache)
 
+    def test_pckloader_get_by_group(self):
+        loader = ImpBasePckLoader(self.tmpfile)
+        self.assertEqual(loader.get_by_group('g3'), {'k3': 3, 'k33': 33})
+
     def test_pckloader_find(self):
         loader = ImpBasePckLoader(self.tmpfile)
         self.assertEqual(loader.find('g', 33), ('g3/k33',))
