@@ -21,10 +21,11 @@ class TestCachePckLoader(unittest.TestCase):
         loader = self.CachePckLoader(DATA_C)
         self.assertSetEqual(set(loader.datakeys), set(DATA.keys()))
         self.assertSetEqual(set(loader.datagroups), {'test', 'te/st'})
-        self.assertMultiLineEqual(loader.description, 'test data')
+        self.assertMultiLineEqual(loader.description, DATA['description'])
 
     def test_cacheloader_get(self):
         loader = self.CachePckLoader(DATA_C)
+        self.assertEqual(loader.get('bver'), DATA['bver'])
         self.assertTrue(
             numpy.array_equal(loader.get('test/array'), DATA['test/array']))
         self.assertEqual(loader.get('test/float'), 3.1415)

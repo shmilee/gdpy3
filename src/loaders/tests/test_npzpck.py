@@ -29,10 +29,11 @@ class TestNpzPckLoader(unittest.TestCase):
         loader = self.NpzPckLoader(self.tmpfile)
         self.assertSetEqual(set(loader.datakeys), set(DATA.keys()))
         self.assertSetEqual(set(loader.datagroups), {'test', 'te/st'})
-        self.assertMultiLineEqual(loader.description, 'test data')
+        self.assertMultiLineEqual(loader.description, DATA['description'])
 
     def test_npzloader_get(self):
         loader = self.NpzPckLoader(self.tmpfile)
+        self.assertEqual(loader.get('bver'), DATA['bver'])
         self.assertTrue(
             numpy.array_equal(loader.get('test/array'), DATA['test/array']))
         self.assertEqual(loader.get('test/float'), 3.1415)

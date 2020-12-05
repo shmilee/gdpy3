@@ -5,7 +5,8 @@
 import numpy
 
 DATA = {
-    'description': 'test data',
+    'description': 'test\ndata',
+    'bver': b'v1',
     'test/array': numpy.random.rand(3, 2),
     'test/vector': numpy.random.rand(4),
     'test/float': 3.1415,
@@ -13,7 +14,8 @@ DATA = {
 }
 
 DATA_C = {
-    'description': 'test data',
+    'description': 'test\ndata',
+    'bver': b'v1',
     'test': {
         'array': DATA['test/array'],
         'vector': DATA['test/vector'],

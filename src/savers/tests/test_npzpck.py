@@ -46,6 +46,22 @@ class TestNpzPckSaver(unittest.TestCase):
         outkeys = set(npz.files)
         self.assertSetEqual(inkeys, outkeys)
 
+    def test_npzsaver_write_str_byte(self):
+        with self.PckSaver(self.tmpfile) as saver:
+            self.assertTrue(saver.write('', {'sver': r'v1'}))
+            self.assertTrue(saver.write('', {'bver': b'v1'}))
+        npz = numpy.load(saver.get_store())
+        self.assertEqual(npz['sver'], r'v1')
+        self.assertEqual(npz['bver'], b'v1')
+
+    def test_npzsaver_write_num_arr(self):
+        with self.PckSaver(self.tmpfile) as saver:
+            self.assertTrue(saver.write('', {'n': 1, 'f': 1.1, 'a': [1, 2]}))
+        npz = numpy.load(saver.get_store())
+        self.assertEqual(npz['n'].item(), 1)
+        self.assertEqual(npz['f'].item(), 1.1)
+        self.assertTrue(numpy.array_equal(npz['a'], numpy.array([1, 2])))
+
     def test_npzsaver_overwrite(self):
         with self.PckSaver(self.tmpfile) as saver:
             self.assertTrue(saver.write('/', {'v': 1}))

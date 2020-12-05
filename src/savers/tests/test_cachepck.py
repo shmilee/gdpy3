@@ -50,6 +50,14 @@ class TestCachePckSaver(unittest.TestCase):
                 outkeys.add(k)
         self.assertSetEqual(inkeys, outkeys)
 
+    def test_cachesaver_write_str_byte(self):
+        with self.PckSaver(self.tmpfile) as saver:
+            self.assertTrue(saver.write('', {'sver': r'v1'}))
+            self.assertTrue(saver.write('', {'bver': b'v1'}))
+        store = saver.get_store()
+        self.assertEqual(store['sver'], r'v1')
+        self.assertEqual(store['bver'], b'v1')
+
     def test_cachesaver_with(self):
         saver = self.PckSaver(self.tmpfile)
         self.assertFalse(saver.status)
