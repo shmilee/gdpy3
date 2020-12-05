@@ -417,10 +417,7 @@ class Processor(object):
                     plog.debug('Find %s digged results link to %s.' % (
                         gotfiglabel, linkgotfiglabel))
                     gotfiglabel = linkgotfiglabel
-            allkeys = gotresloader.refind('^%s/' % re.escape(gotfiglabel))
-            basekeys = [os.path.basename(k) for k in allkeys]
-            resultstuple = gotresloader.get_many(*allkeys)
-            results = {k: v for k, v in zip(basekeys, resultstuple)}
+            results = gotresloader.get_by_group(gotfiglabel)
             if fileloader:
                 # reload kwoptions
                 digcore.kwoptions = pickle.loads(
