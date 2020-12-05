@@ -75,7 +75,10 @@ class Hdf5PckLoader(BasePckLoader):
 
     def _special_get(self, pathobj, key):
         val = pathobj[key][()]
-        if isinstance(val, numpy.void):
-            return val.tostring()
+        # str <- bytes; bytes <- void
+        if isinstance(val, bytes):
+            return val.decode(encoding='utf-8')
+        elif isinstance(val, numpy.void):
+            return val.tobytes()
         else:
             return val

@@ -5,6 +5,8 @@
 import os
 import unittest
 import tempfile
+import numpy
+
 try:
     import h5py
     HAVE_H5PY = True
@@ -53,6 +55,21 @@ class TestHdf5PckSaver(unittest.TestCase):
             lambda name, obj: outkeys.add(name)
             if isinstance(obj, h5py.Dataset) else None)
         self.assertSetEqual(inkeys, outkeys)
+
+    def test_hdf5saver_write_str_byte(self):
+        with self.PckSaver(self.tmpfile) as saver:
+            self.assertTrue(saver.write('', {'sver': r'v1', 'bver': b'v1'}))
+        hdf5 = h5py.File(saver.get_store(), 'r')
+        self.assertEqual(hdf5['sver'][()].decode(encoding='utf-8'), r'v1')
+        self.assertEqual(hdf5['bver'][()].tobytes(), b'v1')
+
+    def test_hdf5saver_write_num_arr(self):
+        with self.PckSaver(self.tmpfile) as saver:
+            self.assertTrue(saver.write('', {'n': 1, 'f': 1.1, 'a': [1, 2]}))
+        hdf5 = h5py.File(saver.get_store(), 'r')
+        self.assertEqual(hdf5['n'][()], 1)
+        self.assertEqual(hdf5['f'][()], 1.1)
+        self.assertTrue(numpy.array_equal(hdf5['a'][()], numpy.array([1, 2])))
 
     def test_hdf5saver_with(self):
         saver = self.PckSaver(self.tmpfile)

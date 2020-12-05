@@ -63,7 +63,10 @@ class Hdf5PckSaver(BasePckSaver):
                                         compression='gzip',
                                         compression_opts=9)
                 else:
-                    if isinstance(val, bytes):
+                    # str -> bytes; bytes -> void
+                    if isinstance(val, str):
+                        val = val.encode(encoding='utf-8')
+                    elif isinstance(val, bytes):
                         val = numpy.void(val)
                     fgrp.create_dataset(key, data=val)
             self._storeobj.flush()

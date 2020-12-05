@@ -29,14 +29,17 @@ class TestHdf5PckLoader(unittest.TestCase):
             fgrp = h5f.create_group('test')
             sgrp = h5f.create_group('te/st')
             for key in DATA.keys():
+                val = DATA[key]
                 if key.startswith('test/'):
-                    fgrp.create_dataset(key.replace('test/', ''),
-                                        data=DATA[key])
+                    fgrp.create_dataset(key.replace('test/', ''), data=val)
                 elif key.startswith('te/st/'):
-                    sgrp.create_dataset(key.replace('te/st/', ''),
-                                        data=DATA[key])
+                    sgrp.create_dataset(key.replace('te/st/', ''), data=val)
                 else:
-                    h5f.create_dataset(key, data=DATA[key])
+                    if isinstance(val, str):
+                        val = val.encode(encoding='utf-8')
+                    elif isinstance(val, bytes):
+                        val = numpy.void(val)
+                    h5f.create_dataset(key, data=val)
 
     def tearDown(self):
         if os.path.isfile(self.tmpfile):
@@ -46,10 +49,11 @@ class TestHdf5PckLoader(unittest.TestCase):
         loader = self.Hdf5PckLoader(self.tmpfile)
         self.assertSetEqual(set(loader.datakeys), set(DATA.keys()))
         self.assertSetEqual(set(loader.datagroups), {'test', 'te/st'})
-        self.assertMultiLineEqual(loader.description, 'test data')
+        self.assertMultiLineEqual(loader.description, DATA['description'])
 
     def test_hdf5loader_get(self):
         loader = self.Hdf5PckLoader(self.tmpfile)
+        self.assertEqual(loader.get('bver'), DATA['bver'])
         self.assertTrue(
             numpy.array_equal(loader.get('test/array'), DATA['test/array']))
         self.assertEqual(loader.get('test/float'), 3.1415)
