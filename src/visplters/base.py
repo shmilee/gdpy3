@@ -409,12 +409,15 @@ class BaseVisplter(object):
         results['ylim']: (`up`, `down`), optional
         results['plot_method']: str, optional
             'contourf', 'pcolor', 'pcolormesh', or 'plot_surface'
-            default 'contourf', if 'Z' all zeros, default is 'pcolor'
+            default 'contourf', if 'Z' all zeros, default is 'pcolormesh'
         results['plot_method_args']: list, optional
             args for *plot_method*, like levels for 'contourf'
         results['plot_method_kwargs']: dict, optional
             kwargs for *plot_method*,
             like cmap for 'plot_surface', default in style
+        results['clabel_levels']: list, optional
+            draw contour lines and add labels or not.
+            The values will be sorted in increasing order.
         results['colorbar']: bool, optional
             add colorbar or not, default True
         results['grid_alpha']: float, optional
@@ -452,11 +455,12 @@ class BaseVisplter(object):
             ('ylabel', str, None), ('aspect', str, None))
         xlim, ylim = self._get_my_points(results, 'xlim', 'ylim')
         plot_method, plot_method_args, plot_method_kwargs, \
-            colorbar, grid_alpha, plot_surface_shadow = \
+            clabel_levels, colorbar, grid_alpha, plot_surface_shadow = \
             self._get_my_optional_vals(results,
                                        ('plot_method', str, 'contourf'),
                                        ('plot_method_args', list, []),
                                        ('plot_method_kwargs', dict, {}),
+                                       ('clabel_levels', list, []),
                                        ('colorbar', bool, True),
                                        ('grid_alpha', float, None),
                                        ('plot_surface_shadow', list, []))
@@ -465,8 +469,10 @@ class BaseVisplter(object):
             plot_method = 'contourf'
         if not Z.any():
             # all zeros
-            vlog.warning("All elements in 'Z' is 0, use plot method pcolor!")
-            plot_method = 'pcolor'
+            vlog.warning("All elements are 0, use plot_method pcolormesh!")
+            plot_method = 'pcolormesh'
+        if clabel_levels:
+            clabel_levels = sorted(clabel_levels)
         plot_surface_shadow = list(filter(
             lambda x: True if x in ['x', 'y', 'z'] else False,
             plot_surface_shadow))
@@ -476,12 +482,12 @@ class BaseVisplter(object):
         return self._tmpl_contourf(
             X, Y, Z, title, xlabel, ylabel, aspect, xlim, ylim,
             plot_method, plot_method_args, plot_method_kwargs,
-            colorbar, grid_alpha, plot_surface_shadow)
+            clabel_levels, colorbar, grid_alpha, plot_surface_shadow)
 
     def _tmpl_contourf(
             self, X, Y, Z, title, xlabel, ylabel, aspect, xlim, ylim,
             plot_method, plot_method_args, plot_method_kwargs,
-            colorbar, grid_alpha, plot_surface_shadow):
+            clabel_levels, colorbar, grid_alpha, plot_surface_shadow):
         '''For :meth:`tmpl_contourf`.'''
         raise NotImplementedError()
 

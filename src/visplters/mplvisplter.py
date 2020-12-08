@@ -220,11 +220,11 @@ class MatplotlibVisplter(BaseVisplter):
     def _tmpl_contourf(
             self, X, Y, Z, title, xlabel, ylabel, aspect, xlim, ylim,
             plot_method, plot_method_args, plot_method_kwargs,
-            colorbar, grid_alpha, plot_surface_shadow):
+            clabel_levels, colorbar, grid_alpha, plot_surface_shadow):
         '''For :meth:`tmpl_contourf`.'''
         vlog.debug("Getting contourf Axes %s ..." % 111)
         Zmax, Zmin = Z.max(), Z.min()
-        layoutkw, plotkw, plotarg, order, data = {}, {}, [], 1, []
+        layoutkw, plotkw, plotarg, order, data = {}, {}, [], 2, []
         if plot_method == 'plot_surface':
             layoutkw = {'projection': '3d', 'zlim': [Zmin, Zmax]}
             plotkw.update(rstride=1, cstride=1, linewidth=1, antialiased=True,
@@ -238,6 +238,12 @@ class MatplotlibVisplter(BaseVisplter):
                     layoutkw['%slim' % x] = _limd[x]
                     data.append([order, 'contourf', (X, Y, Z, 100),
                                  dict(zdir=x, offset=_offsetd[x])])
+        if clabel_levels:
+            # order 2
+            data.append([2, 'contour', (X, Y, Z, clabel_levels), {}])
+            order += 1
+            data.append([order, 'revise',
+                         lambda fig, ax, art: ax[0].clabel(art[2]), {}])
         if colorbar:
             order += 1
             data.append([order, 'revise',
@@ -255,6 +261,7 @@ class MatplotlibVisplter(BaseVisplter):
             if ZZmin/ZZmax > 0.3:
                 plotkw.update(vmin=-ZZmax, vmax=ZZmax)
         plotkw.update(plot_method_kwargs)
+        # order 1
         data.insert(0,  [1, plot_method, [X, Y, Z] + plotarg, plotkw])
         if title:
             layoutkw['title'] = title

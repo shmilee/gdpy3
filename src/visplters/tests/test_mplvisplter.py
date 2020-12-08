@@ -118,7 +118,7 @@ ax6 = {
     ],
 }
 temp_contourfresults = dict(
-    X=fieldx, Y=fieldy, Z=fielddata,
+    X=fieldx, Y=fieldy, Z=fielddata, clabel_levels=[-0.5, 0, 0.5],
     plot_method='plot_surface',
     plot_method_kwargs=dict(rstride=1, cstride=1, linewidth=1,
                             antialiased=True, label='field'),
@@ -169,7 +169,7 @@ temp_z111presults = dict(
 temp_z111presults_merge = dict(
     zip_results=[
         ('tmpl_contourf', 211, dict(
-            X=fieldx, Y=fieldy, Z=fielddata,
+            X=fieldx, Y=fieldy, Z=fielddata, clabel_levels=[-0.5, 0, 0.5],
             title='test field', xlabel='r', ylabel='time',
         )),
         ('tmpl_line', 211, dict(

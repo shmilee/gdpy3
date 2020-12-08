@@ -304,8 +304,9 @@ class SnapPhiCorrLenDigger(BreakDigDoc, SnapPhiZetaPsiDigger):
 
     def _post_dig(self, results):
         r = results
-        ax1_calc = dict(X=r['X'], Y=r['Y'], Z=r['tau'], title=r['title1'],
-                        xlabel=r['xlabel'], ylabel=r'$\Delta\zeta$')
+        ax1_calc = dict(
+            X=r['X'], Y=r['Y'], Z=r['tau'], clabel_levels=[1/np.e],
+            title=r['title1'], xlabel=r['xlabel'], ylabel=r'$\Delta\zeta$')
         ax2_calc = dict(
             LINE=[
                 (r['X'], r['mtau'], r'$C_r(\Delta %s)$' % r['xname']),
