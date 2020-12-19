@@ -129,7 +129,8 @@ def _git_versionstr_fmt(vfile):
     if vstr:
         m = re.match('v(\d+).(\d+).(\d+)-(\d+)-g(.*)', vstr)
         if m:
-            return m.groups()
+            # int*4, str
+            return tuple(int(i) if i.isdigit() else i for i in m.groups())
     # fallback
     return (*VERSION, 0, None)
 
