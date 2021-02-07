@@ -92,13 +92,13 @@ setup(
     install_requires=[
         'numpy>=1.10.0',
         'scipy>=0.14.0',
-        'matplotlib>=2.2.0',
+        'matplotlib>=2.0.0',
     ],
     extras_require={
-        'data': ['h5py>=2.6.0', 'paramiko>=2.4.1'],
+        'data': ['h5py>=2.6.0', 'paramiko>=2.0.0'],
         'tkui': ['screeninfo>=0.4.1'],
         'nbui': ['ipython[notebook]', 'ipywidgets'],
-        'imcat': ['pillow>=6.2.0', 'libsixel-python>=0.5.0'],
+        'imcat': ['pillow>=4.0.0', 'libsixel-python>=0.5.0'],
     },
     cmdclass={
         'sdist': my_sdist,

@@ -90,13 +90,13 @@ for lk in ${entry_iface_candidates[@]}; do
     ln -s gdpy3-app ./dist/gdpy3-app/gdpy3-$lk
 done
 cd dist/
-tar czvf gdpy3-app-pkg.tar.gz gdpy3-app/
+tar czvf gdpy3-app-pkg-$(uname -m).tar.gz gdpy3-app/
 ```
 
 3. decompress in cluster and create shell wrappers
 
 ```bash
-tar zxvf gdpy3-app-pkg.tar.gz -C ~/.local/lib/
+tar zxvf gdpy3-app-pkg-$(uname -m).tar.gz -C ~/.local/lib/
 for lk in ${entry_iface_candidates[@]}; do
     echo '#!/bin/bash' > ~/.local/bin/gdpy3-$lk
     echo "exec ~/.local/lib/gdpy3-app/gdpy3-$lk \"\$@\"" >> ~/.local/bin/gdpy3-$lk
@@ -105,6 +105,34 @@ done
 ```
 
 Keep an eye on [exe outside dir](https://github.com/pyinstaller/pyinstaller/issues/1048)
+
+
+arm64v8/debian
+--------------
+
+1. prepare [Docker Buildx](https://docs.docker.com/buildx/working-with-buildx/)
+   * Docker > 19.03
+   * Install qemu, qemu-arch-extra
+   * Register Arm executables
+     ```bash
+     docker run --rm --privileged docker/binfmt:820fdd95a9972a5308930a2bdfb8573dd4447ad3
+     cat /proc/sys/fs/binfmt_misc/qemu-aarch64
+     ```
+2. run a new docker container
+```bash
+docker buildx build --rm \
+    -t gdpy3/arm64v8-debian9:$(date +%y%m%d) \
+    -f arm64v8-debian9.Dockerfile \
+    --platform linux/arm64 .
+cd ..
+python setup.py bdist_wheel
+cp ./dist/gdpy3-*-any.whl pyinstaller/
+docker run --rm -i -t -v $PWD/pyinstaller:/gdpy3-pyinstaller \
+    gdpy3/arm64v8-debian9:$(date +%y%m%d) bash
+```
+
+3. install and freeze gdpy3 in container
+4. decompress in cluster and create shell wrappers
 
 
 macos

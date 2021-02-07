@@ -8,7 +8,6 @@ import numpy
 import tempfile
 import getpass
 import tkinter
-import screeninfo
 from tkinter import ttk, simpledialog, filedialog, messagebox
 from tkinter.constants import *
 from distutils.version import LooseVersion
@@ -148,6 +147,7 @@ class GTkApp(object):
         # X - for share
         self.root = root
         try:
+            import screeninfo
             monitors = screeninfo.get_monitors()
             monitor = sorted(monitors, key=lambda m: m.width, reverse=True)[0]
         except Exception:
