@@ -204,7 +204,8 @@ class MatplotlibVisplter(BaseVisplter):
         '''Save *fig* to *fpath*.'''
         fig.savefig(fpath, **kwargs)
 
-    def subprocess_fix_backend_etc(self, *args, **kwargs):
+    @classmethod
+    def subprocess_fix_backend_etc(cls, **kwargs):
         oldbackend = matplotlib.get_backend()
         backend = kwargs.get('mpl_backend', 'agg')
         if backend not in matplotlib.rcsetup.all_backends:

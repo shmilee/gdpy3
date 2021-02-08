@@ -311,7 +311,8 @@ class BaseVisplter(object):
         else:
             vlog.error("Figure %s is not created!" % num)
 
-    def subprocess_fix_backend_etc(self, *args, **kwargs):
+    @classmethod
+    def subprocess_fix_backend_etc(cls, **kwargs):
         '''
         Fix issue in subprocess.
 

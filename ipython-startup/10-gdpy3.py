@@ -14,3 +14,7 @@ try:
     print("[pre-import] module 'numpy' as 'np'")
 except Exception:
     pass
+
+def fix_mpl_backend(backend):
+    from gdpy3.visplters.mplvisplter import MatplotlibVisplter
+    MatplotlibVisplter.subprocess_fix_backend_etc(mpl_backend=backend)
