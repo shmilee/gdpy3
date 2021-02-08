@@ -107,8 +107,8 @@ done
 Keep an eye on [exe outside dir](https://github.com/pyinstaller/pyinstaller/issues/1048)
 
 
-arm64v8/debian
---------------
+arm64v8-debian9
+---------------
 
 1. prepare [Docker Buildx](https://docs.docker.com/buildx/working-with-buildx/)
    * Docker > 19.03
@@ -119,8 +119,9 @@ arm64v8/debian
      cat /proc/sys/fs/binfmt_misc/qemu-aarch64
      ```
 2. run a new docker container
+
 ```bash
-docker buildx build --rm \
+docker buildx build --rm --network host \
     -t gdpy3/arm64v8-debian9:$(date +%y%m%d) \
     -f arm64v8-debian9.Dockerfile \
     --platform linux/arm64 .
@@ -132,7 +133,33 @@ docker run --rm -i -t -v $PWD/pyinstaller:/gdpy3-pyinstaller \
 ```
 
 3. install and freeze gdpy3 in container
+
+```bash
+cd /gdpy3-pyinstaller
+pip3 install ./gdpy3-*-any.whl
+pyinstaller --onefile gdpy3-app.spec
+for lk in ${entry_iface_candidates[@]}; do
+    ln -s gdpy3-app ./dist/gdpy3-app/gdpy3-$lk
+done
+cp -v /lib/aarch64-linux-gnu/{libc.so.6,libresolv.so.2} ./dist/gdpy3-app/
+cp -v /usr/lib/aarch64-linux-gnu/libxcb.so.1 ./dist/gdpy3-app/
+cd dist/
+tar czvf gdpy3-app-pkg-$(uname -m).tar.gz gdpy3-app/
+```
+
 4. decompress in cluster and create shell wrappers
+
+```bash
+TDIR=$HOME/.local
+tar zxvf gdpy3-app-pkg-$(uname -m).tar.gz -C $TDIR/lib/
+MATPLOTLIBDATA=$TDIR/lib/gdpy3-app/matplotlib/mpl-data
+for lk in ${entry_iface_candidates[@]}; do
+    echo '#!/bin/bash' > $TDIR/bin/gdpy3-$lk
+    echo "export MATPLOTLIBDATA=$MATPLOTLIBDATA" >> $TDIR/bin/gdpy3-$lk
+    echo "exec $TDIR/lib/gdpy3-app/gdpy3-$lk \"\$@\"" >> $TDIR/bin/gdpy3-$lk
+    chmod +x $TDIR/bin/gdpy3-$lk
+done
+```
 
 
 macos
