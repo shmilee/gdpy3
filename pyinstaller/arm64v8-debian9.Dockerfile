@@ -22,12 +22,13 @@ RUN echo "deb $DEBIAN_MIRROR $DEBIAN_CODENAME main contrib" > /etc/apt/sources.l
     && apt-get install -y python3-pip libc6 fontconfig \
         python3-tk python3-numpy python3-scipy python3-matplotlib \
         python3-h5py python3-paramiko ipython3 python3-pillow \
-    && pip3 --no-cache-dir install -i ${PIP_INDEX_URL} screeninfo==0.6.3 \
     && apt-get -y autoremove && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 #  libfreetype6 libpng16-16 pkg-config libfreetype6-dev libpng-dev \
 #  pip3 --no-cache-dir install -i ${PIP_INDEX_URL} matplotlib==3.0.3
+
+RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} screeninfo==0.6.3
 
 RUN apt-get update \
     && apt-get install -y curl libcurl3-gnutls libjpeg62-turbo gcc \
@@ -57,7 +58,10 @@ RUN apt-get update && apt-get install -y zlib1g-dev \
 ADD 0001-FIX-protect-shared_memory-server-from-SIGINT.patch /
 RUN apt-get update && apt-get install -y patch \
     && patch /usr/lib/python3.5/multiprocessing/managers.py -i /0001-FIX-protect-shared_memory-server-from-SIGINT.patch \
-    && apt-get remove -y zlib1g-dev \
+    && apt-get -y autoremove && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y python3-dev \
     && apt-get -y autoremove && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
