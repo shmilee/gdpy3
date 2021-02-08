@@ -25,6 +25,8 @@ def is_dict_like(obj):
     '''Check if *obj* is dict or dict-like object.'''
     if isinstance(obj, dict):
         return True
+    elif str(type(obj)) == "<class 'multiprocessing.managers.DictProxy'>":
+        return True
     else:
         for attr in ['__contains__', '__delitem__',
                      '__getitem__', '__iter__', '__setitem__',
