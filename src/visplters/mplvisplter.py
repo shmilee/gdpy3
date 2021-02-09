@@ -12,6 +12,7 @@ import matplotlib
 import matplotlib.style
 import matplotlib.pyplot
 import mpl_toolkits.mplot3d
+from distutils.version import LooseVersion
 
 from ..glogger import getGLogger
 from ..__about__ import __data_path__, __ENABLE_USERBASE__, __userbase__
@@ -206,6 +207,7 @@ class MatplotlibVisplter(BaseVisplter):
 
     @classmethod
     def subprocess_fix_backend_etc(cls, **kwargs):
+        import matplotlib  # fix: local variable referenced before assignment
         oldbackend = matplotlib.get_backend()
         backend = kwargs.get('mpl_backend', 'agg')
         if backend not in matplotlib.rcsetup.all_backends:
@@ -216,7 +218,18 @@ class MatplotlibVisplter(BaseVisplter):
             vlog.warning("'%s' is a interactive mpl backend, "
                          "it may hang during plotting in subprocess!"
                          % backend)
-        matplotlib.use(backend)
+        if LooseVersion(matplotlib.__version__) <= LooseVersion('3.1.3'):
+            vlog.info("Trying to fix: matplotlib.use() "
+                      "must be called *before* matplotlib.pyplot.")
+            import sys
+            if 'matplotlib.pyplot' in sys.modules:
+                del sys.modules['matplotlib.pyplot']
+            if 'matplotlib.backends' in sys.modules:
+                del sys.modules['matplotlib.backends']
+            matplotlib.use(backend)
+            import matplotlib.pyplot  # will make matplotlib a local variable
+        else:
+            matplotlib.use(backend)
 
     def _tmpl_contourf(
             self, X, Y, Z, title, xlabel, ylabel, aspect, xlim, ylim,
