@@ -143,6 +143,7 @@ for lk in ${entry_iface_candidates[@]}; do
 done
 cp -v /lib/aarch64-linux-gnu/{libc.so.6,libresolv.so.2} ./dist/gdpy3-app/
 cp -v /usr/lib/aarch64-linux-gnu/libxcb.so.1 ./dist/gdpy3-app/
+cp -v /lib/aarch64-linux-gnu/libpthread.so.0 ./dist/gdpy3-app/
 cd dist/
 tar czvf gdpy3-app-pkg-$(uname -m).tar.gz gdpy3-app/
 ```
