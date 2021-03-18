@@ -60,7 +60,7 @@ class GtcConverter(Converter):
         '''
         return [
             r'npartdom=\s*?(?P<npartdom>\d+?)\s+?and\s+?.+',
-            r',\s+?psiw=\s*?(?P<psiw>' + self.numpat + r'?)$',
+            r'\s+?psiw=\s*?(?P<psiw>' + self.numpat + r'?)\s*$',
             r'nue_eff=\s*?(?P<nue_eff>' + self.numpat + r'?)'
             + r'\s+?nui_eff=\s*?(?P<nui_eff>' + self.numpat + r'?)$',
             r'rg0=\s*?(?P<rg0>' + self.numpat + r'?)'  # commit ee5da784
