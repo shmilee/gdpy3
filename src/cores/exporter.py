@@ -148,6 +148,11 @@ class ContourfExporter(Exporter):
             options=['contourf', 'pcolor', 'pcolormesh', 'plot_surface'],
             value='contourf',
             description='plot method:'),
+        contourf_levels=dict(
+            widget='IntSlider',
+            rangee=(50, 500, 50),
+            value=100,
+            description='contourf levels:'),
         colorbar=dict(
             widget='Checkbox',
             value=True,
@@ -182,6 +187,11 @@ class ContourfExporter(Exporter):
                 results[k] = kwargs[k]
             if k in results:
                 debug_kw[k] = results[k]
+        k = 'plot_method_args'
+        if (results['plot_method'] == 'contourf'
+                and 'contourf_levels' in kwargs and k not in results):
+            results[k] = [int(kwargs.get('contourf_levels', 100))]
+            debug_kw[k] = results[k]
         elog.debug("Some template contourf kwargs: %s" % debug_kw)
         return results, debug_kw
 
