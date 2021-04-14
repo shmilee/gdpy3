@@ -550,10 +550,11 @@ class SnapPhiFieldnDigger(SnapshotFieldmDigger):
             dy_ft = np.fft.fft(y)*Lz / 8  # why *Lz / 8
             fieldn.append(abs(dy_ft[:Lz//2]))
         fieldn = np.array(fieldn).T
-        zlist, acckwargs, envY, envXp, envYp, envXmax, envYmax = \
+        zlist, acckwargs, rr_s, Y_s, dr, dr_fwhm, envY, envXp, envYp, envXmax, envYmax = \
             self._remove_add_some_lines(fieldn, rr, kwargs)
         return dict(
             rr=rr, fieldn=fieldn, zlist=zlist,
+            rr_s=rr_s, Y_s=Y_s, dr=dr, dr_fwhm=dr_fwhm,
             envY=envY, envXp=envXp, envYp=envYp,
             envXmax=envXmax, envYmax=envYmax,
             title=r'$\left|\phi_n(r)\right|$, %s, %s' % (theta, timestr)
@@ -567,6 +568,10 @@ class SnapPhiFieldnDigger(SnapshotFieldmDigger):
         else:
             zlist = r['zlist']
         LINE = [(r['rr'], r['fieldn'][z, :]) for z in zlist]
+        if r['dr'] != 'n':
+            LINE.append(
+                (r['rr_s'], r['Y_s'], r'$\delta r/a(gap,fwhm)=%.6f,%.6f$'
+                 % (r['dr'], r['dr_fwhm'])))
         if type(r['envY']) is np.ndarray and type(r['envYp']) is np.ndarray:
             LINE.append((r['rr'], r['envY'],
                          'envelope, $r/a(max)=%.6f$' % r['envXmax']))
