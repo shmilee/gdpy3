@@ -266,6 +266,9 @@ class MatplotlibVisplter(BaseVisplter):
             order += 1
             data.append([order, 'grid', (), dict(alpha=grid_alpha)])
         plotarg.extend(plot_method_args)
+        if not plot_method_args and plot_method == 'contourf':
+            vlog.debug('Set contourf levels: 100')
+            plotarg.extend([100])
         plotkw.update(vmin=Zmin, vmax=Zmax)
         if Zmax * Zmin < 0:
             ZZmax = max(abs(Zmax), abs(Zmin))
