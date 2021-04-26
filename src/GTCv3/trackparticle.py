@@ -179,8 +179,8 @@ class TrackParticleOrbitDigger(Digger):
                 ]
             else:
                 LINE = [(r['R'], r['Z'])]
-            return dict(LINE=LINE, title=r['title'], xlabel='R(cm)$',
-                        ylabel='Z(cm)', aspect='equal')
+            return dict(LINE=LINE, title=r['title'], xlabel=r'$R(cm)$',
+                        ylabel=r'$Z(cm)$', aspect='equal')
         else:
             sc = [-r['rlim'], r['rlim']]
             return dict(LINE=[(r['X'], r['Y'], r['Z'])], title=r['title'],
