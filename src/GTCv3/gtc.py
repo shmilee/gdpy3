@@ -61,23 +61,29 @@ class GtcConverter(Converter):
         return [
             r'npartdom=\s*?(?P<npartdom>\d+?)\s+?and\s+?.+',
             r'\s+?psiw=\s*?(?P<psiw>' + self.numpat + r'?)\s*$',
-            r'nue_eff=\s*?(?P<nue_eff>' + self.numpat + r'?)'
-            + r'\s+?nui_eff=\s*?(?P<nui_eff>' + self.numpat + r'?)$',
-            r'rg0=\s*?(?P<rg0>' + self.numpat + r'?)'  # commit ee5da784
-            + r'\s+?rg1=\s*?(?P<rg1>' + self.numpat + r'?)\s+?',
-            r'rg0,rg1=\s*?(?P<rg0>' + self.numpat + r'?)'
-            + r'\s+?(?P<rg1>' + self.numpat + r'?)\s+?',
+            (r'nue_eff=\s*?(?P<nue_eff>' + self.numpat + r'?)'
+                + r'\s+?nui_eff=\s*?(?P<nui_eff>' + self.numpat + r'?)$'),
+            (r'rg0=\s*?(?P<rg0>' + self.numpat + r'?)'  # commit ee5da784
+                + r'\s+?rg1=\s*?(?P<rg1>' + self.numpat + r'?)\s+?'),
+            (r'rg0,rg1=\s*?(?P<rg0>' + self.numpat + r'?)'
+                + r'\s+?(?P<rg1>' + self.numpat + r'?)\s+?'),
             r'a_minor=\s*?(?P<a_minor>' + self.numpat + r'?)\s+$',
             (r'\s*?nmodes=(?P<nmodes>(\s*?\d+)+)\s*$', 'int_arr'),
             (r'\s*?mmodes=(?P<mmodes>(\s*?\d+)+)\s*$', 'int_arr'),
-            r'me=\s*?(?P<me>' + self.numpat + r'?)\s*,\s+trapped fraction'
-            + r'\s+?(?P<trapped_frac>' + self.numpat + r'?)\s+?',
+            (r'rzf bstep=\s*?(?P<rzf_bstep>' + self.numpat
+                + r'?), izonal=(?P<rzf_izonal>' + self.numpat
+                + '?), kr=\s*?(?P<rzf_kr>' + self.numpat
+                + '?), r1=\s*?(?P<rzf_r1>' + self.numpat
+                + '?), r2=\s*?(?P<rzf_r2>' + self.numpat
+                + '?)'),  # commit f91ad696
+            (r'me=\s*?(?P<me>' + self.numpat + r'?)\s*,\s+trapped fraction'
+                + r'\s+?(?P<trapped_frac>' + self.numpat + r'?)\s+?'),
             (r'TIME USAGE \(in SEC\):$\s*.+$\s*total\s*$\s*(?P<cputime>(\s*?'
-             + self.numpat + r'){8})\s*$', 'float_arr'),
-            r'Program starts at DATE=(?P<start_date>' + self.numpat + r'?)'
-            + r'\s+TIME=(?P<start_time>' + self.numpat + r'?)\s*?$',
-            r'Program ends at   DATE=(?P<end_date>' + self.numpat + r'?)'
-            + r'\s+TIME=(?P<end_time>' + self.numpat + r'?)\s*?$',
+                + self.numpat + r'){8})\s*$', 'float_arr'),
+            (r'Program starts at DATE=(?P<start_date>' + self.numpat + r'?)'
+                + r'\s+TIME=(?P<start_time>' + self.numpat + r'?)\s*?$'),
+            (r'Program ends at   DATE=(?P<end_date>' + self.numpat + r'?)'
+                + r'\s+TIME=(?P<end_time>' + self.numpat + r'?)\s*?$'),
         ]
 
     @staticmethod
