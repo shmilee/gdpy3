@@ -671,6 +671,45 @@ class SnapshotFieldProfileDigger(Digger):
         ], suptitle=r['suptitle'])
 
 
+class SnapshotFluxthetaDigger(Digger):  # TODO test
+    '''theta distribution of phi, a_para, fluidne, or densityi, densitye on flux surface.'''
+    __slots__ = []
+    nitems = '?'
+    itemspattern = [
+        '^(?P<section>snap\d{5,7})'
+        + '/fluxdata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))']
+    commonpattern = ['gtc/tstep', 'gtc/qiflux']
+    post_template = 'tmpl_line'
+
+    def _set_fignum(self, numseed=None):
+        self._fignum = '%s_flux_theta' % self.section[1]
+
+    def _dig(self, kwargs):
+        title = _snap_get_timestr(self.group, self.pckloader)
+        fstr = field_tex_str[self.section[1]]
+        data = self.pckloader.get(self.srckeys[0])
+        y, x = data.shape
+        q = self.pckloader.get('gtc/qiflux')
+        th = -np.arctan(1/q)
+        mtran = np.cos(th)*np.array([[1, 0], [0, 1]]) \
+            + np.sin(th)*np.array([[0, -1], [1, 0]])
+
+        return dict(
+            zeta=np.arange(0, x) / x * 2 * np.pi,
+            theta=np.arange(0, y) / y * 2 * np.pi,
+            fieldm=fieldm,
+            title=r'$%s$ on flux surface, %s' % (fstr, title)), {}
+
+    def _post_dig(self, results):
+        r = results
+        LINE = [(r['rr'], r['fieldm'][j, :]) for j in jlist]
+        return dict(LINE=LINE, title=r['title'],
+                    xlabel=r'$r/a$', xlim=[r0, r1])
+        # return dict(X=r['zeta'], Y=r['theta'], Z=r['field'],
+        #            title=r['title'], xlabel=r'$\zeta$',
+        #            ylabel=r'$\theta$', aspect='equal')
+
+
 class SnapshotFieldmDigger(Digger):
     '''profile of field_m or density_m'''
     __slots__ = []
