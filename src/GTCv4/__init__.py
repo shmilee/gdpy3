@@ -26,34 +26,24 @@ from ..GTCv3 import (
 from ..processors.processor import plog
 
 __all__ = ['Base_GTCv4']
+_load_modules = (
+    gtc,
+    data1d,
+    equilibrium,
+    history,
+    meshgrid,
+    simugrid,
+    snapshot,
+    trackparticle,
+)
 
 
 class Base_GTCv4(object):
     __slots__ = []
-    ConverterCores = [
-        getattr(m, c)
-        for m in [
-            gtc,
-            data1d,
-            equilibrium,
-            history,
-            meshgrid,
-            simugrid,
-            snapshot,
-            trackparticle,
-        ] for c in m._all_Converters]
-    DiggerCores = [
-        getattr(m, d)
-        for m in [
-            gtc,
-            data1d,
-            equilibrium,
-            history,
-            meshgrid,
-            simugrid,
-            snapshot,
-            trackparticle,
-        ] for d in m._all_Diggers]
+    ConverterCores = [getattr(m, c)
+                      for m in _load_modules for c in m._all_Converters]
+    DiggerCores = [getattr(m, d)
+                   for m in _load_modules for d in m._all_Diggers]
     saltname = 'gtc.out'
     dig_acceptable_time = 10
 
