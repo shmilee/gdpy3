@@ -7,14 +7,69 @@ Residual zonal flow Cores.
 '''
 
 import numpy as np
+from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
 from .. import tools
 from .history import field_tex_str
 from .data1d import _Data1dDigger
 
-_all_Converters = []
+_all_Converters = ['Data1dDensityConverter']
 _all_Diggers = ['HistoryRZFDigger']
 __all__ = _all_Converters + _all_Diggers
+
+
+class Data1dDensityConverter(Converter):
+    '''
+    Radial Time Density of Particles
+
+    Source:  module shmilee_diag, ddensity(0:mpsi,2,nspecies).
+       The 2d array is density[r,time].
+    '''
+    __slots__ = []
+    nitems = '?'
+    itemspattern = ['^(?P<section>data1d)_density\.out$',
+                    '.*/(?P<section>data1d)_density\.out$']
+    _datakeys = (
+        # 1. parameters
+        'ndstep', 'mpsi+1', 'nspecies', 'nhybrid',
+        # 2. data
+        'i-density', 'e-density', 'f-density')
+
+    def _convert(self):
+        '''Read 'data1d_density.out'.'''
+        with self.rawloader.get(self.files) as f:
+            clog.debug("Read file '%s'." % self.files)
+            outdata = f.readlines()
+
+        sd, outsd = {}, {}
+        clog.debug("Filling datakeys: %s ..." % str(self._datakeys[:4]))
+        for i, key in enumerate(self._datakeys[:4]):
+            sd.update({key: int(outdata[i].strip())})
+
+        outdata = np.array([float(n.strip()) for n in outdata[4:]])
+        ndata = sd['mpsi+1'] * sd['nspecies']
+        if len(outdata) // ndata != sd['ndstep']:
+            clog.debug("Filling datakeys: %s ..." % 'ndstep')
+            sd.update({'ndstep': len(outdata) // ndata})
+            outdata = outdata[:sd['ndstep'] * ndata]
+        # reshape outdata
+        outdata = outdata.reshape((ndata, sd['ndstep']), order='F')
+        # fill data
+        clog.debug("Filling datakeys: %s ..." % 'i-density')
+        index0, index1 = 0, sd['mpsi+1']
+        outsd.update({'i-density': outdata[index0:index1, :]})
+        if sd['nspecies'] > 1 and sd['nhybrid'] > 0:
+            clog.debug("Filling datakeys: %s ..." % 'e-density')
+            index0, index1 = index1, index1 + sd['mpsi+1']
+            outsd.update({'e-density': outdata[index0:index1, :]})
+        if ((sd['nspecies'] == 2 and sd['nhybrid'] == 0) or
+                (sd['nspecies'] == 3 and sd['nhybrid'] > 0)):
+            clog.debug("Filling datakeys: %s ..." % 'f-density')
+            index0, index1 = index1, index1 + sd['mpsi+1']
+            outsd.update({'f-density': outdata[index0:index1, :]})
+
+        # outsd.update(sd) Duplicate keys in Data1dConverter
+        return outsd
 
 
 class HistoryRZFDigger(Digger):
@@ -113,6 +168,7 @@ class HistoryRZFDigger(Digger):
         hisres_err = hiszf[start:end].std()
         s1dres = s1dzf[start:end].sum()/(end-start)
         s1dres_err = s1dzf[start:end].std()
+        dlog.parm("Get history, data1d residual: %.6f, %.6f" % (hisres, s1dres))
         # 2 gamma
         mx = time[:start]
         hisgamma, hisfity = self.__gamma(hiszf[:start], mx, hisres, 'history')
@@ -127,10 +183,9 @@ class HistoryRZFDigger(Digger):
         _tf2, _, _pf2 = tools.fft(mx[1]-mx[0], s1dcosy)
         index = np.argmax(_pf1)
         omega1 = _tf1[index]
-        dlog.parm("Get history frequency: %s, %.6f" % (index, omega1))
         index = np.argmax(_pf2)
         omega2 = _tf2[index]
-        dlog.parm("Get data1d frequency: %s, %.6f" % (index, omega2))
+        dlog.parm("Get history, data1d omega: %.6f, %.6f" % (omega1, omega2))
         return dict(
             time=time,
             hiszf=hiszf,
