@@ -16,8 +16,7 @@ from .. import __gversion__
 from ..glogger import getGLogger
 from ..loaders import is_rawloader, get_rawloader, is_pckloader, get_pckloader
 from ..savers import is_pcksaver, get_pcksaver
-from ..cores.exporter import (TmplLoader, ContourfExporter, LineExporter,
-                              SharexTwinxExporter, Z111pExporter)
+from ..cores.exporter import Exporter
 from ..visplters import get_visplter, is_visplter
 
 __all__ = ['Processor']
@@ -48,9 +47,10 @@ class Processor(object):
         figlabels/kwargstr digged in ressaver or resfilesaver
         like 'group/fignum/a=1,b=2'
 
-    tmplloader: loader of exporter templates
-    exportertemplates: list
-        exporter templates supported
+    exporters: dict
+        exporters generated
+    exporttemplates: list
+        templates of generated exporters
 
     Notes
     -----
@@ -536,30 +536,27 @@ class Processor(object):
 
     # # Start Export Part
 
-    __slots__.extend(['_tmplloader', '_exportertemplates', '_exporters_lib'])
-    ExporterCores = [ContourfExporter, LineExporter,
-                     SharexTwinxExporter, Z111pExporter]
-
-    def _get_tmplloader(self):
-        return self._tmplloader
-
-    def _set_tmplloader(self, tmplloader):
-        self._exportertemplates = []
-        self._exporters_lib = {}
-        if tmplloader:
-            self._tmplloader = tmplloader
-            for Ec in self.ExporterCores:
-                self._exporters_lib.update({ec.template: ec
-                                            for ec in Ec.generate_cores(tmplloader)})
-            self._exportertemplates = sorted(self._exporters_lib.keys())
-        else:
-            self._tmplloader = None
-
-    tmplloader = property(_get_tmplloader, _set_tmplloader)
+    ExporterCores = [Exporter]
+    exporters = {pt: Exporter(pt) for pt in Exporter.template_available}
+    _exporttemplates = list(Exporter.template_available)
 
     @property
-    def exportertemplates(self):
-        return self._exportertemplates
+    def exporttemplates(self):
+        return self._exporttemplates
+
+    def _get_exporter(self, post_tmpl):
+        if post_tmpl in self._exporttemplates:
+            return self.exporters[post_tmpl]
+        else:
+            try:
+                ecore = Exporter(post_tmpl)
+            except Exception:
+                pass
+            else:
+                self.exporters[post_tmpl] = ecore
+                self._exporttemplates.append(post_tmpl)
+                return ecore
+        return None
 
     def export(self, figlabel, what='axes', fmt='dict',
                callback=None, **kwargs):
@@ -592,8 +589,8 @@ class Processor(object):
             if what == 'axes':
                 label_kw, res, tmpl = self.dig(
                     figlabel, callback=callback, post=True, **kwargs)
-                if tmpl in self.exportertemplates:
-                    exportcore = self._exporters_lib[tmpl]
+                exportcore = self._get_exporter(tmpl)
+                if exportcore:
                     return exportcore.export(
                         res, otherinfo=dict(status=200,
                                             figlabel=figlabel,
@@ -603,10 +600,10 @@ class Processor(object):
                     status, reason = 500, 'invalid template'
             elif what == 'options':
                 digcore = self._availablelabels_lib[figlabel]
-                if digcore.post_template in self.exportertemplates:
+                exportcore = self._get_exporter(digcore.post_template)
+                if exportcore:
                     if digcore.kwoptions is None:
                         a, b, c = self.dig(figlabel, post=False, **kwargs)
-                    exportcore = self._exporters_lib[digcore.post_template]
                     return exportcore.export_options(
                         digcore.kwoptions, otherinfo=dict(status=200,
                                                           figlabel=figlabel,
@@ -616,29 +613,30 @@ class Processor(object):
         else:
             plog.error("%s: Figure %s not found!" % (self.name, figlabel))
             status, reason = 404, 'figlabel not found'
-        exportcore = self._exporters_lib[self.exportertemplates[0]]
+        exportcore = self._get_exporter('tmpl_line')
         return exportcore.fmt_export(
             dict(status=status, reason=reason, figlabel=figlabel), fmt=fmt)
 
     def export_doc(self, template, see='help'):
         '''
-        help(exportercore.export) or exportercore.export.__doc__
+        see docstring of :meth:`exportercore._export_*template*`
 
         Parameters
         ----------
         see: str
             'help', 'print' or 'return'
         '''
-        if template not in self.exportertemplates:
+        if template not in Exporter.template_available:
             plog.error("%s: Template %s not found!" % (self.name, template))
             return
-        exportcore = self._exporters_lib[template]
+        exportcore = self._get_exporter(template)
+        meth = getattr(exportcore, '_export_%s' % template)
         if see == 'help':
-            help(exportcore.export)
+            help(meth)
         elif see == 'print':
-            print(exportcore.export.__doc__)
+            print(meth.__doc__)
         elif see == 'return':
-            return exportcore.export.__doc__
+            return meth.__doc__
         else:
             pass
 
@@ -706,17 +704,17 @@ class Processor(object):
         # i = (' rawloader: %r\n pcksaver: %r\n'
         #     ' pckloader: %r\n ressaver: %r\n resfilesaver: %r\n'
         #     ' resloader: %r\n resfileloader: %r\n'
-        #     ' tmplloader: %r\n visplter: %r'
+        #     ' visplter: %r'
         #     % (self.rawloader, self.pcksaver,
         #        self.pckloader, self.ressaver, self.resfilesaver,
         #        self.resloader, self.resfileloader,
-        #        self.tmplloader, self.visplter))
+        #        self.visplter))
         i = (' rawloader: %r\n pckloader: %r\n'
              ' resloader: %r\n resfileloader: %r\n'
-             ' tmplloader: %r\n visplter: %r'
+             ' visplter: %r'
              % (self.rawloader, self.pckloader,
                 self.resloader, self.resfileloader,
-                self.tmplloader, self.visplter))
+                self.visplter))
         return '<\n {0}.{1} object at {2},\n{3}\n>'.format(
             self.__module__, type(self).__name__, hex(id(self)), i)
 
@@ -834,8 +832,6 @@ class Processor(object):
             except Exception:
                 plog.error("%s: Failed to set ressaver object!"
                            % self.name, exc_info=1)
-        # set tmplloader and exporter templates, cores
-        self.tmplloader = TmplLoader()
         # set visplter
         if add_visplter:
             self.visplter = get_visplter(str(add_visplter) + path)

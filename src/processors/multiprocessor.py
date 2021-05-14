@@ -404,15 +404,15 @@ class MultiProcessor(Processor):
                     couple_todo.append((idx, figlabel, kwargs, _couple))
                 elif what == 'options':
                     digcore = self._availablelabels_lib[figlabel]
-                    if digcore.post_template in self.exportertemplates:
+                    exportcore = self._get_exporter(digcore.post_template)
+                    if exportcore:
                         if digcore.kwoptions is None:
                             # todo
                             multi_results.append(idx)
                             couple_todo.append(
                                 (idx, figlabel, kwargs, _couple))
                         else:
-                            ecore = self._exporters_lib[digcore.post_template]
-                            resopt = ecore.export_options(
+                            resopt = exportcore.export_options(
                                 digcore.kwoptions, otherinfo=dict(
                                     status=200, figlabel=figlabel))
                             # add
@@ -437,8 +437,8 @@ class MultiProcessor(Processor):
                     callback=callback, post=True)
                 for jdx, (label_kw, res, tmpl) in enumerate(multi_dig_res):
                     idx, figlabel, kwargs = couple_todo[jdx][:3]
-                    if tmpl in self.exportertemplates:
-                        exportcore = self._exporters_lib[tmpl]
+                    exportcore = self._get_exporter(tmpl)
+                    if exportcore:
                         # add
                         assert multi_results[idx] == idx
                         multi_results[idx] = exportcore.export(
@@ -458,14 +458,14 @@ class MultiProcessor(Processor):
                     *_couple_dig, post=False, whichlock=whichlock)
                 for idx, figlabel, kwargs, _couple in couple_todo:
                     digcore = self._availablelabels_lib[figlabel]
-                    exportcore = self._exporters_lib[digcore.post_template]
+                    exportcore = self._get_exporter(digcore.post_template)
                     # add
                     assert multi_results[idx] == idx
                     multi_results[idx] = exportcore.export_options(
                         digcore.kwoptions, otherinfo=dict(
                             status=200, figlabel=figlabel))
         # format multi_results
-        exportcore = self._exporters_lib[self.exportertemplates[0]]
+        exportcore = self._get_exporter('tmpl_line')
         return exportcore.fmt_export(multi_results, fmt=fmt)
 
     # # End Export Part
