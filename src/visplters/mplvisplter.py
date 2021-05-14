@@ -252,6 +252,11 @@ class MatplotlibVisplter(BaseVisplter):
                     layoutkw['%slim' % x] = _limd[x]
                     data.append([order, 'contourf', (X, Y, Z, 100),
                                  dict(zdir=x, offset=_offsetd[x])])
+        if plot_method in ('pcolor', 'pcolormesh'):
+            if 'shading' not in plot_method_kwargs:
+                # shading='flat' deprecated since 3.3
+                # https://github.com/matplotlib/matplotlib/issues/18595
+                plot_method_kwargs['shading'] = 'auto'
         if clabel_levels:
             # order 2
             data.append([2, 'contour', (X, Y, Z, clabel_levels), {}])
