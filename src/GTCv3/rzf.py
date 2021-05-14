@@ -14,7 +14,7 @@ from .history import field_tex_str
 from .data1d import _Data1dDigger
 
 _all_Converters = ['Data1dDensityConverter']
-_all_Diggers = ['HistoryRZFDigger']
+_all_Diggers = ['Data1dDensityDigger', 'HistoryRZFDigger']
 __all__ = _all_Converters + _all_Diggers
 
 
@@ -70,6 +70,46 @@ class Data1dDensityConverter(Converter):
 
         # outsd.update(sd) Duplicate keys in Data1dConverter
         return outsd
+
+
+class Data1dDensityDigger(_Data1dDigger):
+    '''density of ion, electron, fastion.'''
+    __slots__ = ['particle']
+    itemspattern = ['^(?P<s>data1d)/(?P<particle>(?:i|e|f))-density']
+    commonpattern = ['gtc/tstep', 'gtc/ndiag']
+    post_template = 'tmpl_z111p'
+    __particles = dict(i='ion', e='electron', f='fastion')
+
+    def _set_fignum(self, numseed=None):
+        self.particle = self.__particles[self.section[1]]
+        self._fignum = '%s_density' % self.particle
+        self.kwoptions = None
+
+    def _get_title(self):
+        return r'%s $\delta n(r,t)$' % self.particle
+
+    def _dig(self, kwargs):
+        results, acckwargs = super(Data1dDensityDigger, self)._dig(kwargs)
+        # X, Y, X, ylabel, title
+        X, Z = results['X'], results['Z']
+        index = [tools.argrelextrema(Z[:, i]) for i in range(Z.shape[1])]
+        extrema = [np.abs(Z[index[i], i]).mean() for i in range(Z.shape[1])]
+        results['extrema'] = np.array(extrema)
+        return results, acckwargs
+
+    def _post_dig(self, results):
+        r = results
+        lb = r'%s $\delta n(r)$, amplitude $A$' % self.particle
+        ax = {'left': [], 'right': [(r['extrema'], lb)], 'rylabel': r'$A$'}
+        zip_results = [
+            ('tmpl_contourf', 111, dict(
+                X=r['X'], Y=r['Y'], Z=r['Z'], title=r['title'],
+                xlabel=r'time($R_0/c_s$)', ylabel=r['ylabel'])),
+            ('tmpl_sharextwinx', 111, dict(
+                X=r['X'], YINFO=[ax],
+                xlim=[r['X'][0], r['X'][-1]]))
+        ]
+        return dict(zip_results=zip_results)
 
 
 class HistoryRZFDigger(Digger):
@@ -168,7 +208,8 @@ class HistoryRZFDigger(Digger):
         hisres_err = hiszf[start:end].std()
         s1dres = s1dzf[start:end].sum()/(end-start)
         s1dres_err = s1dzf[start:end].std()
-        dlog.parm("Get history, data1d residual: %.6f, %.6f" % (hisres, s1dres))
+        dlog.parm("Get history, data1d residual: %.6f, %.6f"
+                  % (hisres, s1dres))
         # 2 gamma
         mx = time[:start]
         hisgamma, hisfity = self.__gamma(hiszf[:start], mx, hisres, 'history')
