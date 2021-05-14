@@ -250,7 +250,7 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
         For :meth:`visplter.tmpl_z111p`.
         '''
         debug_kw = {}
-        for rt in results['zip_results']:
+        for rt in results.get('zip_results', []):
             meth = getattr(self, '_export_%s' % rt[0])
             _res, _dekw = meth(rt[2], kwargs)
             if rt[2] is not _res:
