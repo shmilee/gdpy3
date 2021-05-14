@@ -221,7 +221,7 @@ class SnapshotPdfDigger(Digger):
                     '^(?P<s>snap\d{5,7})/nvgrid',
                     '^(?P<s>snap\d{5,7})/T_up']
     commonpattern = ['gtc/tstep']
-    post_template = 'tmpl_z111p'
+    post_template = ('tmpl_z111p', 'tmpl_sharextwinx')
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_pdf' % self.section[1]
@@ -309,7 +309,7 @@ class SnapshotFieldPoloidalDigger(Digger):
         '^(?P<s>snap\d{5,7})/poloidata-(?:x|z)']
     commonpattern = ['gtc/tstep', 'gtc/mpsi', 'gtc/arr2', 'gtc/a_minor']
     neededpattern = itemspattern + commonpattern[:-2]
-    post_template = 'tmpl_z111p'
+    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_poloi' % self.section[1]
@@ -380,7 +380,7 @@ class SnapshotFieldSpectrumDigger(Digger):
         '^(?P<s>snap\d{5,7})/mtgrid\+1',
         '^(?P<s>snap\d{5,7})/mtoroidal']
     commonpattern = ['gtc/tstep']
-    post_template = 'tmpl_z111p'
+    post_template = ('tmpl_z111p', 'tmpl_line')
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_spectrum' % self.section[1]
@@ -502,6 +502,7 @@ class SnapshotTimeFieldSpectrumDigger(SnapshotFieldSpectrumDigger):
         + '/fluxdata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))',
         '^(?P<s>snap)\d{5,7}/mtgrid\+1',
         '^(?P<s>snap)\d{5,7}/mtoroidal']
+    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
 
     def _dig(self, kwargs):
         '''*tcutoff*: [t0,t1], t0 t1 float
@@ -597,7 +598,7 @@ class SnapshotFieldProfileDigger(Digger):
         '^(?P<s>snap\d{5,7})/mpsi\+1',
         '^(?P<s>snap\d{5,7})/mtgrid\+1']
     commonpattern = ['gtc/tstep']
-    post_template = 'tmpl_z111p'
+    post_template = ('tmpl_z111p', 'tmpl_sharextwinx')
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_profile' % self.section[1]

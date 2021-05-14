@@ -42,8 +42,9 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         full figure label, :attr:`group`/:attr:`fignum`
     kwoptions: dict or None
         kwargs option info for building widgets
-    post_template: str
-        chosen template in :meth:`post_dig`
+    post_template: str or tuple
+        post results template for :meth:`visplter.create_template_figure`
+        tuple, should be ('tmpl_z111p', 'other zipped tmpl_...', ...)
     '''
     __slots__ = ['_group', '_fignum', 'kwoptions']
     nitems = '?'

@@ -318,7 +318,7 @@ class HistoryFieldModeDigger(_TimeCutoff):
                                'qiflux', 'rgiflux']]
     neededpattern = itemspattern + commonpattern[:-2]
     numseeds = [1, 2, 3, 4, 5, 6, 7, 8]
-    post_template = 'tmpl_z111p'
+    post_template = ('tmpl_z111p', 'tmpl_line')
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_mode%s' % (self.section[1], numseed)

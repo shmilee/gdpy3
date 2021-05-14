@@ -77,7 +77,7 @@ class Data1dDensityDigger(_Data1dDigger):
     __slots__ = ['particle']
     itemspattern = ['^(?P<s>data1d)/(?P<particle>(?:i|e|f))-density']
     commonpattern = ['gtc/tstep', 'gtc/ndiag']
-    post_template = 'tmpl_z111p'
+    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_sharextwinx')
     __particles = dict(i='ion', e='electron', f='fastion')
 
     def _set_fignum(self, numseed=None):
@@ -119,7 +119,7 @@ class HistoryRZFDigger(Digger):
     commonpattern = ['history/ndstep', 'gtc/tstep', 'gtc/ndiag',
                      'gtc/rzf_bstep', 'gtc/rzf_kr', 'gtc/rho0',
                      'data1d/field00-phi']
-    post_template = 'tmpl_z111p'
+    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
 
     def _set_fignum(self, numseed=None):
         self._fignum = 'residual_zf'

@@ -90,7 +90,7 @@ class SimugridQshearDigger(Digger):
                     r'^(?P<section>simugrid)/sprpsi',
                     r'^(?P<section>simugrid)/sprgpsi']
     commonpattern = ['equilibrium/1d-data']
-    post_template = 'tmpl_z111p'
+    post_template = ('tmpl_z111p', 'tmpl_line')
 
     def _set_fignum(self, numseed=None):
         self._fignum = 'q_shear(r)'
@@ -163,7 +163,7 @@ class SimugridParticleDigger(SimugridQshearDigger):
     commonpattern = ['simugrid/psimesh', 'simugrid/sprpsi',
                      'equilibrium/1d-data', 'gtc/rho0']
     __particles = dict(i='ion', e='electron', f='fastion')
-    post_template = 'tmpl_z111p'
+    post_template = ('tmpl_z111p', 'tmpl_line')
 
     def _set_fignum(self, numseed=None):
         self._fignum = self.__particles[self.section[1]]

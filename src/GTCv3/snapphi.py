@@ -163,7 +163,7 @@ class BreakDigDoc(Digger):
 class SnapPhiCorrLenDigger(BreakDigDoc, SnapPhiZetaPsiDigger):
     '''phi(zeta,psi) correlation (d_zeta, d_psi) at at theta=j/mtdiag*2pi'''
     __slots__ = []
-    post_template = 'tmpl_z111p'
+    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
 
     def _set_fignum(self, numseed=None):
         super(SnapPhiCorrLenDigger, self)._set_fignum(numseed=numseed)
@@ -349,7 +349,7 @@ class SnapPhiSpectrumDigger(BreakDigDoc, SnapPhiZetaPsiDigger,
                     '^(?P<s>snap\d{5})/mtoroidal',
                     '^(?P<s>snap\d{5})/mzeach',
                     '^(?P<s>snap\d{5})/mpsi\+1']
-    post_template = 'tmpl_z111p'
+    post_template = ('tmpl_z111p', 'tmpl_line')
 
     def _set_fignum(self, numseed=None):
         super(SnapPhiSpectrumDigger, self)._set_fignum(numseed=numseed)

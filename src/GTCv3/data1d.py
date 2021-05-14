@@ -320,7 +320,7 @@ class _Data1dMeanDigger(_Data1dDigger):
     :meth:`_dig` for Data1dMeanFluxDigger, Data1dMeanFieldDigger
     '''
     __slots__ = []
-    post_template = 'tmpl_z111p'
+    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
 
     def _dig(self, kwargs):
         '''*mean_select*: str 'iflux' or 'peak'
@@ -492,7 +492,7 @@ class _Data1dFFTDigger(_Data1dDigger):
     :meth:`_dig` for Data1dFFTFluxDigger, Data1dFFTFieldDigger
     '''
     __slots__ = []
-    post_template = 'tmpl_z111p'
+    post_template = ('tmpl_z111p', 'tmpl_line')
 
     def _dig(self, kwargs):
         '''*fft_tselect*: [t0,t1], t0 float
