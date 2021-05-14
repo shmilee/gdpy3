@@ -4,7 +4,7 @@
 
 import unittest
 
-from ..exporter import TmplLoader, ContourfExporter, LineExporter
+from ..exporter import Exporter
 
 
 class TestDigger(unittest.TestCase):
@@ -12,27 +12,21 @@ class TestDigger(unittest.TestCase):
     Test class Exporter
     '''
 
-    def setUp(self):
-        self.ldr = TmplLoader()
-
-    def test_contourf_Exporter_core(self):
-        cores = ContourfExporter.generate_cores(self.ldr)
-        self.assertEqual(len(cores), 1)
-        self.assertEqual(cores[0].template, 'tmpl_contourf')
-        self.assertEqual(cores[0].export(
+    def test_tmpl_contourf_exporter(self):
+        core = Exporter('tmpl_contourf')
+        self.assertEqual(core.template, 'tmpl_contourf')
+        self.assertEqual(core.export(
             {}, {}, plot_method='plot_surface')['results']['plot_method'],
             'plot_surface')
-        self.assertEqual(len(cores[0].export_options({})['visoptions']), 4)
+        self.assertEqual(len(core.export_options({})['visoptions']), 5)
 
-    def test_line_exporter_core(self):
-        cores = LineExporter.generate_cores(self.ldr)
-        self.assertEqual(len(cores), 1)
-        self.assertEqual(cores[0].template, 'tmpl_line')
-        self.assertEqual(cores[0].export(
-            {})['template'], 'tmpl_line')
+    def test_tmpl_line_exporter(self):
+        core = Exporter('tmpl_line')
+        self.assertEqual(core.template, 'tmpl_line')
+        self.assertEqual(core.export({})['template'], 'tmpl_line')
 
-    def test_exporter_core_fmt(self):
-        cores = LineExporter.generate_cores(self.ldr)
-        self.assertEqual(type(cores[0].export({}, fmt='dict')), dict)
-        self.assertEqual(type(cores[0].export({}, fmt='pickle')), bytes)
-        self.assertEqual(type(cores[0].export({}, fmt='json')), str)
+    def test_exporter_fmt(self):
+        core = Exporter('tmpl_line')
+        self.assertEqual(type(core.export({}, fmt='dict')), dict)
+        self.assertEqual(type(core.export({}, fmt='pickle')), bytes)
+        self.assertEqual(type(core.export({}, fmt='json')), str)

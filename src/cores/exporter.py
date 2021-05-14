@@ -8,9 +8,7 @@ Contains Exporter core class.
 from .base import BaseCore, AppendDocstringMeta
 from ..glogger import getGLogger
 
-__all__ = ['TmplLoader',
-           'ContourfExporter', 'LineExporter',
-           'SharexTwinxExporter', 'Z111pExporter']
+__all__ = ['Exporter']
 elog = getGLogger('E')
 
 
@@ -21,21 +19,17 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
 
     Attributes
     ----------
-    template: template name, like 'tmpl_line'
+    template: str
+        template name, like 'tmpl_line', 'tmpl_z111p', ...
     '''
-    __slots__ = []
-    nitems = '?'
-    visoptions = {}
-
-    @property
-    def template(self):
-        return self.items[0]
-
-    @classmethod
-    def generate_cores(cls, tmplloader):
-        '''Return generated Core instances for *tmplloader*.'''
-        return super(Exporter, cls).generate_cores(
-            tmplloader, tmplloader.templates)
+    __slots__ = ['template', '_z111p_tmpls', 'visoptions']
+    # :attr:`visplter.template_available`
+    template_available = (
+        'tmpl_contourf',
+        'tmpl_line',
+        'tmpl_sharextwinx',
+        'tmpl_z111p',  # last one
+    )
 
     def fmt_export(self, data, fmt):
         '''Convert *data* format from dict to *fmt*.'''
@@ -62,15 +56,42 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
         else:
             pass
 
+    def __init__(self, post_tmpl):
+        '''Core instances for *post_tmpl*.'''
+        _z111p_tmpls = []
+        if isinstance(post_tmpl, str):
+            post_tmpl = [post_tmpl]
+        elif isinstance(post_tmpl, tuple):
+            if post_tmpl[0] != 'tmpl_z111p':
+                raise ValueError(
+                    "tuple post_template must start with 'tmpl_z111p', "
+                    "Not '%s'!" % post_tmpl[0])
+        else:
+            raise ValueError('Invalid type of post_template: %s' % post_tmpl)
+        for tmpl in post_tmpl:
+            if tmpl not in self.template_available:
+                raise ValueError('Unavailable template: %s' % tmpl)
+        super(Exporter, self).__init__(
+            None, ('tmpl',), post_tmpl[:1], post_tmpl[1:])
+        self.template = self.items[0]
+        self._z111p_tmpls = self.common
+        self.visoptions = {}
+        for tmpl in post_tmpl:
+            self.visoptions.update(getattr(self, '_visoptions_%s' % tmpl))
+
     def str_export_kwargs(self, kwargs):
         '''
         Turn :meth:`export` *kwargs* to str.
-        Check them in :meth:`export`.__doc__, and sort by key.
+        Check them in :meth:`_export_tmpl_xxx`.__doc__, and sort by key.
+        Check all `tmpl_xxx` in :attr:`template` and :attr:`_z111p_tmpls`.
         Return string like, "k1=1,k2=[2],k3='abc'".
         '''
-        ckkws = ['%s=%r' % (k, list(v) if isinstance(v, tuple) else v)
-                 for k, v in kwargs.items()
-                 if self.export.__doc__.find('*%s*' % k) > 0]
+        ckkws = []
+        for tmpl in self.items + self.common:
+            meth = getattr(self, '_export_%s' % tmpl)
+            ckkws.extend(['%s=%r' % (k, list(v) if isinstance(v, tuple) else v)
+                          for k, v in kwargs.items()
+                          if meth.__doc__.find('*%s*' % k) > 0])
         return ','.join(sorted(ckkws))
 
     def export(self, results, otherinfo={}, fmt='dict', **kwargs):
@@ -85,17 +106,14 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
         fmt: format 'dict', 'pickle' or 'json'
         kwargs: visplter template options, like colorbar, hspace etc.
         '''
-        results, viskwargs = self._export(results, kwargs)
+        meth = getattr(self, '_export_%s' % self.template)
+        results, viskwargs = meth(results, kwargs)
         viskwargstr = self.str_export_kwargs(viskwargs)
         if viskwargstr and 'accfiglabel' in otherinfo:
             otherinfo['accfiglabel'] = ','.join((
                 otherinfo['accfiglabel'], viskwargstr))
         return self.fmt_export(
             dict(results=results, template=self.template, **otherinfo), fmt)
-
-    def _export(self, results, kwargs):
-        '''Return results and viskwargs.'''
-        raise NotImplementedError()
 
     def export_options(self, digoptions, otherinfo={}, fmt='dict'):
         '''
@@ -111,38 +129,8 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
                  visoptions=self.visoptions,
                  **otherinfo), fmt)
 
-
-class TmplLoader(object):
-    path = 'tmpl/lodaer'
-    templates = [
-        'tmpl_contourf',
-        'tmpl_line',
-        'tmpl_sharextwinx',
-        'tmpl_z111p',
-    ]
-
-    def __repr__(self):
-        return '<{0} object at {1} for {2}>'.format(
-            type(self).__name__, hex(id(self)), self.path)
-
-
-class ContourfExporter(Exporter):
-    '''
-    For :meth:`visplter.tmpl_contourf`.
-
-    Template
-    --------
-    .. code::
-
-               title
-             +----------+ +-+
-      ylabel | contourf | |-|colorbar
-             +----------+ +-+
-               xlabel
-    '''
-    __slots__ = []
-    itemspattern = ['^(?P<section>tmpl)_contourf$']
-    visoptions = dict(
+    # 1. tmpl_contourf
+    _visoptions_tmpl_contourf = dict(
         plot_method=dict(
             widget='Dropdown',
             options=['contourf', 'pcolor', 'pcolormesh', 'plot_surface'],
@@ -169,10 +157,10 @@ class ContourfExporter(Exporter):
             description='plot surface shadow:')
     )
 
-    def _export(self, results, kwargs):
+    def _export_tmpl_contourf(self, results, kwargs):
         '''
-        kwargs
-        ------
+        contourf kwargs
+        ---------------
         kwargs passed on to :meth:`visplter.tmpl_contourf`
         *plot_method*, *plot_method_args*, *plot_method_kwargs*,
         *colorbar*, *grid_alpha*, *plot_surface_shadow*
@@ -192,39 +180,11 @@ class ContourfExporter(Exporter):
                 and 'contourf_levels' in kwargs and k not in results):
             results[k] = [int(kwargs.get('contourf_levels', 100))]
             debug_kw[k] = results[k]
-        elog.debug("Some template contourf kwargs: %s" % debug_kw)
+        elog.debug("Some tmpl_contourf kwargs: %s" % debug_kw)
         return results, debug_kw
 
-
-class LineExporter(Exporter):
-    '''
-    For :meth:`visplter.tmpl_line`.
-
-    Template
-    --------
-    .. code::
-
-               title
-             +--------+
-      ylabel | Line2D |
-             +--------+
-               xlabel
-      or
-               title
-               /|\ 
-             /  |  \ 
-           /    |    \ 
-          |    / \    |
-          |  /     \  | zlabel
-          |/  Line   \|
-           \   3D    /
-      xlabel \     / ylabel
-               \ /
-
-    '''
-    __slots__ = []
-    itemspattern = ['^(?P<section>tmpl)_line$']
-    visoptions = dict(
+    # 2. tmpl_line
+    _visoptions_tmpl_line = dict(
         ylabel_rotation=dict(
             widget='IntSlider',
             rangee=(0, 360, 1),
@@ -232,10 +192,10 @@ class LineExporter(Exporter):
             description='ylabel rotation:')
     )
 
-    def _export(self, results, kwargs):
+    def _export_tmpl_line(self, results, kwargs):
         '''
-        kwargs
-        ------
+        line kwargs
+        -----------
         kwargs passed on to :meth:`visplter.tmpl_line`
         *ylabel_rotation*: str or int
             default 'vertical'
@@ -246,29 +206,11 @@ class LineExporter(Exporter):
                 results[k] = kwargs[k]
             if k in results:
                 debug_kw[k] = results[k]
-        elog.debug("Some template line kwargs: %s" % debug_kw)
+        elog.debug("Some tmpl_line kwargs: %s" % debug_kw)
         return results, debug_kw
 
-
-class SharexTwinxExporter(Exporter):
-    '''
-    For :meth:`visplter.tmpl_sharextwinx`.
-
-    Template
-    --------
-    .. code::
-
-               title
-             +--------+
-      ylabel | axes 1 | ylabel
-             +--------+
-      ylabel | axes 2 | ylabel
-             +--------+
-               xlabel
-    '''
-    __slots__ = []
-    itemspattern = ['^(?P<section>tmpl)_sharextwinx$']
-    visoptions = dict(
+    # 3. tmpl_sharextwinx
+    _visoptions_tmpl_sharextwinx = dict(
         hspace=dict(
             widget='FloatSlider',
             rangee=(0, 0.5, 0.01),
@@ -281,10 +223,10 @@ class SharexTwinxExporter(Exporter):
             description='ylabel rotation:')
     )
 
-    def _export(self, results, kwargs):
+    def _export_tmpl_sharextwinx(self, results, kwargs):
         '''
-        kwargs
-        ------
+        sharextwinx kwargs
+        ------------------
         kwargs passed on to :meth:`visplter.tmpl_sharextwinx`
         *hspace*: float
             subplot.hspace, default 0.02
@@ -297,16 +239,22 @@ class SharexTwinxExporter(Exporter):
                 results[k] = kwargs[k]
             if k in results:
                 debug_kw[k] = results[k]
-        elog.debug("Some template sharextwinx kwargs: %s" % debug_kw)
+        elog.debug("Some tmpl_sharextwinx kwargs: %s" % debug_kw)
         return results, debug_kw
 
+    # 4. tmpl_z111p, self.common
+    _visoptions_tmpl_z111p = {}
 
-class Z111pExporter(Exporter):
-    '''
-    For :meth:`visplter.tmpl_z111p`.
-    '''
-    __slots__ = []
-    itemspattern = ['^(?P<section>tmpl)_z111p$']
-
-    def _export(self, results, kwargs):
-        return results, {}
+    def _export_tmpl_z111p(self, results, kwargs):
+        '''
+        For :meth:`visplter.tmpl_z111p`.
+        '''
+        debug_kw = {}
+        for rt in results['zip_results']:
+            meth = getattr(self, '_export_%s' % rt[0])
+            _res, _dekw = meth(rt[2], kwargs)
+            if rt[2] is not _res:
+                rt[2] = _res
+            debug_kw.update(_dekw)
+        elog.debug("Some tmpl_z111p kwargs: %s" % debug_kw)
+        return results, debug_kw
