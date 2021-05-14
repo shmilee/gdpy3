@@ -545,7 +545,7 @@ class SnapshotTimeFieldSpectrumDigger(SnapshotFieldSpectrumDigger):
                 dlog.warning('Cannot cutoff: %s <= time <= %s!' % (t0, t1))
         YT1, YT2, mY, pY = [], [], [], []
         dlog.info('%d snapshot fluxdata to do ...' % (i1 - i0))
-        _idxlog = (i1 - i0) // 10
+        _idxlog = max(1, (i1 - i0) // 10)
         for idx in range(i0, i1):
             if idx % _idxlog == 0 or idx == i1 - 1:
                 dlog.info('Calculating [%d/%d] %s' % (
