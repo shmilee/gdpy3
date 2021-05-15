@@ -202,7 +202,7 @@ class HistoryRZFDigger(Digger):
                               value=[time[start], time[end]],
                               description='residual time:'))
         restime = [time[start], time[end]]
-        acckwargs = {ipsi: ipsi, 'norm': norm, 'res_time': restime}
+        acckwargs = {'ipsi': ipsi, 'norm': norm, 'res_time': restime}
         # 1 res
         hisres = hiszf[start:end].sum()/(end-start)
         hisres_err = hiszf[start:end].std()
