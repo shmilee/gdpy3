@@ -28,12 +28,15 @@ RUN echo "deb $DEBIAN_MIRROR $DEBIAN_CODENAME main contrib" > /etc/apt/sources.l
 #  libfreetype6 libpng16-16 pkg-config libfreetype6-dev libpng-dev \
 #  pip3 --no-cache-dir install -i ${PIP_INDEX_URL} matplotlib==3.0.3
 
-RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} screeninfo==0.6.3
+RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} -U setuptools \
+    && pip3 --no-cache-dir install -i ${PIP_INDEX_URL} screeninfo==0.6.3
 
 RUN apt-get update \
     && apt-get install -y curl libcurl3-gnutls libjpeg62-turbo gcc \
         make python3-dev libcurl4-gnutls-dev libjpeg62-turbo-dev libpng-dev \
-    && curl -fLC - --retry 3 --retry-delay 3 -o /tmp/libsixel-1.8.6.tar.gz https://github.com/saitoha/libsixel/archive/v1.8.6.tar.gz \
+    && CPROXY='--socks5 10.12.74.126:8087' \
+    && curl -fLC - --retry 3 --retry-delay 3 ${CPROXY} -o /tmp/libsixel-1.8.6.tar.gz \
+        https://github.com/saitoha/libsixel/archive/v1.8.6.tar.gz \
     && tar zxvf /tmp/libsixel-1.8.6.tar.gz -C /tmp/ \
     && cd /tmp/libsixel-1.8.6/ \
     && ./configure --disable-python --prefix=/usr/local \
