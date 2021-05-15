@@ -138,7 +138,7 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
             description='plot method:'),
         contourf_levels=dict(
             widget='IntSlider',
-            rangee=(50, 500, 50),
+            rangee=(20, 200, 20),
             value=100,
             description='contourf levels:'),
         colorbar=dict(
@@ -167,6 +167,13 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
         '''
         if 'plot_method' not in results:
             results['plot_method'] = 'contourf'
+        Z = results.get('Z', None)
+        if (results['plot_method'] == 'contourf'
+                and (Z is not None) and not Z.any()):
+            # all zeros
+            elog.warning("All elements are 0, use plot_method pcolormesh!")
+            results['plot_method'] = 'pcolormesh'
+            kwargs['plot_method'] = 'pcolormesh'
         debug_kw = {}
         for k in ['plot_method', 'plot_method_args',
                   'plot_method_kwargs', 'colorbar',

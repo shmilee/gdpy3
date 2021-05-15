@@ -468,7 +468,7 @@ class BaseVisplter(object):
         if plot_method not in ('contourf', 'pcolor', 'pcolormesh',
                                'plot_surface'):
             plot_method = 'contourf'
-        if not Z.any():
+        if plot_method == 'contourf' and not Z.any():
             # all zeros
             vlog.warning("All elements are 0, use plot_method pcolormesh!")
             plot_method = 'pcolormesh'
