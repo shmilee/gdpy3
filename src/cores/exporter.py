@@ -194,7 +194,7 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
     _visoptions_tmpl_line = dict(
         ylabel_rotation=dict(
             widget='IntSlider',
-            rangee=(0, 360, 1),
+            rangee=(0, 360, 10),
             value=90,
             description='ylabel rotation:')
     )
@@ -220,12 +220,12 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
     _visoptions_tmpl_sharextwinx = dict(
         hspace=dict(
             widget='FloatSlider',
-            rangee=(0, 0.5, 0.01),
+            rangee=(0, 0.5, 0.02),
             value=0.02,
             description='hspace:'),
         ylabel_rotation=dict(
             widget='IntSlider',
-            rangee=(0, 360, 1),
+            rangee=(0, 360, 10),
             value=90,
             description='ylabel rotation:')
     )
