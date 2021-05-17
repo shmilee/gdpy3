@@ -117,8 +117,9 @@ class HistoryRZFDigger(Digger):
     __slots__ = ['_fstr00']
     itemspattern = [r'^(?P<s>history)/fieldtime-phi$']
     commonpattern = ['history/ndstep', 'gtc/tstep', 'gtc/ndiag',
-                     'gtc/rzf_bstep', 'gtc/rzf_kr', 'gtc/rho0',
-                     'data1d/field00-phi']
+                     # backward compatibility v110922
+                     'gtc/(?:rzf_bstep|zfistep)', 'gtc/(?:rzf_kr|zfkrrho0)',
+                     'gtc/rho0', 'data1d/field00-phi']
     post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
 
     def _set_fignum(self, numseed=None):
@@ -139,28 +140,30 @@ class HistoryRZFDigger(Digger):
         '''
         ndstep, tstep, ndiag = self.pckloader.get_many(*self.extrakeys[:3])
         dt = tstep * ndiag
-        time = np.around(np.arange(0, ndstep) * dt, 8)
-        hist = self.pckloader.get(self.srckeys[0])
+        _time = np.around(np.arange(0, ndstep) * dt, 8)
+        _hist = self.pckloader.get(self.srckeys[0])
         bstep, kr, rho0 = self.pckloader.get_many(*self.extrakeys[3:6])
-        dat1d = self.pckloader.get(self.extrakeys[6])
-        krrho0 = kr*rho0
+        _dat1d = self.pckloader.get(self.extrakeys[6])
+        krrho0 = kr*rho0 if self.extrakeys[4] == 'rzf_kr' else kr
         if bstep % ndiag == 0:
             bindex = bstep // ndiag
-            dlog.debug('bindex=%d' % bindex)
+            dlog.parm('bindex=%d' % bindex)
         else:
             bindex = bstep // ndiag + 1
             dlog.warning('bindex=bstep/ndiag=%.3f=%d' % (bstep/ndiag, bindex))
-        while hist[1, bindex] == 0:
+        while _hist[1, bindex] == 0:
             bindex += 1
             dlog.warning('data[bindex]==0, ++bindex=%d!' % bindex)
         # cutoff data
-        time = time[bindex:]
-        hiszf = hist[1, bindex:]
-        d1dzf = dat1d[:, bindex:]
+        time = _time[bindex:]
+        hiszf = _hist[1, bindex:]
+        d1dzf = _dat1d[:, bindex:]
         # select data1d
-        mpsi = dat1d.shape[0] - 1
+        mpsi = _dat1d.shape[0] - 1
         ipsi = int(kwargs.get('ipsi', mpsi//2))
         s1dzf = d1dzf[ipsi]
+        dlog.parm('Points beside bindex: %s, %s'
+                  % (_hist[1, bindex-1:bindex+2], _dat1d[ipsi, bindex-1:bindex+2]))
         # norm
         norm = bool(kwargs.get('norm', True))
         if norm:
