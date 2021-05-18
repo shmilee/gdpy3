@@ -144,7 +144,7 @@ class HistoryRZFDigger(Digger):
         _hist = self.pckloader.get(self.srckeys[0])
         bstep, kr, rho0 = self.pckloader.get_many(*self.extrakeys[3:6])
         _dat1d = self.pckloader.get(self.extrakeys[6])
-        krrho0 = kr*rho0 if self.extrakeys[4] == 'rzf_kr' else kr
+        krrho0 = kr*rho0 if self.extrakeys[4] == 'gtc/rzf_kr' else kr
         if bstep % ndiag == 0:
             bindex = bstep // ndiag
             dlog.parm('bindex=%d' % bindex)
