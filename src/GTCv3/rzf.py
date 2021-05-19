@@ -251,15 +251,17 @@ class HistoryRZFDigger(Digger):
 
     def __gamma(self, zf, t, res, info):
         def f(x, a, b):
-            return (zf[0]-res) * np.exp(-a*(x-t[0]+1e-25)**b)+res
+            return (zf[0]-res) * np.exp(-a*(x)**b)+res
         i = tools.argrelextrema(zf, m='max')
         i = np.insert(i, 0, 0)
-        gamma, pcov, fity = tools.curve_fit(f, t[i], zf[i], fitX=t)
+        _t = t[i] - t[0]
+        _t[0] += 1e-25
+        gamma, pcov, fity = tools.curve_fit(f, _t, zf[i], fitX=t-t[0])
         dlog.parm("Get %s gamma: (%.6f, %.6f)" % (info, gamma[0], gamma[1]))
         return gamma, fity
 
     def __omega(self, zf, t, res, g0, g1, info):
-        cosy = (zf-res) * np.exp(g0*(t-t[0]+1e-25)**(g1))+res
+        cosy = (zf-res) * np.exp(g0*(t-t[0])**(g1))
         #my = tools.savgolay_filter(cosy, info='smooth zonal flow')
         index = tools.argrelextrema(cosy, m='both')
         if len(index) >= 2:
@@ -299,7 +301,7 @@ class HistoryRZFDigger(Digger):
                 r'$\omega=%.6f, nT=%.1f$' % (r['hisomega'], r['hisnT'])),
             (r['s1d_ot'], r['s1d_oy'],
                 r'$\omega=%.6f, nT=%.1f$' % (r['s1domega'], r['s1dnT']))],
-            title=r'%s remove damping' % r['zfstr'],
+            title=r'%s remove damping, residual' % r['zfstr'],
             xlim=r['gammatime'][[0, -1]], xlabel=r'time($R_0/c_s$)',
         )
         maxp1, maxp2 = max(r['his4power']), max(r['s1d4power'])
