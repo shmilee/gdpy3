@@ -20,24 +20,30 @@ Processor_Names = []
 Processor_Alias = {}
 
 
-def register_Processor(name, mod_path, alias=None):
+def register_Processor(name, mod_path, alias=None, overlay=True):
     '''
     Add processor *name* module and its alias in *Processor_Lib*.
     Processor_Lib[name] = (mod_path, {class_cache_dict})
     *mod_path* can be relative to `processors` package.
+    *overlay*, user defined processors cover processors in package.
     '''
     if name in Processor_Lib:
-        plog.warning("Processor %s is already in Processor_Lib!" % name)
-    else:
-        Processor_Lib[name] = (mod_path, {})
-        # update names
-        Processor_Names.append(name)
-        Processor_Names.sort()
-        if alias:
-            if alias in Processor_Alias:
-                plog.warning("Alias, %s: %s -> %s: %s " % (
-                    alias, Processor_Alias[alias], alias, name))
-            Processor_Alias[alias] = name
+        plog.warning("Processor '%s' is already in Processor_Lib!" % name)
+        if overlay:
+            plog.warning("Cover processor '%s': '%s' -> '%s'!"
+                         % (name, Processor_Lib[name][0], mod_path))
+        else:
+            plog.warning("Ignore processor '%s' in '%s'!" % (name, mod_path))
+            return
+    Processor_Lib[name] = (mod_path, {})
+    # update names
+    Processor_Names.append(name)
+    Processor_Names.sort()
+    if alias:
+        if alias in Processor_Alias:
+            plog.warning("Alias, %s: %s -> %s: %s " % (
+                alias, Processor_Alias[alias], alias, name))
+        Processor_Alias[alias] = name
 
 
 # GTC Processors
