@@ -244,7 +244,7 @@ class HistoryRZFDigger(Digger):
         omega2 = _tf2[index]
         dlog.parm("Get history, data1d omega: %.6f, %.6f" % (omega1, omega2))
         # use_ra, arr2 [1,mpsi-1]
-        Y1, y1label = np.array(range(0, mpsi+1)), r'mpsi'
+        Y1, y1label, ir = np.array(range(0, mpsi+1)), r'mpsi', None
         if kwargs.get('use_ra', False):
             try:
                 arr2, a = self.pckloader.get_many('gtc/arr2', 'gtc/a_minor')
@@ -254,13 +254,19 @@ class HistoryRZFDigger(Digger):
             else:
                 y1label = r'$r/a$'
                 acckwargs['use_ra'] = True
+                ir = Y1[ipsi-1]
                 # update d1dzf
                 d1dzf = d1dzf[1:mpsi, :]
+        # 5. res vs Y1/ipsi
+        idx = tools.argrelextrema(d1dzf[:, 0])[1:-1]
+        X4res = Y1[idx]
+        _res = [d1dzf[i-nside:i+nside+1].mean(axis=0) for i in idx]
+        Yd1dres = np.array([l[start:end].sum()/(end-start)/l[0] for l in _res])
         return dict(
             time=time,
             hiszf=hiszf,
             d1dzf=d1dzf, Y1=Y1, y1label=y1label,
-            s1dzf=s1dzf, ipsi=ipsi,
+            s1dzf=s1dzf, ipsi=ipsi, ir=ir,
             zfstr=r'$%s$' % self._fstr00,
             krrho0=krrho0,
             hisres=hisres, hisres_err=hisres_err,
@@ -273,6 +279,7 @@ class HistoryRZFDigger(Digger):
             s1d_ot=[mx[i3], mx[i4]], s1d_oy=[s1dcosy[i3], s1dcosy[i4]],
             his4tx=_tf1, his4power=_pf1, his4omega=omega1,
             s1d4tx=_tf2, s1d4power=_pf2, s1d4omega=omega2,
+            Yd1dres=Yd1dres, X4res=X4res,
         ), acckwargs
 
     def __gamma(self, zf, t, res, info):
@@ -288,7 +295,7 @@ class HistoryRZFDigger(Digger):
 
     def __omega(self, zf, t, res, g0, g1, info):
         cosy = (zf-res) * np.exp(g0*(t-t[0])**(g1))
-        #my = tools.savgolay_filter(cosy, info='smooth zonal flow')
+        # my = tools.savgolay_filter(cosy, info='smooth zonal flow') # mess data
         index = tools.argrelextrema(cosy, m='both')
         if len(index) >= 2:
             idx1, idx2, nT = index[0], index[-1], (len(index) - 1) / 2
@@ -305,9 +312,10 @@ class HistoryRZFDigger(Digger):
                    xlabel=r'time($R_0/c_s$)', ylabel=r['y1label'])
         g1, g2 = r['hisgamma']
         g3, g4 = r['s1dgamma']
+        ir = (r', $r=%.4f a$' % r['ir']) if r['ir'] is not None else ''
         ax2 = dict(LINE=[
             (r['time'], r['hiszf'], 'i=iflux'),
-            (r['time'], r['s1dzf'], 'i=%d' % r['ipsi']),
+            (r['time'], r['s1dzf'], 'i=%d%s' % (r['ipsi'], ir)),
             (r['restime'], [r['hisres'], r['hisres']],
                 r'$R(iflux)=%.4f$' % r['hisres']),
             (r['restime'], [r['s1dres'], r['s1dres']],
@@ -331,7 +339,7 @@ class HistoryRZFDigger(Digger):
             xlim=r['gammatime'][[0, -1]], xlabel=r'time($R_0/c_s$)',
         )
         maxp1, maxp2 = max(r['his4power']), max(r['s1d4power'])
-        ax4 = dict(LINE=[
+        ax4_rm = dict(LINE=[
             (r['his4tx'], r['his4power'], 'i=iflux'),
             (r['s1d4tx'], r['s1d4power'], 'i=%d' % r['ipsi']),
             ([r['his4omega'], r['his4omega']], [0, maxp1],
@@ -339,7 +347,9 @@ class HistoryRZFDigger(Digger):
             ([r['s1d4omega'], r['s1d4omega']], [0, maxp2],
                 r'$\omega(%d)=%.6f$' % (r['ipsi'], r['his4omega']))],
             title='FFT ax3, power spectral',  xlabel=r'$\omega$($c_s/R_0$)')
-
+        ax4 = dict(LINE=[
+            (r['X4res'], r['Yd1dres'], r'$\phi_{res}$')], xlabel=r['y1label'],
+            title=r'$\phi_{res}/\phi(t=%.2f)$' % r['time'][0])
         return dict(zip_results=[
             ('tmpl_contourf', 221, ax1), ('tmpl_line', 222, ax2),
             ('tmpl_line', 223, ax3), ('tmpl_line', 224, ax4),
