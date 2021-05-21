@@ -133,10 +133,14 @@ class HistoryRZFDigger(Digger):
         ------
         *ipsi*: int
             select psi in data1d results, 0<ipsi<mpsi, defalut mpis//2
+        *nside*: int
+            average 2*nside+1 points around *ipsi*, default 0
         *norm*: bool
             normalize phi_p00 by phi_p00[bstep] or not, default True
         *res_time*: [t0, t1]
             set residual time, t0<=time[x0:x1]<=t1
+        *use_ra*: bool
+            use psi or r/a, default False
         '''
         ndstep, tstep, ndiag = self.pckloader.get_many(*self.extrakeys[:3])
         dt = tstep * ndiag
@@ -161,7 +165,8 @@ class HistoryRZFDigger(Digger):
         # select data1d
         mpsi = _dat1d.shape[0] - 1
         ipsi = int(kwargs.get('ipsi', mpsi//2))
-        s1dzf = d1dzf[ipsi]
+        nside = int(kwargs.get('nside', 0))
+        s1dzf = d1dzf[ipsi-nside:ipsi+nside+1].mean(axis=0)
         dlog.parm('Points beside bindex: %s, %s'
                   % (_hist[1, bindex-1:bindex+2], _dat1d[ipsi, bindex-1:bindex+2]))
         # norm
@@ -197,15 +202,23 @@ class HistoryRZFDigger(Digger):
                           rangee=(0, mpsi, 1),
                           value=ipsi,
                           description='ipsi:'),
+                nside=dict(widget='IntSlider',
+                           rangee=(0, mpsi//2, 1),
+                           value=0,
+                           description='nside:'),
                 norm=dict(widget='Checkbox',
                           value=norm,
                           description='normalize phi_p00:'),
                 res_time=dict(widget='FloatRangeSlider',
                               rangee=[time[0], time[-1], dt],
                               value=[time[start], time[end]],
-                              description='residual time:'))
+                              description='residual time:'),
+                use_ra=dict(widget='Checkbox',
+                            value=False,
+                            description='Y: r/a'))
         restime = [time[start], time[end]]
-        acckwargs = {'ipsi': ipsi, 'norm': norm, 'res_time': restime}
+        acckwargs = {'ipsi': ipsi, 'nside': nside, 'norm': norm,
+                     'res_time': restime, 'use_ra': False}
         # 1 res
         hisres = hiszf[start:end].sum()/(end-start)
         hisres_err = hiszf[start:end].std()
@@ -230,10 +243,23 @@ class HistoryRZFDigger(Digger):
         index = np.argmax(_pf2)
         omega2 = _tf2[index]
         dlog.parm("Get history, data1d omega: %.6f, %.6f" % (omega1, omega2))
+        # use_ra, arr2 [1,mpsi-1]
+        Y1, y1label = np.array(range(0, mpsi+1)), r'mpsi'
+        if kwargs.get('use_ra', False):
+            try:
+                arr2, a = self.pckloader.get_many('gtc/arr2', 'gtc/a_minor')
+                Y1 = arr2[:, 1] / a  # index [0, mpsi-2]
+            except Exception:
+                dlog.warning("Cannot use r/a!", exc_info=1)
+            else:
+                y1label = r'$r/a$'
+                acckwargs['use_ra'] = True
+                # update d1dzf
+                d1dzf = d1dzf[1:mpsi, :]
         return dict(
             time=time,
             hiszf=hiszf,
-            d1dzf=d1dzf, Ypsi=np.array(range(0, mpsi+1)),
+            d1dzf=d1dzf, Y1=Y1, y1label=y1label,
             s1dzf=s1dzf, ipsi=ipsi,
             zfstr=r'$%s$' % self._fstr00,
             krrho0=krrho0,
@@ -274,9 +300,9 @@ class HistoryRZFDigger(Digger):
 
     def _post_dig(self, results):
         r = results
-        ax1 = dict(X=r['time'], Y=r['Ypsi'], Z=r['d1dzf'],
+        ax1 = dict(X=r['time'], Y=r['Y1'], Z=r['d1dzf'],
                    title=r'%s, $k_r\rho_0=%.6f$' % (r['zfstr'], r['krrho0']),
-                   xlabel=r'time($R_0/c_s$)', ylabel=r'mpsi')
+                   xlabel=r'time($R_0/c_s$)', ylabel=r['y1label'])
         g1, g2 = r['hisgamma']
         g3, g4 = r['s1dgamma']
         ax2 = dict(LINE=[
