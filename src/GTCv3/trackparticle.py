@@ -47,6 +47,7 @@ class TrackParticleConverter(Converter):
     itemspattern = ['^(?P<section>trackp)_dir/TRACKP\.\d{5}$',
                     '.*/(?P<section>trackp)_dir/TRACKP\.\d{5}$']
     _short_files_subs = (0, '^(.*trackp_dir/TRACKP\.)\d{5}$', r'\1*')
+    nparam = 8
 
     def _convert(self):
         '''Read 'trackp_dir/TRACKP.%05d' % mype.'''
@@ -64,13 +65,15 @@ class TrackParticleConverter(Converter):
                     for p, n in enumerate(nums):
                         particle = Particles[p]
                         for i in range(n):
-                            line = (istep + fid.readline() +
-                                    fid.readline()).split()
+                            param = fid.readline().split()
+                            # nparam floats in 1 or 2 lines
+                            if len(param) < self.nparam:
+                                param += fid.readline().split()
+                            param = [float(_pm) for _pm in param]
                             key = keyprefix[p]
-                            for k in line[:-3:-1]:
-                                key += '-' + str(int(float(k)))
-                            line = [int(line[0])] + [float(l)
-                                                     for l in line[1:-2]]
+                            for k in param[:-3:-1]:
+                                key += '-' + str(int(k))
+                            line = [float(istep)] + param[:-2]
                             if key in particle:
                                 particle[key].append(line)
                             else:
