@@ -27,6 +27,7 @@ def register_Processor(name, mod_path, alias=None, overlay=True):
     *mod_path* can be relative to `processors` package.
     *overlay*, user defined processors cover processors in package.
     '''
+    global Processor_Lib, Processor_Names, Processor_Alias
     if name in Processor_Lib:
         plog.warning("Processor '%s' is already in Processor_Lib!" % name)
         if overlay:
@@ -37,8 +38,7 @@ def register_Processor(name, mod_path, alias=None, overlay=True):
             return
     Processor_Lib[name] = (mod_path, {})
     # update names
-    Processor_Names.append(name)
-    Processor_Names.sort()
+    Processor_Names = sorted(Processor_Lib.keys())
     if alias:
         if alias in Processor_Alias:
             plog.warning("Alias, %s: %s -> %s: %s " % (
@@ -83,6 +83,7 @@ if __ENABLE_USERBASE__:
 
 def find_Processor(name, parallel):
     '''Return Processor class of *name*'''
+    global Processor_Lib
     mod_path, class_cache = Processor_Lib.get(name)
     if parallel in class_cache:
         gdpcls = class_cache[parallel]
