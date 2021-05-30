@@ -38,7 +38,9 @@ def register_Processor(name, mod_path, alias=None, overlay=True):
             return
     Processor_Lib[name] = (mod_path, {})
     # update names
-    Processor_Names = sorted(Processor_Lib.keys())
+    if name not in Processor_Names:
+        Processor_Names.append(name)
+        Processor_Names.sort()
     if alias:
         if alias in Processor_Alias:
             plog.warning("Alias, %s: %s -> %s: %s " % (
