@@ -207,7 +207,7 @@ class MatplotlibVisplter(BaseVisplter):
 
     @classmethod
     def subprocess_fix_backend_etc(cls, **kwargs):
-        import matplotlib  # fix: local variable referenced before assignment
+        global matplotlib  # fix: local variable referenced before assignment
         oldbackend = matplotlib.get_backend()
         backend = kwargs.get('mpl_backend', 'agg')
         if backend not in matplotlib.rcsetup.all_backends:
