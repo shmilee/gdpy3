@@ -10,7 +10,6 @@ import numpy as np
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
 from .. import tools
-from .history import field_tex_str
 from .data1d import _Data1dDigger
 
 _all_Converters = ['Data1dDensityConverter']
@@ -114,7 +113,7 @@ class Data1dDensityDigger(_Data1dDigger):
 
 class HistoryRZFDigger(Digger):
     '''phi_p00 history'''
-    __slots__ = ['_fstr00']
+    __slots__ = []
     itemspattern = [r'^(?P<s>history)/fieldtime-phi$']
     commonpattern = ['history/ndstep', 'gtc/tstep', 'gtc/ndiag',
                      # backward compatibility v110922
@@ -124,7 +123,6 @@ class HistoryRZFDigger(Digger):
 
     def _set_fignum(self, numseed=None):
         self._fignum = 'residual_zf'
-        self._fstr00 = field_tex_str['phi00']
         self.kwoptions = None
 
     def _dig(self, kwargs):
@@ -261,13 +259,16 @@ class HistoryRZFDigger(Digger):
         idx = tools.argrelextrema(d1dzf[:, 0])[1:-1]
         X4res = Y1[idx]
         _res = [d1dzf[i-nside:i+nside+1].mean(axis=0) for i in idx]
-        Yd1dres = np.array([l[start:end].sum()/(end-start)/l[0] for l in _res])
+        N = end - start
+        if norm:
+            Yd1dres = np.array([abs(l[start:end].sum()/N/l[0]) for l in _res])
+        else:
+            Yd1dres = np.array([abs(l[start:end].sum()/N) for l in _res])
         return dict(
-            time=time,
+            time=time, norm=norm,
             hiszf=hiszf,
             d1dzf=d1dzf, Y1=Y1, y1label=y1label,
             s1dzf=s1dzf, ipsi=ipsi, ir=ir,
-            zfstr=r'$%s$' % self._fstr00,
             krrho0=krrho0,
             hisres=hisres, hisres_err=hisres_err,
             s1dres=s1dres, s1dres_err=s1dres_err, restime=restime,
@@ -307,8 +308,10 @@ class HistoryRZFDigger(Digger):
 
     def _post_dig(self, results):
         r = results
+        fstr = r'\phi_{p00}'
+        rzfstr = r'\widehat{\phi}_{p00}' if r['norm'] else fstr
         ax1 = dict(X=r['time'], Y=r['Y1'], Z=r['d1dzf'],
-                   title=r'%s, $k_r\rho_0=%.6f$' % (r['zfstr'], r['krrho0']),
+                   title=r'$%s, k_r\rho_0=%.6f$' % (fstr, r['krrho0']),
                    xlabel=r'time($R_0/c_s$)', ylabel=r['y1label'])
         g1, g2 = r['hisgamma']
         g3, g4 = r['s1dgamma']
@@ -317,14 +320,14 @@ class HistoryRZFDigger(Digger):
             (r['time'], r['hiszf'], 'i=iflux'),
             (r['time'], r['s1dzf'], 'i=%d%s' % (r['ipsi'], ir)),
             (r['restime'], [r['hisres'], r['hisres']],
-                r'$R(iflux)=%.4f$' % r['hisres']),
+                r'$Res(iflux)=%.4f$' % r['hisres']),
             (r['restime'], [r['s1dres'], r['s1dres']],
-                r'$R(%d)=%.4f$' % (r['ipsi'], r['s1dres'])),
+                r'$Res(%d)=%.4f$' % (r['ipsi'], r['s1dres'])),
             (r['gammatime'], r['hisfity'],
                 r'i=iflux, $e^{-%.4f t^{%.4f}}$' % (g1, g2)),
             (r['gammatime'], r['s1dfity'],
                 r'i=%d, $e^{-%.4f t^{%.4f}}$' % (r['ipsi'], g3, g4))],
-            title=r['zfstr'] + r', residual $R$, damping $\gamma$',
+            title=r'$%s$, residual $Res$, damping $\gamma$' % rzfstr,
             xlim=r['time'][[0, -1]], xlabel=r'time($R_0/c_s$)',
             legend_kwargs=dict(loc='upper right'),
         )
@@ -335,7 +338,7 @@ class HistoryRZFDigger(Digger):
                 r'$\omega=%.6f, nT=%.1f$' % (r['hisomega'], r['hisnT'])),
             (r['s1d_ot'], r['s1d_oy'],
                 r'$\omega=%.6f, nT=%.1f$' % (r['s1domega'], r['s1dnT']))],
-            title=r'%s remove damping, residual' % r['zfstr'],
+            title=r'$%s$ remove damping, residual' % rzfstr,
             xlim=r['gammatime'][[0, -1]], xlabel=r'time($R_0/c_s$)',
         )
         maxp1, maxp2 = max(r['his4power']), max(r['s1d4power'])
@@ -348,8 +351,8 @@ class HistoryRZFDigger(Digger):
                 r'$\omega(%d)=%.6f$' % (r['ipsi'], r['his4omega']))],
             title='FFT ax3, power spectral',  xlabel=r'$\omega$($c_s/R_0$)')
         ax4 = dict(LINE=[
-            (r['X4res'], r['Yd1dres'], r'$\phi_{res}$')], xlabel=r['y1label'],
-            title=r'$\phi_{res}/\phi(t=%.2f)$' % r['time'][0])
+            (r['X4res'], r['Yd1dres'], r'$Res$')], xlabel=r['y1label'],
+            title=r'residual $\left|%s\right|$' % rzfstr)
         return dict(zip_results=[
             ('tmpl_contourf', 221, ax1), ('tmpl_line', 222, ax2),
             ('tmpl_line', 223, ax3), ('tmpl_line', 224, ax4),
