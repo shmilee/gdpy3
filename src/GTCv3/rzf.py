@@ -301,7 +301,10 @@ class HistoryRZFDigger(Digger):
     def __gamma(self, zf, t, res, info):
         def f(x, a, b):
             return (zf[0]-res) * np.exp(-a*(x)**b)+res
-        i = tools.argrelextrema(zf, m='max')
+        if zf[0]-res > 0:
+            i = tools.argrelextrema(zf, m='max')
+        else:
+            i = tools.argrelextrema(zf, m='min')
         i = np.insert(i, 0, 0)
         _t = t[i] - t[0]
         _t[0] += 1e-25
