@@ -1,7 +1,7 @@
 # Maintainer: shmilee <shmilee.zju@gmail.com>
 
 pkgname=gdpy3
-pkgver=0.7.5
+pkgver=0.7.6
 pkgrel=1
 pkgdesc="Gyrokinetic Toroidal Code Data Processing tools written in python3"
 url="https://github.com/shmilee/gdpy3.git"
