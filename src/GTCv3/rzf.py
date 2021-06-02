@@ -208,14 +208,14 @@ class HistoryRZFDigger(Digger):
             self.kwoptions = dict(
                 ipsi=dict(widget='IntSlider',
                           rangee=(0, mpsi, 1),
-                          value=ipsi,
+                          value=mpsi//2,
                           description='ipsi:'),
                 nside=dict(widget='IntSlider',
                            rangee=(0, mpsi//2, 1),
                            value=0,
                            description='nside:'),
                 norm=dict(widget='Checkbox',
-                          value=norm,
+                          value=True,
                           description='normalize phi_p00:'),
                 res_time=dict(widget='FloatRangeSlider',
                               rangee=[time[0], time[-1], dt],
@@ -359,6 +359,12 @@ class HistoryRZFDigger(Digger):
             title=r'$%s$ remove damping, residual' % rzfstr,
             xlim=r['gammatime'][[0, -1]], xlabel=r'time($R_0/c_s$)',
         )
+        LIM = 37.2
+        cymin = max(r['hiscosy'].min(), r['s1dcosy'].min(), -LIM)
+        cymax = min(r['hiscosy'].max(), r['s1dcosy'].max(), LIM)
+        if cymax == LIM or cymin == -LIM or cymax - cymin >= LIM:
+            dlog.warning('Set ax3 ylim!')
+            ax3['ylim'] = [cymin, cymax]
         #maxp1, maxp2 = max(r['his4power']), max(r['s1d4power'])
         # ax4_rm = dict(LINE=[
         #    (r['his4tx'], r['his4power'], 'i=iflux'),
