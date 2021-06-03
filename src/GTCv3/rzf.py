@@ -269,16 +269,29 @@ class HistoryRZFDigger(Digger):
                 d1dzf = d1dzf[1:mpsi, :]
         # 5. res vs Y1/ipsi
         idx = tools.argrelextrema(d1dzf[:, maxidx])[1:-1]
+        if not (ipsi in idx or ipsi-1 in idx):  # use_ra F/T
+            if acckwargs['use_ra']:
+                idx = np.insert(idx, 0, ipsi-1)
+            else:
+                idx = np.insert(idx, 0, ipsi)
+            idx.sort()
         X4res = Y1[idx]
         _res = [d1dzf[i-nside:i+nside+1].mean(axis=0) for i in idx]
         N = end - start
+        Yd1dres = np.array([abs(l[start:end].sum()/N) for l in _res])
+        Yd1dmax = np.array([abs(l[maxidx]) for l in _res])
+        Yd1dresflt = tools.savgolay_filter(Yd1dres)
+        Yd1dmaxflt = tools.savgolay_filter(Yd1dmax)
         if norm:
-            Yd1dres = np.array(
-                [abs(l[start:end].sum()/N/l[maxidx]) for l in _res])
+            Yd1dres = np.array(Yd1dres/Yd1dmax)
             Yd1dmax = np.ones(len(idx))
+            Yd1dresflt = Yd1dresflt/Yd1dmaxflt
+            Yd1dmaxflt = Yd1dmax
+        if acckwargs['use_ra']:
+            idx = np.where(X4res == ir)[0][0]
         else:
-            Yd1dres = np.array([abs(l[start:end].sum()/N) for l in _res])
-            Yd1dmax = np.array([abs(l[maxidx]) for l in _res])
+            idx = np.where(X4res == ipsi)[0][0]
+        s1dresflt = Yd1dresflt[idx]
         return dict(
             time=time, norm=norm,
             hiszf=hiszf,
@@ -296,6 +309,7 @@ class HistoryRZFDigger(Digger):
             #his4tx=_tf1, his4power=_pf1, his4omega=omega1,
             #s1d4tx=_tf2, s1d4power=_pf2, s1d4omega=omega2,
             Yd1dres=Yd1dres, Yd1dmax=Yd1dmax, X4res=X4res,
+            Yd1dmaxflt=Yd1dmaxflt, Yd1dresflt=Yd1dresflt, s1dresflt=s1dresflt,
         ), acckwargs
 
     def __gamma(self, zf, t, res, info):
@@ -333,10 +347,10 @@ class HistoryRZFDigger(Digger):
                    xlabel=r'time($R_0/c_s$)', ylabel=r['y1label'])
         g1, g2 = r['hisgamma']
         g3, g4 = r['s1dgamma']
-        ir = (r', $r=%.4f a$' % r['ir']) if r['ir'] is not None else ''
+        ir = (r'$r=%.4f a$' % r['ir']) if r['ir'] is not None else ''
         ax2 = dict(LINE=[
             (r['time'], r['hiszf'], 'i=iflux'),
-            (r['time'], r['s1dzf'], 'i=%d%s' % (r['ipsi'], ir)),
+            (r['time'], r['s1dzf'], 'i=%d, %s' % (r['ipsi'], ir)),
             (r['restime'], [r['hisres'], r['hisres']],
                 r'$Res(iflux)=%.4f$' % r['hisres']),
             (r['restime'], [r['s1dres'], r['s1dres']],
@@ -374,10 +388,18 @@ class HistoryRZFDigger(Digger):
         #    ([r['s1d4omega'], r['s1d4omega']], [0, maxp2],
         #        r'$\omega(%d)=%.6f$' % (r['ipsi'], r['his4omega']))],
         #    title='FFT ax3, power spectral',  xlabel=r'$\omega$($c_s/R_0$)')
-        ax4 = dict(X=r['X4res'], YINFO=[{
-            'left': [(r['Yd1dres'], r'$Res$')],
-            'right': [(r['Yd1dmax'], r'$Max$')], }],
-            xlabel=r['y1label'], title=r'residual $\left|%s\right|$' % rzfstr)
+        if ir:
+            _lb = r'Res(%s)=%.4f' % (ir, r['s1dresflt'])
+        else:
+            _lb = r'Res(%d)=%.4f' % (r['ipsi'], r['s1dresflt'])
+        ax4 = dict(
+            YINFO=[{
+                'left': [(r['Yd1dres'], r'$Res$'),
+                         (r['Yd1dresflt'], r'$smooth\ %s$' % _lb)],
+                'right': [(r['Yd1dmax'], r'$Max$'),
+                          (r['Yd1dmaxflt'], r'$smooth\ Max$')], }],
+            X=r['X4res'], xlabel=r['y1label'],
+            title=r'residual $\left|%s\right|$' % rzfstr)
         return dict(zip_results=[
             ('tmpl_contourf', 221, ax1), ('tmpl_line', 222, ax2),
             ('tmpl_line', 223, ax3), ('tmpl_sharextwinx', 224, ax4),
