@@ -193,7 +193,7 @@ class TestBaseVisplter(unittest.TestCase):
         self.assertListEqual([], axstruct)
         calculation['YINFO'] = [{
             'left': [(range(100, 1, -1), 'dec'), (range(1, 100), 'inc')],
-            'right': [],
+            'right': [(range(10), numpy.array(range(10))), ([1], [2], 'pl')],
         }, ]
         axstruct, add_style = fun(calculation)
         self.assertListEqual(list(calculation['X']), list(axstruct[0]))

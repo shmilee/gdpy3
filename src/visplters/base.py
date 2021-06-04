@@ -621,17 +621,17 @@ class BaseVisplter(object):
 
         .. code:: python
 
-            yinfo = [{
+            YINFO = [{
                 # axes 1
-                'left': [(ydata1, label1), (ydata2, label2)], # required
-                'right': [(ydata3, label3)], # required
+                'left': [(ydata1,), (ydata2, label2)], # required
+                'right': [(xdata3, ydata3), (xdata4, ydata4, label4)],
                 'llegend': dict(loc='upper left'), # optional
                 'rlegend': dict(loc='upper right'), # optional
                 'lylabel': 'left ylabel', # optional
                 'rylabel': 'right ylabel', # optional
             }, {
                 # axes 2
-                'left': [([1,...,9], 'line')], 'right': [],
+                'left': [([1,...,9], 'line')], 'right': [], # required
                 'lylabel': 'Y2',
             }]
 
@@ -660,14 +660,22 @@ class BaseVisplter(object):
                 for j, line in enumerate(ax[lr], 1):
                     if not isinstance(line[0], (list, range, numpy.ndarray)):
                         vlog.error(
-                            "Info of line %d in axes %d %s must be array!"
+                            "Line %d (0y/0x) in axes %d %s must be array!"
                             % (j, i, lr))
                         return [], []
-                    if len(line[0]) != len(X):
+                    if (len(line) == 2 and isinstance(line[1], str)
+                            and len(line[0]) != len(X)):
                         vlog.error(
-                            "Invalid array length of line %d in axes %d %s!"
+                            "Invalid length of line %d (0y) in axes %d %s!"
                             % (j, i, lr))
                         return [], []
+                    if (len(line) >= 2 and isinstance(line[1], (list, range, numpy.ndarray))
+                            and len(line[0]) != len(line[1])):
+                        vlog.error(
+                            "Invalid length of line %d (0x,1y) in axes %d %s!"
+                            % (j, i, lr))
+                        return [], []
+
         YINFO = results['YINFO']
         hspace, title, xlabel, ylabel_rotation = self._get_my_optional_vals(
             results, ('hspace', float, 0.02), ('title', str, None),

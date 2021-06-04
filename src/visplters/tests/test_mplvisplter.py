@@ -138,8 +138,10 @@ temp_sharextwinxresults = dict(
     X=range(100),
     YINFO=[{
         'left': [(fielddata[20, :], 'time=20$\Delta t$'),
-                 (fielddata[2, :], 'time=5$\Delta t$')],
-        'right': [(fielddata[32, :], 'time=32$\Delta t$')],
+                 (fielddata[5, :], 'time=5$\Delta t$')],
+        'right': [(fielddata[32, :], 'time=32$\Delta t$'),
+                  (range(20, 81), fielddata[34, 20:81]),
+                  (range(30, 71), fielddata[36, 30:71], 'time=36$\Delta t$')],
         # 'rlegend': dict(loc='best'),
         'lylabel': r'$\phi$',
     }, {

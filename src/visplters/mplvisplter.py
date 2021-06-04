@@ -349,6 +349,19 @@ class MatplotlibVisplter(BaseVisplter):
             layoutkw['ylim'] = ylim
         return [{'data': data, 'layout': [111, layoutkw]}], []
 
+    def __make_a_line(self, i, X, ln):
+        if len(ln) == 1:
+            return [i, 'plot', (X, ln[0]), {}]
+        elif len(ln) == 2:
+            if isinstance(ln[1], str):
+                return [i, 'plot', (X, ln[0]), dict(label=ln[1])]
+            else:
+                return [i, 'plot', (ln[0], ln[1]), {}]
+        elif len(ln) == 3:
+            return [i, 'plot', (ln[0], ln[1]), dict(label=ln[2])]
+        else:
+            return None
+
     def _tmpl_sharextwinx(
             self, X, YINFO,
             hspace, title, xlabel, xlim, ylabel_rotation):
@@ -368,7 +381,9 @@ class MatplotlibVisplter(BaseVisplter):
             data, i = [], 0
             if len(YINFO[row]['left']) > 0:
                 for i, ln in enumerate(YINFO[row]['left'], 1):
-                    data.append([i, 'plot', (X, ln[0]), dict(label=ln[1])])
+                    _line = self.__make_a_line(i, X, ln)
+                    if _line:
+                        data.append(_line)
                 if 'llegend' in YINFO[row]:
                     legendkw = YINFO[row]['llegend']
                 else:
@@ -384,7 +399,9 @@ class MatplotlibVisplter(BaseVisplter):
                 data.append(
                     [i, 'twinx', (), dict(nextcolor=len(YINFO[row]['left']))])
                 for i, ln in enumerate(YINFO[row]['right'], i + 1):
-                    data.append([i, 'plot', (X, ln[0]), dict(label=ln[1])])
+                    _line = self.__make_a_line(i, X, ln)
+                    if _line:
+                        data.append(_line)
                 if 'rlegend' in YINFO[row]:
                     legendkw = YINFO[row]['rlegend']
                 else:
