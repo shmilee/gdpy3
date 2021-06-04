@@ -245,14 +245,6 @@ class HistoryRZFDigger(Digger):
             hiszf[maxidx:start], mx, hisres, hisgamma[0], hisgamma[1], 'history')
         s1dcosy, i3, i4, nT2, s1domega = self.__omega(
             s1dzf[maxidx:start], mx, s1dres, s1dgamma[0], s1dgamma[1], 'data1d')
-        # 4 FFT
-        #_tf1, _, _pf1 = tools.fft(mx[1]-mx[0], hiscosy)
-        #_tf2, _, _pf2 = tools.fft(mx[1]-mx[0], s1dcosy)
-        #index = np.argmax(_pf1)
-        #omega1 = _tf1[index]
-        #index = np.argmax(_pf2)
-        #omega2 = _tf2[index]
-        #dlog.parm("Get history, data1d omega: %.6f, %.6f" % (omega1, omega2))
         # use_ra, arr2 [1,mpsi-1]
         Y1, y1label, ir = np.array(range(0, mpsi+1)), r'mpsi', None
         if kwargs.get('use_ra', False):
@@ -267,7 +259,8 @@ class HistoryRZFDigger(Digger):
                 ir = Y1[ipsi-1]
                 # update d1dzf
                 d1dzf = d1dzf[1:mpsi, :]
-        # 5. res vs Y1/ipsi
+        # 4. res vs Y1/ipsi
+        # , Ax4 kwarg: slice edge points 1, 2 ...
         idx = tools.argrelextrema(d1dzf[:, maxidx])[1:-1]
         if not (ipsi in idx or ipsi-1 in idx):  # use_ra F/T
             if acckwargs['use_ra']:
@@ -292,22 +285,26 @@ class HistoryRZFDigger(Digger):
         else:
             idx = np.where(X4res == ipsi)[0][0]
         s1dresflt = Yd1dresflt[idx]
+        timemid = time[time.size//2]
+        d1dzfmax = d1dzf[:, maxidx]/np.abs(d1dzf[:, maxidx]).max() * \
+            0.372 * (timemid - time[0]) + timemid
         return dict(
             time=time, norm=norm,
             hiszf=hiszf,
             d1dzf=d1dzf, Y1=Y1, y1label=y1label,
+            timemid=timemid, d1dzfmax=d1dzfmax,
             s1dzf=s1dzf, ipsi=ipsi, ir=ir,
             krrho0=krrho0,
             hisres=hisres, hisres_err=hisres_err,
             s1dres=s1dres, s1dres_err=s1dres_err, restime=restime,
             hisgamma=hisgamma, hisfity=hisfity,
             s1dgamma=s1dgamma, s1dfity=s1dfity, gammatime=mx,
+            # 3
             hiscosy=hiscosy, hisomega=hisomega, hisnT=nT1,
             his_ot=[mx[i1], mx[i2]], his_oy=[hiscosy[i1], hiscosy[i2]],
             s1dcosy=s1dcosy, s1domega=s1domega, s1dnT=nT2,
             s1d_ot=[mx[i3], mx[i4]], s1d_oy=[s1dcosy[i3], s1dcosy[i4]],
-            #his4tx=_tf1, his4power=_pf1, his4omega=omega1,
-            #s1d4tx=_tf2, s1d4power=_pf2, s1d4omega=omega2,
+            # 4
             Yd1dres=Yd1dres, Yd1dmax=Yd1dmax, X4res=X4res,
             Yd1dmaxflt=Yd1dmaxflt, Yd1dresflt=Yd1dresflt, s1dresflt=s1dresflt,
         ), acckwargs
@@ -345,6 +342,9 @@ class HistoryRZFDigger(Digger):
         ax1 = dict(X=r['time'], Y=r['Y1'], Z=r['d1dzf'],
                    title=r'$%s, k_r\rho_0=%.6f$' % (fstr, r['krrho0']),
                    xlabel=r'time($R_0/c_s$)', ylabel=r['y1label'])
+        ax1_1 = dict(LINE=[
+            ([r['timemid'], r['timemid']], r['Y1'][[0, -1]]),
+            (r['d1dzfmax'], r['Y1'], r'max vs r')])
         g1, g2 = r['hisgamma']
         g3, g4 = r['s1dgamma']
         ir = (r'$r=%.4f a$' % r['ir']) if r['ir'] is not None else ''
@@ -379,15 +379,6 @@ class HistoryRZFDigger(Digger):
         if cymax == LIM or cymin == -LIM or cymax - cymin >= LIM:
             dlog.warning('Set ax3 ylim!')
             ax3['ylim'] = [cymin, cymax]
-        #maxp1, maxp2 = max(r['his4power']), max(r['s1d4power'])
-        # ax4_rm = dict(LINE=[
-        #    (r['his4tx'], r['his4power'], 'i=iflux'),
-        #    (r['s1d4tx'], r['s1d4power'], 'i=%d' % r['ipsi']),
-        #    ([r['his4omega'], r['his4omega']], [0, maxp1],
-        #        r'$\omega(iflux)=%.6f$' % r['his4omega']),
-        #    ([r['s1d4omega'], r['s1d4omega']], [0, maxp2],
-        #        r'$\omega(%d)=%.6f$' % (r['ipsi'], r['his4omega']))],
-        #    title='FFT ax3, power spectral',  xlabel=r'$\omega$($c_s/R_0$)')
         if ir:
             _lb = r'Res(%s)=%.4f' % (ir, r['s1dresflt'])
         else:
@@ -401,6 +392,7 @@ class HistoryRZFDigger(Digger):
             X=r['X4res'], xlabel=r['y1label'],
             title=r'residual $\left|%s\right|$' % rzfstr)
         return dict(zip_results=[
-            ('tmpl_contourf', 221, ax1), ('tmpl_line', 222, ax2),
-            ('tmpl_line', 223, ax3), ('tmpl_sharextwinx', 224, ax4),
+            ('tmpl_contourf', 221, ax1), ('tmpl_line', 221, ax1_1),
+            ('tmpl_line', 222, ax2), ('tmpl_line', 223, ax3),
+            ('tmpl_sharextwinx', 224, ax4),
         ])
