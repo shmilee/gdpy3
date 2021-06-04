@@ -142,6 +142,9 @@ class HistoryRZFDigger(Digger):
             use psi or r/a, default False
         *npeakdel*: int
             rm *npeakdel* points from edge in axes 4, default 1
+        *savsmooth*: bool
+            use savgolay_filter to smooth results in axes 4 if True,
+            or use average to smooth. defalut False
         '''
         ndstep, tstep, ndiag = self.pckloader.get_many(*self.extrakeys[:3])
         dt = tstep * ndiag
@@ -230,12 +233,15 @@ class HistoryRZFDigger(Digger):
                               rangee=(0, 3, 1),
                               value=1,
                               description='npeak to rm:'),
-            )
+                savsmooth=dict(widget='Checkbox',
+                               value=False,
+                               description='smooth: savgolay'))
         restime = [time[start], time[end]]
         npeakdel = max(min(int(kwargs.get('npeakdel', 1)), 3), 0)
+        savsmooth = bool(kwargs.get('savsmooth', False))
         acckwargs = {'ipsi': ipsi, 'nside': nside, 'norm': norm,
                      'res_time': restime, 'use_ra': False,
-                     'npeakdel': npeakdel}
+                     'npeakdel': npeakdel, 'savsmooth': savsmooth}
         # 1 res
         hisres = hiszf[start:end].sum()/(end-start)
         hisres_err = hiszf[start:end].std()
@@ -283,8 +289,12 @@ class HistoryRZFDigger(Digger):
         N = end - start
         Yd1dres = np.array([abs(l[start:end].sum()/N) for l in _res])
         Yd1dmax = np.array([abs(l[maxidx]) for l in _res])
-        Yd1dresflt = tools.savgolay_filter(Yd1dres)
-        Yd1dmaxflt = tools.savgolay_filter(Yd1dmax)
+        if savsmooth:
+            Yd1dresflt = tools.savgolay_filter(Yd1dres)
+            Yd1dmaxflt = tools.savgolay_filter(Yd1dmax)
+        else:
+            Yd1dresflt = self.__average_filter(Yd1dres)
+            Yd1dmaxflt = self.__average_filter(Yd1dmax)
         if norm:
             Yd1dres = np.array(Yd1dres/Yd1dmax)
             Yd1dmax = np.ones(len(idx))
@@ -318,6 +328,17 @@ class HistoryRZFDigger(Digger):
             Yd1dres=Yd1dres, Yd1dmax=Yd1dmax, X4res=X4res,
             Yd1dmaxflt=Yd1dmaxflt, Yd1dresflt=Yd1dresflt, s1dresflt=s1dresflt,
         ), acckwargs
+
+    def __average_filter(self, arr):
+        b = [None]*arr.size
+        for i in range(arr.size):
+            if i == 0:
+                b[i] = (arr[i]+arr[i+1])/2.0
+            elif i == arr.size-1:
+                b[i] = (arr[i]+arr[i-1])/2.0
+            else:
+                b[i] = (arr[i-1]+2*arr[i]+arr[i+1])/4.0
+        return np.array(b)
 
     def __gamma(self, zf, t, res, info):
         def f(x, a, b):
