@@ -140,6 +140,8 @@ class HistoryRZFDigger(Digger):
             set residual time, t0<=time[x0:x1]<=t1
         *use_ra*: bool
             use psi or r/a, default False
+        *npeakdel*: int
+            rm *npeakdel* points from edge in axes 4, default 1
         '''
         ndstep, tstep, ndiag = self.pckloader.get_many(*self.extrakeys[:3])
         dt = tstep * ndiag
@@ -223,10 +225,17 @@ class HistoryRZFDigger(Digger):
                               description='residual time:'),
                 use_ra=dict(widget='Checkbox',
                             value=False,
-                            description='Y: r/a'))
+                            description='Y: r/a'),
+                npeakdel=dict(widget='IntSlider',
+                              rangee=(0, 3, 1),
+                              value=1,
+                              description='npeak to rm:'),
+            )
         restime = [time[start], time[end]]
+        npeakdel = max(min(int(kwargs.get('npeakdel', 1)), 3), 0)
         acckwargs = {'ipsi': ipsi, 'nside': nside, 'norm': norm,
-                     'res_time': restime, 'use_ra': False}
+                     'res_time': restime, 'use_ra': False,
+                     'npeakdel': npeakdel}
         # 1 res
         hisres = hiszf[start:end].sum()/(end-start)
         hisres_err = hiszf[start:end].std()
@@ -260,8 +269,9 @@ class HistoryRZFDigger(Digger):
                 # update d1dzf
                 d1dzf = d1dzf[1:mpsi, :]
         # 4. res vs Y1/ipsi
-        # , Ax4 kwarg: slice edge points 1, 2 ...
-        idx = tools.argrelextrema(d1dzf[:, maxidx])[1:-1]
+        idx = tools.argrelextrema(d1dzf[:, maxidx])
+        if npeakdel > 0 and idx.size - npeakdel*2 >= 2:
+            idx = idx[npeakdel:-npeakdel]
         if not (ipsi in idx or ipsi-1 in idx):  # use_ra F/T
             if acckwargs['use_ra']:
                 idx = np.insert(idx, 0, ipsi-1)
