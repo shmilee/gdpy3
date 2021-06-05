@@ -20,11 +20,12 @@ Processor_Names = []
 Processor_Alias = {}
 
 
-def register_Processor(name, mod_path, alias=None, overlay=True):
+def register_Processor(name, mod_path, alias=None, loc='$sys', overlay=True):
     '''
-    Add processor *name* module and its alias in *Processor_Lib*.
-    Processor_Lib[name] = (mod_path, {class_cache_dict})
+    Add processor *name* module and its *alias* in *Processor_Lib*.
+    Processor_Lib[name] = (mod_path, loc, {class_cache_dict})
     *mod_path* can be relative to `processors` package.
+    *loc*, in gdpy3 package '$sys' or user defined '~usr'.
     *overlay*, user defined processors cover processors in package.
     '''
     global Processor_Lib, Processor_Names, Processor_Alias
@@ -36,7 +37,7 @@ def register_Processor(name, mod_path, alias=None, overlay=True):
         else:
             plog.warning("Ignore processor '%s' in '%s'!" % (name, mod_path))
             return
-    Processor_Lib[name] = (mod_path, {})
+    Processor_Lib[name] = (mod_path, loc, {})
     # update names
     if name not in Processor_Names:
         Processor_Names.append(name)
@@ -76,7 +77,7 @@ def register_user_Processors(dirname):
             if os.path.isfile(alias_f):
                 with open(alias_f, 'r') as f:
                     alias = f.readline().strip()
-            register_Processor(dname, mod_path, alias=alias)
+            register_Processor(dname, mod_path, alias=alias, loc='~usr')
 
 
 if __ENABLE_USERBASE__:
@@ -86,7 +87,7 @@ if __ENABLE_USERBASE__:
 def find_Processor(name, parallel):
     '''Return Processor class of *name*'''
     global Processor_Lib
-    mod_path, class_cache = Processor_Lib.get(name)
+    mod_path, loc, class_cache = Processor_Lib.get(name)
     if parallel in class_cache:
         gdpcls = class_cache[parallel]
     else:
@@ -113,5 +114,5 @@ def find_Processor(name, parallel):
             raise ValueError('Unsupported parallel-lib: %s' % parallel)
         plog.debug("'lib' scope's global variables: %s" % globals().keys())
         # cache in Processor_Lib
-        Processor_Lib[name][1][parallel] = gdpcls
+        Processor_Lib[name][2][parallel] = gdpcls
     return gdpcls

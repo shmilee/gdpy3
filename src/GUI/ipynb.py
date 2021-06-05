@@ -11,6 +11,7 @@ from IPython.display import display, HTML
 
 from ..__about__ import __data_path__
 from ..processors import get_processor, Processor_Names
+from ..processors.lib import Processor_Lib
 
 __all__ = ['IpynbUI', 'ScrollTool']
 
@@ -26,10 +27,11 @@ class IpynbUI(object):
         self.path = path
         self.parallel = parallel
         self.processor = None
+        names = ['%s%s' % (Processor_Lib[n][1][0], n) for n in Processor_Names]
         self.widgets = dict(
             processor=ipywidgets.Dropdown(
-                options=Processor_Names,
-                value=Processor_Names[0],
+                options=names,
+                value=names[0],
                 description='Processor:'),
             pick=ipywidgets.Button(
                 description='', disabled=False,
@@ -72,7 +74,7 @@ class IpynbUI(object):
     def update_group(self, *args):
         with self.widgets['terminal']:
             gdp = get_processor(path=self.path,
-                                name=self.widgets['processor'].value,
+                                name=self.widgets['processor'].value[1:],
                                 parallel=self.parallel)
         if gdp.pckloader:
             self.processor = gdp

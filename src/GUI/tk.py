@@ -15,6 +15,7 @@ from distutils.version import LooseVersion
 from ..__about__ import __data_path__, __icon_name__, __gversion__
 from ..glogger import getGLogger
 from ..processors import get_processor, Processor_Names
+from ..processors.lib import Processor_Lib
 
 __all__ = ['GTkApp']
 log = getGLogger('G')
@@ -62,10 +63,11 @@ class GTkApp(object):
             w_frame_proc, text='Path', width=0, command=self.ask_case_path)
         w_path.grid(in_=w_frame_proc, row=0, column=1, padx=5, pady=5)
         w_str_proc = tkinter.StringVar()
+        names = ['%s%s' % (Processor_Lib[n][1][0], n) for n in Processor_Names]
         w_select_proc = ttk.Combobox(
-            w_frame_proc, values=Processor_Names, font=font,
+            w_frame_proc, values=names, font=font,
             textvariable=w_str_proc, state='readonly')
-        w_str_proc.set(Processor_Names[0])
+        w_str_proc.set(names[0])
         w_select_proc.grid(in_=w_frame_proc, row=1, column=0, padx=5, pady=5)
         w_pick = ttk.Button(
             w_frame_proc, text="Pick", width=0, command=self.after_pick)
@@ -289,7 +291,7 @@ class GTkApp(object):
     def after_pick(self):
         if self.processor_name.get():
             gdpcls = get_processor(
-                name=self.processor_name.get(), parallel=self.parallel)
+                name=self.processor_name.get()[1:], parallel=self.parallel)
             if self.path.startswith('sftp://'):
                 def tk_gepasswd(prompt):
                     return simpledialog.askstring(

@@ -13,6 +13,7 @@ import argparse
 
 from .glogger import logfile, getGLogger
 from .processors import Processor_Names, Processor_Alias, get_processor
+from .processors.lib import Processor_Lib
 from .__about__ import __gversion__
 
 __all__ = ['cli_script']
@@ -139,11 +140,14 @@ def cli_script():
 
     if args.list:
         print("Available Processors:")
+        w = max([len(n) for n in Processor_Names])
         for i, n in enumerate(Processor_Names):
-            print("%s%s" % (' ' * 4, n))
+            loc = Processor_Lib[n][1]
+            print("%s%s  in %s(%s)" % (' ' * 4, n.ljust(w), loc[1:], loc[0]))
         print("Alias Processors:")
-        for i, apn in enumerate(Processor_Alias):
-            print("%s%s -> %s" % (' ' * 4, apn, Processor_Alias[apn]))
+        w = max([len(a) for a in Processor_Alias.keys()])
+        for i, a in enumerate(Processor_Alias):
+            print("%s%s  ->  %s" % (' ' * 4, a.ljust(w), Processor_Alias[a]))
         sys.exit()
     if args.help:
         if args.subcmd:
