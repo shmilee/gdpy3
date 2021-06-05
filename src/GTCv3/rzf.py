@@ -419,7 +419,8 @@ class HistoryRZFDigger(Digger):
                 'left': [(r['Yd1dres'], r'$Res$'),
                          (r['Yd1dresflt'], r'$smooth\ %s$' % _lb)],
                 'right': [(r['Yd1dmax'], r'$Max$'),
-                          (r['Yd1dmaxflt'], r'$smooth\ Max$')], }],
+                          (r['Yd1dmaxflt'], r'$smooth\ Max$')],
+                'rlegend': dict(loc='lower right'), }],
             X=r['X4res'], xlabel=r['y1label'],
             title=r'residual $\left|%s\right|$' % rzfstr)
         return dict(zip_results=[
