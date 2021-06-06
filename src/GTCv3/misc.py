@@ -41,7 +41,7 @@ class Trans_r_psi(object):
         # q1*psi+q2*psi*psi/2.0+q3*psi*psi*psi/3.0 - r**2 / (2*psiw) = 0
         roots = numpy.roots([q3/3.0, q2/2.0, q1, - r**2 / (2*self.psiw)])
         for npsi in roots:
-            if npsi.imag == 0:
+            if npsi.imag == 0 and npsi.real >= 0:
                 return npsi.real
         return None
 
