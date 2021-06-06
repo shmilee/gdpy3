@@ -51,3 +51,35 @@ class Trans_r_psi(object):
         Return npsi=psi/psiw: [0, 1]
         '''
         return self.npsir(nr*self.a)
+
+    def qnpsi(self, npsi):
+        '''
+        Input npsi=psi/psiw: [0, 1]
+        Return q(npsi)
+        '''
+        q1, q2, q3 = self.q
+        return q1 + q2*npsi + q3*npsi*npsi
+
+    def qnr(self, nr):
+        '''
+        Input nr=r/a: [0, 1]
+        Return q(nr)
+        '''
+        return self.qnpsi(self.npsinr(nr))
+
+    @staticmethod
+    def cal_q_psiw(q_p1, q_p2, q_p3, a):
+        '''
+        Input q(npsi) 3 points and a
+        Return (q1, q2, q3), psiw
+        '''
+        A = numpy.mat([
+            [1.0, q_p1[0], q_p1[0]**2.0],
+            [1.0, q_p2[0], q_p2[0]**2.0],
+            [1.0, q_p3[0], q_p3[0]**2.0],
+        ])
+        b = numpy.mat([q_p1[1], q_p2[1], q_p3[1]]).T
+        q = numpy.linalg.solve(A, b)
+        q1, q2, q3 = q[0, 0], q[1, 0], q[2, 0]
+        psiw = a**2.0/2.0/(q1+q2/2.0+q3/3.0)
+        return (q1, q2, q3), psiw
