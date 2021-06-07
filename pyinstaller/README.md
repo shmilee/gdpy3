@@ -91,7 +91,7 @@ for lk in ${entry_iface_candidates[@]}; do
     ln -s gdpy3-app ./dist/gdpy3-app/gdpy3-$lk
 done
 cd dist/
-gver=$(sed 's|\(v.*\)-\(.\)-g.*|\1.r\2|' gdpy3-app/gdpy3-data/git-version)
+gver=$(sed 's|\(v.*\)-\([0-9]*\)-g.*|\1.r\2|' gdpy3-app/gdpy3-data/git-version)
 tar czvf gdpy3-app-$gver-$(uname -m).pkg.tar.gz  gdpy3-app/
 ```
 
@@ -148,7 +148,7 @@ cp -v /lib/aarch64-linux-gnu/{libc.so.6,libresolv.so.2} ./dist/gdpy3-app/
 cp -v /usr/lib/aarch64-linux-gnu/libxcb.so.1 ./dist/gdpy3-app/
 cp -v /lib/aarch64-linux-gnu/libpthread.so.0 ./dist/gdpy3-app/
 cd dist/
-gver=$(sed 's|\(v.*\)-\(.\)-g.*|\1.r\2|' gdpy3-app/gdpy3-data/git-version)
+gver=$(sed 's|\(v.*\)-\([0-9]*\)-g.*|\1.r\2|' gdpy3-app/gdpy3-data/git-version)
 tar czvf gdpy3-app-$gver-$(uname -m).pkg.tar.gz  gdpy3-app/
 ```
 
