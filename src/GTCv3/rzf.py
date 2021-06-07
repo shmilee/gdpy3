@@ -133,7 +133,7 @@ class HistoryRZFDigger(Digger):
         *ipsi*: int
             select psi in data1d results, 0<ipsi<mpsi, defalut mpis//2
         *nside*: int
-            average 2*nside+1 points around *ipsi*, default 0
+            average 2*nside+1 points around *ipsi*, default 1
         *norm*: bool
             normalize phi_p00 by max(phi_p00) or not, default True
         *res_time*: [t0, t1]
@@ -178,7 +178,7 @@ class HistoryRZFDigger(Digger):
         # select data1d
         mpsi = _dat1d.shape[0] - 1
         ipsi = int(kwargs.get('ipsi', mpsi//2))
-        nside = int(kwargs.get('nside', 0))
+        nside = int(kwargs.get('nside', 1))
         s1dzf = d1dzf[ipsi-nside:ipsi+nside+1].mean(axis=0)
         dlog.parm('Points beside bindex: %s, %s'
                   % (_hist[1, bindex-1:bindex+2], _dat1d[ipsi, bindex-1:bindex+2]))
@@ -199,7 +199,6 @@ class HistoryRZFDigger(Digger):
                 dlog.warning('Cannot set residual time: %s <= time <= %s!'
                              % (start, end))
                 start, end = None, None
-        # dlog.debug('growth_time: start=%s ' % start)
         if start is None:
             start, region_len = tools.findflat(hiszf, 5e-4*hiszf[maxidx])
             if region_len == 0:
@@ -217,7 +216,7 @@ class HistoryRZFDigger(Digger):
                           description='ipsi:'),
                 nside=dict(widget='IntSlider',
                            rangee=(0, mpsi//2, 1),
-                           value=0,
+                           value=1,
                            description='nside:'),
                 norm=dict(widget='Checkbox',
                           value=True,
@@ -387,14 +386,14 @@ class HistoryRZFDigger(Digger):
         g3, g4 = r['s1dgamma']
         ir = (r'$r=%.4f a$' % r['ir']) if r['ir'] is not None else ''
         ax2 = dict(LINE=[
-            (r['time'], r['hiszf'], 'i=iflux'),
+            (r['time'], r['hiszf'], 'history'),
             (r['time'], r['s1dzf'], 'i=%d, %s' % (r['ipsi'], ir)),
             (r['restime'], [r['hisres'], r['hisres']],
-                r'$Res(iflux)=%.4f$' % r['hisres']),
+                r'$Res(history)=%.4f$' % r['hisres']),
             (r['restime'], [r['s1dres'], r['s1dres']],
                 r'$Res(%d)=%.4f$' % (r['ipsi'], r['s1dres'])),
             (r['gammatime'], r['hisfity'],
-                r'i=iflux, $e^{-%.4f t^{%.4f}}$' % (g1, g2)),
+                r'history, $e^{-%.4f t^{%.4f}}$' % (g1, g2)),
             (r['gammatime'], r['s1dfity'],
                 r'i=%d, $e^{-%.4f t^{%.4f}}$' % (r['ipsi'], g3, g4))],
             title=r'$%s$, residual $Res$, damping $\gamma$' % rzfstr,
@@ -402,7 +401,7 @@ class HistoryRZFDigger(Digger):
             legend_kwargs=dict(loc='upper right'),
         )
         ax3 = dict(LINE=[
-            (r['gammatime'], r['hiscosy'], 'i=iflux'),
+            (r['gammatime'], r['hiscosy'], 'history'),
             (r['gammatime'], r['s1dcosy'], 'i=%d' % r['ipsi']),
             (r['his_ot'], r['his_oy'],
                 r'$\omega=%.6f, nT=%.1f$' % (r['hisomega'], r['hisnT'])),
