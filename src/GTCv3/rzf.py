@@ -278,11 +278,21 @@ class HistoryRZFDigger(Digger):
         idx = tools.argrelextrema(d1dzf[:, maxidx])
         if npeakdel > 0 and idx.size - npeakdel*2 >= 2:
             idx = idx[npeakdel:-npeakdel]
-        if not (ipsi in idx or ipsi-1 in idx):  # use_ra F/T
+        add_ipsi, ipsi_use = True, None
+        ipsi_side = range(1, max(1, nside)+1)
+        for ii in [ipsi] + list(np.array([
+                (ipsi-i, ipsi+i) for i in ipsi_side]).flatten()):
+            if ii in idx:
+                add_ipsi = False
+                ipsi_use = ii
+                break
+        if add_ipsi:
+            # use_ra F/T
             if acckwargs['use_ra']:
-                idx = np.insert(idx, 0, ipsi-1)
+                ipsi_use = ipsi-1
             else:
-                idx = np.insert(idx, 0, ipsi)
+                ipsi_use = ipsi
+            idx = np.insert(idx, 0, ipsi_use)
             idx.sort()
         X4res = Y1[idx]
         _res = [d1dzf[i-nside:i+nside+1].mean(axis=0) for i in idx]
@@ -300,11 +310,8 @@ class HistoryRZFDigger(Digger):
             Yd1dmax = np.ones(len(idx))
             Yd1dresflt = Yd1dresflt/Yd1dmaxflt
             Yd1dmaxflt = Yd1dmax
-        if acckwargs['use_ra']:
-            idx = np.where(X4res == ir)[0][0]
-        else:
-            idx = np.where(X4res == ipsi)[0][0]
-        s1dresflt = Yd1dresflt[idx]
+        ipsi_idx = np.where(idx == ipsi_use)[0][0]
+        s1dresflt = Yd1dresflt[ipsi_idx]
         timemid = time[time.size//2]
         d1dzfmax = d1dzf[:, maxidx]/np.abs(d1dzf[:, maxidx]).max() * \
             0.372 * (timemid - time[0]) + timemid
