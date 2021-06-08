@@ -356,7 +356,12 @@ class HistoryRZFDigger(Digger):
         i = np.insert(i, 0, 0)
         _t = t[i] - t[0]
         _t[0] += 1e-25
-        gamma, pcov, fity = tools.curve_fit(f, _t, zf[i], fitX=t-t[0])
+        try:
+            gamma, pcov, fity = tools.curve_fit(f, _t, zf[i], fitX=t-t[0])
+        except Exception:
+            dlog.warning("Failed to get fitting gamma!", exc_info=1)
+            gamma = np.array([0.0, 0.0])
+            fity = zf[0]*np.ones(len(t))
         dlog.parm("Get %s gamma: (%.6f, %.6f)" % (info, gamma[0], gamma[1]))
         return gamma, fity
 
