@@ -76,7 +76,8 @@ class Data1dDensityDigger(_Data1dDigger):
     __slots__ = ['particle']
     itemspattern = ['^(?P<s>data1d)/(?P<particle>(?:i|e|f))-density']
     commonpattern = ['gtc/tstep', 'gtc/ndiag']
-    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_sharextwinx')
+    post_template = ('tmpl_z111p', 'tmpl_contourf',
+                     'tmpl_line', 'tmpl_sharextwinx')
     __particles = dict(i='ion', e='electron', f='fastion')
 
     def _set_fignum(self, numseed=None):
@@ -88,24 +89,56 @@ class Data1dDensityDigger(_Data1dDigger):
         return r'%s $\delta n(r,t)$' % self.particle
 
     def _dig(self, kwargs):
+        '''*t*: float
+            set nearest time for density(t), defalut time(rzf_bstep) or time/2
+        '''
         results, acckwargs = super(Data1dDensityDigger, self)._dig(kwargs)
         # X, Y, X, ylabel, title
         X, Z = results['X'], results['Z']
-        index = [tools.argrelextrema(Z[:, i]) for i in range(Z.shape[1])]
-        extrema = [np.abs(Z[index[i], i]).mean() for i in range(Z.shape[1])]
+        yl, xl = Z.shape
+        # find bstep
+        idx = None
+        if 'gtc/rzf_bstep' in self.pckloader:
+            idx = self.pckloader.get('gtc/rzf_bstep')
+        if 'gtc/zfistep' in self.pckloader:
+            idx = self.pckloader.get('gtc/zfistep')
+        if idx:
+            idx = idx//self.pckloader.get('gtc/ndiag')
+        else:
+            idx = xl//2
+        if 't' not in self.kwoptions:
+            self.kwoptions['t'] = dict(widget='FloatSlider',
+                                       rangee=(X[0], X[-1], X[1]-X[0]),
+                                       value=X[idx],
+                                       description='select t:')
+        if 't' in kwargs:
+            t = float(kwargs.get('t'))
+            idx = (np.abs(X-t)).argmin()
+        results['t'] = X[idx]
+        acckwargs['t'] = X[idx]
+        results['dnt'] = Z[:, idx-2:idx+2].mean(axis=1)
+        index = tools.argrelextrema(results['dnt'])
+        extrema = [np.abs(Z[index, i]).mean() for i in range(xl)]
         results['extrema'] = np.array(extrema)
         return results, acckwargs
 
     def _post_dig(self, results):
         r = results
-        lb = r'%s $\delta n(r)$, amplitude $A$' % self.particle
-        ax = {'left': [], 'right': [(r['extrema'], lb)], 'rylabel': r'$A$'}
+        dnt = r['dnt']/max(r['dnt'].max(), abs(r['dnt'].min()))
+        A = min(abs(r['t']-r['X'][0]), abs(r['X'][-1]-r['t']))
+        dnt = r['t'] + 0.66*A*dnt
+        lb = r'%s $<\delta n(r)>(t)$, amplitude $A$' % self.particle
+        yinfo = {'left': [], 'right': [(r['extrema'], lb)], 'rylabel': r'$A$'}
         zip_results = [
             ('tmpl_contourf', 111, dict(
                 X=r['X'], Y=r['Y'], Z=r['Z'], title=r['title'],
                 xlabel=r'time($R_0/c_s$)', ylabel=r['ylabel'])),
+            ('tmpl_line', 111, dict(LINE=[
+                ([], []), ([r['t'], r['t']], r['Y'][[0, -1]]),
+                (dnt, r['Y'], r'$\delta n(r,t=%.3f)$' % r['t'])],
+                legend_kwargs={'loc': 'lower center'})),
             ('tmpl_sharextwinx', 111, dict(
-                X=r['X'], YINFO=[ax],
+                X=r['X'], YINFO=[yinfo],
                 xlim=[r['X'][0], r['X'][-1]]))
         ]
         return dict(zip_results=zip_results)
