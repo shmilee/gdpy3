@@ -440,7 +440,8 @@ class BaseVisplter(object):
         if len(X.shape) == 1 and len(Y.shape) == 1:
             # X, Y: 1 dimension
             if (len(Y), len(X)) != Z.shape:
-                vlog.error("Invalid `X`, `Y` length or `Z` shape!")
+                vlog.error("Invalid `X`, `Y` length or `Z` shape! (%d,%d)!=%s"
+                           % (len(Y), len(X), Z.shape))
                 return [], []
             X, Y = numpy.meshgrid(X, Y)
         elif len(X.shape) == 2 and len(Y.shape) == 2:
@@ -554,10 +555,12 @@ class BaseVisplter(object):
                         vlog.error("%s of line %d must be array!" % (_X, i))
                         return [], []
                 if len(line[0]) != len(line[1]):
-                    vlog.error("Invalid length of x, y for line %d!" % i)
+                    vlog.error("Invalid length of x, y for line %d! %d!=%d"
+                               % (i, len(line[0]), len(line[1])))
                     return [], []
                 if d3 and len(line[0]) != len(line[2]):
-                    vlog.error("Invalid length of x, z for line %d!" % i)
+                    vlog.error("Invalid length of x, z for line %d! %d!=%d"
+                               % (i, len(line[0]), len(line[2])))
                     return [], []
             else:
                 vlog.error("Length of info for line %d must be %d or %d!"
@@ -666,14 +669,14 @@ class BaseVisplter(object):
                     if (len(line) == 2 and isinstance(line[1], str)
                             and len(line[0]) != len(X)):
                         vlog.error(
-                            "Invalid length of line %d (0y) in axes %d %s!"
-                            % (j, i, lr))
+                            "Invalid len of line%d(0y) in axes %d %s! %d!=%d"
+                            % (j, i, lr, len(line[0]), len(X)))
                         return [], []
                     if (len(line) >= 2 and isinstance(line[1], (list, range, numpy.ndarray))
                             and len(line[0]) != len(line[1])):
                         vlog.error(
-                            "Invalid length of line %d (0x,1y) in axes %d %s!"
-                            % (j, i, lr))
+                            "Invalid len of line%d(0x,1y) in axes %d %s! %d!=%d"
+                            % (j, i, lr, len(line[0]), len(line[1])))
                         return [], []
 
         YINFO = results['YINFO']
@@ -722,7 +725,7 @@ class BaseVisplter(object):
         zip_results = []
         for i, _results in enumerate(results['zip_results'], 0):
             if len(_results) != 3:
-                vlog.error("`zip_results[%d]`: invalid length!" % i)
+                vlog.error("`zip_results[%d]`: invalid length!=3!" % i)
                 continue
             temp, pos, _res = _results
             try:
