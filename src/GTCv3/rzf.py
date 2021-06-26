@@ -307,11 +307,13 @@ class HistoryRZFDigger(Digger):
                 # update d1dzf
                 d1dzf = d1dzf[1:mpsi, :]
         # 4. res vs Y1/ipsi
-        idx = tools.argrelextrema(d1dzf[:, maxidx])
+        idx = tools.argrelextrema(
+            d1dzf[:, maxidx:maxidx+nside+1].mean(axis=1))
         if npeakdel > 0 and idx.size - npeakdel*2 >= 2:
             idx = idx[npeakdel:-npeakdel]
         add_ipsi, ipsi_use = True, None
-        ipsi_side = range(1, max(1, nside)+1)
+        #print(ipsi, ':::', idx)
+        ipsi_side = range(1, max(2, nside)+1)
         for ii in [ipsi] + list(np.array([
                 (ipsi-i, ipsi+i) for i in ipsi_side]).flatten()):
             if ii in idx:
@@ -326,6 +328,7 @@ class HistoryRZFDigger(Digger):
                 ipsi_use = ipsi
             idx = np.insert(idx, 0, ipsi_use)
             idx.sort()
+        # print(idx)
         X4res = Y1[idx]
         _res = [d1dzf[i-nside:i+nside+1].mean(axis=0) for i in idx]
         N = end - start
