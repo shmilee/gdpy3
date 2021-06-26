@@ -347,6 +347,8 @@ class HistoryRZFDigger(Digger):
         timemid = time[time.size//2]
         d1dzfmax = d1dzf[:, maxidx]/np.abs(d1dzf[:, maxidx]).max() * \
             0.372 * (timemid - time[0]) + timemid
+        Yd1dresrmse = np.sqrt(np.mean((Yd1dresflt-Yd1dres)**2))
+        Yd1dresfltdelta = Yd1dresflt.max() - Yd1dresflt.min()
         return dict(
             time=time, norm=norm,
             hiszf=hiszf,
@@ -366,6 +368,7 @@ class HistoryRZFDigger(Digger):
             # 4
             Yd1dres=Yd1dres, Yd1dmax=Yd1dmax, X4res=X4res,
             Yd1dmaxflt=Yd1dmaxflt, Yd1dresflt=Yd1dresflt, s1dresflt=s1dresflt,
+            Yd1dresrmse=Yd1dresrmse, Yd1dresfltdelta=Yd1dresfltdelta,
         ), acckwargs
 
     def __average_filter(self, arr):
@@ -458,6 +461,8 @@ class HistoryRZFDigger(Digger):
             _lb = r'Res(%s)=%.4f' % (ir, r['s1dresflt'])
         else:
             _lb = r'Res(%d)=%.4f' % (r['ipsi'], r['s1dresflt'])
+        _lb = r'%s, RMSE=%.6f, \Delta=%.6f' % (
+            _lb, r['Yd1dresrmse'], r['Yd1dresfltdelta'])
         ax4 = dict(
             YINFO=[{
                 'left': [(r['Yd1dres'], r'$Res$'),
