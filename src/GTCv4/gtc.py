@@ -46,6 +46,23 @@ class GtcConverter(gtcv3.GtcConverter):
              + r'\s*?MPush/sec:\s+?' + self.numpat + '\s*?$', 'cputime'),
         ]
 
+    def _update_qiflux_rgiflux(self, sd):
+        '''
+        if no qiflux in *sd*, try to get it from arr2
+        '''
+        try:
+            arr2, diag_flux = sd['arr2'], sd['diag_flux']
+            if int(arr2[diag_flux-1][0]) == diag_flux:
+                row = arr2[diag_flux-1]
+            else:
+                for i in range(len(arr2)):
+                    if int(arr2[i][0]) == diag_flux:
+                        row = arr2[i]
+                        break
+            sd['rgiflux'], sd['qiflux'] = row[1], row[4]
+        except Exception:
+            pass
+
     def _convert(self):
         '''Read 'gtc.out' parameters.'''
         sd = super(GtcConverter, self)._convert()
@@ -54,4 +71,6 @@ class GtcConverter(gtcv3.GtcConverter):
             val = sd['arr2']
             val = numpy.insert(val, 1, values=val[:, 1]*sd['a_minor'], axis=1)
             sd['arr2'] = val
+        if 'qiflux' not in sd or 'rgiflux' not in sd:
+            self._update_qiflux_rgiflux(sd)
         return sd

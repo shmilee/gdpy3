@@ -316,7 +316,7 @@ class HistoryFieldModeDigger(_TimeCutoff):
     commonpattern = ['history/ndstep'] + [
         'gtc/%s' % k for k in ['tstep', 'ndiag', 'nmodes', 'mmodes', 'rho0',
                                'qiflux', 'rgiflux']]
-    neededpattern = itemspattern + commonpattern[:-2]
+    neededpattern = itemspattern + commonpattern[:6]
     numseeds = [1, 2, 3, 4, 5, 6, 7, 8]
     post_template = ('tmpl_z111p', 'tmpl_line')
 
@@ -334,13 +334,13 @@ class HistoryFieldModeDigger(_TimeCutoff):
         time, x0, x1, acckwargs = _timedata
         fstr = field_tex_str[self.section[1]]
         yreal, yimag, ndstep, tstep, ndiag, nmodes, mmodes, rho0 = \
-            self.pckloader.get_many(*self.srckeys, *self.extrakeys[:-2])
+            self.pckloader.get_many(*self.srckeys, *self.extrakeys[:6])
         yreal, yimag = yreal[self._idx-1, x0:x1], yimag[self._idx-1, x0:x1]
         dt = tstep * ndiag
         n = nmodes[self._idx-1]
         m = mmodes[self._idx-1]
         try:
-            qiflux, rgiflux = self.pckloader.get_many(*self.extrakeys[-2:])
+            qiflux, rgiflux = self.pckloader.get_many(*self.extrakeys[6:])
             ktr = n * qiflux / rgiflux * rho0
             dlog.parm("Get k_theta_rho0: %.6f" % ktr)
         except Exception:
