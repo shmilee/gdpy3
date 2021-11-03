@@ -126,13 +126,25 @@ class GtcConverter(Converter):
         sd = {}
         pickpara = re.compile(r'^\s*?(?P<key>\w+?)\s*?=\s*?(?P<val>'
                               + self.numpat + '?)\s*?,?\s*?$')
+        duplicate_d = {}
         for line in outdata:
             mline = pickpara.match(line)
             if mline:
                 key, val = mline.groups()
+                key = key.lower()
                 val = self._c_val_default(val)
-                clog.debug("Filling datakey: %s=%s ..." % (key.lower(), val))
-                sd.update({key.lower(): val})
+                if key in sd:
+                    if val != sd[key]:
+                        dupkey = 'arr_' + key
+                        if dupkey in duplicate_d:
+                            duplicate_d[dupkey].append(val)
+                        else:
+                            duplicate_d[dupkey] = [sd[key], val]
+                else:
+                    clog.debug("Filling datakey: %s=%s ..." % (key, val))
+                    sd.update({key: val})
+        for key, val in duplicate_d.items():
+            sd.update({key: numpy.array(val)})
         if 'tstep' in sd:
             val = round(sd['tstep'], 8)
             clog.debug("Round datakey: %s=%s ..." % ('tstep', val))
