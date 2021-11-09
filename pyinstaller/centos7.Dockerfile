@@ -14,7 +14,7 @@ RUN yum -y install python3-pip python3-wheel python3-tkinter glibc \
     && yum clean all
 RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} numpy scipy matplotlib==3.0.3
 
-RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} h5py cryptography==2.9.2 paramiko==2.8.0 screeninfo ipython
+RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} h5py cryptography==2.9.2 paramiko==2.8.0 screeninfo jedi==0.17.2 ipython
 #RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} notebook ipywidgets
 
 RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} pillow==7.1.2 \
