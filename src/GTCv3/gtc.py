@@ -135,11 +135,12 @@ class GtcConverter(Converter):
                 val = self._c_val_default(val)
                 if key in sd:
                     if val != sd[key]:
-                        dupkey = 'arr_' + key
+                        dupkey = 'duplicate_%s_arr' % key
                         if dupkey in duplicate_d:
                             duplicate_d[dupkey].append(val)
                         else:
                             duplicate_d[dupkey] = [sd[key], val]
+                        clog.debug("Duplicate datakey: %s=%s ..." % (key, val))
                 else:
                     clog.debug("Filling datakey: %s=%s ..." % (key, val))
                     sd.update({key: val})
