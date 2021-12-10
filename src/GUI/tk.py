@@ -269,7 +269,7 @@ class GTkApp(object):
         if self.path and not self.path.startswith('sftp://'):
             try:
                 with open(self.recent, 'w', encoding='utf-8') as rf:
-                    rf.write(self.path)
+                    rf.write(os.path.abspath(self.path))
             except Exception:
                 log.debug('Error of saving recent path.', exc_info=1)
 
@@ -606,10 +606,12 @@ class MplFigWindow(tkinter.Toplevel):
 
             # monkey patch default filename
             # see: FigureCanvasBase.get_default_filename()
-            #      FigureCanvasBase.get_window_title()
+            #      FigureCanvasBase.get_window_title(), 3.4 deprecated
             label = self.figure_label.replace('/', '-').replace(':', '_')
             tstr = time.strftime('%Y%m%d')
-            canvas.get_window_title = lambda: '%s-%s' % (label, tstr)
+            filetype = canvas.get_default_filetype()
+            name = '%s-%s.%s' % (label, tstr, filetype)
+            canvas.get_default_filename = lambda: name
         else:
             self.figure_canvas = None
             self.figure_toolbar = None
