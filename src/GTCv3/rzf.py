@@ -174,7 +174,10 @@ class HistoryRZFDigger(Digger):
         *use_ra*: bool
             use psi or r/a, default False
         *npeakdel*: int
-            rm *npeakdel* points from edge in axes 4, default 1
+            rm *npeakdel* peaks from edge in axes 4, default 1, max 10
+        *npeakside*: int
+            use 2*npeakside+1 peaks around *ipsi*
+            to calculate RMSE, Delta of residual in axes 4, defalut 1, max 5
         *savsmooth*: bool
             use savgolay_filter to smooth results in axes 4 if True,
             or use average to smooth. defalut False
@@ -262,18 +265,24 @@ class HistoryRZFDigger(Digger):
                             value=False,
                             description='Y: r/a'),
                 npeakdel=dict(widget='IntSlider',
-                              rangee=(0, 3, 1),
+                              rangee=(0, 10, 1),
                               value=1,
                               description='npeak to rm:'),
+                npeakside=dict(widget='IntSlider',
+                               rangee=(0, 5, 1),
+                               value=1,
+                               description='npeak used to cal RMSE:'),
                 savsmooth=dict(widget='Checkbox',
                                value=False,
                                description='smooth: savgolay'))
         restime = [time[start], time[end]]
-        npeakdel = max(min(int(kwargs.get('npeakdel', 1)), 3), 0)
+        npeakdel = max(min(int(kwargs.get('npeakdel', 1)), 10), 0)
+        npeakside = max(min(int(kwargs.get('npeakside', 1)), 5), 0)
         savsmooth = bool(kwargs.get('savsmooth', False))
         acckwargs = {'ipsi': ipsi, 'nside': nside, 'norm': norm,
                      'res_time': restime, 'use_ra': False,
-                     'npeakdel': npeakdel, 'savsmooth': savsmooth}
+                     'npeakdel': npeakdel, 'npeakside': npeakside,
+                     'savsmooth': savsmooth}
         # 1 res
         hisres = hiszf[start:end].sum()/(end-start)
         hisres_err = hiszf[start:end].std()
@@ -311,6 +320,8 @@ class HistoryRZFDigger(Digger):
             d1dzf[:, maxidx:maxidx+nside+1].mean(axis=1))
         if npeakdel > 0 and idx.size - npeakdel*2 >= 2:
             idx = idx[npeakdel:-npeakdel]
+        else:
+            dlog.warning("Cannot set npeakdel > Npeak/2 -1, use all!")
         add_ipsi, ipsi_use = True, None
         #print(ipsi, ':::', idx)
         ipsi_side = range(1, max(2, nside)+1)
@@ -341,17 +352,26 @@ class HistoryRZFDigger(Digger):
             Yd1dresflt = self.__average_filter(Yd1dres)
             Yd1dmaxflt = self.__average_filter(Yd1dmax)
         if norm:
-            Yd1dres = np.array(Yd1dres/Yd1dmax)
+            Yd1dres = Yd1dres/Yd1dmax
+            Yd1dres[Yd1dres > 1.0] = 1.0
             Yd1dmax = np.ones(len(idx))
             Yd1dresflt = Yd1dresflt/Yd1dmaxflt
+            Yd1dresflt[Yd1dresflt > 1.0] = 1.0
             Yd1dmaxflt = Yd1dmax
         ipsi_idx = np.where(idx == ipsi_use)[0][0]
         s1dresflt = Yd1dresflt[ipsi_idx]
         timemid = time[time.size//2]
         d1dzfmax = d1dzf[:, maxidx]/np.abs(d1dzf[:, maxidx]).max() * \
             0.372 * (timemid - time[0]) + timemid
-        Yd1dresrmse = np.sqrt(np.mean((Yd1dresflt-Yd1dres)**2))
-        Yd1dresfltdelta = Yd1dresflt.max() - Yd1dresflt.min()
+        if ipsi_idx - npeakside >= 0 and ipsi_idx + npeakside + 1 <= len(idx):
+            slc = range(ipsi_idx-npeakside, ipsi_idx+npeakside+1)  # select
+            Yd1dresrmse = np.sqrt(np.mean((Yd1dresflt[slc]-Yd1dres[slc])**2))
+            Yd1dresfltdelta = Yd1dresflt[slc].max() - Yd1dresflt[slc].min()
+        else:
+            dlog.warning("Cannot set 2*npeakside+1 > Npeak, only use *ipsi*!")
+            slc = [ipsi_idx]
+            Yd1dresrmse = np.abs(s1dresflt - Yd1dres[ipsi_idx])
+            Yd1dresfltdelta = 0.0
         return dict(
             time=time, norm=norm,
             hiszf=hiszf,
@@ -372,6 +392,7 @@ class HistoryRZFDigger(Digger):
             Yd1dres=Yd1dres, Yd1dmax=Yd1dmax, X4res=X4res,
             Yd1dmaxflt=Yd1dmaxflt, Yd1dresflt=Yd1dresflt, s1dresflt=s1dresflt,
             Yd1dresrmse=Yd1dresrmse, Yd1dresfltdelta=Yd1dresfltdelta,
+            Yd1dresfltslc=np.array(slc),
         ), acckwargs
 
     def __average_filter(self, arr):
@@ -464,12 +485,16 @@ class HistoryRZFDigger(Digger):
             _lb = r'Res(%s)=%.4f' % (ir, r['s1dresflt'])
         else:
             _lb = r'Res(%d)=%.4f' % (r['ipsi'], r['s1dresflt'])
-        _lb = r'%s, RMSE=%.6f, \Delta=%.6f' % (
-            _lb, r['Yd1dresrmse'], r['Yd1dresfltdelta'])
+        # Yd1dresfltslc
+        slc_x = r['X4res'][r['Yd1dresfltslc']]
+        slc_y = r['Yd1dresflt'][r['Yd1dresfltslc']]
+        slc_lb = r'$RMSE=%.6f, \Delta=%.6f$' % (
+            r['Yd1dresrmse'], r['Yd1dresfltdelta'])
         ax4 = dict(
             YINFO=[{
                 'left': [(r['Yd1dres'], r'$Res$'),
-                         (r['Yd1dresflt'], r'$smooth\ %s$' % _lb)],
+                         (r['Yd1dresflt'], r'$smooth\ %s$' % _lb),
+                         (slc_x, slc_y, slc_lb)],
                 'right': [(r['Yd1dmax'], r'$Max$'),
                           (r['Yd1dmaxflt'], r'$smooth\ Max$')],
                 'rlegend': dict(loc='lower right'), }],
