@@ -14,8 +14,46 @@ from ..glogger import getGLogger
 from ..loaders import get_pckloader
 from ..savers import get_pcksaver
 
-__all__ = ['slim_v060_digged_data']
+__all__ = [
+    'change_v04x_pickled_data', 'change_pckdata_ext',
+    'slim_v060_digged_data']
 plog = getGLogger('P')
+
+
+def change_v04x_pickled_data(path):
+    '''
+    change gdpy3-pickled-data-xxx.npz -> (>=0.5) gtcv3-xxx.converted.npz
+
+    Parameters
+    ----------
+    path: path of pickled data
+    '''
+    if not os.path.isfile(path):
+        plog.error("Path %s not found!" % path)
+        return
+    rootdir = os.path.dirname(path)
+    root, ext = os.path.splitext(os.path.basename(path))
+    if ext in ['.npz', '.hdf5'] and root.startswith('gdpy3-pickled-data-'):
+        plog.info("This is a pickled data path %s!" % path)
+    else:
+        plog.error("This is not a pickled data path %s!" % path)
+        return
+    oldloader = get_pckloader(path)
+    ver = oldloader.get('version') if 'version' in oldloader else None
+    if ver in ['110922', 'GTCV110922', 'GTCV3.14-22']:
+        plog.info("Find version '%s'" % ver)
+        # gdpy3-pickled-data-8aad8b6725
+        saltstr = root[-10:][:6]
+        # gtcv3-8aad8b.converted
+        newroot = 'gtcv3-%s.converted%s' % (saltstr, ext)
+        newpath = os.path.join(rootdir, newroot)
+        if os.path.isfile(newpath):
+            plog.error("Converted data file exists: %s! pass" % newpath)
+        else:
+            plog.info("Rename %s -> %s" % (path, newpath))
+            os.rename(path, newpath)
+    else:
+        plog.error("This is a invalid pickled data!")
 
 
 def change_pckdata_ext(path, ext):
