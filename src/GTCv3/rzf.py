@@ -97,13 +97,13 @@ class Data1dDensityDigger(_Data1dDigger):
         X, Z = results['X'], results['Z']
         yl, xl = Z.shape
         # find bstep
-        idx = None
+        ndiag = self.pckloader.get('gtc/ndiag')
         if 'gtc/rzf_bstep' in self.pckloader:
             idx = self.pckloader.get('gtc/rzf_bstep')
-        if 'gtc/zfistep' in self.pckloader:
+            idx = idx//ndiag if idx<xl else xl//2
+        elif 'gtc/zfistep' in self.pckloader:
             idx = self.pckloader.get('gtc/zfistep')
-        if idx:
-            idx = idx//self.pckloader.get('gtc/ndiag')
+            idx = idx//ndiag if idx<xl else xl//2
         else:
             idx = xl//2
         if 't' not in self.kwoptions:
