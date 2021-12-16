@@ -100,10 +100,10 @@ class Data1dDensityDigger(_Data1dDigger):
         ndiag = self.pckloader.get('gtc/ndiag')
         if 'gtc/rzf_bstep' in self.pckloader:
             idx = self.pckloader.get('gtc/rzf_bstep')
-            idx = idx//ndiag if idx<xl else xl//2
+            idx = idx//ndiag if idx < xl else xl//2
         elif 'gtc/zfistep' in self.pckloader:
             idx = self.pckloader.get('gtc/zfistep')
-            idx = idx//ndiag if idx<xl else xl//2
+            idx = idx//ndiag if idx < xl else xl//2
         else:
             idx = xl//2
         if 't' not in self.kwoptions:
@@ -396,15 +396,18 @@ class HistoryRZFDigger(Digger):
         ), acckwargs
 
     def __average_filter(self, arr):
-        b = [None]*arr.size
-        for i in range(arr.size):
-            if i == 0:
-                b[i] = (arr[i]+arr[i+1])/2.0
-            elif i == arr.size-1:
-                b[i] = (arr[i]+arr[i-1])/2.0
-            else:
-                b[i] = (arr[i-1]+2*arr[i]+arr[i+1])/4.0
-        return np.array(b)
+        if arr.size >= 3:
+            b = []
+            for i in range(arr.size):
+                if i == 0:
+                    b.append((arr[i]+arr[i+1])/2.0)
+                elif i == arr.size-1:
+                    b.append((arr[i]+arr[i-1])/2.0)
+                else:
+                    b.append((arr[i-1]+2*arr[i]+arr[i+1])/4.0)
+            return np.array(b)
+        else:
+            return arr
 
     def __gamma(self, zf, t, res, info):
         def f(x, a, b):
