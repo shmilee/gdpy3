@@ -168,7 +168,7 @@ class BaseRawLoader(BaseLoader):
         path of directory or archive file
     pathobj: opened path object
     filenames: tuple
-        filenames in the directory or archive file
+        filenames using forward slashes (/) in the directory or archive file
     filenames_exclude: list
         list of filenames or regular expressions
 

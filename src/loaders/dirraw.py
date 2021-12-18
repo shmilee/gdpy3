@@ -7,6 +7,7 @@ Contains directory raw loader class.
 '''
 
 import os
+import pathlib
 
 from ..glogger import getGLogger
 from ..utils import inherit_docstring
@@ -30,8 +31,9 @@ class DirRawLoader(BaseRawLoader):
     Notes
     {Notes}
     3. Directory tree maxdepth is 2.
+    4. The representation of Windows's path also uses forward slashes (/)!
     '''
-    __slots__ = []
+    __slots__ = ['_WinFilenames']
     loader_type = 'directory'
 
     def _special_check_path(self):
@@ -42,6 +44,8 @@ class DirRawLoader(BaseRawLoader):
             return False
 
     def _special_open(self):
+        # for multiprocessing __setstate__
+        self._WinFilenames = None
         return self.path
 
     def _special_close(self, pathobj):
@@ -58,7 +62,17 @@ class DirRawLoader(BaseRawLoader):
             if len(_root) > 0:
                 _dirs[:] = []
             filenames.extend([os.path.join(_root, f) for f in _files])
-        return sorted(filenames)
+        if os.name == 'nt':
+            self._WinFilenames = {}
+            # new dict, use key:filenames as_posix, val: WindowsPath instance
+            for f in filenames:
+                P = pathlib.PurePath(f)
+                self._WinFilenames[P.as_posix()] = P
+            return sorted(self._WinFilenames.keys())
+        else:
+            return sorted(filenames)
 
     def _special_get(self, pathobj, key):
-        return open(os.path.join(self.path, key))
+        if os.name == 'nt':
+            key = self._WinFilenames[key]
+        return open(pathlib.PurePath(self.path).joinpath(key))
