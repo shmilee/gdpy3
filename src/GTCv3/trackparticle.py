@@ -47,7 +47,7 @@ class TrackParticleConverter(Converter):
     itemspattern = ['^(?P<section>trackp)_dir/TRACKP\.\d{5}$',
                     '.*/(?P<section>trackp)_dir/TRACKP\.\d{5}$']
     _short_files_subs = (0, '^(.*trackp_dir/TRACKP\.)\d{5}$', r'\1*')
-    nparam = 8
+    nparam = 8  # or 9
 
     def _convert(self):
         '''Read 'trackp_dir/TRACKP.%05d' % mype.'''
