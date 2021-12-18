@@ -160,8 +160,8 @@ def run_child_cmd(args, input=None, **kwargs):
         "input" pass to subprocess.Popen.communicate
     kwargs: kwargs pass to subprocess.Popen
     '''
-    d_kwargs = dict(close_fds=True,
-                    universal_newlines=True,  # text=True, added in py 3.7
+    d_kwargs = dict(universal_newlines=True,  # text=True, added in py 3.7
+                    # close_fds=True, # default described in subprocess.Popen
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE)
     if isinstance(input, bytes):
