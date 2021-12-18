@@ -504,7 +504,7 @@ class Processor(object):
             results = digcore.post_dig(results)
         return accfiglabel, results, digcore.post_template
 
-    def dig_doc(self, figlabel, see='help'):
+    def dig_doc(self, figlabel, see='print'):
         '''
         help(digcore.dig) or digcore.dig.__doc__
 
