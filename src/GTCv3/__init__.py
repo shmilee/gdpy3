@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2020 shmilee
+# Copyright (c) 2019-2021 shmilee
 
 '''
 GTC Processor Version 3 (V110922) and its cores.

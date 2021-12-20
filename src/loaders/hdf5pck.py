@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2020 shmilee
+# Copyright (c) 2018-2020 shmilee
 
 '''
 Contains Hdf5 pickled file loader class.

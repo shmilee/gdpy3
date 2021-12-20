@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2020 shmilee
+# Copyright (c) 2018-2020 shmilee
 
 '''
 This is the subpackage ``processors`` of gdpy3.

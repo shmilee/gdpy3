@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2020 shmilee
+# Copyright (c) 2017-2021 shmilee
 
 import os
 from setuptools import setup, find_packages

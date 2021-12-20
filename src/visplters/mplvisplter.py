@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2020 shmilee
+# Copyright (c) 2019-2021 shmilee
 
 '''
 Contains matplotlib visplter class. A simple wrapper for matplotlib.

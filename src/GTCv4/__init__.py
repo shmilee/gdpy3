@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2020 shmilee
+# Copyright (c) 2020-2021 shmilee
 
 '''
 GTC Processor Version 4 and its cores.
