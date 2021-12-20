@@ -142,7 +142,7 @@ class GTkApp(object):
         version_text = "Version %s" % __gversion__
         w_info = tkinter.Label(
             main, relief=RIDGE, borderwidth=1, anchor=CENTER,
-            font=(font[0], 8), text="%s\t© %s shmilee\t" % (
+            font=(font[0], 8), text="%s\t© 2017-%s shmilee" % (
                                     version_text, time.strftime('%Y')))
         w_info.grid(row=3, column=0, sticky=W+E)
         log.debug('Main frame filled.')

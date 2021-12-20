@@ -23,7 +23,7 @@ log = getGLogger('G')
 
 def print_version():
     print('gdpy3 version %s' % __gversion__)
-    print('Copyright (C) %s shmilee' % time.strftime('%Y'))
+    print('Copyright (C) 2017-%s shmilee' % time.strftime('%Y'))
 
 
 def get_parser_top():
