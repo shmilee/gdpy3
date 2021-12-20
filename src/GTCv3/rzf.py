@@ -173,8 +173,8 @@ class HistoryRZFDigger(Digger):
             set residual time, t0<=time[x0:x1]<=t1
         *use_ra*: bool
             use psi or r/a, default False
-        *npeakdel*: int
-            rm *npeakdel* peaks from edge in axes 4, default 1, max 10
+        *npeakselect*: int
+            plot 2*npeakselect+1 peaks around *ipsi* in axes 4, default 3, max 12
         *npeakside*: int
             use 2*npeakside+1 peaks around *ipsi*
             to calculate RMSE, Delta of residual in axes 4, defalut 1, max 5
@@ -264,10 +264,10 @@ class HistoryRZFDigger(Digger):
                 use_ra=dict(widget='Checkbox',
                             value=False,
                             description='Y: r/a'),
-                npeakdel=dict(widget='IntSlider',
-                              rangee=(0, 10, 1),
-                              value=1,
-                              description='npeak to rm:'),
+                npeakselect=dict(widget='IntSlider',
+                                 rangee=(0, 12, 1),
+                                 value=3,
+                                 description='npeak to plot:'),
                 npeakside=dict(widget='IntSlider',
                                rangee=(0, 5, 1),
                                value=1,
@@ -276,12 +276,12 @@ class HistoryRZFDigger(Digger):
                                value=False,
                                description='smooth: savgolay'))
         restime = [time[start], time[end]]
-        npeakdel = max(min(int(kwargs.get('npeakdel', 1)), 10), 0)
+        npeakselect = max(min(int(kwargs.get('npeakselect', 3)), 12), 0)
         npeakside = max(min(int(kwargs.get('npeakside', 1)), 5), 0)
         savsmooth = bool(kwargs.get('savsmooth', False))
         acckwargs = {'ipsi': ipsi, 'nside': nside, 'norm': norm,
                      'res_time': restime, 'use_ra': False,
-                     'npeakdel': npeakdel, 'npeakside': npeakside,
+                     'npeakselect': npeakselect, 'npeakside': npeakside,
                      'savsmooth': savsmooth}
         # 1 res
         hisres = hiszf[start:end].sum()/(end-start)
@@ -318,10 +318,6 @@ class HistoryRZFDigger(Digger):
         # 4. res vs Y1/ipsi
         idx = tools.argrelextrema(
             d1dzf[:, maxidx:maxidx+nside+1].mean(axis=1))
-        if npeakdel > 0 and idx.size - npeakdel*2 >= 2:
-            idx = idx[npeakdel:-npeakdel]
-        else:
-            dlog.warning("Cannot set npeakdel > Npeak/2 -1, use all!")
         add_ipsi, ipsi_use = True, None
         #print(ipsi, ':::', idx)
         ipsi_side = range(1, max(2, nside)+1)
@@ -339,6 +335,12 @@ class HistoryRZFDigger(Digger):
                 ipsi_use = ipsi
             idx = np.insert(idx, 0, ipsi_use)
             idx.sort()
+        ipsi_idx = np.where(idx == ipsi_use)[0][0]
+        if ipsi_idx-npeakselect >= 0 and ipsi_idx+npeakselect+1 <= idx.size:
+            idx = idx[ipsi_idx-npeakselect:ipsi_idx+npeakselect+1]
+            ipsi_idx = np.where(idx == ipsi_use)[0][0]
+        else:
+            dlog.warning("Cannot set npeakselect >= Npeak/2, use all!")
         # print(idx)
         X4res = Y1[idx]
         _res = [d1dzf[i-nside:i+nside+1].mean(axis=0) for i in idx]
@@ -358,7 +360,6 @@ class HistoryRZFDigger(Digger):
             Yd1dresflt = Yd1dresflt/Yd1dmaxflt
             Yd1dresflt[Yd1dresflt > 1.0] = 1.0
             Yd1dmaxflt = Yd1dmax
-        ipsi_idx = np.where(idx == ipsi_use)[0][0]
         s1dresflt = Yd1dresflt[ipsi_idx]
         timemid = time[time.size//2]
         d1dzfmax = d1dzf[:, maxidx]/np.abs(d1dzf[:, maxidx]).max() * \
