@@ -120,6 +120,7 @@ logfile = os.path.join(
     'gdpy3-%s-%s.log' % (getpass.getuser(), time.strftime('%Y')))
 glogger_config_main = get_glogger_config('main', logfile=logfile)
 glogger_config_listen = get_glogger_config('listen', logfile=logfile)
+queue_listener = None
 
 
 def getGLogger(name):
@@ -140,11 +141,12 @@ class LogWorkInitializer(object):
         # listener in MainProcess
         logqueue = multiprocessing.Manager().Queue(-1)
         logging.config.dictConfig(glogger_config_listen)
-        self.queue_listener = logging.handlers.QueueListener(
+        global queue_listener
+        queue_listener = logging.handlers.QueueListener(
             logqueue,
             *logging.getLogger('G').handlers,
             respect_handler_level=True)
-        self.queue_listener.start()
+        queue_listener.start()
         self.glogger_config = get_glogger_config('work', queue=logqueue)
 
     def __call__(self):
@@ -154,7 +156,8 @@ class LogWorkInitializer(object):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.queue_listener.stop()
+        if queue_listener:
+            queue_listener.stop()
         logging.config.dictConfig(glogger_config_main)
 
 
