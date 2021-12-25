@@ -500,6 +500,7 @@ class MultiProcessor(Processor):
                 plog.error("%s: Failed to create figure %s!" % (
                     self.name, accfiglabel),  exc_info=1)
                 self._count_task_done(lock, count, total, 'Visplt')
+                self.visplter.close_figure('all')
                 return False, accfiglabel, '(500) failed to create'
             else:
                 _fl = accfiglabel if savename == 'accfiglabel' else figlabel
@@ -512,9 +513,11 @@ class MultiProcessor(Processor):
                     plog.error("%s: Failed to save figure %s!" % (
                         self.name, accfiglabel),  exc_info=1)
                     self._count_task_done(lock, count, total, 'Visplt')
+                    self.visplter.close_figure('all')
                     return False, accfiglabel, '(500) failed to save'
                 else:
                     self._count_task_done(lock, count, total, 'Visplt')
+                    self.visplter.close_figure('all')
                     return True, accfiglabel, fname
         else:
             status, reason = results['status'], results['reason']
