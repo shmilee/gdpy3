@@ -116,3 +116,11 @@ def find_Processor(name, parallel):
         # cache in Processor_Lib
         Processor_Lib[name][2][parallel] = gdpcls
     return gdpcls
+
+
+def _cache_MultiProcessor():  # useful for windows multiprocessing
+    for name in Processor_Names:
+        _ = find_Processor(name, 'multiprocess')
+
+
+_cache_MultiProcessor()
