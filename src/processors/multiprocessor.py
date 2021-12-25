@@ -11,7 +11,7 @@ import multiprocessing
 
 from .processor import Processor, plog
 from ._mp_rwlock import MP_RWLock
-from ..glogger import get_glogger_work_initializer
+from ..glogger import LogWorkInitializer
 from ..loaders import get_pckloader
 from ..utils import inherit_docstring
 
@@ -88,7 +88,7 @@ class MultiProcessor(Processor):
             self._pre_convert(add_desc=add_desc)
             nworkers = min(self.multiproc, len(self.converters))
             plog.debug('%d processes to work!' % nworkers)
-            with get_glogger_work_initializer() as loginitializer:
+            with LogWorkInitializer() as loginitializer:
                 lock = self.manager.RLock()
                 count = self.manager.Value('i', 0, lock=False)
                 total = len(self.converters)
@@ -293,7 +293,7 @@ class MultiProcessor(Processor):
                 # do new_dig figlabels
                 if len(couple_todo) > 0:
                     nworkers = min(self.multiproc, len(couple_todo))
-                    with get_glogger_work_initializer() as loginitializer:
+                    with LogWorkInitializer() as loginitializer:
                         plog.debug("Using a write lock!")
                         lock = self.manager.RLock()
                         count = self.manager.Value('i', 0, lock=False)
@@ -325,7 +325,7 @@ class MultiProcessor(Processor):
             else:
                 # with 'read-write' lock
                 nworkers = min(self.multiproc, len(couple_figlabels))
-                with get_glogger_work_initializer() as loginitializer:
+                with LogWorkInitializer() as loginitializer:
                     plog.debug("Using a read-write lock!")
                     rwlock = MP_RWLock(self.manager)
                     lock = self.manager.RLock()  # for count
@@ -562,7 +562,7 @@ class MultiProcessor(Processor):
         if not os.path.isdir(savepath):
             os.mkdir(savepath)
         nworkers = min(self.multiproc, len(multi_results))
-        with get_glogger_work_initializer() as loginitializer:
+        with LogWorkInitializer() as loginitializer:
             lock = self.manager.RLock()
             count = self.manager.Value('i', 0, lock=False)
             total = len(multi_results)

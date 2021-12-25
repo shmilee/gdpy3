@@ -21,7 +21,6 @@ import getpass
 import time
 import logging
 import logging.config
-import contextlib
 import multiprocessing
 
 
@@ -136,23 +135,26 @@ logging.setLoggerClass(GLogger)
 logging.config.dictConfig(glogger_config_main)
 
 
-@contextlib.contextmanager
-def get_glogger_work_initializer():
-    # listener in MainProcess
-    logqueue = multiprocessing.Manager().Queue(-1)
-    logging.config.dictConfig(glogger_config_listen)
-    queue_listener = logging.handlers.QueueListener(
-        logqueue,
-        *logging.getLogger('G').handlers,
-        respect_handler_level=True)
-    queue_listener.start()
-    try:
-        def initializer():
-            glogger_config_work = get_glogger_config('work', queue=logqueue)
-            logging.config.dictConfig(glogger_config_work)
-        yield initializer
-    finally:
-        queue_listener.stop()
+class LogWorkInitializer(object):
+    def __init__(self):
+        # listener in MainProcess
+        logqueue = multiprocessing.Manager().Queue(-1)
+        logging.config.dictConfig(glogger_config_listen)
+        self.queue_listener = logging.handlers.QueueListener(
+            logqueue,
+            *logging.getLogger('G').handlers,
+            respect_handler_level=True)
+        self.queue_listener.start()
+        self.glogger_config = get_glogger_config('work', queue=logqueue)
+
+    def __call__(self):
+        logging.config.dictConfig(self.glogger_config)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.queue_listener.stop()
         logging.config.dictConfig(glogger_config_main)
 
 
