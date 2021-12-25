@@ -33,10 +33,8 @@ class MultiProcessor(Processor):
     {0}3. :attr:`multiproc` is the max number of worker processes,
        default multiprocessing.cpu_count().
     '''
-
     parallel = 'multiprocess'
     multiproc = multiprocessing.cpu_count()
-    manager = multiprocessing.Manager()
 
     @property
     def name(self):
@@ -88,9 +86,10 @@ class MultiProcessor(Processor):
             self._pre_convert(add_desc=add_desc)
             nworkers = min(self.multiproc, len(self.converters))
             plog.debug('%d processes to work!' % nworkers)
-            with LogWorkInitializer() as loginitializer:
-                lock = self.manager.RLock()
-                count = self.manager.Value('i', 0, lock=False)
+            manager = multiprocessing.Manager()  # for control data
+            with LogWorkInitializer(manager) as loginitializer:
+                lock = manager.RLock()
+                count = manager.Value('i', 0, lock=False)
                 total = len(self.converters)
                 with multiprocessing.Pool(
                         processes=nworkers,
@@ -116,7 +115,8 @@ class MultiProcessor(Processor):
                             overwrite=False):
         super(MultiProcessor, self).set_prefer_ressaver(
             ext2=ext2, oldext2=oldext2, overwrite=overwrite)
-        D = self.manager.dict()
+        manager = multiprocessing.Manager()  # for share data
+        D = manager.dict()
         plog.debug("Changing %s data cache store to '%r'." % (ext2, D))
         self.ressaver.set_store(D)
         self.resloader = get_pckloader(D)
@@ -246,8 +246,8 @@ class MultiProcessor(Processor):
            *post* will be multiprocessing, others like digged figlabel
            and their *callback*, *post* are not!
             1). *callback*, it is user-defined, maybe not multiprocess safe.
-                Recommand using :attr:`manager` to create a list or dict for
-                *callback* to store data.
+                Recommand using :meht:`multiprocessing.Manager` to create
+                a list or dict for *callback* to store data.
             2). *post*, `post_dig` is expected to complete immediately.
             3). Saving dig-results, savers may be not multiprocess safe.
         2. If using a read write lock to avoid error about unpickle pckloader
@@ -293,10 +293,11 @@ class MultiProcessor(Processor):
                 # do new_dig figlabels
                 if len(couple_todo) > 0:
                     nworkers = min(self.multiproc, len(couple_todo))
-                    with LogWorkInitializer() as loginitializer:
+                    manager = multiprocessing.Manager()
+                    with LogWorkInitializer(manager) as loginitializer:
                         plog.debug("Using a write lock!")
-                        lock = self.manager.RLock()
-                        count = self.manager.Value('i', 0, lock=False)
+                        lock = manager.RLock()
+                        count = manager.Value('i', 0, lock=False)
                         total = len(couple_todo)
                         # While resfilesaver is saving to the path,
                         # fork will fail to reopen resfileloader.path.
@@ -325,11 +326,12 @@ class MultiProcessor(Processor):
             else:
                 # with 'read-write' lock
                 nworkers = min(self.multiproc, len(couple_figlabels))
-                with LogWorkInitializer() as loginitializer:
+                manager = multiprocessing.Manager()
+                with LogWorkInitializer(manager) as loginitializer:
                     plog.debug("Using a read-write lock!")
-                    rwlock = MP_RWLock(self.manager)
-                    lock = self.manager.RLock()  # for count
-                    count = self.manager.Value('i', 0, lock=False)
+                    rwlock = MP_RWLock(manager)
+                    lock = manager.RLock()  # for count
+                    count = manager.Value('i', 0, lock=False)
                     total = len(couple_figlabels)
                     # resfileloader reopen in workers, not forking
                     self.resfileloader = None
@@ -562,9 +564,10 @@ class MultiProcessor(Processor):
         if not os.path.isdir(savepath):
             os.mkdir(savepath)
         nworkers = min(self.multiproc, len(multi_results))
-        with LogWorkInitializer() as loginitializer:
-            lock = self.manager.RLock()
-            count = self.manager.Value('i', 0, lock=False)
+        manager = multiprocessing.Manager()
+        with LogWorkInitializer(manager) as loginitializer:
+            lock = manager.RLock()
+            count = manager.Value('i', 0, lock=False)
             total = len(multi_results)
             with multiprocessing.Pool(
                     processes=nworkers,

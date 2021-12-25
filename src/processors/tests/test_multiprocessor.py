@@ -6,6 +6,7 @@ import os
 import unittest
 import tempfile
 import shutil
+import multiprocessing
 
 from .. import get_processor
 from ..lib import *
@@ -52,7 +53,8 @@ class TestMultiprocessProcessor(unittest.TestCase):
     def test_processor_multi_dig_visplt_callback(self):
         gdp = get_processor(self.tmp, name='TDP', parallel='multiprocess')
         global X2, get_X  # fix: Can't pickle local object
-        X2 = gdp.manager.list()
+        manager = multiprocessing.Manager()
+        X2 = manager.list()
 
         def get_X(accfiglabel, res):
             X2.append((accfiglabel, res['x'], os.getpid()))

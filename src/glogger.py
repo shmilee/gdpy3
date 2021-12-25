@@ -137,9 +137,9 @@ logging.config.dictConfig(glogger_config_main)
 
 
 class LogWorkInitializer(object):
-    def __init__(self):
+    def __init__(self, manager):
         # listener in MainProcess
-        logqueue = multiprocessing.Manager().Queue(-1)
+        logqueue = manager.Queue(-1)
         logging.config.dictConfig(glogger_config_listen)
         global queue_listener
         queue_listener = logging.handlers.QueueListener(
@@ -156,8 +156,10 @@ class LogWorkInitializer(object):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        global queue_listener
         if queue_listener:
             queue_listener.stop()
+            queue_listener = None
         logging.config.dictConfig(glogger_config_main)
 
 
