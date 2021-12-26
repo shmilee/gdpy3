@@ -4,7 +4,7 @@
 
 import os
 import multiprocessing
-from gdpy3.glogger import LogWorkInitializer, getGLogger
+from ...glogger import LogWorkInitializer, getGLogger
 
 log = getGLogger('P')
 print('HERE-mod:', os.getpid())
