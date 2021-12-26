@@ -194,7 +194,7 @@ class _Data1dDigger(Digger):
             use psi or r/a, default False
         '''
         data, tstep, ndiag = self.pckloader.get_many(
-            self.srckeys[0], *self.extrakeys)
+            self.srckeys[0], *self.extrakeys[:2])
         y, x = data.shape
         dt = tstep * ndiag
         X, Y = numpy.arange(1, x + 1) * dt, numpy.arange(0, y)
@@ -502,6 +502,9 @@ class _Data1dFFTDigger(_Data1dDigger):
         *fft_ymaxlimit*: float, default 0
             if (ymax of power line) < fft_ymaxlimit * (ymax of power lines),
             then remove it.
+        *fft_unit_rho0*: bool
+            set Y unit of FFT results to rho0 or not when use_ra is True,
+            default False
         *fft_autoxlimit*: bool
             auto set short xlimt for FFT results or not, default True
         '''
@@ -513,6 +516,7 @@ class _Data1dFFTDigger(_Data1dDigger):
         fft_tselect = kwargs.get('fft_tselect', tcutoff)
         fft_pselect = kwargs.get('fft_pselect', pcutoff)
         fft_ymaxlimit = kwargs.get('fft_ymaxlimit', 0.0)
+        fft_unit_rho0 = kwargs.get('fft_unit_rho0', False)
         fft_autoxlimit = kwargs.get('fft_autoxlimit', True)
         if 'fft_tselect' not in self.kwoptions:
             self.kwoptions.update(dict(
@@ -531,6 +535,10 @@ class _Data1dFFTDigger(_Data1dDigger):
                     rangee=(0, 1, 0.05),
                     value=0.0,
                     description='FFT ymaxlimit:'),
+                fft_unit_rho0=dict(
+                    widget='Checkbox',
+                    value=False,
+                    description='FFT unit rho0:'),
                 fft_autoxlimit=dict(
                     widget='Checkbox',
                     value=True,
@@ -551,7 +559,6 @@ class _Data1dFFTDigger(_Data1dDigger):
                 dlog.warning("Can't select: %s <= fft time <= %s!" % (s0, s1))
         # fft_pselect
         ip0, ip1 = 0, Y.size
-        dy = numpy.diff(Y).mean() if use_ra else 1.0
         acckwargs['fft_pselect'] = pcutoff
         if (fft_pselect != pcutoff
                 and fft_pselect[0] >= pcutoff[0]
@@ -580,6 +587,7 @@ class _Data1dFFTDigger(_Data1dDigger):
             select_Z = Z[ip0:ip1, it0:it1]
             select_X = X[[it0, it1-1, it1-1, it0, it0]]
             select_Y = Y[[ip0, ip0, ip1-1, ip1-1, ip0]]
+        dy = numpy.diff(Y).mean() if use_ra else 1.0
         tf, yf, af, pf = tools.fft2(dt, dy, select_Z)
         # fft_ymaxlimit
         pf_tmax = pf.max(axis=0)
@@ -595,6 +603,18 @@ class _Data1dFFTDigger(_Data1dDigger):
         else:
             acckwargs['fft_ymaxlimit'] = 0.0
             pf_tlist, pf_ylist = 'all', 'all'
+        # yf unit
+        acckwargs['fft_unit_rho0'] = False
+        yf_label = r'$k_r$(1/a)' if use_ra else r'$k_r$(1/mpsi)'
+        if use_ra and fft_unit_rho0:
+            try:
+                a, rho0 = self.pckloader.get_many('gtc/a_minor', 'gtc/rho0')
+                yf = yf*rho0/a
+            except Exception:
+                dlog.warning("Cannot use unit rho0!", exc_info=1)
+            else:
+                yf_label = r'$k_r\rho_0$'
+                acckwargs['fft_unit_rho0'] = True
         # tf, yf xlimit
         if fft_autoxlimit:
             acckwargs['fft_autoxlimit'] = True
@@ -607,8 +627,8 @@ class _Data1dFFTDigger(_Data1dDigger):
             tf_xlimit, yf_xlimit = None, None
         results.update(dict(
             select_X=select_X, select_Y=select_Y,
-            tf=tf, yf=yf, pf=pf, tf_label=r'$\omega$($c_s/R_0$)',
-            yf_label=r'$k_r$(1/a)' if use_ra else r'$k_r$(1/mpsi)',
+            tf=tf, yf=yf, pf=pf,
+            tf_label=r'$\omega$($c_s/R_0$)', yf_label=yf_label,
             pf_tlist=pf_tlist, pf_ylist=pf_ylist,
             tf_xlimit=tf_xlimit, yf_xlimit=yf_xlimit,
         ))
