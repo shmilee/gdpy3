@@ -328,6 +328,9 @@ class HistoryFieldModeDigger(_TimeCutoff):
     def _dig(self, kwargs):
         '''*growth_time*: [start, end]
             set growth time, in time unit(float)
+        *savsmooth*: bool
+            use savgolay_filter to smooth results in axes 2, 3 or not
+            default True
         '''
         dlog.debug('input kwargs: %s ' % kwargs)
         _timedata = super(HistoryFieldModeDigger, self)._dig(kwargs)
@@ -350,12 +353,21 @@ class HistoryFieldModeDigger(_TimeCutoff):
                        n=n, m=m, kthetarho0=ktr,
                        title1='$%s: n=%d, m=%d$' % (fstr, n, m))
         # 2 log(amplitude), growth rate
+        savsmooth = kwargs.get('savsmooth', True)
+        if 'savsmooth' not in self.kwoptions:
+            self.kwoptions['savsmooth'] = dict(widget='Checkbox',
+                                               value=True,
+                                               description='smooth: savgolay')
+        acckwargs['savsmooth'] = bool(savsmooth)
         title2 = r'smooth(log(amplitude))'
         if ktr:
             title2 += r', $k_{\theta}\rho_0$=%.6f' % ktr
         ya = np.sqrt(yreal**2 + yimag**2)
         if ya.any():
-            logya = tools.savgolay_filter(np.log(ya), info='log(Amp)')
+            if savsmooth:
+                logya = tools.savgolay_filter(np.log(ya), info='log(Amp)')
+            else:
+                logya = np.log(ya)
             start, end = None, None
             if 'growth_time' in kwargs:
                 start, end = kwargs['growth_time']
@@ -406,9 +418,9 @@ class HistoryFieldModeDigger(_TimeCutoff):
         # 3 amplitude normalized by growth rate, real frequency
         if ya.any():
             normyreal, reg3, reg4, nT1, omega1 = self.__get_omega(
-                yreal, time, growth, start, end)
+                yreal, time, growth, start, end, savsmooth)
             normyimag, reg5, reg6, nT2, omega2 = self.__get_omega(
-                yimag, time, growth, start, end)
+                yimag, time, growth, start, end, savsmooth)
             dlog.parm("Get frequency: %.6f (r), %.6f (i)" % (omega1, omega2))
         else:
             normyreal, reg3, reg4, nT1, omega1 = yreal, 0, 1, 0, 0
@@ -443,9 +455,12 @@ class HistoryFieldModeDigger(_TimeCutoff):
         dlog.debug('output kwargs: %s ' % acckwargs)
         return results, acckwargs
 
-    def __get_omega(self, y, time, growth, start, end):
-        normy = tools.savgolay_filter(
-            np.divide(y, np.exp(growth * time)), info='Amp_normalized')
+    def __get_omega(self, y, time, growth, start, end, smooth):
+        if smooth:
+            normy = tools.savgolay_filter(
+                np.divide(y, np.exp(growth * time)), info='Amp_normalized')
+        else:
+            normy = np.divide(y, np.exp(growth * time))
         index = [i for i in tools.argrelextrema(normy, m='both')
                  if 0.9*start + 0.1 * end <= i < 0.1*start + 0.9 * end]
         if len(index) >= 2:
