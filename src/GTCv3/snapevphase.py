@@ -22,6 +22,7 @@ snapshot.F90::
 import numpy as np
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
+from .gtc import Ndigits_tstep
 
 _all_Converters = ['SnapEVphaseConverter']
 _all_Diggers = ['SnapEVphaseDigger']
@@ -85,6 +86,7 @@ class SnapEVphaseConverter(Converter):
 def _snap_get_timestr(snapgroup, pckloader):
     istep = int(snapgroup.replace('evphase', ''))
     tstep = pckloader.get('gtc/tstep')
+    tstep = round(tstep, Ndigits_tstep)
     return r'istep=%d, time=%s$R_0/c_s$' % (istep, istep * tstep)
 
 

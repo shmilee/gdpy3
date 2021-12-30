@@ -16,6 +16,8 @@ _all_Converters = ['GtcConverter']
 _all_Diggers = []
 __all__ = _all_Converters + _all_Diggers
 
+Ndigits_tstep = 8
+
 
 class GtcConverter(Converter):
     '''
@@ -147,7 +149,7 @@ class GtcConverter(Converter):
         for key, val in duplicate_d.items():
             sd.update({key: numpy.array(val)})
         if 'tstep' in sd:
-            val = round(sd['tstep'], 8)
+            val = round(sd['tstep'], Ndigits_tstep)
             clog.debug("Round datakey: %s=%s ..." % ('tstep', val))
             sd['tstep'] = val
         clog.debug("Filled datakeys: %s ..." % str(tuple(sd.keys())))

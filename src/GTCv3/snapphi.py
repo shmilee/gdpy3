@@ -30,6 +30,7 @@ from .snapshot import (
     _snap_get_timestr,
     SnapshotFieldSpectrumDigger, SnapshotFieldmDigger
 )
+from .gtc import Ndigits_tstep
 from .. import tools
 
 _all_Converters = ['SnapPhiZetaPsiConverter']
@@ -446,6 +447,7 @@ class SnapPhiTimeSpectrumDigger(SnapPhiSpectrumDigger):
         # rm first item in data
         all_data = self.pckloader.get_many(*self.srckeys[1:self.msnap])
         tstep = self.pckloader.get('gtc/tstep')
+        tstep = round(tstep, Ndigits_tstep)
         time = [self.srckeys[idx].split('/')[0] for idx in range(self.msnap)]
         time = np.around(np.array(  # rm first item in time
             [int(t.replace('snap', '')) * tstep for t in time[1:]]), 5)

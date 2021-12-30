@@ -59,6 +59,7 @@ import numpy as np
 from .. import tools
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
+from .gtc import Ndigits_tstep
 
 _all_Converters = ['HistoryConverter']
 _all_Diggers = ['HistoryParticleDigger',
@@ -174,6 +175,7 @@ class _TimeCutoff(Digger):
             t0<=time[x0:x1]<=t1
         '''
         ndstep, tstep, ndiag = self.pckloader.get_many(*self.extrakeys[:3])
+        tstep = round(tstep, Ndigits_tstep)
         dt = tstep * ndiag
         time = np.around(np.arange(1, ndstep + 1) * dt, 8)
         if self.kwoptions is None:
@@ -338,6 +340,7 @@ class HistoryFieldModeDigger(_TimeCutoff):
         fstr = field_tex_str[self.section[1]]
         yreal, yimag, ndstep, tstep, ndiag, nmodes, mmodes, rho0 = \
             self.pckloader.get_many(*self.srckeys, *self.extrakeys[:6])
+        tstep = round(tstep, Ndigits_tstep)
         yreal, yimag = yreal[self._idx-1, x0:x1], yimag[self._idx-1, x0:x1]
         dt = tstep * ndiag
         n = nmodes[self._idx-1]

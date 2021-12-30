@@ -61,6 +61,7 @@ import numpy
 from .. import tools
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
+from .gtc import Ndigits_tstep
 
 _all_Converters = ['Data1dConverter']
 _all_Diggers = ['Data1dFluxDigger', 'Data1dFieldDigger',
@@ -195,6 +196,7 @@ class _Data1dDigger(Digger):
         '''
         data, tstep, ndiag = self.pckloader.get_many(
             self.srckeys[0], *self.extrakeys[:2])
+        tstep = round(tstep, Ndigits_tstep)
         y, x = data.shape
         dt = tstep * ndiag
         X, Y = numpy.arange(1, x + 1) * dt, numpy.arange(0, y)

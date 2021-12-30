@@ -36,6 +36,7 @@ import numpy as np
 from .. import tools
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
+from .gtc import Ndigits_tstep
 
 _all_Converters = ['SnapshotConverter']
 _all_Diggers = [
@@ -165,6 +166,7 @@ class SnapshotConverter(Converter):
 def _snap_get_timestr(snapgroup, pckloader):
     istep = int(snapgroup.replace('snap', ''))
     tstep = pckloader.get('gtc/tstep')
+    tstep = round(tstep, Ndigits_tstep)
     return r'istep=%d, time=%s$R_0/c_s$' % (istep, istep * tstep)
 
 
@@ -519,6 +521,7 @@ class SnapshotTimeFieldSpectrumDigger(SnapshotFieldSpectrumDigger):
         # rm first item in fluxdata
         all_fluxdata = self.pckloader.get_many(*self.srckeys[1:index])
         tstep = self.pckloader.get('gtc/tstep')
+        tstep = round(tstep, Ndigits_tstep)
         time = [self.srckeys[idx].split('/')[0] for idx in range(index)]
         time = np.around(np.array(  # rm first item in time
             [int(t.replace('snap', '')) * tstep for t in time[1:]]), 5)

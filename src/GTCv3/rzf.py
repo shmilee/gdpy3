@@ -11,6 +11,7 @@ from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
 from .. import tools
 from .data1d import _Data1dDigger
+from .gtc import Ndigits_tstep
 
 _all_Converters = ['Data1dDensityConverter']
 _all_Diggers = ['Data1dDensityDigger', 'HistoryRZFDigger']
@@ -183,6 +184,7 @@ class HistoryRZFDigger(Digger):
             or use average to smooth. defalut False
         '''
         ndstep, tstep, ndiag = self.pckloader.get_many(*self.extrakeys[:3])
+        tstep = round(tstep, Ndigits_tstep)
         dt = tstep * ndiag
         _time = np.around(np.arange(0, ndstep) * dt, 8)
         _hist = self.pckloader.get(self.srckeys[0])
