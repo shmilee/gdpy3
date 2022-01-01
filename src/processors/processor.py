@@ -52,6 +52,10 @@ class Processor(object):
     exporttemplates: list
         templates of generated exporters
 
+    visplter: visplter object to create, show figures
+    visplter_usecat: bool
+        set default action, show the figures in terminal or not
+
     Notes
     -----
     1. :attr:`saltname` means base name of salt file for `saver.path`.
@@ -617,7 +621,7 @@ class Processor(object):
         return exportcore.fmt_export(
             dict(status=status, reason=reason, figlabel=figlabel), fmt=fmt)
 
-    def export_doc(self, template, see='help'):
+    def export_doc(self, template, see='print'):
         '''
         see docstring of :meth:`exportercore._export_*template*`
 
@@ -644,7 +648,7 @@ class Processor(object):
 
     # # Start Visplt Part
 
-    __slots__.extend(['_visplter'])
+    __slots__.extend(['_visplter', 'visplter_usecat'])
 
     def _get_visplter(self):
         return self._visplter
@@ -654,6 +658,7 @@ class Processor(object):
             self._visplter = visplter
         else:
             self._visplter = visplter
+        self.visplter_usecat = False
 
     visplter = property(_get_visplter, _set_visplter)
 
@@ -672,15 +677,16 @@ class Processor(object):
             display *figlabel* after it ploted
         _show_kwargs: parameters pick from *kwargs*
             They startswith('_show_') for :attr:`visplter`.show_figure,
-            like '_show_width', '_show_mod' etc.
+            like '_show_usecat', '_show_width', '_show_mod' etc.
         callback: see :meth:`dig`
         '''
         if not self.visplter:
             plog.error("%s: Need a visplter object!" % self.name)
             return
         # pop show kwargs
-        shkws = {k[6:]: kwargs.pop(k)
-                 for k in tuple(kwargs.keys()) if k.startswith('_show_')}
+        shkws = {'usecat': True} if self.visplter_usecat else {}
+        shkws.update({k[6:]: kwargs.pop(k)
+                      for k in tuple(kwargs.keys()) if k.startswith('_show_')})
         results = self.export(
             figlabel, what='axes', fmt='dict', callback=callback, **kwargs)
         if results['status'] == 200:
