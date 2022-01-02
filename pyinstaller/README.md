@@ -66,18 +66,19 @@ done
 ```
 
 
-centos7
--------
+centos6 centos7
+---------------
 
 1. run a new docker container
 
 ```bash
-docker build --rm -t gdpy3/centos7:$(date +%y%m%d) -f centos7.Dockerfile .
+Rver=6 # or 7
+docker build --rm --network host -t gdpy3/centos${Rver}:$(date +%y%m%d) -f centos${Rver}.Dockerfile .
 cd ..
 python setup.py bdist_wheel
 cp ./dist/gdpy3-*-any.whl pyinstaller/
 docker run --rm -i -t -v $PWD/pyinstaller:/gdpy3-pyinstaller \
-    gdpy3/centos7:$(date +%y%m%d) bash
+    gdpy3/centos${Rver}:$(date +%y%m%d) bash
 ```
 
 2. install and freeze gdpy3 in container
@@ -90,9 +91,11 @@ entry_iface_candidates=(cli gui run ipy)
 for lk in ${entry_iface_candidates[@]}; do
     ln -s gdpy3-app ./dist/gdpy3-app/gdpy3-$lk
 done
+cp -v /usr/lib64/libxcb.so.1 ./dist/gdpy3-app/
 cd dist/
 gver=$(sed 's|\(v.*\)-\([0-9]*\)-g.*|\1.r\2|' gdpy3-app/gdpy3-data/git-version)
-tar czvf gdpy3-app-$gver-$(uname -m).pkg.tar.gz  gdpy3-app/
+osver=$(sed 's|.* \([1-9]*\)\..*|\1|' /etc/redhat-release)
+tar czvf gdpy3-app-$gver-centos${osver}-$(uname -m).pkg.tar.gz  gdpy3-app/
 ```
 
 3. decompress in cluster and create shell wrappers
@@ -149,7 +152,8 @@ cp -v /usr/lib/aarch64-linux-gnu/libxcb.so.1 ./dist/gdpy3-app/
 cp -v /lib/aarch64-linux-gnu/libpthread.so.0 ./dist/gdpy3-app/
 cd dist/
 gver=$(sed 's|\(v.*\)-\([0-9]*\)-g.*|\1.r\2|' gdpy3-app/gdpy3-data/git-version)
-tar czvf gdpy3-app-$gver-$(uname -m).pkg.tar.gz  gdpy3-app/
+osver=$(sed -n 's|VERSION_ID="\([1-9]*\)"|\1|p' /etc/os-release)
+tar czvf gdpy3-app-$gver-debian${osver}-$(uname -m).pkg.tar.gz  gdpy3-app/
 ```
 
 4. decompress in cluster and create shell wrappers
