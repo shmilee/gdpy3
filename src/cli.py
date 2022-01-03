@@ -156,45 +156,8 @@ def cli_script():
             print("%s%s  ->  %s" % (' ' * 4, a.ljust(w), Processor_Alias[a]))
         sys.exit()
     if args.c:
-        path = os.path.join(__userbase__, 'user_processors')
-        if not os.path.isdir(path):
-            os.makedirs(path)
-        newloc = os.path.join(path, args.c)
-        if os.path.exists(newloc):
-            log.warning("%s is already in %s!" % (args.c, path))
-        else:
-            import re
-            os.mkdir(newloc)
-            join = os.path.join
-            src = join(os.path.dirname(__file__), args.c, '__init__.py')
-            dst = join(newloc, '__init__.py')
-            with open(src, "r", encoding="utf-8") as f1, \
-                    open(dst, "w", encoding="utf-8") as f2:
-                for li in f1:
-                    if li.startswith('from . '):
-                        li = li.replace('from . ', 'from gdpy3.%s ' % args.c)
-                    elif re.match('^from .[a-zA-Z_]\w*', li):
-                        li = li.replace('from .', 'from gdpy3.%s.' % args.c)
-                    elif li.startswith('from .. '):
-                        li = li.replace('from .. ', 'from gdpy3 ')
-                    elif re.match('^from ..[a-zA-Z_]\w*', li):
-                        li = li.replace('from ..', 'from gdpy3.')
-                    f2.write(li)
-            dst = join(newloc, '_example.py')
-            with open(dst, "w", encoding="utf-8") as f:
-                f.write('# -*- coding: utf-8 -*-\n\n')
-                f.write('# Copyright (c) 20xx xxxx\n\n')
-                f.write('import numpy\n'
-                        'from gdpy3 import tools\n'
-                        'from gdpy3.cores.converter import Converter, clog\n'
-                        'from gdpy3.cores.digger import Digger, dlog\n\n'
-                        "_all_Converters = ['ExampleConverter']\n"
-                        "_all_Diggers = ['ExampleDigger']\n"
-                        '__all__ = _all_Converters + _all_Diggers\n\n\n'
-                        'class ExampleConverter(Converter):\n'
-                        '    pass\n\n\n'
-                        'class ExampleDigger(Digger):\n'
-                        '    pass\n')
+        from .processors import copy_processor_files
+        copy_processor_files(args.c)
         sys.exit()
     if args.help:
         if args.subcmd:
