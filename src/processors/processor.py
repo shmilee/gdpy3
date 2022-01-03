@@ -53,8 +53,9 @@ class Processor(object):
         templates of generated exporters
 
     visplter: visplter object to create, show figures
-    visplter_usecat: bool
-        set default action, show the figures in terminal or not
+    show_usecat: bool
+        Set default action, show the figures in terminal or not.
+        This is a class attribute. It affects all instances.
 
     Notes
     -----
@@ -65,16 +66,16 @@ class Processor(object):
     2. :attr:`dig_acceptable_time` means if :meth:`dig` spends more
        time than this, the results will be saved in :attr:`resfilesaver`.
     '''
+    __slots__ = []
+    parallel = 'off'
 
     @property
     def name(self):
         return type(self).__name__
 
-    parallel = 'off'
-
     # # Start Convert Part
 
-    __slots__ = ['_rawloader', '_pcksaver', '_converters', '_saltstr']
+    __slots__.extend(['_rawloader', '_pcksaver', '_converters', '_saltstr'])
     ConverterCores = []
     saltname = ''
 
@@ -648,7 +649,7 @@ class Processor(object):
 
     # # Start Visplt Part
 
-    __slots__.extend(['_visplter', 'visplter_usecat'])
+    __slots__.extend(['_visplter'])
 
     def _get_visplter(self):
         return self._visplter
@@ -658,9 +659,18 @@ class Processor(object):
             self._visplter = visplter
         else:
             self._visplter = visplter
-        self.visplter_usecat = False
 
     visplter = property(_get_visplter, _set_visplter)
+    _show_usecat = False
+
+    def _get_show_usecat(self):
+        return self._show_usecat
+
+    def _set_show_usecat(self, val):
+        cls = type(self)
+        cls._show_usecat = val
+
+    show_usecat = property(_get_show_usecat, _set_show_usecat)
 
     def visplt(self, figlabel, revis=False, show=True,
                callback=None, **kwargs):
@@ -684,7 +694,7 @@ class Processor(object):
             plog.error("%s: Need a visplter object!" % self.name)
             return
         # pop show kwargs
-        shkws = {'usecat': True} if self.visplter_usecat else {}
+        shkws = {'usecat': True} if self.show_usecat else {}
         shkws.update({k[6:]: kwargs.pop(k)
                       for k in tuple(kwargs.keys()) if k.startswith('_show_')})
         results = self.export(

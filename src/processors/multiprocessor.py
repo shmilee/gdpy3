@@ -33,6 +33,7 @@ class MultiProcessor(Processor):
     {0}3. :attr:`multiproc` is the max number of worker processes,
        default multiprocessing.cpu_count().
     '''
+    __slots__ = []
     parallel = 'multiprocess'
     multiproc = multiprocessing.cpu_count()
 
