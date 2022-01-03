@@ -54,7 +54,7 @@ ADD 0002-libsixel-loader-gcc44.patch /
 RUN pip3 --no-cache-dir install -i ${PIP_INDEX_URL} pillow==7.1.2 \
     && yum -y install libcurl libpng \
     && yum clean all
-RUN curl -fLC - --retry 3 --retry-delay 3 -o /tmp/libsixel-1.8.6.tar.gz http://shmilee.io/upload/libsixel-1.8.6.tar.gz \
+RUN curl -fLC - --retry 3 --retry-delay 3 -o /tmp/libsixel-1.8.6.tar.gz https://github.com/saitoha/libsixel/archive/v1.8.6.tar.gz \
     && yum -y install gcc make patch libcurl-devel libpng-devel \
     && tar zxvf /tmp/libsixel-1.8.6.tar.gz -C /tmp/ \
     && cd /tmp/libsixel-1.8.6/ \
