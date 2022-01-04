@@ -332,7 +332,7 @@ class HistoryFieldModeDigger(_TimeCutoff):
             set growth time, in time unit(float)
         *savsmooth*: bool
             use savgolay_filter to smooth results in axes 2, 3 or not
-            default True
+            default False
         '''
         dlog.debug('input kwargs: %s ' % kwargs)
         _timedata = super(HistoryFieldModeDigger, self)._dig(kwargs)
@@ -356,10 +356,10 @@ class HistoryFieldModeDigger(_TimeCutoff):
                        n=n, m=m, kthetarho0=ktr,
                        title1='$%s: n=%d, m=%d$' % (fstr, n, m))
         # 2 log(amplitude), growth rate
-        savsmooth = kwargs.get('savsmooth', True)
+        savsmooth = kwargs.get('savsmooth', False)
         if 'savsmooth' not in self.kwoptions:
             self.kwoptions['savsmooth'] = dict(widget='Checkbox',
-                                               value=True,
+                                               value=False,
                                                description='smooth: savgolay')
         acckwargs['savsmooth'] = bool(savsmooth)
         title2 = r'smooth(log(amplitude))'
