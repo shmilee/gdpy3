@@ -18,24 +18,39 @@ from .base import BasePckSaver, _copydoc_func
 __all__ = ['NpzPckSaver']
 log = getGLogger('S')
 
+_Compress_prefer = 'ZIP_LZMA'  # ZIP_DEFLATED or ZIP_LZMA
+_Compress_kwds = dict(allowZip64=True)
+if _Compress_prefer == 'ZIP_LZMA' and zipfile.lzma:
+    _Compress_kwds['compression'] = zipfile.ZIP_LZMA
+else:
+    import sys
+    _Compress_kwds['compression'] = zipfile.ZIP_DEFLATED
+    if sys.version_info[:2] >= (3, 7):
+        # Changed in version 3.7: Add the compresslevel parameter.
+        _Compress_kwds['compresslevel'] = 6
+
 
 @inherit_docstring((BasePckSaver,), _copydoc_func, template=None)
 class NpzPckSaver(BasePckSaver):
-    # https://docs.scipy.org/doc/numpy/reference/generated/numpy.savez_compressed.html
-    # /usr/lib/python3.x/site-packages/numpy/lib/npyio.py, funtion _savez
     '''
     Save dict data with a group name to a NumPy compressed archive file.
 
     Attributes
     {Attributes}
-    duplicate_name: bool
-        allow "zipfile.py: UserWarning: Duplicate name ..." or not
 
     Parameters
     {Parameters}
+    duplicate_name: bool
+        allow "zipfile.py: UserWarning: Duplicate name ..." or not
 
     Notes
     {Notes}
+
+    References
+    ----------
+    1. https://docs.scipy.org/doc/numpy/reference/generated/numpy.savez_compressed.html
+    2. /usr/lib/python3.x/site-packages/numpy/lib/npyio.py, funtion _savez
+    3. https://docs.python.org/3/library/zipfile.html#zipfile.ZipFile
     '''
     __slots__ = ['duplicate_name']
     _extension = '.npz'
@@ -43,14 +58,15 @@ class NpzPckSaver(BasePckSaver):
     def __init__(self, path, duplicate_name=True):
         super(NpzPckSaver, self).__init__(path)
         self.duplicate_name = duplicate_name
+        log.debug('Using ZipFile compression parameters: %s' % _Compress_kwds)
 
     def _open_append(self):
         return numpy.lib.npyio.zipfile_factory(
-            self.path, mode="a", compression=zipfile.ZIP_DEFLATED)
+            self.path, mode="a", **_Compress_kwds)
 
     def _open_new(self):
         return numpy.lib.npyio.zipfile_factory(
-            self.path, mode="w", compression=zipfile.ZIP_DEFLATED)
+            self.path, mode="w", **_Compress_kwds)
 
     def _find_overwrite_names(self, group, data):
         old_all = self._storeobj.namelist()
@@ -69,8 +85,8 @@ class NpzPckSaver(BasePckSaver):
     @staticmethod
     def copy_zipfile(old, new, ignore):
         zf = numpy.lib.npyio.zipfile_factory
-        with zf(old, mode="r", compression=zipfile.ZIP_DEFLATED) as zin:
-            with zf(new, mode="w", compression=zipfile.ZIP_DEFLATED) as zout:
+        with zf(old, mode="r", **_Compress_kwds) as zin:
+            with zf(new, mode="w", **_Compress_kwds) as zout:
                 zout.comment = zin.comment
                 for item in zin.infolist():
                     if item.filename not in ignore:
