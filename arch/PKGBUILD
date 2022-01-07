@@ -8,7 +8,8 @@ url="https://github.com/shmilee/gdpy3.git"
 arch=('any')
 license=('MIT')
 depends=('python-setuptools' 'python-numpy' 'python-scipy' 'python-matplotlib')
-optdepends=('python-h5py: saving and loading hdf5 support'
+optdepends=('xz: for npz lzma compression method'
+            'python-h5py: saving and loading hdf5 support'
             'python-paramiko: loading raw data through ssh'
             'tk: tkinter GUI support'
             'python-screeninfo>=0.4.1: tkinter GUI auto-choose screen support'

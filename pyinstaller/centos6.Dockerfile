@@ -21,8 +21,8 @@ RUN sed -e "s|^mirrorlist=|#mirrorlist=|g" \
         -e "s|^#baseurl=http://mirror.centos.org/centos/\$releasever|baseurl=https://mirrors.tuna.tsinghua.edu.cn/centos-vault/${OS_RELEASE}|g" \
         -i.bak \
         /etc/yum.repos.d/CentOS-*.repo \
-    && yum -y install openssl bzip2 tkinter tcl tk sqlite \
-    && yum -y install gcc make openssl-devel bzip2-devel tkinter tcl-devel tk-devel sqlite-devel \
+    && yum -y install openssl bzip2 xz tkinter tcl tk sqlite \
+    && yum -y install gcc make openssl-devel bzip2-devel xz-devel tkinter tcl-devel tk-devel sqlite-devel \
     && yum clean all \
     && curl -fLC - --retry 3 --retry-delay 3 -o /tmp/Python-3.6.9.tgz https://www.python.org/ftp/python/3.6.9/Python-3.6.9.tgz \
     && tar zxvf /tmp//Python-3.6.9.tgz -C /tmp/ \
