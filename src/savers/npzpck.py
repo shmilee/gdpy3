@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2018-2020 shmilee
+# Copyright (c) 2018-2022 shmilee
 
 '''
 Contains Npz pickled file saver class.
