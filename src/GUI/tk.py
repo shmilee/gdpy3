@@ -457,8 +457,10 @@ class LabeledSlider(ttk.Frame):
         super(LabeledSlider, self).__init__(master, borderwidth=1)
         width = kw.get('width', 168)
         height = kw.get('height', 33)
-        style = kw.get('style', None)
+        style = kw.get('style', {})
         from_, to, step = rangee  # step is omitted. TODO
+        if 'NDIGITS' not in style:
+            style['NDIGITS'] = len(str(float(step)).split('.')[1])
         if init_val is None:
             init_val = from_
         if isinstance(init_val, (int, float, numpy.number)):
