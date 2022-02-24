@@ -16,9 +16,12 @@ from ..__about__ import __data_path__, __icon_name__, __gversion__
 from ..glogger import getGLogger
 from ..processors import get_processor, Processor_Names
 from ..processors.lib import Processor_Lib
+from .tkSliderWidget import Slider
 
 __all__ = ['GTkApp']
 log = getGLogger('G')
+
+use_experi_LSlider = True
 
 
 class GTkApp(object):
@@ -381,12 +384,20 @@ class GTkApp(object):
                     'IntSlider', 'FloatSlider',
                     'IntRangeSlider', 'FloatRangeSlider'):
                 # width = 8 if v['widget'].startswith('Float') else 0
-                controls[k] = LabeledSpinBoxs(
-                    self.figkwframe,
-                    v['description'],
-                    v['rangee'],
-                    v['value'],
-                    state='readonly', width=0)
+                if use_experi_LSlider:
+                    controls[k] = LabeledSlider(
+                        self.figkwframe,
+                        v['description'],
+                        v['rangee'],
+                        v['value'],
+                    )
+                else:
+                    controls[k] = LabeledSpinBoxs(
+                        self.figkwframe,
+                        v['description'],
+                        v['rangee'],
+                        v['value'],
+                        state='readonly', width=0)
             elif v['widget'] in ('Dropdown', 'SelectMultiple'):
                 controls[k] = LabeledListbox(
                     self.figkwframe,
@@ -425,6 +436,54 @@ class GTkApp(object):
                 self.cache_figkwslib[key][figlabel] = self.figkws
             for n, w in self.figkws.items():
                 w.pack(anchor=W, padx=5, pady=5)
+
+
+class LabeledSlider(ttk.Frame):
+    '''
+    Slider widgets with a Label widget indicating their description.
+
+    Parameters
+    ----------
+    desc: str
+        description
+    rangee: tuple
+        (from_, to, step)
+    init_val: one or more int or float numbers
+        initial value, num or [num1, num2, ...]
+    kw: options width, height, style for Slider
+    '''
+
+    def __init__(self, master, desc, rangee, init_val=None, **kw):
+        super(LabeledSlider, self).__init__(master, borderwidth=1)
+        width = kw.get('width', 168)
+        height = kw.get('height', 33)
+        style = kw.get('style', None)
+        from_, to, step = rangee  # step is omitted. TODO
+        if init_val is None:
+            init_val = from_
+        if isinstance(init_val, (int, float, numpy.number)):
+            init_val = [init_val]
+
+        if (isinstance(step, (int, numpy.integer))
+                and isinstance(init_val[0], (int, numpy.integer))):
+            val_type = int
+        elif (isinstance(step, (float, numpy.floating))
+              and isinstance(init_val[0], (float, numpy.floating))):
+            val_type = float
+        self.label = ttk.Label(self, text=desc)
+        self.label.grid(in_=self, row=0, column=0, padx=2, sticky=W)
+        self.slider = Slider(
+            self, width=width, height=height, style=style,
+            min_val=from_, max_val=to, init_val=init_val, val_type=val_type)
+        self.slider.grid(in_=self, row=1, column=0, padx=2, sticky=W+E)
+
+    @property
+    def value(self):
+        values = self.slider.getValues()
+        if len(values) == 1:
+            return values[0]
+        else:
+            return values
 
 
 class LabeledSpinBoxs(ttk.Frame):
