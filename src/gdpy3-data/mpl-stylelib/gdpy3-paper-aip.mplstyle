@@ -7,7 +7,9 @@ figure.figsize : 3.3, 5.3
 #figure.figsize : 6.6, 4.0
 
 figure.dpi : 600
-figure.autolayout : True
+# figure.autolayout=True destroys EPS, please use `tight_layout`
+# ref: https://github.com/matplotlib/matplotlib/issues/21930
+#figure.autolayout : True
 #figure.subplot.hspace : 0.08
 
 axes.titlesize : 9
