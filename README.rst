@@ -11,3 +11,6 @@ Intro
     :target: https://img.shields.io/pypi/status/gdpy3.svg
     :alt: status
 
+.. image:: https://zenodo.org/badge/88051033.svg
+    :target: https://zenodo.org/badge/latestdoi/88051033
+    :alt: DOI
