@@ -21,7 +21,7 @@ from .tkSliderWidget import Slider
 __all__ = ['GTkApp']
 log = getGLogger('G')
 
-use_experi_LSlider = True
+use_experi_LSlider = False
 
 
 class GTkApp(object):
