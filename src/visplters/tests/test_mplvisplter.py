@@ -68,8 +68,9 @@ ax3 = {
         [1, 'plot_surface', (fieldx, fieldy, fielddata),
          dict(rstride=1, cstride=1, linewidth=1,
               antialiased=True, cmap='jet', label='field')],
-        [2, 'revise', lambda fig, ax, art: fig.colorbar(art[1]), {}],
-        [3, 'revise', lambda fig, ax, art: fig.colorbar(
+        [10, 'grid', (False,), {}],
+        [11, 'revise', lambda fig, ax, art: fig.colorbar(art[1]), {}],
+        [12, 'revise', lambda fig, ax, art: fig.colorbar(
             art[1], ax=fig.get_axes()[:2]), {}],
     ],
 }
@@ -116,6 +117,32 @@ ax6 = {
         [6, 'set_ylabel', ('line2',), dict()],
         [7, 'legend', (), dict(loc='center right')],
     ],
+}
+x = np.linspace(1, 2)
+y = np.linspace(1, 1.5)
+ax7 = {
+    'layout': [(0.05, 0.05, 0.9, 0.9), dict()],
+    'data': [
+            [1, 'plot', (x, y), dict(label=r'org')],
+            [2, 'plot', (x, y*2), dict(label=r'*2')],
+            [3, 'plot', (x, y*3), dict()],
+            [44, 'plot', (x, y*4), dict(label=r'*4')],
+            [5, 'plot', (x, y*5), dict(label=r'*5')],
+            [6, 'plot', (x, y*6), dict()],
+            [7, 'plot', ([x, x], [-y*7, -y*7.5]), dict(label=r'*7')],
+            [23, 'revise', 'center_spines', dict(
+                position='zero', position_left=('data', 1.5))],
+            [23, 'revise', 'multi_merge_legend', dict(
+                groups=[
+                    dict(index=[(1, 2), 3], labels=[None, r'*3'],
+                         loc='upper left'),
+                    dict(index=[(44, 5), 6, 7], labels=None,
+                         loc=(0.03, 0.1), ncol=2),
+                ],
+                max_artists_per_handler=20,
+                sep=', ',
+            )],
+    ]
 }
 temp_contourfresults = dict(
     X=fieldx, Y=fieldy, Z=fielddata, clabel_levels=[-0.5, 0, 0.5],
@@ -231,6 +258,12 @@ class TestMatplotlibVisplter(unittest.TestCase):
         self.visplter.close_figure('all')
 
         self.assertListEqual(self.visplter.figures, [])
+
+    def test_mplvisplter_revise_functions(self):
+        self.visplter.create_figure('test-rev', ax7)
+        self.visplter.show_figure('test-rev')
+        input('[I]nterrupt, to see figure "%s".' % 'test-rev')
+        self.visplter.close_figure('all')
 
     def test_mplvisplter_tmpl_contourf(self):
         axstruct, sty = self.visplter.tmpl_contourf(

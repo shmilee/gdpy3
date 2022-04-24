@@ -12,6 +12,7 @@ import matplotlib
 import matplotlib.style
 import matplotlib.pyplot
 import mpl_toolkits.mplot3d
+from matplotlib.legend_handler import HandlerTuple
 from distutils.version import LooseVersion
 
 from ..glogger import getGLogger
@@ -150,6 +151,9 @@ class MatplotlibVisplter(BaseVisplter):
                                    % index, exc_info=1)
                 elif axfunc == 'revise':
                     vlog.debug("Revising axes %s ..." % (axpos,))
+                    if type(fargs) == str and fargs in self.preset_revisefuns:
+                        vlog.debug("Using preset revise function: %s" % fargs)
+                        fargs = getattr(self, fargs)
                     try:
                         fargs(fig, axesdict, artistdict, **fkwargs)
                     except Exception:
@@ -165,6 +169,108 @@ class MatplotlibVisplter(BaseVisplter):
                     except Exception:
                         vlog.error("Failed to add artist %s!"
                                    % index, exc_info=1)
+
+    preset_revisefuns = [
+        'remove_spines', 'center_spines',
+        'multi_merge_legend',
+    ]
+
+    # some revise functions
+    @staticmethod
+    def remove_spines(fig, axesdict, artistdict, axindex=0):
+        '''
+        Remove all spines.
+
+        Parameters
+        ----------
+        *axindex*: int key, select axes from axesdict
+        '''
+        ax = axesdict[axindex]
+        for spos in ['top', 'right', 'bottom', 'left']:
+            ax.spines[spos].set_visible(False)
+        ax.axis('off')
+
+    @staticmethod
+    def center_spines(fig, axesdict, artistdict, axindex=0,
+                      position=('axes', 0.5), position_bottom=None, position_left=None):
+        '''
+        Remove top/right spines, and set the position of bottom/left spines.
+
+        Parameters
+        ----------
+        position: 2 tuple of (position type, amount) or string
+            pass to `matplotlib.spines.Spine.set_position` for bottom/left
+            default 'center' -> ('axes', 0.5); 'zero' -> ('data', 0.0)
+        position_bottom: same as *position*
+        position_left: same sa *position*
+        '''
+        ax = axesdict[axindex]
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_position(position_bottom or position)
+        ax.spines['left'].set_position(position_left or position)
+
+    @staticmethod
+    def multi_merge_legend(fig, axesdict, artistdict, axindex=0,
+                           groups=(), sep=', ', max_artists_per_handler=99):
+        '''
+        Add multiple legends, support several artists to share one same label.
+
+        Parameters
+        ----------
+        groups: a dict list, each dict for a legend
+            1. key 'index', list, order number of plot items,
+               you can merge them into a tuple as one handle.
+            2. key 'handles', ignore, set by 'index'
+            3. key 'labels', list, label for handle, corresponding to 'index'
+               if label==None, use 'sep'.join labels of all handles
+            4. key 'handler_map', ignore, auto-add tuple support
+            5. other keys,values pass as kwargs for `~.Axes.legend`
+            example,
+                dict(index=[(3, 4, 5), 6], labels=None, loc=(0.03,0.1))
+        sep: str, separator used to join labels
+        max_artists_per_handler: int
+        '''
+        ax = axesdict[axindex]
+        handles, labels = ax.get_legend_handles_labels()
+        handleD = dict(zip(handles, labels))
+        # set handler_map
+        handler_map = {tuple: HandlerTuple(ndivide=None)}
+        # for i, art in artistdict.items():
+        # for j, a in enumerate(art):
+        ##        print(i, j, a)
+        # for h, l in handleD.items():
+        ##    print(h, l)
+        for grp in groups:
+            handles, labels = [], []
+            # about index
+            for i in grp['index']:
+                if type(i) in (tuple, list):
+                    handl, label = [], []
+                    for j in i:
+                        handl.extend(artistdict[j])
+                        label.append(handleD.get(handl[-1], None))
+                        if len(handl) >= max_artists_per_handler:
+                            handl = handl[:max_artists_per_handler]
+                            break
+                elif type(i) == int:
+                    handl = artistdict[i]
+                    if len(handl) >= max_artists_per_handler:
+                        handl = handl[:max_artists_per_handler]
+                    label = [handleD.get(handl[-1], None)]
+                handles.append(tuple(handl))
+                labels.append(sep.join(map(str, label)))
+            # if pass in labels
+            newlabels = grp.get('labels', None)
+            if newlabels:
+                for i, l in enumerate(newlabels):
+                    if l is not None and i < len(labels):
+                        labels[i] = l
+            # other kwargs
+            kws = {k: grp[k] for k in grp if k not in (
+                'index', 'handles', 'labels', 'handler_map')}
+            lg = ax.legend(handles, labels, handler_map=handler_map, **kws)
+            ax.add_artist(lg)
 
     def _create_figure(self, num, axesstructures, figstyle):
         '''Create object *fig*.'''
