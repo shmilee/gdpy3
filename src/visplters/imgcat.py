@@ -11,6 +11,7 @@ import os
 import sys
 import struct
 import tempfile
+import numpy as np
 
 from ..glogger import getGLogger
 from ..utils import which_cmds, run_child_cmd, find_available_module
@@ -18,6 +19,7 @@ from ..utils import which_cmds, run_child_cmd, find_available_module
 __all__ = ['get_imgfwh', 'resize_imgwh', 'convert_img', 'Display']
 vlog = getGLogger('V')
 TEMPPREFIX = 'gdpy3-imgcat-temp-%s-' % tempfile.mktemp(prefix='', dir='')
+Image = find_available_module('PIL.Image')
 
 
 def get_imgfwh(img):
@@ -116,7 +118,6 @@ def resize_imgwh(oldsize, w=None, h=None, max_width=1366):
 
 def _load_eps(img, intype, max_width, savefp=None, savefmt='PNG'):
     '''Open EPS, resize it if needed. intype: path, data, Image.'''
-    Image = find_available_module('PIL.Image')
     if not Image:
         vlog.error("Display EPS in Terminal requires Pillow.")
         return None, None
@@ -232,7 +233,6 @@ def convert_img(img, typecandidates, width=None, height=None, max_width=1366):
         return data, fmt, w, h, None
     elif outype == 'rawdata':
         if intype in ('path', 'data'):
-            Image = find_available_module('PIL.Image')
             if not Image:
                 vlog.error("Display rawdata in Terminal requires Pillow.")
                 return (None,)*5
@@ -558,3 +558,47 @@ class Display(object):
             return
         writer = self.mod.SixelWriter()
         writer.draw(put, w=w, h=h, output=self.output)
+
+
+def overlay_alpha_png(bg, png, xy_offset=None):
+    '''
+    Overlay alpha png on bg image.
+
+    Parameters
+    ----------
+    bg: str, background image path, jpg or png
+        OR numpy.ndarray
+    png: str, alpha png image path OR np.ndarray
+    xy_offset: x,y offset coordinates in pixels, default center
+    '''
+    if Image:
+        vlog.debug("Overlay_alpha_png uses Pillow.")
+        ibg = bg if type(bg) == np.ndarray else np.array(Image.open(bg))
+        ipng = png if type(png) == np.ndarray else np.array(Image.open(png))
+    else:
+        import matplotlib.image as mpimg
+        vlog.debug("Overlay_alpha_png uses matplotlib.")
+        ibg = bg if type(bg) == np.ndarray else mpimg.imread(bg)
+        ipng = png if type(png) == np.ndarray else mpimg.imread(png)
+    if ibg.dtype == np.float32:  # [0,1] --> [0,255]
+        ibg = np.uint8(ibg*255)
+    if ipng.dtype == np.float32:
+        ipng = np.uint8(ipng*255)
+    # offset
+    if xy_offset:
+        x_offset, y_offset = xy_offset
+    else:
+        # default center offset
+        x_offset = int((ibg.shape[1] - ipng.shape[1])/2)
+        y_offset = int((ibg.shape[0] - ipng.shape[0])/2)
+    y1, y2 = y_offset, y_offset + ipng.shape[0]
+    x1, x2 = x_offset, x_offset + ipng.shape[1]
+    # alpha
+    assert ipng.shape[2] == 4
+    a0 = ipng[:, :, 3] / 255.0
+    a1 = 1.0 - a0
+    # overlay
+    Nc = ibg.shape[2]  # bg jpg: 3; png: 4
+    for c in range(0, Nc):
+        ibg[y1:y2, x1:x2, c] = a0*ipng[:, :, c] + a1*ibg[y1:y2, x1:x2, c]
+    return ibg
