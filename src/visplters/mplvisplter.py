@@ -177,18 +177,38 @@ class MatplotlibVisplter(BaseVisplter):
 
     # some revise functions
     @staticmethod
-    def remove_spines(fig, axesdict, artistdict, axindex=0):
+    def remove_spines(fig, axesdict, artistdict, axindex=0, select=None):
         '''
         Remove all spines.
 
         Parameters
         ----------
-        *axindex*: int key, select axes from axesdict
+        axindex: int key, select axes from axesdict
+        select: tuple or list, select spines to remove
+            default for 2d, ('top', 'right', 'bottom', 'left')
+            default for 3d, ('x', 'y', 'z')
         '''
         ax = axesdict[axindex]
-        for spos in ['top', 'right', 'bottom', 'left']:
-            ax.spines[spos].set_visible(False)
-        ax.axis('off')
+        if '3d' in ax.name:
+            # ref: https://stackoverflow.com/questions/59857203
+            # ref: https://stackoverflow.com/questions/15042129
+            ax.grid(False)  # rm grid lines
+            select = select or ('x', 'y', 'z')
+            for x in select:
+                getattr(ax, 'set_%sticks' % x)([])  # rm ticks
+                getattr(ax, 'set_%sticklabels' % x)([])  # rm tick labels
+                xaxis = getattr(ax, '%saxis' % x)
+                # xaxis.line.set_color((1., 1., 1., 0.))  # transparent spine
+                # xaxis.pane.fill = False
+                # xaxis.set_pane_color((1., 1., 1., 0.))  # transparent pane
+                xaxis.line.set_visible(False)
+                xaxis.pane.set_visible(False)
+                xaxis.label.set_visible(False)  # rm label
+        else:
+            select = select or ('top', 'right', 'bottom', 'left')
+            for spos in select:
+                ax.spines[spos].set_visible(False)
+            ax.axis('off')
 
     @staticmethod
     def center_spines(fig, axesdict, artistdict, axindex=0,
@@ -205,6 +225,9 @@ class MatplotlibVisplter(BaseVisplter):
         position_left: same sa *position*
         '''
         ax = axesdict[axindex]
+        if '3d' in ax.name:
+            vlog.warning("center_spines has no effect on 3D Axes!")
+            return
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
         ax.spines['bottom'].set_position(position_bottom or position)

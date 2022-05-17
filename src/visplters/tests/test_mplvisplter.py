@@ -86,6 +86,7 @@ ax4 = {
     'data': [
         [1, 'plot3D', (xline, yline, zline), dict(label='line3d')],
         [2, 'scatter3D', (xdata, ydata, zdata), dict()],
+        [3, 'revise', 'remove_spines', dict(select=('x', 'y'))],
     ],
     'axstyle': ['classic'],
 }
