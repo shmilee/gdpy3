@@ -13,6 +13,7 @@ import matplotlib.style
 import matplotlib.pyplot
 import mpl_toolkits.mplot3d
 from matplotlib.legend_handler import HandlerTuple
+# setuptools._distutils.version.LooseVersion for py3.12
 from distutils.version import LooseVersion
 
 from ..glogger import getGLogger
