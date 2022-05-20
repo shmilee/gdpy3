@@ -12,6 +12,7 @@ ref
 '''
 
 from matplotlib.text import Annotation
+from matplotlib.patches import FancyArrowPatch
 from matplotlib.artist import allow_rasterization
 from mpl_toolkits.mplot3d.proj3d import proj_transform
 from matplotlib import cbook
@@ -22,17 +23,6 @@ from mpl_toolkits.mplot3d.axes3d import Axes3D
 class Annotation3D(Annotation):
     '''
     Annotation object with 3D position.
-
-    Parameters
-    ----------
-    text: str
-        The text of the annotation.
-    xyz: (float, float, float)
-        The point *(x, y, z)* to annotate.
-    xyztext : (float, float, float), default: *xyz*
-        The position *(x, y, z)* to place the text at.
-    **kwargs
-        Additional kwargs are passed to `~matplotlib.text.Annotation`.
     '''
 
     def __str__(self):
@@ -60,7 +50,20 @@ class Annotation3D(Annotation):
 
 
 def annotate3D(self, text, xyz, xyztext=None, **kwargs):
-    '''Add anotation `text` to an `Axes3d` instance. kwargs are passed to Axes.annotate.'''
+    '''
+    Add anotation `text` to an `Axes3d` instance.
+
+    Parameters
+    ----------
+    text: str
+        The text of the annotation.
+    xyz: (float, float, float)
+        The point *(x, y, z)* to annotate.
+    xyztext : (float, float, float), default: *xyz*
+        The position *(x, y, z)* to place the text at.
+    **kwargs
+        Additional kwargs are passed to Axes.annotate.
+    '''
     xy = xyz[:2]
     xytext = None if xyztext is None else xyztext[:2]
     annotation = super(Axes3D, self).annotate(
@@ -70,6 +73,59 @@ def annotate3D(self, text, xyz, xyztext=None, **kwargs):
     return annotation
 
 
-setattr(Axes3D, 'annotate', annotate3D)
 setattr(Axes3D, 'annotate3D', annotate3D)
 setattr(Axes3D, 'annotate2D', Axes.annotate)
+setattr(Axes3D, 'annotate', annotate3D)
+
+
+class FancyArrowPatch3D(FancyArrowPatch):
+    '''
+    A fancy arrow patch with 3D positions.
+    '''
+
+    def __str__(self):
+        (x1, y1, z1), (x2, y2, z2) = self._posA_posB_3D
+        return f"{type(self).__name__}(({x1:g}, {y1:g}, {z1:g})->({x2:g}, {y2:g}, {z2:g}))"
+
+    def __init__(self, posA, posB, **kwargs):
+        FancyArrowPatch.__init__(self, posA=posA[:2], posB=posB[:2], **kwargs)
+        self.set_3d_properties(posA, posB)
+
+    def set_3d_properties(self, posA, posB):
+        self._posA_posB_3D = [posA, posB]
+        self.stale = True
+
+    def do_3d_projection(self, renderer=None):
+        (x1, y1, z1), (x2, y2, z2) = self._posA_posB_3D
+        xs, ys, zs = proj_transform((x1, x2), (y1, y2), (z1, z2), self.axes.M)
+        return min(zs)
+
+    @allow_rasterization
+    def draw(self, renderer):
+        (x1, y1, z1), (x2, y2, z2) = self._posA_posB_3D
+        xs, ys, zs = proj_transform((x1, x2), (y1, y2), (z1, z2), self.axes.M)
+        _posA_posB = [(xs[0], ys[0]), (xs[1], ys[1])]
+        with cbook._setattr_cm(self, _posA_posB=_posA_posB):
+            FancyArrowPatch.draw(self, renderer)
+        self.stale = False
+
+
+def arrow3D(self, posA, posB, **kwargs):
+    '''
+    Add an 3d `arrow` to an `Axes3d` instance.
+
+    Parameters
+    ----------
+    posA, posB : (float, float, float)
+        (x, y, z) coordinates of arrow tail and arrow head respectively.
+    **kwargs
+        Additional kwargs are passed to `~matplotlib.patches.FancyArrowPatch`.
+    '''
+    arrow = FancyArrowPatch3D(posA, posB, **kwargs)
+    self.add_artist(arrow)
+    return arrow
+
+
+setattr(Axes3D, 'arrow3D', arrow3D)
+setattr(Axes3D, 'arrow2D', Axes.arrow)
+setattr(Axes3D, 'arrow', Axes.arrow)

@@ -167,7 +167,22 @@ ax8 = {
             arrowprops=dict(arrowstyle="-|>", ec='black', fc='white', lw=5))],
     ],
 }
-
+ax9 = {
+    'layout': [
+        122,
+        dict(
+            title='arrow3D',
+            xlabel='X', ylabel='Y', zlabel='Z', xlim=[0, 2],
+            projection='3d',
+        )
+    ],
+    'data': [
+        [1, 'arrow3D', ((0, 0, 0), (1, 1, 1)), dict(
+            mutation_scale=20, arrowstyle="-|>", linestyle='dashed')],
+        [2, 'arrow3D', ((1, 0, 0), (2, 1, 1)), dict(
+            mutation_scale=20, ec='green', fc='red')],
+    ],
+}
 temp_contourfresults = dict(
     X=fieldx, Y=fieldy, Z=fielddata, clabel_levels=[-0.5, 0, 0.5],
     plot_method='plot_surface',
@@ -283,8 +298,8 @@ class TestMatplotlibVisplter(unittest.TestCase):
 
         self.assertListEqual(self.visplter.figures, [])
 
-    def test_mplvisplter_extending(self):
-        self.visplter.create_figure('test-extend', ax8)
+    def test_mplvisplter_figure_extending(self):
+        self.visplter.create_figure('test-extend', ax8, ax9)
         self.visplter.show_figure('test-extend')
         input('[I]nterrupt, to see figure "%s".' % 'test-extend')
         self.visplter.close_figure('all')
