@@ -19,6 +19,7 @@ from ..glogger import getGLogger
 from ..__about__ import __data_path__, __ENABLE_USERBASE__, __userbase__
 from ..utils import inherit_docstring
 from .base import BaseVisplter, _copydoc_func
+from . import mpl_extending
 
 __all__ = ['MatplotlibVisplter']
 vlog = getGLogger('V')

@@ -145,6 +145,29 @@ ax7 = {
             )],
     ]
 }
+ax8 = {
+    'layout': [
+        121,
+        dict(
+            title='annotate3D',
+            xlabel='X', ylabel='Y', zlabel='Z',
+            projection='3d',
+        )
+    ],
+    'data': [
+        [1, 'scatter', ([0, 0, 0], [0, 0, 1], [0, 1, 0]), dict(marker='o')],
+        [2, 'annotate3D', ('point 1', (0, 0, 0)), dict(
+            xyztext=(0.01, 0.01, 0.01))],
+        [3, 'annotate', ('point 2', (0, 1, 0)), dict(
+            xyztext=(-30, -30, 30), textcoords='offset points',
+            arrowprops=dict(ec='black', fc='white', shrink=2.5))],
+        [4, 'annotate3D', ('point 3', (0, 0, 1)), dict(
+            xyztext=(0.02, 0.1, 0.3),
+            bbox=dict(boxstyle="round", fc="lightyellow"),
+            arrowprops=dict(arrowstyle="-|>", ec='black', fc='white', lw=5))],
+    ],
+}
+
 temp_contourfresults = dict(
     X=fieldx, Y=fieldy, Z=fielddata, clabel_levels=[-0.5, 0, 0.5],
     plot_method='plot_surface',
@@ -259,6 +282,12 @@ class TestMatplotlibVisplter(unittest.TestCase):
         self.visplter.close_figure('all')
 
         self.assertListEqual(self.visplter.figures, [])
+
+    def test_mplvisplter_extending(self):
+        self.visplter.create_figure('test-extend', ax8)
+        self.visplter.show_figure('test-extend')
+        input('[I]nterrupt, to see figure "%s".' % 'test-extend')
+        self.visplter.close_figure('all')
 
     def test_mplvisplter_revise_functions(self):
         self.visplter.create_figure('test-rev', ax7)
