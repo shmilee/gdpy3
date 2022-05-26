@@ -122,7 +122,7 @@ ax6 = {
 x = np.linspace(1, 2)
 y = np.linspace(1, 1.5)
 ax7 = {
-    'layout': [(0.05, 0.05, 0.9, 0.9), dict()],
+    'layout': [(0.05, 0.05, 0.45, 0.9), dict()],
     'data': [
             [1, 'plot', (x, y), dict(label=r'org')],
             [2, 'plot', (x, y*2), dict(label=r'*2')],
@@ -182,6 +182,17 @@ ax9 = {
         [2, 'arrow3D', ((1, 0, 0), (2, 1, 1)), dict(
             mutation_scale=20, ec='green', fc='red')],
     ],
+}
+x = np.linspace(-np.pi, np.pi, 100)
+y = 2 * np.sin(x)
+ax10 = {
+    'layout': [122, dict(xlabel='X', ylabel='Y')],
+    'data': [
+        [1, 'plot', (x, y), dict()],
+        [2, 'revise', 'arrow_spines', dict(position_bottom=-1, arrow_size=8)],
+        [3, 'text', (0.2, 2.2, 'arrow spines'), {}],
+    ],
+
 }
 temp_contourfresults = dict(
     X=fieldx, Y=fieldy, Z=fielddata, clabel_levels=[-0.5, 0, 0.5],
@@ -305,9 +316,9 @@ class TestMatplotlibVisplter(unittest.TestCase):
         self.visplter.close_figure('all')
 
     def test_mplvisplter_revise_functions(self):
-        self.visplter.create_figure('test-rev', ax7)
-        self.visplter.show_figure('test-rev')
-        input('[I]nterrupt, to see figure "%s".' % 'test-rev')
+        self.visplter.create_figure('test-rev1', ax7, ax10)
+        self.visplter.show_figure('test-rev1')
+        input('[I]nterrupt, to see figure "%s".' % 'test-rev1')
         self.visplter.close_figure('all')
 
     def test_mplvisplter_tmpl_contourf(self):

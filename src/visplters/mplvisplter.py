@@ -173,7 +173,7 @@ class MatplotlibVisplter(BaseVisplter):
                                    % index, exc_info=1)
 
     preset_revisefuns = [
-        'remove_spines', 'center_spines',
+        'remove_spines', 'center_spines', 'arrow_spines',
         'multi_merge_legend',
     ]
 
@@ -234,6 +234,81 @@ class MatplotlibVisplter(BaseVisplter):
         ax.spines['right'].set_visible(False)
         ax.spines['bottom'].set_position(position_bottom or position)
         ax.spines['left'].set_position(position_left or position)
+
+    @staticmethod
+    def arrow_spines(fig, axesdict, artistdict, axindex=0,
+                     position=None, position_bottom=None, position_left=None,
+                     arrow_size=8, arrow_color='k', tick_params=None):
+        '''
+        Remove top/right spines,
+        set the position of bottom/left spines by 'data',
+        and add arrows at the end of spines.
+
+        Parameters
+        ----------
+        position: data value
+            pass ('data', *position*) to `matplotlib.spines.Spine.set_position`
+            default: 0 if 0 in xylim else position of the center ticklabel
+        position_bottom: same as *position*
+        position_left: same sa *position*
+        arrow_size: int, default 8
+        arrow_color: str, default 'k'
+        tick_params: dict, default None
+            example, dict(direction='inout', which='both')
+        '''
+        ax = axesdict[axindex]
+        if '3d' in ax.name:
+            vlog.warning("arrow_spines has no effect on 3D Axes!")
+            return
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        # xaxis-pos(y-data), yaxis-pos(x-data)
+        xypos = []
+        for pos, x in [(position_bottom, 'x'), (position_left, 'y')]:
+            pos = pos or position
+            if pos is None:
+                xlim, ylim = ax.get_xlim(), ax.get_ylim()
+                lim = ylim if x == 'x' else xlim
+                if lim[0] <= 0 <= lim[1]:
+                    pos = 0
+                else:
+                    ticks = ax.get_yticks() if x == 'x' else ax.get_xticks()
+                    pos = ticks[len(ticks)//2]
+            xypos.append(('data', pos))
+        ax.spines['bottom'].set_position(xypos[0])
+        ax.spines['left'].set_position(xypos[1])
+        ax.xaxis.set_ticks_position('bottom')
+        ax.yaxis.set_ticks_position('left')
+        xtrans = ax.get_xaxis_transform()  # x/y-direct.. in data/axis coord..
+        ytrans = ax.get_yaxis_transform()
+        # ref: https://github.com/matplotlib/matplotlib/issues/17157
+        c_kws = dict(ls="", ms=arrow_size, color=arrow_color, clip_on=False)
+        ax.plot(1, xypos[0][1], marker=">", transform=ytrans, **c_kws)
+        ax.plot(xypos[1][1], 1, marker="^", transform=xtrans, **c_kws)
+        if isinstance(tick_params, dict):
+            ax.tick_params(**tick_params)
+        if ax.get_xlabel():
+            ax.set_xlabel(ax.get_xlabel(), loc='right')
+        if ax.get_ylabel():
+            ax.set_ylabel(ax.get_ylabel(), loc='top', rotation=0)
+        # for x in ('x', 'y'):
+        #    # ticklabels at cross, **re-draw afer zoom**, ignore TODO
+        #    ticks = getattr(ax, 'get_%sticks' % x)()
+        #    ticklabels = getattr(ax, 'get_%sticklabels' % x)() # all zero
+        #    xpos = xypos[1][1] if x == 'x' else xypos[0][1]
+        #    for tpos, t in zip(ticks, ticklabels):
+        #        if tpos == xpos:
+        #            L = getattr(ax, 'get_%slim' % x)()[1] - xpos
+        #            # shift position of ticklabels at cross-point
+        #            shift = L * 0.05
+        #            print(tpos, t, xpos, shift)
+        #            if x == 'x':
+        #                t.set_position((tpos+shift, xypos[0][1]))  # TOCHECK
+        #            else:
+        #                t.set_position((xypos[1][1], tpos+shift))
+        #            print('----', t)
+        #            break
+        #    # arrow xtick,label right overlap, pass
 
     @staticmethod
     def multi_merge_legend(fig, axesdict, artistdict, axindex=0,
