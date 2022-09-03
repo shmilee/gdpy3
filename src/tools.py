@@ -38,8 +38,8 @@ def line_fit(X, Y, deg, fitX=None, info=None, **kwargs):
     Parameters
     ----------
     X, Y, deg, kwargs: passed to `numpy.polyfit`
-    fitX: array
-        new X data used to calculate fitY
+    fitX: int or array
+        N X interpolation points or new X used to calculate fitY
     info: str
         info of line
     '''
@@ -53,8 +53,12 @@ def line_fit(X, Y, deg, fitX=None, info=None, **kwargs):
         fit_p = np.poly1d(fitresult[0])
     else:
         fit_p = np.poly1d(fitresult)
-    newX = X if fitX is None else fitX
-    return fitresult, fit_p(newX)
+    if fitX is None:
+        return fitresult, fit_p(X)
+    elif type(fitX) == int:
+        return fitresult, fit_p(np.linspace(X[0], X[-1], fitX))
+    else:
+        return fitresult, fit_p(fitX)
 
 
 def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
@@ -70,15 +74,15 @@ def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
         'ln', 'log', 'lograrithmic', Y = a*ln(x) + b + eps
         'gauss', 'gaussian', Y = a*e^(-(x-b)^2/(2*c^2)) + d + eps
     X, Y, kwargs: passed to `scipy.optimize.curve_fit`
-    fitX: array
-        new X data used to calculate fitY
+    fitX: init or array
+        N X interpolation points or new X used to calculate fitY
     f_constant: number
         set preset-function's constant parameter, like 'exp' c, 'gauss' d
     info: str
         info of curve
     '''
     try:
-        from scipy.optimize import curve_fit
+        from scipy.optimize import curve_fit as s_curve_fit
     except ImportError:
         log.error("'%s' needs package 'scipy'!'" % 'curve_fit', exc_info=1)
         return (None,)*3
@@ -121,9 +125,11 @@ def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
     if func is None:
         log.error("Invalid arg 'f', not callable or available strings!")
         return (None,)*3
-    popt, pcov = curve_fit(func, X, Y, **kwargs)
+    popt, pcov = s_curve_fit(func, X, Y, **kwargs)
     log.debug("Fitting %s result: popt=%s, pcov=%s" % (info, popt, pcov))
     newX = X if fitX is None else fitX
+    if type(fitX) == int:
+        newX = np.linspace(X[0], X[-1], fitX)
     fitY = np.array([func(i, *popt) for i in newX])
     return popt, pcov, fitY
 
