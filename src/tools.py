@@ -96,7 +96,7 @@ def __fit_parse_rawdata(raw):
 def lines_fit_raw(raw, deg, fitX=None, info=None, **kwargs):
     '''
     Call :meth:`line_fit` for each X, Y get from `raw`.
-    Return a list `[line_fit(...), ...]`.
+    Return a list `[(X,Y,*line_fit(...)), ..., ...]`.
 
     Parameters
     ----------
@@ -105,8 +105,9 @@ def lines_fit_raw(raw, deg, fitX=None, info=None, **kwargs):
         """{0}"""
     others, kwargs: passed to :meth:`line_fit`
     '''
-    return [
-        line_fit(XY[0], XY[1], deg, fitX=fitX, info=info, **kwargs)
+    return [(
+        XY[0], XY[1],
+        *line_fit(XY[0], XY[1], deg, fitX=fitX, info=info, **kwargs))
         for XY in __fit_parse_rawdata(raw)
     ]
 
@@ -183,7 +184,7 @@ def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
 def curves_fit_raw(f, raw, fitX=None, f_constant=None, info=None, **kwargs):
     '''
     Call :meth:`curve_fit` for each X, Y get from `raw`.
-    Return a list `[curve_fit(...), ...]`.
+    Return a list `[(X,Y,*curve_fit(...)), ..., ...]`.
 
     Parameters
     ----------
@@ -192,9 +193,10 @@ def curves_fit_raw(f, raw, fitX=None, f_constant=None, info=None, **kwargs):
         """{0}"""
     others, kwargs: passed to :meth:`curve_fit`
     '''
-    return [
-        curve_fit(f, XY[0], XY[1], fitX=fitX,
-                  f_constant=f_constant, info=info, **kwargs)
+    return [(
+        XY[0], XY[1],
+        *curve_fit(f, XY[0], XY[1], fitX=fitX,
+                   f_constant=f_constant, info=info, **kwargs))
         for XY in __fit_parse_rawdata(raw)
     ]
 
