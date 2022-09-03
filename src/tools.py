@@ -7,6 +7,9 @@ Some tools for Core.
 '''
 
 import numpy as np
+import scipy.optimize as sp_optimize
+import scipy.signal as sp_signal
+import scipy.interpolate as sp_interpolate
 
 from .glogger import getGLogger
 from .utils import inherit_docstring
@@ -128,11 +131,6 @@ def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
     info: str
         info of curve
     '''
-    try:
-        from scipy.optimize import curve_fit as s_curve_fit
-    except ImportError:
-        log.error("'%s' needs package 'scipy'!'" % 'curve_fit', exc_info=1)
-        return (None,)*3
     info = ("curve '%s'" % info) if info else "curve"
     func = None
     if isinstance(f, str):
@@ -172,7 +170,7 @@ def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
     if func is None:
         log.error("Invalid arg 'f', not callable or available strings!")
         return (None,)*3
-    popt, pcov = s_curve_fit(func, X, Y, **kwargs)
+    popt, pcov = sp_optimize.curve_fit(func, X, Y, **kwargs)
     log.debug("Fitting %s result: popt=%s, pcov=%s" % (info, popt, pcov))
     newX = X if fitX is None else fitX
     if type(fitX) == int:
@@ -210,20 +208,15 @@ def argrelextrema(X, m='both'):
     m: str
         'max', 'min' or 'both', default 'both'
     '''
-    try:
-        from scipy.signal import argrelextrema
-    except ImportError:
-        log.error("'%s' needs package 'scipy'!'" % 'argrelextrema',
-                  exc_info=1)
-        return None
     if not isinstance(X, np.ndarray):
         X = np.array(X)
     if m == 'max':
-        index = argrelextrema(X, np.greater)[0]
+        index = sp_signal.argrelextrema(X, np.greater)[0]
     elif m == 'min':
-        index = argrelextrema(X, np.less)[0]
+        index = sp_signal.argrelextrema(X, np.less)[0]
     else:
-        g, l = argrelextrema(X, np.greater)[0], argrelextrema(X, np.less)[0]
+        g = sp_signal.argrelextrema(X, np.greater)[0]
+        l = sp_signal.argrelextrema(X, np.less)[0]
         index = np.sort(np.append(g, l))
     return index
 
@@ -322,12 +315,6 @@ def high_envelope(Y, X=None, add_indexs=[], **kwargs):
     kwargs: passed to `scipy.interpolate.interp1d`
         like *kind* of interpolation, *fill_value*, etc.
     '''
-    try:
-        from scipy.interpolate import interp1d
-    except ImportError:
-        log.error("'%s' needs package 'scipy'!'" % 'high_envelope',
-                  exc_info=1)
-        return None
     old_indexs = argrelextrema(Y, m='max')
     uadd = []
     if 0 not in add_indexs:
@@ -348,7 +335,7 @@ def high_envelope(Y, X=None, add_indexs=[], **kwargs):
         kwargs['bounds_error'] = False
     if 'fill_value' not in kwargs:
         kwargs['fill_value'] = 0.0
-    Yinterp = interp1d(X[new_indexs], Y[new_indexs], **kwargs)
+    Yinterp = sp_interpolate.interp1d(X[new_indexs], Y[new_indexs], **kwargs)
     return Yinterp(X)
 
 
@@ -414,12 +401,6 @@ def savgolay_filter(x, window_size=None, polyorder=None, info=None, **kwargs):
         info of data x
     kwargs: passed to `scipy.signal.savgol_filter`
     '''
-    try:
-        from scipy.signal import savgol_filter
-    except ImportError:
-        log.error("'%s' needs package 'scipy'!'" % 'savgol_filter',
-                  exc_info=1)
-        return None
     if not window_size:
         window_size = min(51, len(x))
         if window_size % 2 == 0:
@@ -428,7 +409,7 @@ def savgolay_filter(x, window_size=None, polyorder=None, info=None, **kwargs):
         polyorder = min(3, window_size-1)
     if info:
         log.debug("Use 'scipy.signal.savgol_filter' to smooth %s." % info)
-    return savgol_filter(x, window_size, polyorder, **kwargs)
+    return sp_signal.savgol_filter(x, window_size, polyorder, **kwargs)
 
 
 def findflat(X, upperlimit, info=None):
