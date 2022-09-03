@@ -9,8 +9,10 @@ Some tools for Core.
 import numpy as np
 
 from .glogger import getGLogger
+from .utils import inherit_docstring
 
-__all__ = ['max_subarray', 'line_fit', 'curve_fit',
+__all__ = ['max_subarray',
+           'line_fit', 'lines_fit_raw', 'curve_fit', 'curves_fit_raw',
            'argrelextrema', 'intersection_4points',
            'near_peak', 'high_envelope',
            'fft', 'fft2', 'savgolay_filter',
@@ -59,6 +61,51 @@ def line_fit(X, Y, deg, fitX=None, info=None, **kwargs):
         return fitresult, fit_p(np.linspace(X[0], X[-1], fitX))
     else:
         return fitresult, fit_p(fitX)
+
+
+__fit_rawdata_example = r"""
+        # x1, y1
+        0.1, 0.2
+        0.2, 0.3
+        0.3, 0.4
+
+        # x2, y2
+        0.1, 0.3
+        0.3, 0.5
+
+
+        # x2, y3
+        0.1, 0.6
+        0.3, 0.7
+        """
+
+
+def __fit_parse_rawdata(raw):
+    return [
+        np.array([
+            list(map(float, l.split(',')))
+            for l in d.split('\n') if l and not l.startswith('#')
+        ]).T
+        for d in raw.split('\n\n') if d and d != '\n']
+
+
+@inherit_docstring([], lambda p: ([__fit_rawdata_example], {}))
+def lines_fit_raw(raw, deg, fitX=None, info=None, **kwargs):
+    '''
+    Call :meth:`line_fit` for each X, Y get from `raw`.
+    Return a list `[line_fit(...), ...]`.
+
+    Parameters
+    ----------
+    raw: str
+        raw data in string type, format example:
+        """{0}"""
+    others, kwargs: passed to :meth:`line_fit`
+    '''
+    return [
+        line_fit(XY[0], XY[1], deg, fitX=fitX, info=info, **kwargs)
+        for XY in __fit_parse_rawdata(raw)
+    ]
 
 
 def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
@@ -132,6 +179,26 @@ def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
         newX = np.linspace(X[0], X[-1], fitX)
     fitY = np.array([func(i, *popt) for i in newX])
     return popt, pcov, fitY
+
+
+@inherit_docstring([], lambda p: ([__fit_rawdata_example], {}))
+def curves_fit_raw(f, raw, fitX=None, f_constant=None, info=None, **kwargs):
+    '''
+    Call :meth:`curve_fit` for each X, Y get from `raw`.
+    Return a list `[curve_fit(...), ...]`.
+
+    Parameters
+    ----------
+    raw: str
+        raw data in string type, format example:
+        """{0}"""
+    others, kwargs: passed to :meth:`curve_fit`
+    '''
+    return [
+        curve_fit(f, XY[0], XY[1], fitX=fitX,
+                  f_constant=f_constant, info=info, **kwargs)
+        for XY in __fit_parse_rawdata(raw)
+    ]
 
 
 def argrelextrema(X, m='both'):
