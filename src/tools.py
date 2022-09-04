@@ -38,7 +38,8 @@ def max_subarray(A):
 
 def line_fit(X, Y, deg, fitX=None, info=None, **kwargs):
     '''
-    One-dimensional polynomial fit. Return polyfit returns and fitY.
+    One-dimensional polynomial fit.
+    Return polyfit-results, fitY or (fitX-array, fitY) if input fitX is int.
 
     Parameters
     ----------
@@ -61,7 +62,8 @@ def line_fit(X, Y, deg, fitX=None, info=None, **kwargs):
     if fitX is None:
         return fitresult, fit_p(X)
     elif type(fitX) == int:
-        return fitresult, fit_p(np.linspace(X[0], X[-1], fitX))
+        fitX = np.linspace(X[0], X[-1], fitX)
+        return fitresult, (fitX, fit_p(fitX))
     else:
         return fitresult, fit_p(fitX)
 
@@ -115,7 +117,8 @@ def lines_fit_raw(raw, deg, fitX=None, info=None, **kwargs):
 def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
     '''
     Call `scipy.optimize.curve_fit`. Use non-linear least squares
-    to fit a function, f, to data. Return popt, pcov, fitY.
+    to fit a function, f, to data.
+    Return popt, pcov, fitY or (fitX-array, fitY) if input fitX is int.
 
     Parameters
     ----------
@@ -177,7 +180,10 @@ def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
     if type(fitX) == int:
         newX = np.linspace(X[0], X[-1], fitX)
     fitY = np.array([func(i, *popt) for i in newX])
-    return popt, pcov, fitY
+    if type(fitX) == int:
+        return popt, pcov, (newX, fitY)
+    else:
+        return popt, pcov, fitY
 
 
 @inherit_docstring([], lambda p: ([__fit_rawdata_example], {}))
