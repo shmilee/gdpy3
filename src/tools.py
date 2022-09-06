@@ -68,7 +68,7 @@ def line_fit(X, Y, deg, fitX=None, info=None, **kwargs):
         return fitresult, fit_p(fitX)
 
 
-__fit_rawdata_example = r"""
+_fit_raw_example = r"""
         # x1, y1
         0.1, 0.2
         0.2, 0.3
@@ -77,25 +77,46 @@ __fit_rawdata_example = r"""
         # x2, y2
         0.1, 0.3
         0.3, 0.5
+        0.4, 0.6
 
 
         # x2, y3
         0.1, 0.6
         0.3, 0.7
+        0.4, 0.8
         """
+_fit_raw_cut_doc = r"""
+    raw_cut: 2-tuple of array_like, optional
+        Lower and upper bounds on X. Defaults to take all X.
+        Each element of the tuple must be either an array with the length
+        equal to the number of X(for example 3), or a scalar (in which case
+        the bound is taken to be the same for all X).
+"""
 
 
-def __fit_parse_rawdata(raw):
-    return [
+def _fit_raw_parse(raw, raw_cut):
+    XYs = [
         np.array([
             list(map(float, l.split(',')))
             for l in d.split('\n') if l and not l.startswith('#')
         ]).T
         for d in raw.split('\n\n') if d and d != '\n']
+    N = len(XYs)
+    if raw_cut:
+        lb, ub = [np.asarray(b, dtype=float) for b in raw_cut]
+        if lb.ndim == 0:
+            lb = np.resize(lb, N)
+        if ub.ndim == 0:
+            ub = np.resize(ub, N)
+        cut = [np.where((XYs[i][0] >= lb[i]) & (XYs[i][0] <= ub[i]))[0]
+               for i in range(N)]
+        return [XYs[i][:, cut[i]] for i in range(N)]
+    else:
+        return XYs
 
 
-@inherit_docstring([], lambda p: ([__fit_rawdata_example], {}))
-def lines_fit_raw(raw, deg, fitX=None, info=None, **kwargs):
+@inherit_docstring([], lambda p: ([_fit_raw_example, _fit_raw_cut_doc], {}))
+def lines_fit_raw(raw, deg, raw_cut=None, fitX=None, info=None, **kwargs):
     '''
     Call :meth:`line_fit` for each X, Y get from `raw`.
     Return a list `[(X,Y,*line_fit(...)), ..., ...]`.
@@ -104,13 +125,13 @@ def lines_fit_raw(raw, deg, fitX=None, info=None, **kwargs):
     ----------
     raw: str
         raw data in string type, format example:
-        """{0}"""
-    others, kwargs: passed to :meth:`line_fit`
+        """{0}"""{1}
+    other args, kwargs: passed to :meth:`line_fit`
     '''
     return [(
         XY[0], XY[1],
         *line_fit(XY[0], XY[1], deg, fitX=fitX, info=info, **kwargs))
-        for XY in __fit_parse_rawdata(raw)
+        for XY in _fit_raw_parse(raw, raw_cut)
     ]
 
 
@@ -186,8 +207,9 @@ def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
         return popt, pcov, fitY
 
 
-@inherit_docstring([], lambda p: ([__fit_rawdata_example], {}))
-def curves_fit_raw(f, raw, fitX=None, f_constant=None, info=None, **kwargs):
+@inherit_docstring([], lambda p: ([_fit_raw_example, _fit_raw_cut_doc], {}))
+def curves_fit_raw(f, raw, raw_cut=None, fitX=None,
+                   f_constant=None, info=None, **kwargs):
     '''
     Call :meth:`curve_fit` for each X, Y get from `raw`.
     Return a list `[(X,Y,*curve_fit(...)), ..., ...]`.
@@ -196,14 +218,14 @@ def curves_fit_raw(f, raw, fitX=None, f_constant=None, info=None, **kwargs):
     ----------
     raw: str
         raw data in string type, format example:
-        """{0}"""
-    others, kwargs: passed to :meth:`curve_fit`
+        """{0}"""{1}
+    other args, kwargs: passed to :meth:`curve_fit`
     '''
     return [(
         XY[0], XY[1],
         *curve_fit(f, XY[0], XY[1], fitX=fitX,
                    f_constant=f_constant, info=info, **kwargs))
-        for XY in __fit_parse_rawdata(raw)
+        for XY in _fit_raw_parse(raw, raw_cut)
     ]
 
 
