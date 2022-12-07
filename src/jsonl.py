@@ -53,6 +53,10 @@ class JsonLines(object):
     ----------
     path: str
         path of the jsonl file
+    index: dict
+        index dict for all records
+    sort_keys: bool
+        sort object keys enabled or not
     cache_on: bool
         read cache enabled or not
 
@@ -69,7 +73,7 @@ class JsonLines(object):
     Data
     --------
     1. Every record can be any JSON types.
-    2. index key should be string or int.
+    2. 'index key' should be string or int.
     3. https://jsonlines.org
 
     .. code:
@@ -102,6 +106,7 @@ class JsonLines(object):
         # ref https://github.com/wbolster/jsonlines
         dump_kws = dict(ensure_ascii=False, sort_keys=sort_keys,  # UTF-8
                         separators=(",", ":") if compact else None)
+        self.sort_keys = sort_keys
         self._dumps = JsonEncoder(**dump_kws).encode
         self.cache_on = cache_on
         self.read_cache = {}
@@ -159,19 +164,28 @@ class JsonLines(object):
         else:
             return None
 
-    def slim_jsonl(self, outpath: str, overwrite: bool = False) -> None:
+    def slim_jsonl(self, outpath: str, overwrite: bool = False,
+                   recompact: bool = False) -> None:
         ''' Remove backup lines, save to new output file. '''
         if os.path.exists(outpath) and not overwrite:
             log.error('%s exists! Set overwrite to overwrite it!' % outpath)
             return
+        if recompact:
+            dump_kws = dict(ensure_ascii=False, sort_keys=self.sort_keys,
+                            separators=(",", ":"))
+            recompact_dumps = JsonEncoder(**dump_kws).encode
         with open(outpath, 'w', encoding='utf-8') as out, \
                 open(self.path, 'r', encoding='utf-8') as f:
             new_index, offset, RecordCount = {}, 0, 0
             for key in [k for k in self.index if k != '__RecordCount__']:
-                if k.split('-')[-2] == 'backup':
+                karr = key.split('-')
+                if len(karr) >= 3 and karr[-2] == 'backup':
                     continue  # skip backup lines
                 f.seek(self.index[key][0])
                 line = f.readline()  # contains '\n'
+                if recompact:
+                    rc = json.loads(line)
+                    line = recompact_dumps(rc) + '\n'
                 out.write(line)
                 RecordCount += 1
                 new_index[key] = (offset, RecordCount)
