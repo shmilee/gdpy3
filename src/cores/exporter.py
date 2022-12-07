@@ -39,20 +39,9 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
             import pickle
             return pickle.dumps(data)
         elif fmt == 'json':
-            import json
-            import numpy as np
-
-            class NpEncoder(json.JSONEncoder):
-                def default(self, obj):
-                    if isinstance(obj, np.integer):
-                        return int(obj)
-                    elif isinstance(obj, np.floating):
-                        return float(obj)
-                    elif isinstance(obj, np.ndarray):
-                        return obj.tolist()
-                    else:
-                        return super(NpEncoder, self).default(obj)
-            return json.dumps(data, cls=NpEncoder)
+            from ..jsonl import JsonEncoder
+            encoder = JsonEncoder(ensure_ascii=False, separators=(",", ":"))
+            return encoder.encode(data)
         else:
             pass
 
