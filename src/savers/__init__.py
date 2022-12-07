@@ -22,8 +22,9 @@ from . import base
 
 __all__ = ['get_pcksaver', 'is_pcksaver']
 log = getGLogger('S')
-pcksaver_names = ['CachePckSaver', 'NpzPckSaver', 'Hdf5PckSaver']
-pcksaver_types = ['.cache', '.npz', '.hdf5']
+pcksaver_names = ['CachePckSaver', 'NpzPckSaver', 'Hdf5PckSaver',
+                  'JsonlPckSaver']
+pcksaver_types = ['.cache', '.npz', '.hdf5', '.jsonl']
 
 
 def get_pcksaver(path):
@@ -37,6 +38,7 @@ def get_pcksaver(path):
     1. '.cache', dict cache name
     2. '.npz', file path
     3. '.hdf5', file path
+    4. '.jsonl', file path
     '''
     path = str(path)
     ext = os.path.splitext(path)[1]
@@ -55,6 +57,9 @@ def get_pcksaver(path):
     elif ext == '.hdf5':
         from .hdf5pck import Hdf5PckSaver
         saver = Hdf5PckSaver(os.path.expanduser(path))
+    elif ext == '.jsonl':
+        from .jsonlpck import JsonlPckSaver
+        saver = JsonlPckSaver(os.path.expanduser(path))
     else:
         raise ValueError('Save ha? Who am I? Why am I here?')
     return saver
