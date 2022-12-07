@@ -49,8 +49,10 @@ __all__ = ['get_rawloader', 'is_rawloader', 'get_pckloader', 'is_pckloader']
 rawloader_names = ['DirRawLoader', 'TarRawLoader', 'ZipRawLoader',
                    'SftpRawLoader']
 rawloader_types = ['directory', 'tarfile', 'zipfile', 'sftp.directory']
-pckloader_names = ['CachePckLoader', 'NpzPckLoader', 'Hdf5PckLoader']
-pckloader_types = ['.cache', '.npz', '.hdf5']
+pckloader_names = ['CachePckLoader', 'NpzPckLoader', 'Hdf5PckLoader',
+                   'JsonlPckLoader']
+pckloader_types = ['.cache', '.npz', '.hdf5',
+                   '.jsonl']
 
 
 def get_rawloader(path, filenames_exclude=None):
@@ -103,9 +105,10 @@ def get_pckloader(path, datagroups_exclude=None):
     Notes
     -----
     *path* types:
-    1. '.npz' file
-    2. '.hdf5' file
-    3. dict-like object
+    1. dict-like object
+    2. '.npz' file
+    3. '.hdf5' file
+    4. '.jsonl' file
     '''
 
     if is_dict_like(path):
@@ -118,6 +121,8 @@ def get_pckloader(path, datagroups_exclude=None):
                 from .npzpck import NpzPckLoader as Loader
             elif ext == '.hdf5':
                 from .hdf5pck import Hdf5PckLoader as Loader
+            elif ext == '.jsonl':
+                from .jsonlpck import JsonlPckLoader as Loader
             else:
                 raise ValueError('Unsupported Filetype: "%s"! '
                                  'Did you mean one of: "%s"?'
