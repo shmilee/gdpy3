@@ -165,7 +165,7 @@ class Processor(object):
         prefix = self.rawloader.beside_path(self.name.lower())
         # savetype
         if os.access(os.path.dirname(prefix), os.W_OK):
-            if savetype not in ['.npz', '.hdf5']:
+            if savetype not in ['.npz', '.hdf5', '.jsonl']:
                 plog.warning("Use default savetype '.npz'.")
                 savetype = '.npz'
         else:
@@ -749,15 +749,15 @@ class Processor(object):
             additional description of raw data
         filenames_exclude: list
             regular expressions to exclude filenames in rawloader
-        savetype: '.npz' or '.hdf5'
+        savetype: '.npz', '.hdf5' or '.jsonl'
             extension of pcksaver.path, default '.npz'
             when pcksaver.path isn't writable, use '.cache'
         overwrite: bool
             overwrite existing pcksaver.path file or not, default False
         Sid: bool
             If Sid is True(here), only rawloader and pcksaver will be set
-            and converted to a .npz or .hdf5 file if needed. And any other
-            codes(like Buzz Lightyear) will be omitted(destroyed).
+            and converted to a .npz, .hdf5 or .jsonl file if needed.
+            And any other codes(like Buzz Lightyear) will be omitted.
             Default False.
         datagroups_exclude: list
             regular expressions to exclude datagroups in pckloader
@@ -766,7 +766,7 @@ class Processor(object):
         '''
         root, ext1 = os.path.splitext(path)
         root, ext2 = os.path.splitext(root)
-        if ((ext2, ext1) in [('', '.npz'), ('', '.hdf5')]
+        if ((ext2, ext1) in [('', '.npz'), ('', '.hdf5'), ('', '.jsonl')]
                 and os.path.basename(root).startswith('gdpy3-pickled-data-')):
             # pckloader.path backward compatibility
             plog.warning("This is an old converted data path %s!" % path)
@@ -774,7 +774,8 @@ class Processor(object):
             old_pickled_path = True
         else:
             old_pickled_path = False
-        if (ext2, ext1) in [('.digged', '.npz'), ('.digged', '.hdf5')]:
+        if (ext2, ext1) in [('.digged', '.npz'), ('.digged', '.hdf5'),
+                            ('.digged', '.jsonl')]:
             # resfileloader.path
             plog.warning("This is a digged data path %s!" % path)
             path = '%s%s%s' % (root, '.converted', ext1)
@@ -785,7 +786,8 @@ class Processor(object):
             else:
                 plog.error("%s: Can't find path %s!" % (self.name, path))
                 return
-        if (ext2, ext1) in [('.converted', '.npz'), ('.converted', '.hdf5')]:
+        if (ext2, ext1) in [('.converted', '.npz'), ('.converted', '.hdf5'),
+                            ('.converted', '.jsonl')]:
             # pckloader.path
             self.rawloader, self.pcksaver = None, None
             if Sid:
@@ -824,7 +826,8 @@ class Processor(object):
                 return
             plog.info("Default %s data path is %s." %
                       ('converted', self.pcksaver.path))
-            if Sid and self.pcksaver._extension not in ['.npz', '.hdf5']:
+            if Sid and self.pcksaver._extension not in [
+                    '.npz', '.hdf5', '.jsonl']:
                 return
             if os.path.isfile(self.pcksaver.path):
                 if overwrite:
@@ -834,7 +837,8 @@ class Processor(object):
                     self.convert(add_desc=add_desc)
             else:
                 self.convert(add_desc=add_desc)
-            if Sid and self.pcksaver._extension in ['.npz', '.hdf5']:
+            if Sid and self.pcksaver._extension in [
+                    '.npz', '.hdf5', '.jsonl']:
                 return
             try:
                 self.pckloader = get_pckloader(
