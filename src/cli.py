@@ -82,7 +82,7 @@ def get_parser_convert(subparsers, parents=[]):
         'convert',
         usage='%(prog)s [options]... casepath...',
         description="Script that converts raw data to "
-                    "a .npz, .hdf5, .jsonl file beside raw data.",
+                    "a .npz, .hdf5, .jsonl, .jsonl-gz file beside raw data.",
         add_help=False,
         parents=parents,
     )
@@ -92,8 +92,8 @@ def get_parser_convert(subparsers, parents=[]):
     optgrp.add_argument(
         '--filenames_exclude', type=str, action='append', metavar='Pattern',
         help='Regular expressions to exclude filenames in raw data')
-    optgrp.add_argument('--savetype', type=str,
-                        choices=['.npz', '.hdf5', '.jsonl'], default='.npz',
+    optgrp.add_argument('--savetype', type=str, default='.npz',
+                        choices=['.npz', '.hdf5', '.jsonl', '.jsonl-gz'],
                         help="Extension of savefile, (default: %(default)s)")
     optgrp.add_argument('--overwrite', action='store_true',
                         help='Overwrite existing savefile')
@@ -105,7 +105,8 @@ def get_parser_plot(subparsers, parents=[]):
     parser = subparsers.add_parser(
         'plot',
         usage='%(prog)s [options]... casepath...',
-        description="Script that plots pickled data in .npz, .hdf5, .jsonl "
+        description="Script that plots pickled data in "
+                    ".npz, .hdf5, .jsonl, .jsonl-gz "
                     "file to figures in a directory beside pickled data. "
                     "It also accepts 'convert options', "
                     "as subcommand 'plot' is beyond 'convert'.",

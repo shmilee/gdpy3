@@ -370,6 +370,8 @@ class Processor(object):
         plog.debug("Default %s data cache is %s." % (ext2, respath))
         if ext != '.cache':
             try:
+                if ext == '.jsonl-gz':
+                    ext = '.jsonl'  # fix jsonl-gz not writable
                 respath = '%s%s' % (saverstr, ext)
                 resfilesaver = get_pcksaver(respath)
                 if overwrite and os.path.isfile(respath):
@@ -787,7 +789,8 @@ class Processor(object):
                 plog.error("%s: Can't find path %s!" % (self.name, path))
                 return
         if (ext2, ext1) in [('.converted', '.npz'), ('.converted', '.hdf5'),
-                            ('.converted', '.jsonl')]:
+                            ('.converted', '.jsonl'),
+                            ('.converted', '.jsonl-gz')]:
             # pckloader.path
             self.rawloader, self.pcksaver = None, None
             if Sid:

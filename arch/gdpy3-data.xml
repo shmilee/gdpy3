@@ -31,4 +31,12 @@
         <glob pattern="*.converted.jsonl"/>
         <glob pattern="*.digged.jsonl"/>
     </mime-type>
+    <mime-type type="application/x-gdpy3-jsonl-gz">
+        <sub-class-of type="application/gzip"/>
+        <comment>Gdpy3 JSONL document (gzip-compressed)</comment>
+        <comment xml:lang="zh_CN">Gdpy3 JSONL 文档 (gzip 压缩)</comment>
+        <generic-icon name="text-x-script"/>
+        <glob pattern="*.converted.jsonl-gz"/>
+        <glob pattern="*.digged.jsonl-gz"/>
+    </mime-type>
 </mime-info>

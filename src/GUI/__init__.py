@@ -28,7 +28,7 @@ def gui_script():
     arggrp.add_argument('casepath', nargs='?', type=str,
                         help='Case data path, support types: '
                         'local or sftp directory, '
-                        'tar, zip, npz, hdf5 or jsonl file.')
+                        'tar, zip, npz, hdf5 or jsonl jsonl-gz file.')
     optgrp = parser.add_argument_group('options')
     optgrp.add_argument('--backend', type=str,  default='tk',
                         choices=['tk'],
