@@ -20,8 +20,8 @@ optdepends=('xz: for npz lzma compression method'
 makedepends=()
 source=("https://github.com/shmilee/$pkgname/archive/v$pkgver.tar.gz" "gdpy3.desktop" "gdpy3-data.xml")
 sha512sums=('SKIP'
-            'a10239135e6ba9ed9b8064cc17712c6b2ac6cd2141f51d63c0a7ac829ec206a023814779d0b04bdd082d8d6c8ed7a76ef7bcbe2b5612dcc4db50afeecdd22437'
-            '7df07baaebbb656fceec25b31c1d01ad2774f765878155e2f98df419f144d727f26728119aa2bf373b4690d8a111d2eebf679c812d9055da080ae966368c595f')
+            'cb4b615d385e04d94d927376e4da75db94e2aa5eb5dfd30192f2c7771465b21d9b6759c4864d42f52a076ef6f806ebdba391bf5b5c7c7bd0e079d0ced06f107b'
+            'c5e3192f691c5fdc3855125f9c37b2501b29fc3fffb792208bbb4c7d2d8dfef439d4d8eb557e3f45ff2a235e368472ebc23154613d667231efd21ca0293f1197')
 
 build() {
   if [ -d "$pkgname-$pkgver" ]; then

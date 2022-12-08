@@ -35,7 +35,7 @@
         <sub-class-of type="application/gzip"/>
         <comment>Gdpy3 JSONL document (gzip-compressed)</comment>
         <comment xml:lang="zh_CN">Gdpy3 JSONL 文档 (gzip 压缩)</comment>
-        <generic-icon name="text-x-script"/>
+        <generic-icon name="package-x-generic"/>
         <glob pattern="*.converted.jsonl-gz"/>
         <glob pattern="*.digged.jsonl-gz"/>
     </mime-type>
