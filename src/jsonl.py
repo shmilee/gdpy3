@@ -11,6 +11,9 @@ import os
 import json
 import base64
 import numpy as np
+import gzip
+import shutil
+import tempfile
 from typing import Union, Dict
 from .glogger import getGLogger
 
@@ -47,12 +50,14 @@ def guess_json_strbytes(s):
 
 class JsonLines(object):
     '''
-    Read and write jsonlines format file(xxxx.jsonl).
+    Read and write jsonlines format file(xxxx.jsonl or xxxx.jsonl-gz).
 
     Attributes
     ----------
     path: str
-        path of the jsonl file
+        path of '.jsonl' file or gzip-compressed '.jsonl-gz'(.jsonl.gz) file
+    isgzip: bool
+        is a gzip file or not
     index: dict
         index dict for all records
     sort_keys: bool
@@ -70,11 +75,12 @@ class JsonLines(object):
     cache_on: bool
         whether to enable read cache
 
-    Data
+    Notes
     --------
     1. Every record can be any JSON types.
     2. 'index key' should be string or int.
     3. https://jsonlines.org
+    4. Gzip-compressed file is not writable, cannot call :meth:`update`.
 
     .. code:
         {1st record}
@@ -87,9 +93,16 @@ class JsonLines(object):
     def __init__(self, path: str, sort_keys: bool = False,
                  compact: bool = True, cache_on: bool = False) -> None:
         self.path = path
+        self.isgzip = False
         if os.path.exists(path):
+            if path.endswith('.jsonl-gz'):
+                with open(path, 'rb') as f:
+                    # ref https://stackoverflow.com/questions/3703276
+                    if f.read(2) == b'\x1f\x8b':
+                        self.isgzip = True
+            open_fun = gzip.open if self.isgzip else open
             # ref https://stackoverflow.com/questions/46258499
-            with open(path, 'rb') as f:
+            with open_fun(path, 'rb') as f:
                 try:  # catch OSError in case of a one line file
                     f.seek(-2, os.SEEK_END)
                     while f.read(1) != b'\n':
@@ -119,6 +132,9 @@ class JsonLines(object):
         records: dict, like {key: record, ...}
         duplicate key backup: key-backup-0, key-backup-1, etc.
         '''
+        if self.isgzip:
+            log.error('Cannot update records in compressed %s!' % self.path)
+            return
         with open(self.path, 'a+', encoding='utf-8') as f:
             # truncate index
             f.seek(self.indexpos)
@@ -154,7 +170,8 @@ class JsonLines(object):
             if key in self.read_cache:
                 return self.read_cache[key]
             else:
-                with open(self.path, 'r', encoding='utf-8') as f:
+                open_fun = gzip.open if self.isgzip else open
+                with open_fun(self.path, 'rt', encoding='utf-8') as f:
                     f.seek(self.index[key][0])
                     rc = json.loads(f.readline())
                     rc = guess_json_strbytes(rc)
@@ -164,18 +181,33 @@ class JsonLines(object):
         else:
             return None
 
+    @staticmethod
+    def _test_path_writable(path, overwrite):
+        if os.path.exists(path):
+            if not overwrite:
+                log.error('%s exists! Set overwrite to overwrite it!' % path)
+                return False
+            if not os.access(path, os.R_OK):
+                log.error('%s exists! But not writable!' % path)
+                return False
+        else:
+            if not os.access(os.path.dirname(path), os.R_OK):
+                log.error('Dirname of %s is not writable!' % path)
+                return False
+        return True
+
     def slim_jsonl(self, outpath: str, overwrite: bool = False,
                    recompact: bool = False) -> None:
-        ''' Remove backup lines, save to new output file. '''
-        if os.path.exists(outpath) and not overwrite:
-            log.error('%s exists! Set overwrite to overwrite it!' % outpath)
+        ''' Remove backup lines, save to new output file(xxxx.jsonl). '''
+        if not self._test_path_writable(outpath, overwrite):
             return
         if recompact:
             dump_kws = dict(ensure_ascii=False, sort_keys=self.sort_keys,
                             separators=(",", ":"))
             recompact_dumps = JsonEncoder(**dump_kws).encode
+        open_fun = gzip.open if self.isgzip else open
         with open(outpath, 'w', encoding='utf-8') as out, \
-                open(self.path, 'r', encoding='utf-8') as f:
+                open_fun(self.path, 'rt', encoding='utf-8') as f:
             new_index, offset, RecordCount = {}, 0, 0
             for key in [k for k in self.index if k != '__RecordCount__']:
                 karr = key.split('-')
@@ -193,6 +225,34 @@ class JsonLines(object):
             new_index['__RecordCount__'] = RecordCount
             line = self._dumps(new_index) + '\n'
             out.write(line)
+
+    def finalize(self, outpath: str, overwrite: bool = False,
+                 slim_jsonl: bool = False) -> None:
+        '''
+        Call :meth:`slim_jsonl` when slim_jsonl=True,
+        then save all records to gzip file(xxxx.jsonl-gz).
+        '''
+        if self.isgzip:
+            log.error('No need to compress data in %s!' % self.path)
+            return
+        if not self._test_path_writable(outpath, overwrite):
+            return
+        if os.path.splitext(outpath)[-1] != '.jsonl-gz':
+            log.warning("Recommand using '.jsonl-gz' as file extension!")
+        if slim_jsonl:
+            # slim to tmp file
+            file_dir, file_prefix = os.path.split(outpath)
+            fd, tmpfile = tempfile.mkstemp(
+                prefix=file_prefix, dir=file_dir, suffix='-tmp.jsonl')
+            os.close(fd)
+            self.slim_jsonl(tmpfile, overwrite=True, recompact=True)
+        else:
+            tmpfile = self.path
+        with open(tmpfile, 'rb') as f_in:
+            with gzip.open(outpath, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+        if slim_jsonl:
+            os.remove(tmpfile)
 
     def clear_cache(self) -> None:
         self.read_cache = {}

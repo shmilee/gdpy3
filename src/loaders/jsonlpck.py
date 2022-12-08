@@ -19,7 +19,8 @@ log = getGLogger('L')
 @inherit_docstring((BasePckLoader,), _pck_copydoc_func, template=None)
 class JsonlPckLoader(BasePckLoader):
     '''
-    Load pickled data from ``.jsonl`` file. Return a dictionary-like object.
+    Load pickled data from `.jsonl` or `.jsonl-gz` file.
+    Return a dictionary-like object.
 
     Attributes
     {Attributes}
