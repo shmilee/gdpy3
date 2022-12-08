@@ -91,10 +91,18 @@ def change_pckdata_ext(path, ext):
         plog.warning("Data file %s exists! Nothing to do!" % newpath)
         return
     oldloader = get_pckloader(path)
-    info = {'processor': oldloader['processor']}
+    if 'processor' in oldloader:
+        info = {'processor': oldloader['processor']}
+    else:
+        info = {'processor': 'GTCv3'}
     if ext2 == '.converted':
         info['description'] = oldloader['description']
-        info['saltstr'] = oldloader['saltstr']
+        if 'saltstr' in oldloader:
+            info['saltstr'] = oldloader['saltstr']
+        else:
+            m = re.match('.*-(.{6})\.(?:convert|digg)ed\..*', oldloader.path)
+            if m:
+                info['saltstr'] = m.groups()[0]
     with get_pcksaver(newpath) as newsaver:
         newsaver.write('/',  info)
         for grp in oldloader.datagroups:
