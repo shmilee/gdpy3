@@ -9,10 +9,26 @@
     </mime-type>
     <mime-type type="application/x-gdpy3-npz">
         <sub-class-of type="application/zip"/>
-        <comment>Gdpy3 compressed data</comment>
-        <comment xml:lang="zh_CN">Gdpy3 存储数据</comment>
+        <comment>Gdpy3 NPZ compressed data</comment>
+        <comment xml:lang="zh_CN">Gdpy3 NPZ 存储数据</comment>
         <generic-icon name="package-x-generic"/>
         <glob pattern="*.converted.npz"/>
         <glob pattern="*.digged.npz"/>
+    </mime-type>
+    <mime-type type="application/x-gdpy3-hdf5">
+        <sub-class-of type="application/x-hdf"/>
+        <comment>Gdpy3 HDF5 document</comment>
+        <comment xml:lang="zh_CN">Gdpy3 HDF5 文档</comment>
+        <generic-icon name="x-office-document"/>
+        <glob pattern="*.converted.hdf5"/>
+        <glob pattern="*.digged.hdf5"/>
+    </mime-type>
+    <mime-type type="application/x-gdpy3-jsonl">
+        <sub-class-of type="application/json"/>
+        <comment>Gdpy3 JSONL document</comment>
+        <comment xml:lang="zh_CN">Gdpy3 JSONL 文档</comment>
+        <generic-icon name="text-x-script"/>
+        <glob pattern="*.converted.jsonl"/>
+        <glob pattern="*.digged.jsonl"/>
     </mime-type>
 </mime-info>
