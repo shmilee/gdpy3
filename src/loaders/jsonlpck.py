@@ -6,6 +6,7 @@
 Contains jsonl pickled file loader class.
 '''
 
+import numpy
 from ..glogger import getGLogger
 from ..utils import inherit_docstring
 from .base import BasePckLoader, _pck_copydoc_func
@@ -51,4 +52,7 @@ class JsonlPckLoader(BasePckLoader):
 
     def _special_get(self, pathobj, key):
         value = pathobj.get_record(key)
-        return value
+        if isinstance(value, list):
+            return numpy.array(value)
+        else:
+            return value
