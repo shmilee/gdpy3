@@ -8,26 +8,15 @@ Contains Npz pickled file saver class.
 
 import os
 import numpy
-import zipfile
 import tempfile
 
 from ..glogger import getGLogger
 from ..utils import inherit_docstring
 from .base import BasePckSaver, _copydoc_func
+from .._zipfile import Compress_kwds, zipfile_factory, zipfile_delete
 
 __all__ = ['NpzPckSaver']
 log = getGLogger('S')
-
-_Compress_prefer = 'ZIP_LZMA'  # ZIP_DEFLATED or ZIP_LZMA
-_Compress_kwds = dict(allowZip64=True)
-if _Compress_prefer == 'ZIP_LZMA' and zipfile.lzma:
-    _Compress_kwds['compression'] = zipfile.ZIP_LZMA
-else:
-    import sys
-    _Compress_kwds['compression'] = zipfile.ZIP_DEFLATED
-    if sys.version_info[:2] >= (3, 7):
-        # Changed in version 3.7: Add the compresslevel parameter.
-        _Compress_kwds['compresslevel'] = 6
 
 
 @inherit_docstring((BasePckSaver,), _copydoc_func, template=None)
@@ -49,7 +38,7 @@ class NpzPckSaver(BasePckSaver):
     References
     ----------
     1. https://docs.scipy.org/doc/numpy/reference/generated/numpy.savez_compressed.html
-    2. /usr/lib/python3.x/site-packages/numpy/lib/npyio.py, funtion _savez
+    2. /usr/lib/python3.x/site-packages/numpy/lib/npyio.py, funtion zipfile_factory _savez
     3. https://docs.python.org/3/library/zipfile.html#zipfile.ZipFile
     '''
     __slots__ = ['duplicate_name']
@@ -58,61 +47,26 @@ class NpzPckSaver(BasePckSaver):
     def __init__(self, path, duplicate_name=True):
         super(NpzPckSaver, self).__init__(path)
         self.duplicate_name = duplicate_name
-        log.debug('Using ZipFile compression parameters: %s' % _Compress_kwds)
+        log.debug('Using ZipFile compression parameters: %s' % Compress_kwds)
 
     def _open_append(self):
-        return numpy.lib.npyio.zipfile_factory(
-            self.path, mode="a", **_Compress_kwds)
+        return zipfile_factory(self.path, mode="a")
 
     def _open_new(self):
-        return numpy.lib.npyio.zipfile_factory(
-            self.path, mode="w", **_Compress_kwds)
-
-    def _find_overwrite_names(self, group, data):
-        old_all = self._storeobj.namelist()
-        if group in ('/', ''):
-            new = ['%s.npy' % key for key in data.keys()]
-            old_copy = [n for n in old_all if ('/' in n or n not in new)]
-            old_over = [n for n in old_all if ('/' not in n and n in new)]
-        else:
-            new = ['%s/%s.npy' % (group, key) for key in data.keys()]
-            old_copy = [n for n in old_all
-                        if (not n.startswith('%s/' % group) or n not in new)]
-            old_over = [n for n in old_all
-                        if (n.startswith('%s/' % group) and n in new)]
-        return old_copy, old_over
-
-    @staticmethod
-    def copy_zipfile(old, new, ignore):
-        zf = numpy.lib.npyio.zipfile_factory
-        with zf(old, mode="r", **_Compress_kwds) as zin:
-            with zf(new, mode="w", **_Compress_kwds) as zout:
-                zout.comment = zin.comment
-                for item in zin.infolist():
-                    if item.filename not in ignore:
-                        zout.writestr(item, zin.read(item.filename))
+        return zipfile_factory(self.path, mode="w")
 
     def _write(self, group, data):
-        file_dir, file_prefix = os.path.split(self.path)
         if not self.duplicate_name:
-            old_copy, old_over = self._find_overwrite_names(group, data)
+            prefix = '' if group in ('/', '') else ('%s/' % group)
+            new = ['%s%s.npy' % (prefix, key) for key in data.keys()]
+            old_over = [n for n in self._storeobj.namelist() if n in new]
             if old_over:
-                # log.debug("%s\n%s" % (old_copy, old_over))
                 # need to rebuild a new archive without old_over files
-                fd, tmpfile = tempfile.mkstemp(
-                    prefix=file_prefix, dir=file_dir, suffix='-copy.zip')
-                os.close(fd)
-                log.debug("Using temp zipfile: %s" % tmpfile)
+                # log.debug("\n%s\n" % (old_over,))
                 self.close()
-                try:
-                    self.copy_zipfile(self.path, tmpfile, old_over)
-                except Exception:
-                    log.error("Failed to part-copy zipfile %s!" % self.path)
-                    os.remove(tmpfile)
-                else:
-                    os.remove(self.path)
-                    os.rename(tmpfile, self.path)
+                zipfile_delete(self.path, old_over)
                 self.iopen()
+        file_dir, file_prefix = os.path.split(self.path)
         fd, tmpfile = tempfile.mkstemp(
             prefix=file_prefix, dir=file_dir, suffix='-numpy.npy')
         os.close(fd)
