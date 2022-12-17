@@ -320,6 +320,14 @@ class JsonZip(object):
         whether to sort object keys
     cache_on: bool
         whether to enable read cache
+
+    Notes
+    -----
+    1. :meth:`update_from_jsonl` with compression=ZIP_LZMA runs very slow.
+       Example, convert 'xx.converted.jsonl'(6.2G) to 'xx.converted.jsonz'.
+       With compression=ZIP_DEFLATED, `2.2G`, `12min`.
+       With compression=ZIP_LZMA, `1.7G`, `1h35min`.
+    2. Writting with compression=ZIP_LZMA is slow, but reading not affected!
     '''
 
     def __init__(self, path: str, sort_keys: bool = False,
@@ -347,6 +355,7 @@ class JsonZip(object):
         '''
         records: dict, like {key: record, ...}
         Duplicate keys point to the last record.
+        With compression=ZIP_LZMA, writting may be very slow.
         '''
         with zipfile_factory(self.path, mode='a',
                              compression=compression) as z:
@@ -365,7 +374,6 @@ class JsonZip(object):
                           compression: int = ZIP_DEFLATED) -> None:
         '''
         Update by records get from jsonl file, and ignore backup records.
-        With compression=ZIP_LZMA, writting may be very slow.
         '''
         jl = JsonLines(jsonl)
         with zipfile_factory(self.path, mode='a',
