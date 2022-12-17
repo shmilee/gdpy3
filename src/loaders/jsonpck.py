@@ -10,16 +10,16 @@ import numpy
 from ..glogger import getGLogger
 from ..utils import inherit_docstring
 from .base import BasePckLoader, _pck_copydoc_func
-from .._json import JsonLines
+from .._json import JsonLines, JsonZip
 
-__all__ = ['JsonlPckLoader']
+__all__ = ['JsonlPckLoader', 'JsonzPckLoader']
 log = getGLogger('L')
 
 
 @inherit_docstring((BasePckLoader,), _pck_copydoc_func, template=None)
 class JsonlPckLoader(BasePckLoader):
     '''
-    Load pickled data from `.jsonl` or `.jsonl-gz` file.
+    Load pickled data from `.jsonl` file.
     Return a dictionary-like object.
 
     Attributes
@@ -57,3 +57,33 @@ class JsonlPckLoader(BasePckLoader):
             return numpy.array(value)
         else:
             return value
+
+
+@inherit_docstring((BasePckLoader,), _pck_copydoc_func, template=None)
+class JsonzPckLoader(JsonlPckLoader):
+    '''
+    Load pickled data from `.jsonz` zip file.
+    Return a dictionary-like object.
+
+    Attributes
+    {Attributes}
+
+    Parameters
+    {Parameters}
+
+    Notes
+    -----
+    '''
+    __slots__ = []
+    loader_type = '.jsonz'
+
+    def _special_check_path(self):
+        try:
+            k = JsonZip(self.path).keys()
+            return True
+        except Exception:
+            log.error("'%s' is not a valid jsonz file!" % self.path)
+            return False
+
+    def _special_open(self):
+        return JsonZip(self.path)
