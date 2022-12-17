@@ -6,51 +6,39 @@ import os
 import unittest
 import tempfile
 import shutil
+from . import RawLoaderTest
+from ..dirraw import DirRawLoader
 
 
-class TestDirRawLoader(unittest.TestCase):
-    '''
-    Test class DirRawLoader
-    '''
+class TestDirRawLoader(RawLoaderTest, unittest.TestCase):
+    ''' Test class DirRawLoader '''
+    RawLoader = DirRawLoader
+    RawPath = tempfile.mktemp(suffix='-test')
+    RawFilenames = {'f1.ignore', 'f1.out', 'd1/f2.out'}
 
     def setUp(self):
-        from ..dirraw import DirRawLoader
-        self.DirRawLoader = DirRawLoader
-        self.tmpdir = tempfile.mktemp(suffix='-test')
+        super(TestDirRawLoader, self).setUp()
         # tmp-test/{f1.ignore,f1.out}
         # tmp-test/d1/f2.out
         # tmp-test/d1/d2/{f3.out, d3/}
-        os.makedirs(os.path.join(self.tmpdir, 'd1', 'd2', 'd3'))
-        with open(os.path.join(self.tmpdir, 'f1.out'), mode='w') as f1:
+        os.makedirs(os.path.join(self.RawPath, 'd1', 'd2', 'd3'))
+        with open(os.path.join(self.RawPath, 'f1.out'), mode='w') as f1:
             f1.write('test1')
-        with open(os.path.join(self.tmpdir, 'f1.ignore'), mode='w') as f1:
+        with open(os.path.join(self.RawPath, 'f1.ignore'), mode='w') as f1:
             pass
-        with open(os.path.join(self.tmpdir, 'd1', 'f2.out'), mode='w') as f2:
+        with open(os.path.join(self.RawPath, 'd1', 'f2.out'), mode='w') as f2:
             f2.write('test2')
-        with open(os.path.join(self.tmpdir, 'd1', 'd2', 'f3.out'),
+        with open(os.path.join(self.RawPath, 'd1', 'd2', 'f3.out'),
                   mode='w') as f3:
             f3.write('test3')
 
     def tearDown(self):
-        if os.path.isdir(self.tmpdir):
-            shutil.rmtree(self.tmpdir)
+        super(TestDirRawLoader, self).tearDown()
+        if os.path.isdir(self.RawPath):
+            shutil.rmtree(self.RawPath)
 
     def test_dirloader_init(self):
-        with self.assertRaises(IOError):
-            loader = self.DirRawLoader(self.tmpdir + 'BreakSuffix')
-        loader = self.DirRawLoader(self.tmpdir)
-        self.assertSetEqual(set(loader.filenames),
-                            {'f1.ignore', 'f1.out', 'd1/f2.out'})
-        loader = self.DirRawLoader(
-            self.tmpdir,
-            filenames_exclude=[r'(?!^.*\.out$)'])
-        self.assertSetEqual(set(loader.filenames), {'f1.out', 'd1/f2.out'})
+        self.loader_init()
 
     def test_dirloader_get(self):
-        loader = self.DirRawLoader(self.tmpdir)
-        with loader.get('f1.out') as f1:
-            self.assertEqual(f1.readlines(), ['test1'])
-        with loader.get('d1/f2.out') as f2:
-            self.assertEqual(f2.read(), 'test2')
-        with self.assertRaises(ValueError):
-            f2.read()
+        self.loader_get()

@@ -9,9 +9,7 @@ from . import SFTP_PATH
 
 @unittest.skipUnless(SFTP_PATH, "requires SFTP_PATH to connect SSH server!")
 class TestSftpRawLoader(unittest.TestCase):
-    '''
-    Test class SftpRawLoader
-    '''
+    ''' Test class SftpRawLoader '''
 
     def setUp(self):
         from ..sftpraw import SftpRawLoader
