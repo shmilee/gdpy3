@@ -10,7 +10,7 @@ import numpy
 from ..glogger import getGLogger
 from ..utils import inherit_docstring
 from .base import BasePckLoader, _pck_copydoc_func
-from ..jsonl import JsonLines
+from .._json import JsonLines
 
 __all__ = ['JsonlPckLoader']
 log = getGLogger('L')

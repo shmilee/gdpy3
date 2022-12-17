@@ -10,7 +10,7 @@ Contains jsonlines saver class.
 from ..glogger import getGLogger
 from ..utils import inherit_docstring
 from .base import BasePckSaver, _copydoc_func
-from ..jsonl import JsonLines
+from .._json import JsonLines
 
 __all__ = ['JsonlPckSaver']
 log = getGLogger('S')

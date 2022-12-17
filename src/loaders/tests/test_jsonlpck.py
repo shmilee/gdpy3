@@ -22,7 +22,7 @@ class TestJsonlPckLoader(unittest.TestCase):
         self.tmpfilegz = self.tmpfile + '-gz'
         jl = JsonLines(self.tmpfile)
         jl.update(DATA)
-        jl.finalize(self.tmpfilegz, slim_jsonl=True)
+        jl.finalize(self.tmpfilegz)
 
     def tearDown(self):
         if os.path.isfile(self.tmpfile):
