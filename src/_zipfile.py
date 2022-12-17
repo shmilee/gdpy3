@@ -14,6 +14,8 @@ from .glogger import getGLogger
 __all__ = ['zipfile_factory', 'zipfile_copy', 'zipfile_delete']
 log = getGLogger('G')
 
+ZIP_LZMA = zipfile.ZIP_LZMA
+ZIP_DEFLATED = zipfile.ZIP_DEFLATED
 Compress_prefer = 'ZIP_LZMA'  # ZIP_DEFLATED or ZIP_LZMA
 Compress_kwds = dict(allowZip64=True)
 if Compress_prefer == 'ZIP_LZMA' and zipfile.lzma:

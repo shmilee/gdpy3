@@ -15,7 +15,7 @@ import gzip
 import tempfile
 from typing import Union, Dict, List
 from .glogger import getGLogger
-from ._zipfile import zipfile_factory, zipfile_copy
+from ._zipfile import zipfile_factory, zipfile_copy, ZIP_DEFLATED
 
 __all__ = ['JsonEncoder', 'JsonLines', 'JsonZip']
 log = getGLogger('G')
@@ -213,33 +213,36 @@ class JsonLines(object):
             line = self._dumps(self.index) + '\n'
             f.write(line)
 
-    def _get_raw_record(self, key: KeyType) -> str:
+    def _get_raw_records(self, keys: List[KeyType]) -> List[str]:
         open_fun = gzip.open if self.isgzip else open
-        with open_fun(self.path, 'rt', encoding='utf-8') as f:
-            f.seek(self.index[key][0])
-            return f.readline()
-
-    def _get_raw_records(self, keys: List[KeyType]) -> Dict[KeyType, str]:
-        open_fun = gzip.open if self.isgzip else open
-        res = {}
+        res = []
         with open_fun(self.path, 'rt', encoding='utf-8') as f:
             for key in keys:
                 f.seek(self.index[key][0])
-                res[key] = f.readline()
+                res.append(f.readline())
             return res
 
-    def get_record(self, key: KeyType) -> RecordType:
-        if key in self.index:
-            if key in self.read_cache:
-                return self.read_cache[key]
+    def get_records(self, *keys: List[KeyType]) -> List[RecordType]:
+        result, keys_todo = [], []
+        for i, key in enumerate(keys):
+            if key in self.index:
+                if key in self.read_cache:
+                    result.append(self.read_cache[key])
+                else:
+                    result.append(None)
+                    keys_todo.extend((i, key))
             else:
-                rc = json.loads(self._get_raw_record(key))
-                rc = guess_json_strbytes(rc)
+                result.append(None)
+        if keys_todo:
+            records = self._get_raw_records(keys_todo[1::2])
+            for i, k, rc in zip(keys_todo[::2], keys_todo[1::2], records):
+                result[i] = guess_json_strbytes(json.loads(rc))
                 if self.cache_on:
-                    self.read_cache[key] = rc
-                return rc
-        else:
-            return None
+                    self.read_cache[k] = result[i]
+        return result
+
+    def get_record(self, key: KeyType) -> RecordType:
+        return self.get_records(key)[0]
 
     def slim(self, outpath: str, overwrite: bool = False,
              recompact: bool = False) -> None:
@@ -339,13 +342,14 @@ class JsonZip(object):
     def keys(self):
         return self.record_keys
 
-    def update(self, records: Dict[KeyType, RecordType], **kwargs) -> None:
+    def update(self, records: Dict[KeyType, RecordType],
+               compression: int = ZIP_DEFLATED) -> None:
         '''
         records: dict, like {key: record, ...}
         Duplicate keys point to the last record.
-        kwargs: for zipfile compression, compresslevel etc.
         '''
-        with zipfile_factory(self.path, mode='a', **kwargs) as z:
+        with zipfile_factory(self.path, mode='a',
+                             compression=compression) as z:
             for key in records:
                 try:
                     rc = self._dumps(records[key]).encode('utf-8')
@@ -357,55 +361,60 @@ class JsonZip(object):
                     if key not in self.record_keys:
                         self.record_keys.append(key)
 
-    def update_from_jsonl(self, jsonl: str,
-                          redump: bool = False, **kwargs) -> None:
+    def update_from_jsonl(self, jsonl: str, redump: bool = False,
+                          compression: int = ZIP_DEFLATED) -> None:
         '''
         Update by records get from jsonl file, and ignore backup records.
-        kwargs: for zipfile compression, compresslevel etc.
-        With default compression=zipfile.ZIP_LZMA, writting may be very slow.
+        With compression=ZIP_LZMA, writting may be very slow.
         '''
         jl = JsonLines(jsonl)
-        with zipfile_factory(self.path, mode='a', **kwargs) as z:
+        with zipfile_factory(self.path, mode='a',
+                             compression=compression) as z:
             keys = jl.keys_without_backup()
             n = max(len(keys)//100, 10)
             keys = [keys[i:i + n] for i in range(0, len(keys), n)]
             for subkeys in keys:
                 #log.info("--- Record %d keys ---" % n)
                 try:
-                    records = jl._get_raw_records(subkeys)
+                    rcs = jl._get_raw_records(subkeys)
                     #log.info("--- Get raw Done ---")
                     if redump:
-                        for k in records:
-                            records[k] = self._dumps(json.loads(records[k]))
+                        rcs = [self._dumps(json.loads(rc)) for rc in rcs]
                         #log.info("--- Re-dump Done ---Slow---")
-                    for k in records:
-                        z.writestr(k + '.json', records[k].encode('utf-8'))
+                    for k, rc in zip(subkeys, rcs):
+                        z.writestr(k + '.json', rc.encode('utf-8'))
+                        if k not in self.record_keys:
+                            self.record_keys.append(k)
                     #log.info("--- Write Done ---Slow---")
                 except Exception as e:
                     log.error("Failed to record %s in %s!" % (
                         subkeys, jl.path), exc_info=1)
+
+    def get_records(self, *keys: List[KeyType]) -> List[RecordType]:
+        result, keys_todo = [], []
+        for i, key in enumerate(keys):
+            if key.endswith('.json'):
+                key = key[:-5]
+            if key in self.record_keys:
+                if key in self.read_cache:
+                    result.append(self.read_cache[key])
                 else:
-                    self.record_keys.extend([
-                        k for k in subkeys if k not in self.record_keys])
+                    result.append(None)
+                    keys_todo.extend((i, key))
+            else:
+                result.append(None)
+        if keys_todo:
+            with zipfile_factory(self.path, mode="r") as z:
+                for i, key in zip(keys_todo[::2], keys_todo[1::2]):
+                    rc = z.read(key + '.json').decode('utf-8')
+                    result[i] = guess_json_strbytes(json.loads(rc))
+                    if self.cache_on:
+                        self.read_cache[k] = result[i]
+        return result
 
     def get_record(self, key: KeyType) -> RecordType:
         ''' key or typo key.json '''
-        if key.endswith('.json'):
-            name, key = key, key[:-5]
-        else:
-            name = key + '.json'
-        if key in self.record_keys:
-            if key in self.read_cache:
-                return self.read_cache[key]
-            else:
-                with zipfile_factory(self.path, mode="r") as z:
-                    rc = json.loads(z.read(name).decode('utf-8'))
-                    rc = guess_json_strbytes(rc)
-                    if self.cache_on:
-                        self.read_cache[key] = rc
-                    return rc
-        else:
-            return None
+        return self.get_records(key)[0]
 
     def slim(self, outpath: str, overwrite: bool = False) -> None:
         ''' Remove duplicate keys, save to new outpath (xxx.jsonz). '''
