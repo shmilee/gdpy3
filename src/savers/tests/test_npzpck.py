@@ -2,65 +2,35 @@
 
 # Copyright (c) 2018-2020 shmilee
 
-import os
 import unittest
-import tempfile
 import numpy
+from . import PckSaverTest
+from ..npzpck import NpzPckSaver
 
 
-class TestNpzPckSaver(unittest.TestCase):
-    '''
-    Test class NpzPckSaver
-    '''
-
-    def setUp(self):
-        from ..npzpck import NpzPckSaver
-        self.PckSaver = NpzPckSaver
-        self.tmp = tempfile.mktemp(suffix='-test')
-        self.tmpfile = self.tmp + NpzPckSaver._extension
-
-    def tearDown(self):
-        if os.path.isfile(self.tmpfile):
-            os.remove(self.tmpfile)
+class TestNpzPckSaver(PckSaverTest, unittest.TestCase):
+    ''' Test class NpzPckSaver'''
+    PckSaver = NpzPckSaver
 
     def test_npzsaver_iopen_close(self):
-        saver = self.PckSaver(self.tmpfile)
-        self.assertFalse(saver.status)
-        saver.iopen()
-        self.assertTrue(saver.status)
-        saver.close()
-        self.assertFalse(saver.status)
+        self.saver_iopen_close()
 
     def test_npzsaver_write(self):
-        saver = self.PckSaver(self.tmpfile)
-        self.assertFalse(saver.write('', {'ver': '1'}))
-        saver.iopen()
-        self.assertFalse(saver.write('/', []))
-        self.assertTrue(saver.write('', {'ver': '1'}))
-        self.assertTrue(saver.write('/', {'num': 100, 'list': [1, 2, 3]}))
-        self.assertTrue(saver.write('group', {'desc': 'desc'}))
-        self.assertTrue(saver.write('grp/sub', {'n': 1}))
-        saver.close()
-        npz = numpy.load(saver.get_store())
-        inkeys = {'ver', 'num', 'list', 'group/desc', 'grp/sub/n'}
-        outkeys = set(npz.files)
-        self.assertSetEqual(inkeys, outkeys)
+        self.saver_write()
+
+    def saver_get_keys(self, store):
+        npz = numpy.load(store)
+        return set(npz.files)
+
+    def saver_get(self, store, *keys):
+        npz = numpy.load(store)
+        return [npz[k].item() if npz[k].size == 1 else npz[k] for k in keys]
 
     def test_npzsaver_write_str_byte(self):
-        with self.PckSaver(self.tmpfile) as saver:
-            self.assertTrue(saver.write('', {'sver': r'v1'}))
-            self.assertTrue(saver.write('', {'bver': b'v1'}))
-        npz = numpy.load(saver.get_store())
-        self.assertEqual(npz['sver'], r'v1')
-        self.assertEqual(npz['bver'], b'v1')
+        self.saver_write_str_byte()
 
     def test_npzsaver_write_num_arr(self):
-        with self.PckSaver(self.tmpfile) as saver:
-            self.assertTrue(saver.write('', {'n': 1, 'f': 1.1, 'a': [1, 2]}))
-        npz = numpy.load(saver.get_store())
-        self.assertEqual(npz['n'].item(), 1)
-        self.assertEqual(npz['f'].item(), 1.1)
-        self.assertTrue(numpy.array_equal(npz['a'], numpy.array([1, 2])))
+        self.saver_write_num_arr()
 
     def test_npzsaver_overwrite(self):
         with self.PckSaver(self.tmpfile) as saver:
@@ -80,10 +50,4 @@ class TestNpzPckSaver(unittest.TestCase):
         self.assertSetEqual(inkeys, outkeys)
 
     def test_npzsaver_with(self):
-        saver = self.PckSaver(self.tmpfile)
-        self.assertFalse(saver.status)
-        with saver:
-            self.assertIsNotNone(saver._storeobj)
-            self.assertTrue(saver.status)
-        self.assertIsNone(saver._storeobj)
-        self.assertFalse(saver.status)
+        self.saver_with()
