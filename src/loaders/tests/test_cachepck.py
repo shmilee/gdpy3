@@ -3,30 +3,17 @@
 # Copyright (c) 2018-2020 shmilee
 
 import unittest
-import numpy
 
-from . import DATA, DATA_C
+from . import DATA, DATA_C, PckLoaderTest
+from ..cachepck import CachePckLoader
 
 
-class TestCachePckLoader(unittest.TestCase):
-    '''
-    Test class CachePckLoader
-    '''
-
-    def setUp(self):
-        from ..cachepck import CachePckLoader
-        self.CachePckLoader = CachePckLoader
+class TestCachePckLoader(PckLoaderTest, unittest.TestCase):
+    ''' Test class CachePckLoader '''
+    PckLoader = CachePckLoader
 
     def test_cacheloader_init(self):
-        loader = self.CachePckLoader(DATA_C)
-        self.assertSetEqual(set(loader.datakeys), set(DATA.keys()))
-        self.assertSetEqual(set(loader.datagroups), {'test', 'te/st'})
-        self.assertMultiLineEqual(loader.description, DATA['description'])
+        self.loader_init(DATA_C)
 
     def test_cacheloader_get(self):
-        loader = self.CachePckLoader(DATA_C)
-        self.assertEqual(loader.get('bver'), DATA['bver'])
-        self.assertTrue(
-            numpy.array_equal(loader.get('test/array'), DATA['test/array']))
-        self.assertEqual(loader.get('test/float'), 3.1415)
-        self.assertEqual(loader.get('te/st/int'), 1)
+        self.loader_get(DATA_C)
