@@ -15,7 +15,7 @@ import hashlib
 from .. import __gversion__
 from ..glogger import getGLogger
 from ..loaders import is_rawloader, get_rawloader, is_pckloader, get_pckloader
-from ..savers import is_pcksaver, get_pcksaver
+from ..savers import is_pcksaver, get_pcksaver, pcksaver_types
 from ..cores.exporter import Exporter
 from ..visplters import get_visplter, is_visplter
 
@@ -165,7 +165,7 @@ class Processor(object):
         prefix = self.rawloader.beside_path(self.name.lower())
         # savetype
         if os.access(os.path.dirname(prefix), os.W_OK):
-            if savetype not in ['.npz', '.hdf5', '.jsonl']:
+            if savetype not in pcksaver_types[1:]:
                 plog.warning("Use default savetype '.npz'.")
                 savetype = '.npz'
         else:
@@ -370,8 +370,6 @@ class Processor(object):
         plog.debug("Default %s data cache is %s." % (ext2, respath))
         if ext != '.cache':
             try:
-                if ext == '.jsonl-gz':
-                    ext = '.jsonl'  # fix jsonl-gz not writable
                 respath = '%s%s' % (saverstr, ext)
                 resfilesaver = get_pcksaver(respath)
                 if overwrite and os.path.isfile(respath):
@@ -751,14 +749,14 @@ class Processor(object):
             additional description of raw data
         filenames_exclude: list
             regular expressions to exclude filenames in rawloader
-        savetype: '.npz', '.hdf5' or '.jsonl'
+        savetype: '.npz', '.hdf5' or '.jsonl', '.jsonz'
             extension of pcksaver.path, default '.npz'
             when pcksaver.path isn't writable, use '.cache'
         overwrite: bool
             overwrite existing pcksaver.path file or not, default False
         Sid: bool
             If Sid is True(here), only rawloader and pcksaver will be set
-            and converted to a .npz, .hdf5 or .jsonl file if needed.
+            and converted to a .npz, .hdf5 or .jsonl, .jsonz file if needed.
             And any other codes(like Buzz Lightyear) will be omitted.
             Default False.
         datagroups_exclude: list
@@ -768,7 +766,7 @@ class Processor(object):
         '''
         root, ext1 = os.path.splitext(path)
         root, ext2 = os.path.splitext(root)
-        if ((ext2, ext1) in [('', '.npz'), ('', '.hdf5'), ('', '.jsonl')]
+        if (ext2 == '' and ext1 in pcksaver_types[1:]
                 and os.path.basename(root).startswith('gdpy3-pickled-data-')):
             # pckloader.path backward compatibility
             plog.warning("This is an old converted data path %s!" % path)
@@ -776,8 +774,7 @@ class Processor(object):
             old_pickled_path = True
         else:
             old_pickled_path = False
-        if (ext2, ext1) in [('.digged', '.npz'), ('.digged', '.hdf5'),
-                            ('.digged', '.jsonl')]:
+        if ext2 == '.digged' and ext1 in pcksaver_types[1:]:
             # resfileloader.path
             plog.warning("This is a digged data path %s!" % path)
             path = '%s%s%s' % (root, '.converted', ext1)
@@ -788,9 +785,7 @@ class Processor(object):
             else:
                 plog.error("%s: Can't find path %s!" % (self.name, path))
                 return
-        if (ext2, ext1) in [('.converted', '.npz'), ('.converted', '.hdf5'),
-                            ('.converted', '.jsonl'),
-                            ('.converted', '.jsonl-gz')]:
+        if ext2 == '.converted' and ext1 in pcksaver_types[1:]:
             # pckloader.path
             self.rawloader, self.pcksaver = None, None
             if Sid:
@@ -829,8 +824,7 @@ class Processor(object):
                 return
             plog.info("Default %s data path is %s." %
                       ('converted', self.pcksaver.path))
-            if Sid and self.pcksaver._extension not in [
-                    '.npz', '.hdf5', '.jsonl']:
+            if Sid and self.pcksaver._extension not in pcksaver_types[1:]:
                 return
             if os.path.isfile(self.pcksaver.path):
                 if overwrite:
@@ -840,8 +834,7 @@ class Processor(object):
                     self.convert(add_desc=add_desc)
             else:
                 self.convert(add_desc=add_desc)
-            if Sid and self.pcksaver._extension in [
-                    '.npz', '.hdf5', '.jsonl']:
+            if Sid and self.pcksaver._extension in pcksaver_types[1:]:
                 return
             try:
                 self.pckloader = get_pckloader(

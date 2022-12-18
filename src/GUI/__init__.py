@@ -11,6 +11,7 @@ import ctypes
 import argparse
 from ..__about__ import __gversion__, __author__
 from ..glogger import logfile, getGLogger
+from ..savers import pcksaver_types
 
 __all__ = ['gui_script']
 log = getGLogger('G')
@@ -27,8 +28,8 @@ def gui_script():
     arggrp = parser.add_argument_group('arguments')
     arggrp.add_argument('casepath', nargs='?', type=str,
                         help='Case data path, support types: '
-                        'local or sftp directory, '
-                        'tar, zip, npz, hdf5 or jsonl jsonl-gz file.')
+                        'local or sftp directory, tarfile, zipfile '
+                        'or %s file.' % ', '.join(pcksaver_types[1:]))
     optgrp = parser.add_argument_group('options')
     optgrp.add_argument('--backend', type=str,  default='tk',
                         choices=['tk'],

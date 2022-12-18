@@ -12,6 +12,7 @@ import time
 import argparse
 
 from .glogger import logfile, getGLogger
+from .savers import pcksaver_types
 from .processors import Processor_Names, Processor_Alias, get_processor
 from .processors.lib import Processor_Lib
 from .__about__ import __gversion__, __userbase__
@@ -19,6 +20,7 @@ from .__about__ import __gversion__, __userbase__
 __all__ = ['cli_script']
 
 log = getGLogger('G')
+pcksaver_typestr = ', '.join(pcksaver_types[1:])
 
 
 def print_version():
@@ -82,7 +84,7 @@ def get_parser_convert(subparsers, parents=[]):
         'convert',
         usage='%(prog)s [options]... casepath...',
         description="Script that converts raw data to "
-                    "a .npz, .hdf5, .jsonl, .jsonl-gz file beside raw data.",
+                    "a %s file beside raw data." % pcksaver_typestr,
         add_help=False,
         parents=parents,
     )
@@ -93,7 +95,7 @@ def get_parser_convert(subparsers, parents=[]):
         '--filenames_exclude', type=str, action='append', metavar='Pattern',
         help='Regular expressions to exclude filenames in raw data')
     optgrp.add_argument('--savetype', type=str, default='.npz',
-                        choices=['.npz', '.hdf5', '.jsonl', '.jsonl-gz'],
+                        choices=pcksaver_types[1:],
                         help="Extension of savefile, (default: %(default)s)")
     optgrp.add_argument('--overwrite', action='store_true',
                         help='Overwrite existing savefile')
@@ -105,11 +107,10 @@ def get_parser_plot(subparsers, parents=[]):
     parser = subparsers.add_parser(
         'plot',
         usage='%(prog)s [options]... casepath...',
-        description="Script that plots pickled data in "
-                    ".npz, .hdf5, .jsonl, .jsonl-gz "
-                    "file to figures in a directory beside pickled data. "
-                    "It also accepts 'convert options', "
-                    "as subcommand 'plot' is beyond 'convert'.",
+        description="Script that plots pickled data in %s file to figures "
+                    "in a directory beside pickled data. It also accepts "
+                    "'convert' options, as subcommand 'plot' is "
+                    "beyond 'convert'." % pcksaver_typestr,
         add_help=False,
         parents=parents,
     )
