@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2019-2021 shmilee
+# Copyright (c) 2019-2022 shmilee
 
 '''
 Contains Exporter core class.
@@ -39,7 +39,7 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
             import pickle
             return pickle.dumps(data)
         elif fmt == 'json':
-            from ..jsonl import JsonEncoder
+            from .._json import JsonEncoder
             encoder = JsonEncoder(ensure_ascii=False, separators=(",", ":"))
             return encoder.encode(data)
         else:

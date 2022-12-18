@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2019-2021 shmilee
+# Copyright (c) 2019-2022 shmilee
 
 import os
 import unittest
@@ -278,23 +278,23 @@ class TestMatplotlibVisplter(unittest.TestCase):
                 os.remove(self.tmpfile + ext)
 
     def test_mplvisplter_style(self):
-        self.assertTrue('seaborn' in self.visplter.style_available)
+        self.assertTrue('ggplot' in self.visplter.style_available)
         self.assertListEqual(self.visplter.style, ['gdpy3-notebook'])
         self.assertListEqual(
-            self.visplter.check_style(['seaborn', '-rm', {'figure.dpi': 80}]),
-            ['seaborn', {'figure.dpi': 80}])
+            self.visplter.check_style(['ggplot', '-rm', {'figure.dpi': 80}]),
+            ['ggplot', {'figure.dpi': 80}])
         libpath = self.visplter.style_ext_library['gdpy3-notebook']
         libpath = self.visplter.style_ext_library[libpath]
         self.assertListEqual(
-            self.visplter.filter_style(['seaborn', 'gdpy3-notebook']),
-            ['seaborn', os.path.join(libpath, 'gdpy3-notebook.mplstyle')])
+            self.visplter.filter_style(['ggplot', 'gdpy3-notebook']),
+            ['ggplot', os.path.join(libpath, 'gdpy3-notebook.mplstyle')])
         self.assertEqual(self.visplter.param_from_style('image.cmap'), 'jet')
         self.assertFalse(self.visplter.param_from_style('image.cmapNone'))
         self.visplter.style = ['gdpy3-notebook', {'image.cmap': 'hot'}]
         self.assertEqual(self.visplter.param_from_style('image.cmap'), 'hot')
 
     def test_mplvisplter_figure(self):
-        self.visplter.create_figure('test-f1', add_style=['seaborn'])
+        self.visplter.create_figure('test-f1', add_style=['ggplot'])
         self.visplter.add_axes(self.visplter.get_figure('test-f1'), ax1)
         for ext in ['.jpg', '.png', '.pdf']:
             self.visplter.save_figure('test-f1', self.tmpfile + ext)
