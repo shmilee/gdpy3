@@ -95,7 +95,8 @@ class JsonLines(object):
     Notes
     --------
     1. Every record can be any JSON types.
-    2. 'index key' should be string or int.
+    2. Input 'index key' can be string or int.
+       But all 'index key' in jsonl will be converted to string.
     3. https://jsonlines.org
     4. Gzip-compressed file is not writable, cannot call :meth:`update`.
        Reading big gzip-compressed file may be very slow.
@@ -162,6 +163,7 @@ class JsonLines(object):
         self.read_cache = {}
 
     def keys(self):
+        # str keys
         return [k for k in self.index if k != '__RecordCount__']
 
     @staticmethod
@@ -197,6 +199,8 @@ class JsonLines(object):
                         key, records[key]), exc_info=1)
                     continue
                 f.write(line)
+                if type(key) == int:
+                    key = str(key)
                 if key in self.index:
                     for i in range(999):
                         backkey = '%s-backup-%d' % (key, i)
@@ -213,7 +217,7 @@ class JsonLines(object):
             line = self._dumps(self.index) + '\n'
             f.write(line)
 
-    def _get_raw_records(self, keys: List[KeyType]) -> List[str]:
+    def _get_raw_records(self, keys: List[str]) -> List[str]:
         open_fun = gzip.open if self.isgzip else open
         res = []
         with open_fun(self.path, 'rt', encoding='utf-8') as f:
@@ -225,6 +229,8 @@ class JsonLines(object):
     def get_records(self, *keys: List[KeyType]) -> List[RecordType]:
         result, keys_todo = [], []
         for i, key in enumerate(keys):
+            if type(key) == int:
+                key = str(key)
             if key in self.index:
                 if key in self.read_cache:
                     result.append(self.read_cache[key])
@@ -328,6 +334,7 @@ class JsonZip(object):
        With compression=ZIP_DEFLATED, `2.2G`, `12min`.
        With compression=ZIP_LZMA, `1.7G`, `1h35min`.
     2. Writting with compression=ZIP_LZMA is slow, but reading not affected!
+    3. Input record keys can be string or int. But keys in jsonz are string.
     '''
 
     def __init__(self, path: str, sort_keys: bool = False,
@@ -360,12 +367,15 @@ class JsonZip(object):
         with zipfile_factory(self.path, mode='a',
                              compression=compression) as z:
             for key in records:
+                rc = records[key]
+                if type(key) == int:
+                    key = str(key)
                 try:
-                    rc = self._dumps(records[key]).encode('utf-8')
+                    rc = self._dumps(rc).encode('utf-8')
                     z.writestr(key + '.json', rc)
                 except Exception as e:
                     log.error("Failed to record %s: %s!" % (
-                        key, records[key]), exc_info=1)
+                        key, rc), exc_info=1)
                 else:
                     if key not in self.record_keys:
                         self.record_keys.append(key)
@@ -401,6 +411,8 @@ class JsonZip(object):
     def get_records(self, *keys: List[KeyType]) -> List[RecordType]:
         result, keys_todo = [], []
         for i, key in enumerate(keys):
+            if type(key) == int:
+                key = str(key)
             if key.endswith('.json'):
                 key = key[:-5]
             if key in self.record_keys:
