@@ -91,6 +91,8 @@ class JsonLines(object):
         whether to eliminate whitespace to get compact JSON representation
     cache_on: bool
         whether to enable read cache
+    seek_step: int
+        set seek step for searching index line. default 0, auto-setting
 
     Notes
     --------
@@ -110,7 +112,8 @@ class JsonLines(object):
     '''
 
     def __init__(self, path: str, sort_keys: bool = False,
-                 compact: bool = True, cache_on: bool = False) -> None:
+                 compact: bool = True, cache_on: bool = False,
+                 seek_step: int = 0) -> None:
         self.path = path
         self.isgzip = False
         if os.path.exists(path):
@@ -119,35 +122,32 @@ class JsonLines(object):
                     # ref https://stackoverflow.com/questions/3703276
                     if f.read(2) == b'\x1f\x8b':
                         self.isgzip = True
-            if self.isgzip:
-                # seek(-2) read(1) too slow for a long index line
-                # seek(-1024**6) No OSError, return pos: 0
-                with gzip.open(path, 'rb') as f:
+            open_fun = gzip.open if self.isgzip else open
+            # ref: https://stackoverflow.com/questions/46258499
+            # seek(-2) read(1) too slow for a long index line
+            # seek(-1024**6) gzip: No OSError, return pos: 0
+            with open_fun(path, 'rb') as f:
+                try:
                     offset = f.seek(0, os.SEEK_END)
-                    step = min(max(128, offset//1024), 4096*8)
+                    seek_step = abs(seek_step)
+                    step = seek_step or min(max(128, offset//1024), 4096*8)
                     # import time #TIME
                     # start = time.time() #TIME
                     offset = f.seek(-step-1, os.SEEK_END)
-                    npos = f.read(step).rfind(b'\n')
-                    while npos == -1 and offset > 0:  # not found & pos>0
+                    # While not found & pos>0
+                    while f.read(step).find(b'\n') == -1 and offset > 0:
                         offset = f.seek(-step*2, os.SEEK_CUR)
-                        npos = f.read(step).rfind(b'\n')
                     f.seek(offset, os.SEEK_SET)
-                    last_line = f.readlines()[-1]
-                    # cost = time.time() - start #TIME
-                    # print(f'index({len(last_line)}) cost {cost:.6f}s') #TIME
+                except OSError:
+                    # catch OSError in case: one line text or too large step
+                    f.seek(0)
+                last_line = f.readlines()[-1]
+                # cost = time.time() - start #TIME
+                # print(f'index({len(last_line)}) cost {cost:.6f}s') #TIME
                 # indexpos for :meth:`update`, disable for gzip, not needed
-                self.indexpos = None
-            else:
-                # ref https://stackoverflow.com/questions/46258499
-                with open(path, 'rb') as f:
-                    try:
-                        f.seek(-2, os.SEEK_END)
-                        while f.read(1) != b'\n':
-                            f.seek(-2, os.SEEK_CUR)
-                    except OSError:  # catch OSError in case: one line file
-                        f.seek(0)
-                    last_line = f.readline()
+                if self.isgzip:
+                    self.indexpos = None
+                else:
                     # len(bytes) -> offset
                     self.indexpos = f.seek(-len(last_line), os.SEEK_END)
             self.index = json.loads(last_line.decode('utf-8'))
