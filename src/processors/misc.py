@@ -12,7 +12,7 @@ import numpy as np
 
 from ..glogger import getGLogger
 from ..loaders import get_pckloader
-from ..savers import get_pcksaver
+from ..savers import get_pcksaver, pcksaver_types
 
 __all__ = [
     'change_v04x_pickled_data', 'change_pckdata_ext',
@@ -58,29 +58,27 @@ def change_v04x_pickled_data(path):
 
 def change_pckdata_ext(path, ext):
     '''
-    yy-xxxxxx.{converted,digged}.npz <-> yy-xxxxxx.{converted,digged}.hdf5
-    yy-xxxxxx.{converted,digged}.npz <-> yy-xxxxxx.{converted,digged}.jsonl
+    yy-xxxxxx.{converted,digged}.npz <-> yy-xxxxxx.{converted,digged}.hdf5 <->
+    yy-xxxxxx.{converted,digged}.jsonl <-> yy-xxxxxx.{converted,digged}.jsonz
 
     Parameters
     ----------
     path: path of converted or digged data
-    ext: extension of out path, like '.npz', '.hdf5', '.jsonl'
+    ext: extension of out path, like '.npz', '.hdf5', '.jsonl', '.jsonz'
     '''
     if not os.path.isfile(path):
         plog.error("Path %s not found!" % path)
         return
     root, ext1 = os.path.splitext(path)
     root, ext2 = os.path.splitext(root)
-    if (ext2, ext1) in [('.converted', '.npz'), ('.converted', '.hdf5'),
-                        ('.converted', '.jsonl')]:
+    if ext2 == '.converted' and ext1 in pcksaver_types[1:]:
         plog.info("This is a converted data path %s!" % path)
-    elif (ext2, ext1) in [('.digged', '.npz'), ('.digged', '.hdf5'),
-                          ('.digged', '.jsonl')]:
+    elif ext2 == '.digged' and ext1 in pcksaver_types[1:]:
         plog.info("This is a digged data path %s!" % path)
     else:
         plog.error("This is not a converted or digged data path %s!" % path)
         return
-    if ext not in ['.npz', '.hdf5', '.jsonl']:
+    if ext not in pcksaver_types[1:]:
         plog.error("Unsupported extension %s!" % ext)
         return
     if ext1 == ext:
@@ -125,7 +123,7 @@ def slim_v060_digged_data(path):
         return
     root, ext1 = os.path.splitext(path)
     root, ext2 = os.path.splitext(root)
-    if (ext2, ext1) not in [('.digged', '.npz'), ('.digged', '.hdf5')]:
+    if ext2 == '.digged' and ext1 in ['.npz', '.hdf5']:
         plog.error("This is not a digged data path %s!" % path)
         return
     oldloader = get_pckloader(path)
