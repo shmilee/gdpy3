@@ -58,6 +58,8 @@ class Hdf5PckSaver(BasePckSaver):
                 if isinstance(val, (list, numpy.ndarray)):
                     if isinstance(val, list):
                         val = numpy.array(val)
+                    if val.size == 0:
+                        continue  # skip empty array []
                     fgrp.create_dataset(key, data=val,
                                         chunks=val.shape,  # only one chunk
                                         compression='gzip',
