@@ -22,6 +22,7 @@ __all__ = ['GTkApp']
 log = getGLogger('G')
 
 use_experi_LSlider = False
+use_short_pathlabel = True
 
 
 class GTkApp(object):
@@ -220,19 +221,22 @@ class GTkApp(object):
 
     def _set_path(self, path):
         self.__path = path
-        if path.endswith(os.sep):  # /pa/th/case/
-            tail = os.sep
-            path = os.path.dirname(path)
+        if use_short_pathlabel:
+            if path.endswith(os.sep):  # /pa/th/case/
+                tail = os.sep
+                path = os.path.dirname(path)
+            else:
+                tail = ''
+            dirname = os.path.dirname(path)
+            if len(dirname) > 8:
+                # show short path
+                dirname = [s[:1] for s in dirname.split(os.sep)]
+                basename = os.path.basename(path)
+                self.pathlabel.set(os.sep.join(dirname + [basename]) + tail)
+            else:
+                self.pathlabel.set(path + tail)
         else:
-            tail = ''
-        dirname = os.path.dirname(path)
-        if len(dirname) > 8:
-            # show short path
-            dirname = [s[:1] for s in dirname.split(os.sep)]
-            basename = os.path.basename(path)
-            self.pathlabel.set(os.sep.join(dirname + [basename]) + tail)
-        else:
-            self.pathlabel.set(path + tail)
+            self.pathlabel.set(path)
 
     path = property(_get_path, _set_path)
 
@@ -390,7 +394,7 @@ class GTkApp(object):
             for label in same_figlabels:
                 kws, v = [], same_figlabels[label]
                 for i, kw in enumerate(v):
-                    if '=' not in kw:
+                    if '=' not in kw and kw != 'DEFAULT':
                         kws[-1] += ',%s' % kw
                     else:
                         kws.append(kw)
