@@ -56,7 +56,7 @@ class GTkApp(object):
         log.debug('Main frame packed.')
         # 1
         w_frame_proc = ttk.Labelframe(main, text='1. Processor:', width=width)
-        w_str_path = tkinter.StringVar(value='')  # default path ''
+        w_str_path = tkinter.StringVar(value='')  # default pathlabel ''
         w_str_path.trace("w", self.save_case_path)
         w_entry_path = ttk.Entry(
             w_frame_proc, font=font, textvariable=w_str_path)
@@ -185,6 +185,7 @@ class GTkApp(object):
         w_entry_filter.bind("<Return>", self.after_filter)
         w_listbox_fig.bind("<<ListboxSelect>>", self.after_figlabel)
         # X - start
+        self.__path = ''  # default path ''
         if path:
             self.path = path
             self.save_case_path()
@@ -193,7 +194,7 @@ class GTkApp(object):
                 self.ask_case_path(N=2)
             else:
                 self.ask_case_path(N=1)
-        self.root.title('gdpy3 - %s' % self.path)
+        self.root.title('gdpy3 - %s' % self.pathlabel.get())
         if monitor:
             log.info('Start Tk mainloop on monitor %s.' % monitor.name)
         else:
@@ -214,10 +215,24 @@ class GTkApp(object):
         self.root.quit()
 
     def _get_path(self):
-        return self.pathlabel.get()
+        # self.pathlabel.get()
+        return self.__path
 
     def _set_path(self, path):
-        self.pathlabel.set(path)
+        self.__path = path
+        if path.endswith(os.sep):  # /pa/th/case/
+            tail = os.sep
+            path = os.path.dirname(path)
+        else:
+            tail = ''
+        dirname = os.path.dirname(path)
+        if len(dirname) > 8:
+            # show short path
+            dirname = [s[:1] for s in dirname.split(os.sep)]
+            basename = os.path.basename(path)
+            self.pathlabel.set(os.sep.join(dirname + [basename]) + tail)
+        else:
+            self.pathlabel.set(path + tail)
 
     path = property(_get_path, _set_path)
 
@@ -311,8 +326,8 @@ class GTkApp(object):
                 gdp = self.cache_processors[key]
             else:
                 gdp = gdpcls(self.path)
-            self.root.title('gdpy3 - %s' % self.path)
-            if gdp.pckloader:
+            self.root.title('gdpy3 - %s' % self.pathlabel.get())
+            if hasattr(gdp, 'pckloader'):
                 log.debug('Set processor for %s' % self.path)
                 self.processor = gdp
                 if key not in self.cache_processors:
@@ -366,6 +381,36 @@ class GTkApp(object):
             self.next_figwindow_index += 1
             self.cache_figwindows[key][accfiglabel] = MplFigWindow(
                 figure, accfiglabel, index, self, class_='gdpy3-gui')
+            # set&update FigWindows' title, 'label/short_xx - 1 - short/path'
+            N = len(figlabel)
+            same_figlabels = {label: label[N+1:].split(',')
+                              for label in self.cache_figwindows[key]
+                              if label.startswith(figlabel)}
+            # fix kw: key=[a, b]
+            for label in same_figlabels:
+                kws, v = [], same_figlabels[label]
+                for i, kw in enumerate(v):
+                    if '=' not in kw:
+                        kws[-1] += ',%s' % kw
+                    else:
+                        kws.append(kw)
+                same_figlabels[label] = kws
+            # rm same kw
+            for i in range(len(same_figlabels[label])):  # same length
+                kws = set(v[i] for v in same_figlabels.values())
+                if len(kws) == 1:
+                    for label in same_figlabels:
+                        same_figlabels[label][i] = ''
+            # set&update title
+            for label in same_figlabels:
+                kwstr = ','.join(filter(lambda x: x, same_figlabels[label]))
+                if kwstr:
+                    kwstr = '/' + kwstr
+                index = self.cache_figwindows[key][label].figure_index
+                srcpath = self.pathlabel.get()
+                title = '%s%s - %d - %s' % (figlabel, kwstr, index, srcpath)
+                # log.debug("Set tilte '%s' for %s" % (title, label))
+                self.cache_figwindows[key][label].title(title)
 
     def after_processor_name(self, event):
         self.figlabel_filter.set('^.*/.*$')
@@ -615,7 +660,7 @@ class MplFigWindow(tkinter.Toplevel):
 
     def __init__(self, fig, figlabel, index, app, cnf={}, **kw):
         super(MplFigWindow, self).__init__(master=app.root, cnf=cnf, **kw)
-        self.title('%s - %d - %s' % (figlabel, index, app.path))
+        # self.title('%s - %d - %s' % (figlabel, index, app.path))
         self.protocol("WM_DELETE_WINDOW", self.wm_withdraw)
 
         import matplotlib
@@ -626,6 +671,7 @@ class MplFigWindow(tkinter.Toplevel):
             tkagg.NavigationToolbar2Tk = tkagg.NavigationToolbar2TkAgg
 
         self.figure_label = figlabel
+        self.figure_index = index
         self.figure_backend = tkagg
         self.figure_canvas = None
         self.figure_toolbar = None
