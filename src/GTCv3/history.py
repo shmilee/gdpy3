@@ -442,8 +442,8 @@ class HistoryFieldModeDigger(_TimeCutoff):
             title3='smooth normalized amplitude',
         )
         # 4 power spectrum
-        #sgn = np.array([np.complex(r, i) for r, i in zip(normyreal, normyimag)])
-        sgn = np.array([np.complex(r, i) for r, i in zip(yreal, yimag)])
+        # sgn = np.array([complex(r, i) for r, i in zip(normyreal, normyimag)])
+        sgn = np.array([complex(r, i) for r, i in zip(yreal, yimag)])
         _tf, _af, _pf = tools.fft(dt, sgn)
         index = np.argmax(_pf)
         omega3 = _tf[index]
