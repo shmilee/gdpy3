@@ -337,10 +337,13 @@ class MatplotlibVisplter(BaseVisplter):
         # set handler_map
         handler_map = {tuple: HandlerTuple(ndivide=None)}
         # for i, art in artistdict.items():
-        # for j, a in enumerate(art):
-        ##        print(i, j, a)
+        #    if type(art) == list:
+        #        for j, a in enumerate(art):
+        #            print(i, j, a)
+        #    else:
+        #        print(i, art)
         # for h, l in handleD.items():
-        ##    print(h, l)
+        #    print(h, l)
         for grp in groups:
             handles, labels = [], []
             # about index
@@ -348,7 +351,13 @@ class MatplotlibVisplter(BaseVisplter):
                 if type(i) in (tuple, list):
                     handl, label = [], []
                     for j in i:
-                        handl.extend(artistdict[j])
+                        if type(artistdict[j]) == list:
+                            # list of `.Line2D` etc.
+                            handl.extend(artistdict[j])
+                        else:
+                            # .Container etc.
+                            # list.extend() will destroy Container
+                            handl.append(artistdict[j])
                         label.append(handleD.get(handl[-1], None))
                         if len(handl) >= max_artists_per_handler:
                             handl = handl[:max_artists_per_handler]
