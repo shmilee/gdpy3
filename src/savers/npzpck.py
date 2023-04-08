@@ -8,7 +8,6 @@ Contains Npz pickled file saver class.
 
 import os
 import numpy
-import tempfile
 
 from ..glogger import getGLogger
 from ..utils import inherit_docstring
@@ -66,32 +65,16 @@ class NpzPckSaver(BasePckSaver):
                 self.close()
                 zipfile_delete(self.path, old_over)
                 self.iopen()
-        file_dir, file_prefix = os.path.split(self.path)
-        fd, tmpfile = tempfile.mkstemp(
-            prefix=file_prefix, dir=file_dir, suffix='-numpy.npy')
-        os.close(fd)
-        log.debug("Using tempfile: %s" % tmpfile)
         try:
             for key, val in data.items():
                 if group in ('/', ''):
                     fname = key + '.npy'
                 else:
                     fname = group + '/' + key + '.npy'
-                fid = open(tmpfile, mode='wb')
-                try:
+                log.debug("Writting %s ..." % fname)
+                with self._storeobj.open(fname, 'w', force_zip64=True) as fid:
                     numpy.lib.format.write_array(fid, numpy.asanyarray(val),
                                                  allow_pickle=True,
                                                  pickle_kwargs=None)
-                    fid.close()
-                    fid = None
-                    log.debug("Writting %s ..." % fname)
-                    self._storeobj.write(tmpfile, arcname=fname)
-                except Exception:
-                    log.error("Failed to write %s." % fname, exc_info=1)
-                finally:
-                    if fid:
-                        fid.close()
         except Exception:
             log.error("Failed to save data of '%s'!" % group, exc_info=1)
-        finally:
-            os.remove(tmpfile)
