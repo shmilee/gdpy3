@@ -6,16 +6,20 @@
 Contains Npz pickled file saver class.
 '''
 
-import os
-import numpy
+import io
+import numpy as np
 
 from ..glogger import getGLogger
 from ..utils import inherit_docstring
 from .base import BasePckSaver, _copydoc_func
-from .._zipfile import Compress_kwds, zipfile_factory, zipfile_delete
+from .._zipfile import (
+    Py_version_tuple, Compress_kwds,
+    zipfile_factory, zipfile_delete
+)
 
 __all__ = ['NpzPckSaver']
 log = getGLogger('S')
+_np_write_array = np.lib.format.write_array
 
 
 @inherit_docstring((BasePckSaver,), _copydoc_func, template=None)
@@ -54,6 +58,26 @@ class NpzPckSaver(BasePckSaver):
     def _open_new(self):
         return zipfile_factory(self.path, mode="w")
 
+    def __zf_open_write(self, name, val):
+        """
+        ZipFile.open, support 'w' mode
+        ref: https://docs.python.org/3.6/library/zipfile.html#zipfile.ZipFile.open
+        """
+        # log.debug("Using ZipFile.open(name, 'w') ...")
+        with self._storeobj.open(name, 'w', force_zip64=True) as f:
+            _np_write_array(f, np.asanyarray(val), allow_pickle=True)
+
+    def __zf_writestr(self, name, val):
+        """
+        ZipFile.writestr, data can be 'bytes' instance
+        ref: https://github.com/python/cpython/blob/3.5/Lib/zipfile.py#L1530
+        """
+        # log.debug("Using ZipFile.writestr(name, bytes-data) ...")
+        with io.BytesIO() as f:
+            _np_write_array(f, np.asanyarray(val), allow_pickle=True)
+            data = f.getvalue()
+            self._storeobj.writestr(name, data)
+
     def _write(self, group, data):
         if not self.duplicate_name:
             prefix = '' if group in ('/', '') else ('%s/' % group)
@@ -68,13 +92,13 @@ class NpzPckSaver(BasePckSaver):
         try:
             for key, val in data.items():
                 if group in ('/', ''):
-                    fname = key + '.npy'
+                    name = key + '.npy'
                 else:
-                    fname = group + '/' + key + '.npy'
-                log.debug("Writting %s ..." % fname)
-                with self._storeobj.open(fname, 'w', force_zip64=True) as fid:
-                    numpy.lib.format.write_array(fid, numpy.asanyarray(val),
-                                                 allow_pickle=True,
-                                                 pickle_kwargs=None)
+                    name = group + '/' + key + '.npy'
+                log.debug("Writting %s ..." % name)
+                if Py_version_tuple >= (3, 6, 0):
+                    self.__zf_open_write(name, val)  # ZipFile.open
+                else:
+                    self.__zf_writestr(name, val)  # ZipFile.writestr
         except Exception:
             log.error("Failed to save data of '%s'!" % group, exc_info=1)

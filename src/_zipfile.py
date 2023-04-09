@@ -7,6 +7,7 @@ zipfile setting & helper functions.
 '''
 
 import os
+import sys
 import zipfile
 import tempfile
 from .glogger import getGLogger
@@ -18,12 +19,12 @@ ZIP_LZMA = zipfile.ZIP_LZMA
 ZIP_DEFLATED = zipfile.ZIP_DEFLATED
 Compress_prefer = 'ZIP_LZMA'  # ZIP_DEFLATED or ZIP_LZMA
 Compress_kwds = dict(allowZip64=True)
+Py_version_tuple = sys.version_info[:3]
 if Compress_prefer == 'ZIP_LZMA' and zipfile.lzma:
     Compress_kwds['compression'] = zipfile.ZIP_LZMA
 else:
-    import sys
     Compress_kwds['compression'] = zipfile.ZIP_DEFLATED
-    if sys.version_info[:2] >= (3, 7):
+    if Py_version_tuple >= (3, 7, 0):
         # Changed in version 3.7: Add the compresslevel parameter.
         Compress_kwds['compresslevel'] = 6
 
