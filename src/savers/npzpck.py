@@ -8,6 +8,8 @@ Contains Npz pickled file saver class.
 
 import io
 import numpy as np
+import zipfile
+import time
 
 from ..glogger import getGLogger
 from ..utils import inherit_docstring
@@ -20,6 +22,7 @@ from .._zipfile import (
 __all__ = ['NpzPckSaver']
 log = getGLogger('S')
 _np_write_array = np.lib.format.write_array
+Use_ZipFile_open_mode_w = True
 
 
 @inherit_docstring((BasePckSaver,), _copydoc_func, template=None)
@@ -64,7 +67,14 @@ class NpzPckSaver(BasePckSaver):
         ref: https://docs.python.org/3.6/library/zipfile.html#zipfile.ZipFile.open
         """
         # log.debug("Using ZipFile.open(name, 'w') ...")
-        with self._storeobj.open(name, 'w', force_zip64=True) as f:
+        # use zinfo instead of name, fix date_time=1980.1.1.0.0
+        # fix: https://github.com/python/cpython/blob/3.6/Lib/zipfile.py#L1371
+        zinfo = zipfile.ZipInfo(filename=name,
+                                date_time=time.localtime(time.time())[:6])
+        zinfo.compress_type = Compress_kwds['compression']
+        if 'compresslevel' in Compress_kwds:
+            zinfo._compresslevel = Compress_kwds['compresslevel']
+        with self._storeobj.open(zinfo, 'w', force_zip64=True) as f:
             _np_write_array(f, np.asanyarray(val), allow_pickle=True)
 
     def __zf_writestr(self, name, val):
@@ -96,7 +106,7 @@ class NpzPckSaver(BasePckSaver):
                 else:
                     name = group + '/' + key + '.npy'
                 log.debug("Writting %s ..." % name)
-                if Py_version_tuple >= (3, 6, 0):
+                if Use_ZipFile_open_mode_w and Py_version_tuple >= (3, 6, 0):
                     self.__zf_open_write(name, val)  # ZipFile.open
                 else:
                     self.__zf_writestr(name, val)  # ZipFile.writestr
