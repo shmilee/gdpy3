@@ -42,6 +42,8 @@ def gui_script():
                         default='off',
                         help="Parallel processing or not, "
                         "(default: %(default)s)")
+    optgrp.add_argument('--tk_scaling', nargs='?', type=float, metavar='float',
+                        help='Set scaling factor used by Tk')
     optgrp.add_argument('-h', '--help', action='store_true',
                         help='Show this help message and exit')
 
@@ -56,10 +58,14 @@ def gui_script():
         AppID = 'io.%s.%s.v%s' % (__author__, __name__, __gversion__)
         log.debug('Set AppUserModelID %s for Windows.' % AppID)
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(AppID)
+        if args.tk_scaling:
+            # ref: ttkbootstrap/utility.py, enable_high_dpi_awareness
+            ctypes.windll.user32.SetProcessDPIAware()
 
     if args.backend == 'tk':
         from .tk import GTkApp
         GTkApp(path=args.casepath,
-               ask_sftp=args.ask_sftp, parallel=args.parallel)
+               ask_sftp=args.ask_sftp, parallel=args.parallel,
+               scaling=args.tk_scaling)
     else:
         pass

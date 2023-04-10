@@ -32,7 +32,8 @@ class GTkApp(object):
     recent = os.path.join(
         tempfile.gettempdir(), 'gdpy3-%s-recent' % getpass.getuser())
 
-    def __init__(self, path=None, ask_sftp=False, parallel='off'):
+    def __init__(self, path=None, ask_sftp=False, parallel='off',
+                 scaling=None):
         '''
         Parameters
         ----------
@@ -42,8 +43,17 @@ class GTkApp(object):
             if no path given, ask for a sftp(not local) path, default False
         parallel: str
             'off', 'multiprocess' or 'mpi4py', default 'off'
+        scaling: float
+            scaling factor used by Tk, default None
         '''
         root = tkinter.Tk(className='gdpy3-gui')
+        if scaling:
+            try:
+                root.tk.call('tk', 'scaling', scaling)
+            except:
+                pass
+            else:
+                log.info("Scaling factor %s used by Tk." % scaling)
         img = tkinter.PhotoImage(file=os.path.join(
             __data_path__, 'icon', '%s.gif' % __icon_name__))
         root.tk.call('wm', 'iconphoto', root._w, "-default", img)
