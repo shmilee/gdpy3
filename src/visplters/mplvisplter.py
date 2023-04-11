@@ -363,7 +363,12 @@ class MatplotlibVisplter(BaseVisplter):
                             handl = handl[:max_artists_per_handler]
                             break
                 elif type(i) == int:
-                    handl = artistdict[i]
+                    if type(artistdict[i]) == list:
+                        # list of `.Line2D` etc.
+                        handl = artistdict[i]
+                    else:
+                        # .Container etc.
+                        handl = [artistdict[i]]
                     if len(handl) >= max_artists_per_handler:
                         handl = handl[:max_artists_per_handler]
                     label = [handleD.get(handl[-1], None)]
