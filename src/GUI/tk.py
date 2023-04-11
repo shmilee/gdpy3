@@ -162,6 +162,7 @@ class GTkApp(object):
         log.debug('Main frame filled.')
         # X - for share
         self.root = root
+        self.scaling = scaling
         try:
             import screeninfo
             monitors = screeninfo.get_monitors()
@@ -351,6 +352,12 @@ class GTkApp(object):
                 self.figlistbox.selection_clear(0, END)
                 # reset panel, hide kw widgets
                 self.reset_panel()
+                # set style dpi scaling, for Tk MplFigWindow
+                if self.scaling:
+                    dpi = int(100*self.scaling)  # 100 from 'gdpy3-notebook'
+                    log.info("Set figure.dpi=%d, as scaling factor=%s."
+                             % (dpi, self.scaling))
+                    gdp.visplter.style.append({'figure.dpi': dpi})
             else:
                 messagebox.showerror(message='Failed to get processor!')
         else:
