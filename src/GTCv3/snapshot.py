@@ -43,7 +43,8 @@ _all_Diggers = [
     'SnapshotProfileDigger', 'SnapshotPdfDigger',
     'SnapshotFieldFluxDigger', 'SnapshotFieldPoloidalDigger',
     'SnapshotFieldSpectrumDigger', 'SnapshotTimeFieldSpectrumDigger',
-    'SnapshotFieldProfileDigger', 'SnapshotFieldmDigger']
+    'SnapshotFieldProfileDigger', 'SnapshotFieldmDigger',
+    'SnapshotFieldmkthetaDigger']
 __all__ = _all_Converters + _all_Diggers
 
 
@@ -877,3 +878,68 @@ class SnapshotFieldmDigger(Digger):
         r0, r1 = np.round(r['rr'][[0, -1]], decimals=2)
         return dict(LINE=LINE, title=r['title'],
                     xlabel=r'$r/a$', xlim=[r0, r1])
+
+
+class BreakDigDoc(Digger):
+    pass
+
+
+class SnapshotFieldmkthetaDigger(BreakDigDoc, SnapshotFieldmDigger):
+    '''contour/average profile of field_m or density_m'''
+    __slots__ = []
+    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
+
+    def _set_fignum(self, numseed=None):
+        self._fignum = '%s_fieldmktheta' % self.section[1]
+        self.kwoptions = None
+
+    def _dig(self, kwargs):
+        '''
+        kwargs
+        ------
+        *m_max*: int, default mtgrid1//5
+        *mean_weight_order*: int
+            use fieldm^mean_weight_order as weight to average(m), default 4
+        '''
+        if self.kwoptions is None:
+            self.kwoptions = dict(
+                mean_weight_order=dict(widget='IntSlider',
+                                       rangee=(2, 8, 2),
+                                       value=4,
+                                       description='mean m weight order:'))
+        data, _ = super(SnapshotFieldmkthetaDigger, self)._dig(kwargs)
+        rr, fieldm, title = data['rr'], data['fieldm'], data['title']
+        maxmmode = fieldm.shape[0]*2//5  # (mtgrid1//2)*2//5
+        m_max = kwargs.get('m_max', None)
+        if not (isinstance(m_max, int) and m_max <= maxmmode):
+            m_max = maxmmode
+        m = np.arange(1, m_max + 1)
+        fieldm = fieldm[:m_max, :]
+        order = kwargs.get('mean_weight_order', 2)
+        rho0, a = self.pckloader.get_many('gtc/rho0', 'gtc/a_minor')
+        m2_r = np.array([np.average(m**order, weights=fieldm[:, i]**order)
+                         for i in range(rr.size)])
+        mean_m = np.power(m2_r, 1.0/order)
+        ktrho0 = mean_m/(rr*a)*rho0
+        dlog.parm("at r=0.5a, mean m=%.1f." % mean_m[rr.size//2])
+        if 'm_max' not in self.kwoptions:
+            self.kwoptions['m_max'] = dict(widget='IntSlider',
+                                           rangee=(10, maxmmode, 10),
+                                           value=maxmmode,
+                                           description='m max limit:')
+        acckwargs = dict(m_max=m_max, mean_weight_order=order)
+        return dict(rr=rr, m=m, fieldm=fieldm, title=title,
+                    mean_m=mean_m, ktrho0=ktrho0), acckwargs
+
+    def _post_dig(self, results):
+        r = results
+        zip_results = [
+            ('tmpl_contourf', 211, dict(
+                X=r['rr'], Y=r['m'], Z=r['fieldm'], title=r['title'],
+                xlabel=r'$r/a$', ylabel=r'm')),
+            ('tmpl_line', 211, dict(LINE=[(r['rr'], r['mean_m'], 'mean m')])),
+            ('tmpl_line', 212, dict(
+                LINE=[(r['rr'], r['ktrho0'], r'mean m')],
+                xlabel='r/a', ylabel=r'$k_{\theta}\rho_0$')),
+        ]
+        return dict(zip_results=zip_results)
