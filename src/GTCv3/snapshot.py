@@ -288,10 +288,10 @@ class SnapshotFieldFluxDigger(Digger):
         title = _snap_get_timestr(self.group, self.pckloader)
         fstr = field_tex_str[self.section[1]]
         data = self.pckloader.get(self.srckeys[0])
-        y, x = data.shape
+        y, x = data.shape  # 0-mtgrid; 1-mtoroidal
         return dict(
-            zeta=np.arange(0, x) / x * 2 * np.pi,
-            theta=np.arange(0, y) / y * 2 * np.pi,
+            zeta=np.arange(1, x+1) / x * 2 * np.pi,  # (0,2pi]
+            theta=np.arange(0, y) / (y-1) * 2 * np.pi,  # [0,2pi]
             field=data,
             title=r'$%s$ on flux surface, %s' % (fstr, title)), {}
 
