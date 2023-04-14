@@ -41,10 +41,11 @@ from .gtc import Ndigits_tstep
 _all_Converters = ['SnapshotConverter']
 _all_Diggers = [
     'SnapshotProfileDigger', 'SnapshotPdfDigger',
-    'SnapshotFieldFluxDigger', 'SnapshotFieldPoloidalDigger',
+    'SnapshotFieldFluxDigger', 'SnapshotFieldFluxTileDigger',
+    'SnapshotFieldPoloidalDigger',
     'SnapshotFieldSpectrumDigger', 'SnapshotTimeFieldSpectrumDigger',
-    'SnapshotFieldProfileDigger', 'SnapshotFieldmDigger',
-    'SnapshotFieldmkthetaDigger']
+    'SnapshotFieldProfileDigger',
+    'SnapshotFieldmDigger', 'SnapshotFieldmkthetaDigger']
 __all__ = _all_Converters + _all_Diggers
 
 
@@ -300,6 +301,54 @@ class SnapshotFieldFluxDigger(Digger):
         return dict(X=r['zeta'], Y=r['theta'], Z=r['field'],
                     title=r['title'], xlabel=r'$\zeta$',
                     ylabel=r'$\theta$', aspect='equal')
+
+
+class SnapshotFieldFluxTileDigger(SnapshotFieldFluxDigger):
+    '''Tiled phi, a_para etc. on flux surface.'''
+    __slots__ = []
+    commonpattern = ['gtc/tstep', 'gtc/qiflux']
+
+    def _set_fignum(self, numseed=None):
+        self._fignum = '%s_flux_tiled' % self.section[1]
+        self.kwoptions = None
+
+    def _dig(self, kwargs):
+        '''
+        kwargs
+        ------
+        *N*: int, default 3
+            how many zeta(2pi) will be tiled
+        '''
+        res, _ = super(SnapshotFieldFluxTileDigger, self)._dig(kwargs)
+        title, field = res['title'], res['field'][1:, :]  # all (0, 2pi]
+        zeta, theta = res['zeta'], res['theta'][1:]
+        q = self.pckloader.get('gtc/qiflux')
+        sep = int(field.shape[0]*(1.0-1.0/q))  # q>1
+        N = kwargs.get('N', 3)
+        if not (isinstance(N, int) and 0 < N):
+            N = 3
+        if self.kwoptions is None:
+            self.kwoptions = dict(
+                N=dict(widget='IntSlider',
+                       rangee=(1, 10, 1),
+                       value=3,
+                       description='zeta N_2pi:'))
+        acckwargs = dict(N=N)
+        c1, c2 = field, field
+        zeta1, theta1 = zeta, theta
+        for i in range(1, N):
+            h1 = c1[sep*(i-1):sep*i]
+            t2 = c2[-sep:] if i == 1 else c2[-sep*i:-sep*(i-1)]
+            c1, c2 = np.row_stack((c1, h1)), np.row_stack((t2, c2))
+            c1 = np.column_stack((c1, c2))
+            zeta1 = np.append(zeta1, zeta+2*np.pi*i)
+            theta1 = np.append(theta1, theta1[sep*(i-1):sep*i]+2*np.pi)
+        return dict(title=title, field=c1, zeta=zeta1, theta=theta1), acckwargs
+
+    def _post_dig(self, results):
+        r = results
+        return dict(X=r['zeta'], Y=r['theta'], Z=r['field'],
+                    title=r['title'], xlabel=r'$\zeta$', ylabel=r'$\theta$')
 
 
 class SnapshotFieldPoloidalDigger(Digger):
