@@ -118,6 +118,17 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
                  visoptions=self.visoptions,
                  **otherinfo), fmt)
 
+    _visoption_default_ylabel_rotation = dict(
+        widget='IntSlider',
+        rangee=(0, 360, 10),
+        value=90,
+        description='ylabel rotation:')
+    _visoption_default_aspect = dict(
+        widget='Dropdown',
+        options=['auto', 'equal'],
+        value='auto',
+        description='aspect:')
+
     # 1. tmpl_contourf
     _visoptions_tmpl_contourf = dict(
         plot_method=dict(
@@ -130,6 +141,7 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
             rangee=(20, 200, 20),
             value=100,
             description='contourf levels:'),
+        aspect=_visoption_default_aspect.copy(),
         colorbar=dict(
             widget='Checkbox',
             value=True,
@@ -152,7 +164,7 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
         ---------------
         kwargs passed on to :meth:`visplter.tmpl_contourf`
         *plot_method*, *plot_method_args*, *plot_method_kwargs*,
-        *colorbar*, *grid_alpha*, *plot_surface_shadow*
+        *aspect*, *colorbar*, *grid_alpha*, *plot_surface_shadow*
         '''
         if 'plot_method' not in results:
             results['plot_method'] = 'contourf'
@@ -163,9 +175,12 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
             elog.warning("All elements are 0, use plot_method pcolormesh!")
             results['plot_method'] = 'pcolormesh'
             kwargs['plot_method'] = 'pcolormesh'
+        if 'aspect' in results:
+            elog.info("Use aspect=%s set by Digger." % results['aspect'])
+            kwargs['aspect'] = results['aspect']
         debug_kw = {}
         for k in ['plot_method', 'plot_method_args',
-                  'plot_method_kwargs', 'colorbar',
+                  'plot_method_kwargs', 'aspect', 'colorbar',
                   'grid_alpha', 'plot_surface_shadow']:
             if k in kwargs:
                 results[k] = kwargs[k]
@@ -181,11 +196,8 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
 
     # 2. tmpl_line
     _visoptions_tmpl_line = dict(
-        ylabel_rotation=dict(
-            widget='IntSlider',
-            rangee=(0, 360, 10),
-            value=90,
-            description='ylabel rotation:')
+        ylabel_rotation=_visoption_default_ylabel_rotation.copy(),
+        aspect=_visoption_default_aspect.copy(),
     )
 
     def _export_tmpl_line(self, results, kwargs):
@@ -195,9 +207,13 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
         kwargs passed on to :meth:`visplter.tmpl_line`
         *ylabel_rotation*: str or int
             default 'vertical'
+        *aspect*: str, default 'auto'
         '''
+        if 'aspect' in results:
+            elog.info("Use aspect=%s set by Digger." % results['aspect'])
+            kwargs['aspect'] = results['aspect']
         debug_kw = {}
-        for k in ['ylabel_rotation']:
+        for k in self._visoptions_tmpl_line.keys():
             if k in kwargs:
                 results[k] = kwargs[k]
             if k in results:
@@ -212,11 +228,7 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
             rangee=(0, 0.5, 0.02),
             value=0.02,
             description='hspace:'),
-        ylabel_rotation=dict(
-            widget='IntSlider',
-            rangee=(0, 360, 10),
-            value=90,
-            description='ylabel rotation:')
+        ylabel_rotation=_visoption_default_ylabel_rotation.copy(),
     )
 
     def _export_tmpl_sharextwinx(self, results, kwargs):
