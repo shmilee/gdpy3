@@ -44,16 +44,23 @@ class GTkApp(object):
         parallel: str
             'off', 'multiprocess' or 'mpi4py', default 'off'
         scaling: float
-            scaling factor used by Tk, default None
+            scaling factor used by Tk, default 1.0
         '''
         root = tkinter.Tk(className='gdpy3-gui')
-        if scaling:
-            try:
-                root.tk.call('tk', 'scaling', scaling)
-            except:
-                pass
-            else:
-                log.info("Scaling factor %s used by Tk." % scaling)
+        try:
+            import screeninfo
+            monitors = screeninfo.get_monitors()
+            monitor = sorted(monitors, key=lambda m: m.width, reverse=True)[0]
+        except Exception:
+            log.debug('No active monitors found!')
+            monitor = None
+        scaling = scaling if isinstance(scaling, float) else 1.0
+        try:
+            root.tk.call('tk', 'scaling', scaling)
+        except:
+            pass
+        else:
+            log.info("Scaling factor %s used by Tk." % scaling)
         img = tkinter.PhotoImage(file=os.path.join(
             __data_path__, 'icon', '%s.gif' % __icon_name__))
         root.tk.call('wm', 'iconphoto', root._w, "-default", img)
@@ -163,13 +170,6 @@ class GTkApp(object):
         # X - for share
         self.root = root
         self.scaling = scaling
-        try:
-            import screeninfo
-            monitors = screeninfo.get_monitors()
-            monitor = sorted(monitors, key=lambda m: m.width, reverse=True)[0]
-        except Exception:
-            log.debug('No active monitors found!')
-            monitor = None
         self.monitor = monitor
         self.center(root)
         self.img = img
@@ -352,11 +352,11 @@ class GTkApp(object):
                 self.figlistbox.selection_clear(0, END)
                 # reset panel, hide kw widgets
                 self.reset_panel()
-                # set style dpi scaling, for Tk MplFigWindow
-                if self.scaling:
-                    dpi = int(100*self.scaling)  # 100 from 'gdpy3-notebook'
-                    log.info("Set figure.dpi=%d, as scaling factor=%s."
-                             % (dpi, self.scaling))
+                # set style dpi by monitor.width, for Tk MplFigWindow
+                if self.monitor and self.monitor.width >= 1366:
+                    dpi = min(int(96*self.monitor.width/1280), 200)
+                    log.info("Set figure.dpi=%d as monitor.width=%s."
+                             % (dpi, self.monitor.width))
                     gdp.visplter.style.append({'figure.dpi': dpi})
             else:
                 messagebox.showerror(message='Failed to get processor!')
