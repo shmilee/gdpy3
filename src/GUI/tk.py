@@ -44,7 +44,7 @@ class GTkApp(object):
         parallel: str
             'off', 'multiprocess' or 'mpi4py', default 'off'
         scaling: float
-            scaling factor used by Tk, default 1.0
+            scaling factor used by Tk, default 1.25
         '''
         root = tkinter.Tk(className='gdpy3-gui')
         try:
@@ -54,7 +54,7 @@ class GTkApp(object):
         except Exception:
             log.debug('No active monitors found!')
             monitor = None
-        scaling = scaling if isinstance(scaling, float) else 1.0
+        scaling = scaling if isinstance(scaling, float) else 1.25
         try:
             root.tk.call('tk', 'scaling', scaling)
         except:
