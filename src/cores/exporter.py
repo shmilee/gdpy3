@@ -75,12 +75,13 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
         Check all `tmpl_xxx` in :attr:`template` and :attr:`_z111p_tmpls`.
         Return string like, "k1=1,k2=[2],k3='abc'".
         '''
-        ckkws = []
+        ckkws = {}
         for tmpl in self.items + self.common:
             meth = getattr(self, '_export_%s' % tmpl)
-            ckkws.extend(['%s=%r' % (k, list(v) if isinstance(v, tuple) else v)
+            ckkws.update({k: (list(v) if isinstance(v, tuple) else v)
                           for k, v in kwargs.items()
-                          if meth.__doc__.find('*%s*' % k) > 0])
+                          if meth.__doc__.find('*%s*' % k) > 0})
+        ckkws = ['%s=%r' % (k, v) for k, v in ckkws.items()]
         return ','.join(sorted(ckkws))
 
     def export(self, results, otherinfo={}, fmt='dict', **kwargs):
@@ -99,6 +100,8 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
         results, viskwargs = meth(results, kwargs)
         viskwargstr = self.str_export_kwargs(viskwargs)
         if viskwargstr and 'accfiglabel' in otherinfo:
+            elog.debug("The viskwargstr of %s is '%s'."
+                       % (otherinfo['accfiglabel'], viskwargstr))
             otherinfo['accfiglabel'] = ','.join((
                 otherinfo['accfiglabel'], viskwargstr))
         return self.fmt_export(

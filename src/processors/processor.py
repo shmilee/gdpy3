@@ -401,6 +401,7 @@ class Processor(object):
             return None, 'Invalid figlabel', None
         digcore = self._availablelabels_lib[figlabel]
         gotkwargstr = digcore.str_dig_kwargs(kwargs) or 'DEFAULT'
+        plog.debug("Get kwargstr '%s' for %s" % (gotkwargstr, figlabel))
         gotfiglabel = '%s/%s' % (figlabel, gotkwargstr)
         if not redig and gotfiglabel in self.diggedlabels:
             if gotfiglabel in self.resloader.datagroups:
