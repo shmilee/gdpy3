@@ -42,7 +42,7 @@ _all_Converters = ['SnapshotConverter']
 _all_Diggers = [
     'SnapshotProfileDigger', 'SnapshotPdfDigger',
     'SnapshotFieldFluxDigger', 'SnapshotFieldFluxTileDigger',
-    'SnapshotFieldPoloidalDigger',
+    'SnapshotFieldFluxCorrLenDigger', 'SnapshotFieldPoloidalDigger',
     'SnapshotFieldSpectrumDigger', 'SnapshotTimeFieldSpectrumDigger',
     'SnapshotFieldProfileDigger',
     'SnapshotFieldmDigger', 'SnapshotFieldmkthetaDigger']
@@ -316,7 +316,7 @@ class SnapshotFieldFluxTileDigger(SnapshotFieldFluxDigger):
         '''
         kwargs
         ------
-        *N*: int, default 3
+        *N*: int, >=2, default 3
             how many zeta(2pi) will be tiled
         '''
         res, _ = super(SnapshotFieldFluxTileDigger, self)._dig(kwargs)
@@ -325,12 +325,12 @@ class SnapshotFieldFluxTileDigger(SnapshotFieldFluxDigger):
         q = self.pckloader.get('gtc/qiflux')
         sep = int(field.shape[0]*(1.0-1.0/q))  # q>1
         N = kwargs.get('N', 3)
-        if not (isinstance(N, int) and 0 < N):
+        if not (isinstance(N, int) and N >= 2):
             N = 3
         if self.kwoptions is None:
             self.kwoptions = dict(
                 N=dict(widget='IntSlider',
-                       rangee=(1, 10, 1),
+                       rangee=(2, 6, 1),
                        value=3,
                        description='zeta N_2pi:'))
         acckwargs = dict(N=N)
@@ -349,6 +349,104 @@ class SnapshotFieldFluxTileDigger(SnapshotFieldFluxDigger):
         r = results
         return dict(X=r['zeta'], Y=r['theta'], Z=r['field'],
                     title=r['title'], xlabel=r'$\zeta$', ylabel=r'$\theta$')
+
+
+class SnapshotFieldFluxCorrLenDigger(SnapshotFieldFluxTileDigger):
+    '''Get field correlation(d_zeta, d_theta) from tiled flux surface.'''
+    __slots__ = []
+    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
+
+    def _set_fignum(self, numseed=None):
+        self._fignum = '%s_flux_corrlen' % self.section[1]
+        self.kwoptions = None
+
+    def _dig(self, kwargs):
+        '''*dzeta*: float
+            set dzeta range, default 2*pi, max N*pi
+        *dtheta*: float
+            set dtheta range, default 0.1, max 1.5
+        '''
+        res, acckws = super(SnapshotFieldFluxCorrLenDigger, self)._dig(kwargs)
+        title, field = res['title'], res['field']
+        zeta, theta = res['zeta'], res['theta']
+        title = r'CorrLen$(\Delta\zeta, \Delta\theta)$ of ' + title
+        N = zeta[-1]/np.pi/2
+        maxdzeta, maxdtheta = round(N*np.pi, 1), 1.5
+        dzeta, dtheta = kwargs.get('dzeta', None), kwargs.get('dtheta', None)
+        if not (isinstance(dzeta, (int, float)) and 0 < dzeta <= maxdzeta):
+            dzeta = round(2*np.pi, 1)
+        if not (isinstance(dtheta, (int, float)) and 0 < dtheta <= maxdtheta):
+            dtheta = 0.1
+        if 'dzeta' not in self.kwoptions:
+            self.kwoptions.update(dict(
+                dzeta=dict(widget='FloatSlider',
+                           rangee=(0.2, maxdzeta, 0.1),
+                           value=round(2*np.pi, 1),
+                           description='dzeta:'),
+                dtheta=dict(widget='FloatSlider',
+                            rangee=(0.1, maxdtheta, 0.1),
+                            value=0.1,
+                            description='dtheta:')))
+        acckws.update(dzeta=round(dzeta, 1), dtheta=round(dtheta, 1))
+        y, x = field.shape
+        dlog.parm('Data shape of fflux(theta,zeta) is %s.' % ((y, x),))
+        mdzeta = int(dzeta/(zeta[1]-zeta[0]))
+        mdtheta = int(dtheta/(theta[1]-theta[0]))
+        dlog.parm("Use dzeta=%s, dtheta=%s, mdzeta=%s, mdtheta=%s. "
+                  "Maximal maxdzeta=%s, maxdtheta=%s"
+                  % (dzeta, dtheta, mdzeta, mdtheta, maxdzeta, maxdtheta))
+        tau, cdt, vdz = tools.correlation(field, 0, y, 0, x, mdtheta, mdzeta)
+        mdzeta, mdtheta = np.arange(1, mdzeta+1), np.arange(1, mdtheta+1)
+        dzeta, dtheta = mdzeta*(zeta[1]-zeta[0]), mdtheta*(theta[1]-theta[0])
+        mtaus, Xs = [], []
+        for axis in [0, 1]:
+            mtau = tau.max(axis=axis)
+            X = dzeta if axis == 0 else dtheta
+            index = np.where(mtau <= 1.0/np.e)[0]
+            if index.size > 0:
+                i, j = index[0] - 1,  index[0]
+                Xm, y = tools.intersection_4points(
+                    X[i], mtau[i], X[j], mtau[j],
+                    X[i], 1.0/np.e, X[j], 1.0/np.e)
+            else:
+                Xm = X[-1]
+                dlog.parm(
+                    "Increase dzeta/dtheta to find correlation zeta/theta!")
+            mtaus.append(mtau)
+            Xs.append(Xm)
+        dlog.parm("Get correlation: dzeta=%.6f, dtheta=%.6f" % (Xs[0], Xs[1]))
+        return dict(title=title, dzeta=dzeta, dtheta=dtheta, tau=tau,
+                    zetatau=mtaus[0], zetaC=Xs[0],
+                    thetatau=mtaus[1], thetaC=Xs[1]), acckws
+
+    def _post_dig(self, results):
+        r = results
+        ax1_calc = dict(
+            X=r['dzeta'], Y=r['dtheta'], Z=r['tau'], clabel_levels=[1/np.e],
+            title=r['title'], xlabel=r'$\Delta\zeta$', ylabel=r'$\Delta\theta$')
+        ax2_calc = dict(
+            LINE=[
+                (r['dzeta'], r['zetatau'], r'$C(\Delta\zeta)$'),
+                ([r['dzeta'][0], r['dzeta'][-1]], [1/np.e, 1/np.e], '1/e'),
+            ],
+            title=r'$C(\Delta\zeta=%.3f)=1/e$' % r['zetaC'],
+            xlabel=r'$\Delta\zeta$',
+            xlim=[r['dzeta'][0], r['dzeta'][-1]],
+            ylim=[min(0, r['zetatau'].min()), 1])
+        ax3_calc = dict(
+            LINE=[
+                (r['dtheta'], r['thetatau'], r'$C(\Delta\theta)$'),
+                ([r['dtheta'][0], r['dtheta'][-1]], [1/np.e, 1/np.e], '1/e'),
+            ],
+            title=r'$C(\Delta\theta=%.6f)=1/e$' % r['thetaC'],
+            xlabel=r'$\Delta\theta$',
+            xlim=[r['dtheta'][0], r['dtheta'][-1]],
+            ylim=[min(0, r['thetatau'].min()), 1])
+        return dict(zip_results=[
+            ('tmpl_contourf', 211, ax1_calc),
+            ('tmpl_line', 223, ax2_calc),
+            ('tmpl_line', 224, ax3_calc),
+        ])
 
 
 class SnapshotFieldPoloidalDigger(Digger):
@@ -723,45 +821,6 @@ class SnapshotFieldProfileDigger(Digger):
             ('tmpl_sharextwinx', 211, ax1_calc),
             ('tmpl_sharextwinx', 212, ax2_calc),
         ], suptitle=r['suptitle'])
-
-
-class SnapshotFluxthetaDigger(Digger):  # TODO test
-    '''theta distribution of phi, a_para, fluidne, or densityi, densitye on flux surface.'''
-    __slots__ = []
-    nitems = '?'
-    itemspattern = [
-        '^(?P<section>snap\d{5,7})'
-        + '/fluxdata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))']
-    commonpattern = ['gtc/tstep', 'gtc/qiflux']
-    post_template = 'tmpl_line'
-
-    def _set_fignum(self, numseed=None):
-        self._fignum = '%s_flux_theta' % self.section[1]
-
-    def _dig(self, kwargs):
-        title = _snap_get_timestr(self.group, self.pckloader)
-        fstr = field_tex_str[self.section[1]]
-        data = self.pckloader.get(self.srckeys[0])
-        y, x = data.shape
-        q = self.pckloader.get('gtc/qiflux')
-        th = -np.arctan(1/q)
-        mtran = np.cos(th)*np.array([[1, 0], [0, 1]]) \
-            + np.sin(th)*np.array([[0, -1], [1, 0]])
-
-        return dict(
-            zeta=np.arange(0, x) / x * 2 * np.pi,
-            theta=np.arange(0, y) / y * 2 * np.pi,
-            fieldm=fieldm,
-            title=r'$%s$ on flux surface, %s' % (fstr, title)), {}
-
-    def _post_dig(self, results):
-        r = results
-        LINE = [(r['rr'], r['fieldm'][j, :]) for j in jlist]
-        return dict(LINE=LINE, title=r['title'],
-                    xlabel=r'$r/a$', xlim=[r0, r1])
-        # return dict(X=r['zeta'], Y=r['theta'], Z=r['field'],
-        #            title=r['title'], xlabel=r'$\zeta$',
-        #            ylabel=r'$\theta$', aspect='equal')
 
 
 class SnapshotFieldmDigger(Digger):
