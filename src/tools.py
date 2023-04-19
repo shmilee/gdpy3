@@ -495,7 +495,7 @@ def correlation(data, r0, r1, c0, c1, dr, dc,
     vdc: delta column array
     '''
     tau = np.zeros((dr, dc))
-    logstep = round(dr/10)
+    logstep = max(1, round(dr/10))
     for i in range(dr):
         for j in range(dc):
             # tmptau, tmpinten0, tmpinten1 = 0, 0, 0
