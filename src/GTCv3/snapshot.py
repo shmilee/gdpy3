@@ -362,9 +362,9 @@ class SnapshotFieldFluxCorrLenDigger(SnapshotFieldFluxTileDigger):
 
     def _dig(self, kwargs):
         '''*dzeta*: float
-            set dzeta range, default 2*pi, max N*pi
+            set dzeta range, default 2*pi (6.3), max N*pi
         *dtheta*: float
-            set dtheta range, default 0.1, max 1.5
+            set dtheta range, default 0.1 (0.10), max 1.5
         '''
         res, acckws = super(SnapshotFieldFluxCorrLenDigger, self)._dig(kwargs)
         title, field = res['title'], res['field']
@@ -380,14 +380,14 @@ class SnapshotFieldFluxCorrLenDigger(SnapshotFieldFluxTileDigger):
         if 'dzeta' not in self.kwoptions:
             self.kwoptions.update(dict(
                 dzeta=dict(widget='FloatSlider',
-                           rangee=(0.2, maxdzeta, 0.1),
+                           rangee=(0.2, round(6*np.pi, 1), 0.1),
                            value=round(2*np.pi, 1),
                            description='dzeta:'),
                 dtheta=dict(widget='FloatSlider',
-                            rangee=(0.1, maxdtheta, 0.1),
+                            rangee=(0.05, maxdtheta, 0.05),
                             value=0.1,
                             description='dtheta:')))
-        acckws.update(dzeta=round(dzeta, 1), dtheta=round(dtheta, 1))
+        acckws.update(dzeta=round(dzeta, 1), dtheta=round(dtheta, 2))
         y, x = field.shape
         dlog.parm('Data shape of fflux(theta,zeta) is %s.' % ((y, x),))
         mdzeta = int(dzeta/(zeta[1]-zeta[0]))
@@ -398,26 +398,25 @@ class SnapshotFieldFluxCorrLenDigger(SnapshotFieldFluxTileDigger):
         tau, cdt, vdz = tools.correlation(field, 0, y, 0, x, mdtheta, mdzeta)
         mdzeta, mdtheta = np.arange(1, mdzeta+1), np.arange(1, mdtheta+1)
         dzeta, dtheta = mdzeta*(zeta[1]-zeta[0]), mdtheta*(theta[1]-theta[0])
-        mtaus, Xs = [], []
-        for axis in [0, 1]:
-            mtau = tau.max(axis=axis)
-            X = dzeta if axis == 0 else dtheta
-            index = np.where(mtau <= 1.0/np.e)[0]
+        mtau, Cx = [], []
+        for n, X, Y in [(0, dzeta, tau.max(axis=0)), (1, dzeta, tau[0, :]),
+                        (2, dtheta, tau.max(axis=1)), (3, dtheta, tau[:, 0])]:
+            index = np.where(Y <= 1.0/np.e)[0]
             if index.size > 0:
                 i, j = index[0] - 1,  index[0]
                 Xm, y = tools.intersection_4points(
-                    X[i], mtau[i], X[j], mtau[j],
+                    X[i], Y[i], X[j], Y[j],
                     X[i], 1.0/np.e, X[j], 1.0/np.e)
             else:
                 Xm = X[-1]
-                dlog.parm(
-                    "Increase dzeta/dtheta to find correlation zeta/theta!")
-            mtaus.append(mtau)
-            Xs.append(Xm)
-        dlog.parm("Get correlation: dzeta=%.6f, dtheta=%.6f" % (Xs[0], Xs[1]))
+                dlog.info("Increase dzeta/dtheta to find correlation %d!" % n)
+            mtau.append(Y)
+            Cx.append(Xm)
+        dlog.parm("Get correlation: dzeta=%.6f, dtheta=%.6f" % (Cx[0], Cx[2]))
         return dict(title=title, dzeta=dzeta, dtheta=dtheta, tau=tau,
-                    zetatau=mtaus[0], zetaC=Xs[0],
-                    thetatau=mtaus[1], thetaC=Xs[1]), acckws
+                    zetatau=mtau[0], zetatau0=mtau[1], thetatau=mtau[2],
+                    thetatau0=mtau[3], zetaC=Cx[0], zetaC0=Cx[1],
+                    thetaC=Cx[2], thetaC0=Cx[3]), acckws
 
     def _post_dig(self, results):
         r = results
@@ -426,19 +425,23 @@ class SnapshotFieldFluxCorrLenDigger(SnapshotFieldFluxTileDigger):
             title=r['title'], xlabel=r'$\Delta\zeta$', ylabel=r'$\Delta\theta$')
         ax2_calc = dict(
             LINE=[
-                (r['dzeta'], r['zetatau'], r'$C(\Delta\zeta)$'),
+                (r['dzeta'], r['zetatau'], r'$maxC(\Delta\zeta)$'),
+                (r['dzeta'], r['zetatau0'], r'$C(\Delta\zeta,\Delta\theta=0)$'),
                 ([r['dzeta'][0], r['dzeta'][-1]], [1/np.e, 1/np.e], '1/e'),
             ],
-            title=r'$C(\Delta\zeta=%.3f)=1/e$' % r['zetaC'],
+            title=r'$maxC(\Delta\zeta=%.3f)=C(\Delta\zeta=%.3f,\Delta\theta=0)=1/e$' % (
+                r['zetaC'], r['zetaC0']),
             xlabel=r'$\Delta\zeta$',
             xlim=[r['dzeta'][0], r['dzeta'][-1]],
             ylim=[min(0, r['zetatau'].min()), 1])
         ax3_calc = dict(
             LINE=[
-                (r['dtheta'], r['thetatau'], r'$C(\Delta\theta)$'),
+                (r['dtheta'], r['thetatau'], r'$maxC(\Delta\theta)$'),
+                (r['dtheta'], r['thetatau0'], r'$C(\Delta\zeta=0,\Delta\theta)$'),
                 ([r['dtheta'][0], r['dtheta'][-1]], [1/np.e, 1/np.e], '1/e'),
             ],
-            title=r'$C(\Delta\theta=%.6f)=1/e$' % r['thetaC'],
+            title=r'$maxC(\Delta\theta=%.6f)=C(\Delta\zeta=0,\Delta\theta=%.6f)=1/e$' % (
+                r['thetaC'], r['thetaC0']),
             xlabel=r'$\Delta\theta$',
             xlim=[r['dtheta'][0], r['dtheta'][-1]],
             ylim=[min(0, r['thetatau'].min()), 1])
