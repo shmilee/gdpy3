@@ -123,7 +123,7 @@ def slim_v060_digged_data(path):
         return
     root, ext1 = os.path.splitext(path)
     root, ext2 = os.path.splitext(root)
-    if ext2 == '.digged' and ext1 in ['.npz', '.hdf5']:
+    if not (ext2 == '.digged' and ext1 in ['.npz', '.hdf5']):
         plog.error("This is not a digged data path %s!" % path)
         return
     oldloader = get_pckloader(path)
@@ -214,3 +214,60 @@ def slim_v060_digged_data(path):
                 plog.info("Copy: %s" % dl)
                 newsaver.write(dl, results)
     plog.info("v060 digged data in %s is slimed: %s." % (path, slimpath))
+
+
+def remove_digged_data(path, by_groups=None, by_groups_pattern=None):
+    '''
+    Remove data of some groups from the digged data, and make a backup.
+
+    Parameters
+    ----------
+    path: path of digged data
+        like '.npz', '.hdf5', '.jsonl', '.jsonz' file
+    by_groups: list, data groups to remove
+        like 'snapXX/phi_YY/DEFAULT', 'snapXX/phi_YY/a=1,b=[2],c=0.1'
+    by_groups_pattern: str, remove groups which match the regular expression
+        like 'snap\d{5,7}/phi_flux_corrlen/.*'
+    '''
+    if not os.path.isfile(path):
+        plog.error("Path %s not found!" % path)
+        return
+    root, ext1 = os.path.splitext(path)
+    root, ext2 = os.path.splitext(root)
+    if not (ext2 == '.digged' and ext1 in ['.npz', '.hdf5', '.jsonl', '.jsonz']):
+        plog.error("This is not a digged data path %s!" % path)
+        return
+    oldloader = get_pckloader(path)
+    oldgroups = oldloader.groups()
+    # groups to remove
+    groupstodo = set()
+    if isinstance(by_groups, (tuple, list)):
+        groupstodo.update([g for g in by_groups if g in oldgroups])
+    if isinstance(by_groups_pattern, (str, re.Pattern)):
+        pat = re.compile(by_groups_pattern)
+        groupstodo.update(tuple(
+            filter(lambda g: True if pat.match(g) else False, oldgroups)))
+    if len(groupstodo) == 0:
+        plog.warning("No groups to remove!")
+        return
+    tmppath = '%s-tmp-bdqp%s%s' % (root, ext2, ext1)
+    if os.path.isfile(tmppath):
+        plog.warning("Remove tmp data file: %s!" % tmppath)
+        os.remove(tmppath)
+    plog.info("using digged tmpfile: %s" % tmppath)
+    with get_pcksaver(tmppath) as newsaver:
+        newsaver.write('/', {'processor': oldloader['processor']})
+        for dl in oldloader.datagroups:
+            if dl in groupstodo:
+                plog.info("Remove: %s" % dl)
+            else:
+                results = oldloader.get_by_group(dl)
+                plog.info("Copy: %s" % dl)
+                newsaver.write(dl, results)
+    backpath = '%s-backup%s%s' % (root, ext2, ext1)
+    plog.info("Backup old digged data: %s -> %s" % (path, backpath))
+    oldloader.close()
+    os.rename(path, backpath)
+    plog.info("Rename %s -> %s" % (tmppath, path))
+    os.rename(tmppath, path)
+    plog.info("Digged data in %s is updated." % path)
