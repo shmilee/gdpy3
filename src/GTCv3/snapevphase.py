@@ -5,7 +5,7 @@
 '''
 Source fortran code:
 
-snapshot.F90::
+shmilee.F90, subroutine snap_loop_evphase_space
     ! parameters: # of species and grids
     write(iophase,101)nspecies,nhybrid,negrid,nvgrid
     write(iophase,102)ainside,aoutside,emax,plstart,plstop
@@ -22,7 +22,7 @@ snapshot.F90::
 import numpy as np
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
-from .gtc import Ndigits_tstep
+from .snapshot import _snap_get_timestr
 
 _all_Converters = ['SnapEVphaseConverter']
 _all_Diggers = ['SnapEVphaseDigger']
@@ -41,14 +41,14 @@ class SnapEVphaseConverter(Converter):
     '''
     __slots__ = []
     nitems = '?'
-    itemspattern = ['^snap(?P<section>evphase\d{5,7})\.out$',
-                    '.*/snap(?P<section>evphase\d{5,7})\.out$']
+    itemspattern = ['^(?P<section>snap\d{5,7})_evphase\.out$',
+                    '.*/(?P<section>snap\d{5,7})_evphase\.out$']
     _datakeys = (
         # 1. parameters
-        'nspecies', 'nhybrid', 'negrid', 'nvgrid',
-        'ainside', 'aoutside', 'emax', 'plstart', 'plstop',
+        'nspecies', 'nhybrid', 'ev-negrid', 'nvgrid',
+        'ev-ainside', 'ev-aoutside', 'ev-emax', 'ev-plstart', 'ev-plstop',
         # 2. evphase(negrid,nvgrid,6,nspecies)
-        'ion-evphase', 'electron-evphase', 'fastion-evphase'
+        'evphase-ion', 'evphase-electron', 'evphase-fastion'
     )
 
     def _convert(self):
@@ -65,42 +65,36 @@ class SnapEVphaseConverter(Converter):
         for i, key in enumerate(self._datakeys[4:9]):
             sd.update({key: float(outdata[i+4].strip())})
         # 2. data
-        shape = (sd['negrid'], sd['nvgrid'], 6, sd['nspecies'])
+        shape = (sd['ev-negrid'], sd['nvgrid'], 6, sd['nspecies'])
         outdata = np.array([float(n.strip()) for n in outdata[9:]])
         outdata = outdata.reshape(shape, order='F')
         clog.debug("Filling datakey: %s ..." % 'ion-evphase')
-        sd['ion-evphase'] = outdata[:, :, :, 0]
+        sd['evphase-ion'] = outdata[:, :, :, 0]
         if sd['nhybrid'] > 0:
             clog.debug("Filling datakey: %s ..." % 'electron-evphase')
-            sd['electron-evphase'] = outdata[:, :, :, 1]
+            sd['evphase-electron'] = outdata[:, :, :, 1]
         if sd['nspecies'] == 2 and sd['nhybrid'] == 0:
             clog.debug("Filling datakey: %s ..." % 'fastion-evphase')
-            sd['fastion-evphase'] = outdata[:, :, :, 1]
+            sd['evphase-fastion'] = outdata[:, :, :, 1]
         if sd['nspecies'] == 3:
             clog.debug("Filling datakey: %s ..." % 'fastion-evphase')
-            sd['fastion-evphase'] = outdata[:, :, :, 2]
-
+            sd['evphase-fastion'] = outdata[:, :, :, 2]
+        for k in ['nspecies', 'nhybrid', 'nvgrid']:
+            _ = sd.pop(k)
         return sd
-
-
-def _snap_get_timestr(snapgroup, pckloader):
-    istep = int(snapgroup.replace('evphase', ''))
-    tstep = pckloader.get('gtc/tstep')
-    tstep = round(tstep, Ndigits_tstep)
-    return r'istep=%d, time=%s$R_0/c_s$' % (istep, istep * tstep)
 
 
 class SnapEVphaseDigger(Digger):
     '''ion, electron, fastion profiles in (E, pitch angle or lambda) space.'''
     __slots__ = ['_numseed']
     nitems = '+'
-    itemspattern = [r'^(?P<section>evphase\d{5,7})'
-                    + '/(?P<particle>(?:ion|electron|fastion))-evphase$',
-                    r'^(?P<s>evphase\d{5,7})/negrid$',
-                    r'^(?P<s>evphase\d{5,7})/nvgrid$',
-                    r'^(?P<s>evphase\d{5,7})/emax$',
-                    r'^(?P<s>evphase\d{5,7})/plstart$',
-                    r'^(?P<s>evphase\d{5,7})/plstop$']
+    itemspattern = [r'^(?P<section>snap\d{5,7})'
+                    + '/evphase-(?P<particle>(?:ion|electron|fastion))$',
+                    r'^(?P<s>snap\d{5,7})/ev-negrid$',
+                    r'^(?P<s>snap\d{5,7})/nvgrid$',
+                    r'^(?P<s>snap\d{5,7})/ev-emax$',
+                    r'^(?P<s>snap\d{5,7})/ev-plstart$',
+                    r'^(?P<s>snap\d{5,7})/ev-plstop$']
     _misc = {
         'fullf': dict(index=0, tex='full f'),
         'delf': dict(index=1, tex=r'$\delta f$'),

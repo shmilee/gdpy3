@@ -8,16 +8,16 @@ Source fortran code:
 v3.14-22-g5a68f08d
 ------------------
 
-snapshot.F90, subroutine snap_phi_zeta_psi
-  do idx=1,msnap_nj
-        j_list(idx)=idx*mtdiag/msnap_nj
-  enddo
-  mzeach=min(1536,mtheta(mpsi/2))/mtoroidal
+shmilee.F90, subroutine snap_once snap_loop_phi_zeta_psi
+  do i=1, size(r_params)
+      j_list(i)=int(r_params(i)/2.0*real(mtdiag))
+  end do
+  mzeach=min(zgridmax,mtheta(mpsi/2))/mtoroidal
   ......
   write(fdum,'("phi_dir/phi_zeta_psi_snap",i5.5,"_tor",i4.4,".out")')nsnap,myrank_toroidal
   if(myrank_toroidal==0)then
     ! parameters: shape of data; all selected j, last one is mtdiag
-    write(iopotential,101)mzeach,mpsi+1, msnap_nj, j_list(:msnap_nj)
+    write(iopotential,101)mzeach,mpsi+1, size(j_list), j_list
   endif
   write(iopotential,102)phiflux
 '''
@@ -220,7 +220,7 @@ class SnapPhiCorrLenDigger(BreakDigDoc, SnapPhiZetaPsiDigger):
             mdzeta = int(np.diff(index).mean())
             # print(Zz,index)
             # print('---------------')
-            #print(mdzeta, mdzeta < y//32, y//8)
+            # print(mdzeta, mdzeta < y//32, y//8)
             mdzeta *= 4 if mdzeta < y//32 else 3
             mdzeta = min(mdzeta, y//8)
         acckwargs = dict(mdpsi=mdpsi, mdzeta=mdzeta, use_ra=use_ra)
