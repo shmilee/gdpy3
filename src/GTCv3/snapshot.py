@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2019-2021 shmilee
+# Copyright (c) 2019-2023 shmilee
 
 '''
 Source fortran code:
@@ -32,6 +32,7 @@ field quantities: phi, a_para, fluidne. Last two coloumn of poloidal for coordin
 field quantities: phi, a_para, fluidne.
 '''
 
+import re
 import numpy as np
 from .. import tools
 from ..cores.converter import Converter, clog
@@ -166,7 +167,7 @@ class SnapshotConverter(Converter):
 
 
 def _snap_get_timestr(snapgroup, pckloader):
-    istep = int(snapgroup.replace('snap', ''))
+    istep = int(re.match('.*snap(\d{5,7}).*', snapgroup).groups()[0])
     tstep = pckloader.get('gtc/tstep')
     tstep = round(tstep, Ndigits_tstep)
     return r'istep=%d, time=%s$R_0/c_s$' % (istep, istep * tstep)
@@ -274,15 +275,17 @@ field_tex_str = {
 
 class SnapshotFieldFluxDigger(Digger):
     '''phi, a_para, fluidne, or densityi, densitye on flux surface.'''
-    __slots__ = []
+    __slots__ = ['ipsi']
     nitems = '?'
     itemspattern = [
         '^(?P<section>snap\d{5,7})'
-        + '/fluxdata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))']
-    commonpattern = ['gtc/tstep']
+        + '/fluxdata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))$']
+    commonpattern = ['gtc/tstep', 'gtc/mpsi']
     post_template = 'tmpl_contourf'
+    _field_theta_start0 = True
 
     def _set_fignum(self, numseed=None):
+        self.ipsi = self.pckloader.get('gtc/mpsi') // 2
         self._fignum = '%s_flux' % self.section[1]
 
     def _dig(self, kwargs):
@@ -290,11 +293,15 @@ class SnapshotFieldFluxDigger(Digger):
         fstr = field_tex_str[self.section[1]]
         data = self.pckloader.get(self.srckeys[0])
         y, x = data.shape  # 0-mtgrid; 1-mtoroidal
+        if self._field_theta_start0:
+            theta = np.arange(0, y) / (y-1) * 2 * np.pi  # [0,2pi]
+        else:
+            theta = np.arange(1, y+1) / y * 2 * np.pi  # (0,2pi]
         return dict(
             zeta=np.arange(1, x+1) / x * 2 * np.pi,  # (0,2pi]
-            theta=np.arange(0, y) / (y-1) * 2 * np.pi,  # [0,2pi]
-            field=data,
-            title=r'$%s$ on flux surface, %s' % (fstr, title)), {}
+            theta=theta, field=data,
+            title=r'$%s$ on flux surface(ipsi=%d), %s' % (
+                fstr, self.ipsi, title)), {}
 
     def _post_dig(self, results):
         r = results
@@ -312,6 +319,10 @@ class SnapshotFieldFluxTileDigger(SnapshotFieldFluxDigger):
         self._fignum = '%s_flux_tiled' % self.section[1]
         self.kwoptions = None
 
+    def _get_q_psi(self):
+        '''Return q at ipsi=mpsi//2.'''
+        return self.pckloader.get('gtc/qiflux')
+
     def _dig(self, kwargs):
         '''
         kwargs
@@ -320,9 +331,13 @@ class SnapshotFieldFluxTileDigger(SnapshotFieldFluxDigger):
             how many zeta(2pi) will be tiled
         '''
         res, _ = super(SnapshotFieldFluxTileDigger, self)._dig(kwargs)
-        title, field = res['title'], res['field'][1:, :]  # all (0, 2pi]
-        zeta, theta = res['zeta'], res['theta'][1:]
-        q = self.pckloader.get('gtc/qiflux')
+        title, zeta = res['title'], res['zeta']
+        if self._field_theta_start0:
+            field, theta = res['field'][1:, :], res['theta'][1:]  # (0, 2pi]
+        else:
+            field, theta = res['field'], res['theta']
+        q = self._get_q_psi()
+        dlog.parm("q(ipsi=%d)=%f" % (self.ipsi, q))
         sep = int(field.shape[0]*(1.0-1.0/q))  # q>1
         N = kwargs.get('N', 3)
         if not (isinstance(N, int) and N >= 2):
@@ -330,7 +345,7 @@ class SnapshotFieldFluxTileDigger(SnapshotFieldFluxDigger):
         if self.kwoptions is None:
             self.kwoptions = dict(
                 N=dict(widget='IntSlider',
-                       rangee=(2, 6, 1),
+                       rangee=(2, 10, 1),
                        value=3,
                        description='zeta N_2pi:'))
         acckwargs = dict(N=N)
@@ -338,12 +353,17 @@ class SnapshotFieldFluxTileDigger(SnapshotFieldFluxDigger):
         zeta1, theta1 = zeta, theta
         for i in range(1, N):
             h1 = c1[sep*(i-1):sep*i]
-            t2 = c2[-sep:] if i == 1 else c2[-sep*i:-sep*(i-1)]
+            t2 = c2[-sep:] if (i == 1 and sep != 0) else c2[-sep*i:-sep*(i-1)]
             c1, c2 = np.row_stack((c1, h1)), np.row_stack((t2, c2))
             c1 = np.column_stack((c1, c2))
             zeta1 = np.append(zeta1, zeta+2*np.pi*i)
             theta1 = np.append(theta1, theta1[sep*(i-1):sep*i]+2*np.pi)
-        return dict(title=title, field=c1, zeta=zeta1, theta=theta1), acckwargs
+        if sep != 0:
+            # c1 theta cutoff [0, 2pi]
+            i = np.where(theta1 > 2*np.pi)[0][0]
+            c1, theta1 = c1[:i, :], theta1[:i]
+        return dict(title=title, field=c1,
+                    zeta=zeta1, theta=theta1), acckwargs
 
     def _post_dig(self, results):
         r = results
@@ -380,7 +400,7 @@ class SnapshotFieldFluxCorrLenDigger(SnapshotFieldFluxTileDigger):
         if 'dzeta' not in self.kwoptions:
             self.kwoptions.update(dict(
                 dzeta=dict(widget='FloatSlider',
-                           rangee=(0.2, round(6*np.pi, 1), 0.1),
+                           rangee=(0.2, round(8*np.pi, 1), 0.1),
                            value=round(2*np.pi, 1),
                            description='dzeta:'),
                 dtheta=dict(widget='FloatSlider',
