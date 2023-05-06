@@ -86,7 +86,7 @@ class SnapFluxDataConverter(Converter):
                 sd[key] = allflux[:, :, 1]
             idx0 = idx1
         _ = sd.pop('nfield')
-        - = sd.pop('mtoroidal')
+        _ = sd.pop('mtoroidal')
         return sd
 
 

@@ -313,9 +313,10 @@ class SnapshotFieldFluxDigger(Digger):
 class SnapshotFieldFluxTileDigger(SnapshotFieldFluxDigger):
     '''Tiled phi, a_para etc. on flux surface.'''
     __slots__ = []
-    commonpattern = ['gtc/tstep', 'gtc/qiflux']
+    commonpattern = ['gtc/tstep', 'gtc/qiflux', 'gtc/mpsi']
 
     def _set_fignum(self, numseed=None):
+        self.ipsi = self.pckloader.get('gtc/mpsi') // 2
         self._fignum = '%s_flux_tiled' % self.section[1]
         self.kwoptions = None
 
@@ -377,6 +378,7 @@ class SnapshotFieldFluxCorrLenDigger(SnapshotFieldFluxTileDigger):
     post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
 
     def _set_fignum(self, numseed=None):
+        self.ipsi = self.pckloader.get('gtc/mpsi') // 2
         self._fignum = '%s_flux_corrlen' % self.section[1]
         self.kwoptions = None
 
