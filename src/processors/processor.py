@@ -164,7 +164,7 @@ class Processor(object):
         # prefix
         prefix = self.rawloader.beside_path(self.name.lower())
         # savetype
-        if os.access(os.path.dirname(prefix), os.W_OK):
+        if os.access(os.path.dirname(prefix) or '.', os.W_OK):  # '' -> '.'
             if savetype not in pcksaver_types[1:]:
                 plog.warning("Use default savetype '.npz'.")
                 savetype = '.npz'
