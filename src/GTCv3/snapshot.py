@@ -288,9 +288,15 @@ class SnapshotFieldFluxDigger(Digger):
         self.ipsi = self.pckloader.get('gtc/mpsi') // 2
         self._fignum = '%s_flux' % self.section[1]
 
+    def _get_timestr(self):
+        return _snap_get_timestr(self.group, self.pckloader)
+
+    def _get_fieldstr(self):
+        return field_tex_str[self.section[1]]
+
     def _dig(self, kwargs):
-        title = _snap_get_timestr(self.group, self.pckloader)
-        fstr = field_tex_str[self.section[1]]
+        title = self._get_timestr()
+        fstr = self._get_fieldstr()
         data = self.pckloader.get(self.srckeys[0])
         y, x = data.shape  # 0-mtgrid; 1-mtoroidal
         if self._field_theta_start0:
@@ -339,7 +345,7 @@ class SnapshotFieldFluxTileDigger(SnapshotFieldFluxDigger):
             field, theta = res['field'], res['theta']
         q = self._get_q_psi()
         dlog.parm("q(ipsi=%d)=%f" % (self.ipsi, q))
-        sep = int(field.shape[0]*(1.0-1.0/q))  # q>1
+        sep = round(field.shape[0]*(1.0-1.0/q))  # q>1
         N = kwargs.get('N', 3)
         if not (isinstance(N, int) and N >= 2):
             N = 3
