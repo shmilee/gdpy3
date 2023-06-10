@@ -80,6 +80,7 @@ class GTkApp(object):
             w_frame_proc, font=font, textvariable=w_str_path)
         w_entry_path.grid(in_=w_frame_proc, row=0, column=0, padx=5, pady=5,
                           sticky=W+E)
+        w_entry_path.config(state='disabled')
         w_path = ttk.Button(
             w_frame_proc, text='Path', width=0, command=self.ask_case_path)
         w_path.grid(in_=w_frame_proc, row=0, column=1, padx=5, pady=5)
