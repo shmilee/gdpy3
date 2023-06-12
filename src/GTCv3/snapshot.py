@@ -867,7 +867,7 @@ class SnapshotFieldmDigger(Digger):
     post_template = 'tmpl_line'
 
     def _set_fignum(self, numseed=None):
-        self._fignum = '%s_fieldm' % self.section[1]
+        self._fignum = '%s_m' % self.section[1]
         self.kwoptions = None
 
     def _dig(self, kwargs):
@@ -1029,7 +1029,7 @@ class SnapshotFieldmkthetaDigger(BreakDigDoc, SnapshotFieldmDigger):
     post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
 
     def _set_fignum(self, numseed=None):
-        self._fignum = '%s_fieldmktheta' % self.section[1]
+        self._fignum = '%s_mktheta' % self.section[1]
         self.kwoptions = None
 
     def _dig(self, kwargs):
