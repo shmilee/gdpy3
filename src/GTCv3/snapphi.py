@@ -32,6 +32,9 @@ from .snapshot import (
 )
 from .gtc import Ndigits_tstep
 from .. import tools
+from ..deprecation import warn_deprecated
+
+warn_deprecated((0, 9, 5), (1, 0, 0), __name__, obj_type='module')
 
 _all_Converters = ['SnapPhiZetaPsiConverter']
 _all_Diggers = ['SnapPhiZetaPsiDigger', 'SnapPhiCorrLenDigger',
