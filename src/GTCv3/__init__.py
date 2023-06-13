@@ -24,9 +24,10 @@ from . import (
     snapevphase,
     rzf,
     flux3d,
-    snapphi,
     snapshot,
     trackparticle,
+    zetapsi3d,
+    snapphi,
 )
 from ..processors.processor import plog
 
@@ -41,9 +42,10 @@ _load_modules = (
     snapevphase,
     rzf,
     flux3d,
-    snapphi,
     snapshot,
     trackparticle,
+    zetapsi3d,
+    snapphi,
 )
 
 
