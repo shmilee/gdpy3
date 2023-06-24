@@ -56,6 +56,7 @@ class Base_GTCv3(object):
     DiggerCores = [getattr(m, d)
                    for m in _load_modules for d in m._all_Diggers]
     saltname = 'gtc.out'
+    convert_array_bitsize = 32
     dig_acceptable_time = 10
 
     @property

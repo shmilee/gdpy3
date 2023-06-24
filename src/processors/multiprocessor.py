@@ -12,6 +12,7 @@ import multiprocessing
 from .processor import Processor, plog
 from ._mp_rwlock import MP_RWLock
 from ..glogger import LogWorkInitializer
+from ..tools import nparray_default_bitsize
 from ..loaders import get_pckloader
 from ..utils import inherit_docstring
 
@@ -30,7 +31,7 @@ class MultiProcessor(Processor):
     '''
     Multiprocess Processor class.
 
-    {0}3. :attr:`multiproc` is the max number of worker processes,
+    {0}4. :attr:`multiproc` is the max number of worker processes,
        default multiprocessing.cpu_count().
     '''
     __slots__ = []
@@ -69,7 +70,8 @@ class MultiProcessor(Processor):
         '''
         if name_it:
             multiprocessing.current_process().name = core.groupnote
-        data = core.convert()
+        with nparray_default_bitsize(size=self.convert_array_bitsize):
+            data = core.convert()
         lock.acquire()
         try:
             plog.info("Writing data in group %s ..." % core.group)

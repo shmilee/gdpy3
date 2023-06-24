@@ -6,6 +6,7 @@
 Some tools for Core.
 '''
 
+import contextlib
 import numpy as np
 import scipy.optimize as sp_optimize
 import scipy.signal as sp_signal
@@ -14,7 +15,7 @@ import scipy.interpolate as sp_interpolate
 from .glogger import getGLogger
 from .utils import inherit_docstring
 
-__all__ = ['max_subarray',
+__all__ = ['nparray_default_bitsize', 'max_subarray',
            'line_fit', 'lines_fit_raw', 'curve_fit', 'curves_fit_raw',
            'argrelextrema', 'intersection_4points',
            'near_peak', 'high_envelope',
@@ -23,6 +24,64 @@ __all__ = ['max_subarray',
            'correlation',
            ]
 log = getGLogger('C')
+
+
+@contextlib.contextmanager
+def nparray_default_bitsize(size=None, isize=None, fsize=None):
+    '''
+    Change default bits size for the integer, float array by
+    adding kwargs `dtype` for numpy.array(obj).
+    Integer or float depends on **first** element of array_like `obj`.
+
+    Parameters
+    ----------
+    size: 16, 32 or 64
+        bits size for both integer and float,
+        default size in x86_64 numpy.array is 64.
+    isize: 8, 16, 32 or 64
+        bits size for integer
+    fsize: 16, 32, 64 or 128
+        bits size for float
+    '''
+    idtype, fdtype = None, None
+    int_types = (int, np.int8, np.int16, np.int32, np.int64)
+    float_types = (float, np.float16, np.float32, np.float64, np.float128)
+    if isize in (8, 16, 32, 64):
+        idtype = getattr(np, 'int%d' % isize)
+    elif size in (16, 32, 64):
+        idtype = getattr(np, 'int%d' % size)
+    if fsize in (16, 32, 64, 128):
+        fdtype = getattr(np, 'float%d' % fsize)
+    elif size in (16, 32, 64):
+        fdtype = getattr(np, 'float%d' % size)
+    if idtype:
+        log.debug("Set np.array default int dtype: %s " % idtype.__name__)
+    if fdtype:
+        log.debug("Set np.array default float dtype: %s " % fdtype.__name__)
+    if idtype or fdtype:
+        _oldarray = np.array
+
+        def _newarray(obj, **kwargs):
+            if 'dtype' not in kwargs:
+                _o, _t = obj, None
+                for i in range(10):
+                    try:
+                        _t = type(_o[0])
+                        _o = _o[0]
+                    except Exception as e:
+                        break
+                if _t:
+                    if _t in int_types:
+                        kwargs['dtype'] = idtype
+                    elif _t in float_types:
+                        kwargs['dtype'] = fdtype
+            return _oldarray(obj, **kwargs)
+
+        np.array = _newarray
+        yield
+        np.array = _oldarray
+    else:
+        yield
 
 
 def max_subarray(A):

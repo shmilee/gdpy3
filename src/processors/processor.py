@@ -14,6 +14,7 @@ import hashlib
 
 from .. import __gversion__
 from ..glogger import getGLogger
+from ..tools import nparray_default_bitsize
 from ..loaders import is_rawloader, get_rawloader, is_pckloader, get_pckloader
 from ..savers import is_pcksaver, get_pcksaver, pcksaver_types
 from ..cores.exporter import Exporter
@@ -63,7 +64,9 @@ class Processor(object):
        The :attr:`rawloader` must have at least one salt file.
        If more than one salt files, the one with min path depth will be used.
        :attr:`saltstr` is the salt string generated from salt file.
-    2. :attr:`dig_acceptable_time` means if :meth:`dig` spends more
+    2. :attr:`convert_array_bitsize` is the bits size of integer, float array
+       when converting raw data to `numpy.ndarray`, like 64 for `numpy.int64`.
+    3. :attr:`dig_acceptable_time` means if :meth:`dig` spends more
        time than this, the results will be saved in :attr:`resfilesaver`.
     '''
     __slots__ = []
@@ -78,6 +81,7 @@ class Processor(object):
     __slots__.extend(['_rawloader', '_pcksaver', '_converters', '_saltstr'])
     ConverterCores = []
     saltname = ''
+    convert_array_bitsize = None
 
     def __check_rawloader(self, rawloader):
         if rawloader is None:
@@ -224,9 +228,10 @@ class Processor(object):
         Convert raw data in rawloader.path, and save them in pcksaver.
         '''
         self._pre_convert(add_desc=add_desc)
-        with self.pcksaver:
-            for core in self.converters:
-                self.pcksaver.write(core.group, core.convert())
+        with nparray_default_bitsize(size=self.convert_array_bitsize):
+            with self.pcksaver:
+                for core in self.converters:
+                    self.pcksaver.write(core.group, core.convert())
         self._post_convert()
 
     # # End Convert Part
