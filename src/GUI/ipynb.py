@@ -23,7 +23,7 @@ class IpynbUI(object):
     __slots__ = ['path', 'parallel', 'processor', 'widgets', 'panel_widgets',
                  'grouplabels', 'figlabel']
 
-    def __init__(self, path, parallel='off'):
+    def __init__(self, path, parallel='multiprocess'):
         self.path = path
         self.parallel = parallel
         self.processor = None

@@ -32,7 +32,7 @@ class GTkApp(object):
     recent = os.path.join(
         tempfile.gettempdir(), 'gdpy3-%s-recent' % getpass.getuser())
 
-    def __init__(self, path=None, ask_sftp=False, parallel='off',
+    def __init__(self, path=None, ask_sftp=False, parallel='multiprocess',
                  scaling=None):
         '''
         Parameters
@@ -42,7 +42,7 @@ class GTkApp(object):
         ask_sftp: bool
             if no path given, ask for a sftp(not local) path, default False
         parallel: str
-            'off', 'multiprocess' or 'mpi4py', default 'off'
+            'off', 'multiprocess' or 'mpi4py', default 'multiprocess'
         scaling: float
             scaling factor used by Tk, default 1.25
         '''

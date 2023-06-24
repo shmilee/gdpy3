@@ -39,7 +39,7 @@ def gui_script():
                              'ask for a sftp directory, not local path.')
     optgrp.add_argument('--parallel', type=str,
                         choices=['off', 'multiprocess'],  # 'mpi4py'],
-                        default='off',
+                        default='multiprocess',
                         help="Parallel processing or not, "
                         "(default: %(default)s)")
     optgrp.add_argument('--tk_scaling', nargs='?', type=float, metavar='float',
