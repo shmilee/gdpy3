@@ -79,6 +79,7 @@ def nparray_default_bitsize(size=None, isize=None, fsize=None):
 
         np.array = _newarray
         yield
+        log.debug('Set np.array to original one!')
         np.array = _oldarray
     else:
         yield
