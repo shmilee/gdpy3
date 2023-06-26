@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib
 import matplotlib.style
 import matplotlib.pyplot
+import matplotlib.colors
 import mpl_toolkits.mplot3d
 from matplotlib.legend_handler import HandlerTuple
 # setuptools._distutils.version.LooseVersion for py3.12
@@ -452,12 +453,27 @@ class MatplotlibVisplter(BaseVisplter):
             matplotlib.use(backend)
 
     def _tmpl_contourf(
-            self, X, Y, Z, title, xlabel, ylabel, aspect, xlim, ylim,
+            self, X, Y, Z, title, xlabel, ylabel, xlim, ylim,
             plot_method, plot_method_args, plot_method_kwargs,
-            clabel_levels, colorbar, grid_alpha, plot_surface_shadow):
+            contourf_levels, clabel_levels,
+            center_norm, center_norm_half_ratio, colorbar,
+            aspect, grid_alpha, plot_surface_shadow):
         '''For :meth:`tmpl_contourf`.'''
         vlog.debug("Getting contourf Axes %s ..." % 111)
         Zmax, Zmin = Z.max(), Z.min()
+        # color norm
+        if center_norm:
+            half = max(abs(Zmax), abs(Zmin)) * center_norm_half_ratio
+            norm = matplotlib.colors.CenteredNorm(halfrange=half)
+            _levels = np.linspace(norm.vmin, norm.vmax, contourf_levels)
+            _extend = 'both' if center_norm_half_ratio < 1.0 else 'neither'
+            contourf_kws = dict(norm=norm, levels=_levels, extend=_extend)
+            if colorbar:
+                ndigits = int(np.log10(norm.vmax)+0.5)+2  # ~2digits for Ae-B
+                colorbar_ticks = np.linspace(  # 10 non-zero ticks
+                    round(norm.vmin, ndigits), round(norm.vmax, ndigits), 11)
+        else:
+            contourf_kws = dict(levels=contourf_levels)
         layoutkw, plotkw, plotarg, order, data = {}, {}, [], 2, []
         if plot_method == 'plot_surface':
             layoutkw = {'projection': '3d', 'zlim': [Zmin, Zmax]}
@@ -470,8 +486,9 @@ class MatplotlibVisplter(BaseVisplter):
                 for x in plot_surface_shadow:
                     order += 1
                     layoutkw['%slim' % x] = _limd[x]
-                    data.append([order, 'contourf', (X, Y, Z, 100),
-                                 dict(zdir=x, offset=_offsetd[x])])
+                    data.append([
+                        order, 'contourf', (X, Y, Z),
+                        dict(zdir=x, offset=_offsetd[x], **contourf_kws)])
         if LooseVersion(matplotlib.__version__) > LooseVersion('3.2.2'):
             if (plot_method in ('pcolor', 'pcolormesh')
                     and 'shading' not in plot_method_kwargs):
@@ -486,22 +503,30 @@ class MatplotlibVisplter(BaseVisplter):
                          lambda fig, ax, art: ax[0].clabel(art[2]), {}])
         if colorbar:
             order += 1
-            data.append([order, 'revise',
-                         lambda fig, ax, art: fig.colorbar(art[1]), {}])
+            if center_norm:
+                def revise_f(fig, ax, art): return fig.colorbar(
+                    art[1], ticks=colorbar_ticks)
+            else:
+                def revise_f(fig, ax, art): return fig.colorbar(art[1])
+            data.append([order, 'revise', revise_f, {}])
         if grid_alpha is not None:
             order += 1
             data.append([order, 'grid', (), dict(alpha=grid_alpha)])
-        plotarg.extend(plot_method_args)
-        if not plot_method_args and plot_method == 'contourf':
-            vlog.debug('Set contourf levels: 100')
-            plotarg.extend([100])
-        plotkw.update(vmin=Zmin, vmax=Zmax)
-        if Zmax * Zmin < 0:
-            ZZmax = max(abs(Zmax), abs(Zmin))
-            ZZmin = min(abs(Zmax), abs(Zmin))
-            if ZZmin/ZZmax > 0.3:
-                plotkw.update(vmin=-ZZmax, vmax=ZZmax)
-        plotkw.update(plot_method_kwargs)
+        plotarg.extend(plot_method_args)  # user's args
+        if plot_method == 'contourf':
+            vlog.debug('Set contourf levels: %d' % contourf_levels)
+            plotkw.update(contourf_kws)
+        if center_norm:
+            vlog.debug('Use CenteredNorm: (%s, %s)' % (norm.vmin, norm.vmax))
+            plotkw.update(norm=norm)
+        else:
+            plotkw.update(vmin=Zmin, vmax=Zmax)
+            if Zmax * Zmin < 0:
+                ZZmax = max(abs(Zmax), abs(Zmin))
+                ZZmin = min(abs(Zmax), abs(Zmin))
+                if ZZmin/ZZmax > 0.3:
+                    plotkw.update(vmin=-ZZmax, vmax=ZZmax)
+        plotkw.update(plot_method_kwargs)  # user's kwargs
         # order 1
         data.insert(0,  [1, plot_method, [X, Y, Z] + plotarg, plotkw])
         if title:

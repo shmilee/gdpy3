@@ -18,7 +18,7 @@ class TestDigger(unittest.TestCase):
         self.assertEqual(core.export(
             {}, {}, plot_method='plot_surface')['results']['plot_method'],
             'plot_surface')
-        self.assertEqual(len(core.export_options({})['visoptions']), 5)
+        self.assertEqual(len(core.export_options({})['visoptions']), 8)
 
     def test_tmpl_line_exporter(self):
         core = Exporter('tmpl_line')

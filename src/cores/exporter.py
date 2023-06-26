@@ -144,11 +144,20 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
             rangee=(20, 200, 20),
             value=100,
             description='contourf levels:'),
-        aspect=_visoption_default_aspect.copy(),
+        center_norm=dict(
+            widget='Checkbox',
+            value=False,
+            description='CenteredNorm'),
+        center_norm_half_ratio=dict(
+            widget='FloatSlider',
+            rangee=(0, 1, 0.05),
+            value=1.0,
+            description='CenteredNorm half ratio:'),
         colorbar=dict(
             widget='Checkbox',
             value=True,
             description='colorbar'),
+        aspect=_visoption_default_aspect.copy(),
         grid_alpha=dict(
             widget='FloatSlider',
             rangee=(0, 1, 0.1),
@@ -165,35 +174,32 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
         '''
         contourf kwargs
         ---------------
-        kwargs passed on to :meth:`visplter.tmpl_contourf`
-        *plot_method*, *plot_method_args*, *plot_method_kwargs*,
-        *aspect*, *colorbar*, *grid_alpha*, *plot_surface_shadow*
+        kwargs passed on to *plot_method* like :meth:`visplter.tmpl_contourf`
+        *plot_method*: contour like method
+        *plot_method_args*, *plot_method_kwargs*: fallback
+        *contourf_levels*: int, default 100
+        *center_norm*: bool, use CenteredNorm or not, default False
+        *center_norm_half_ratio*: float, (0,1]
+            decrease CenteredNorm halfrange by this ratio, default 1.0
+        *colorbar*: bool
+        *aspect*: str
+        *grid_alpha*: float
+        *plot_surface_shadow*: list
         '''
         if 'plot_method' not in results:
             results['plot_method'] = 'contourf'
-        Z = results.get('Z', None)
-        if (results['plot_method'] == 'contourf'
-                and (Z is not None) and not Z.any()):
-            # all zeros
-            elog.warning("All elements are 0, use plot_method pcolormesh!")
-            results['plot_method'] = 'pcolormesh'
-            kwargs['plot_method'] = 'pcolormesh'
         if 'aspect' in results:
             elog.info("Use aspect=%s set by Digger." % results['aspect'])
             kwargs['aspect'] = results['aspect']
         debug_kw = {}
-        for k in ['plot_method', 'plot_method_args',
-                  'plot_method_kwargs', 'aspect', 'colorbar',
-                  'grid_alpha', 'plot_surface_shadow']:
+        for k in ['plot_method', 'plot_method_args', 'plot_method_kwargs',
+                  'contourf_levels',
+                  'center_norm', 'center_norm_half_ratio', 'colorbar',
+                  'aspect', 'grid_alpha', 'plot_surface_shadow']:
             if k in kwargs:
                 results[k] = kwargs[k]
             if k in results:
                 debug_kw[k] = results[k]
-        k = 'plot_method_args'
-        if (results['plot_method'] == 'contourf'
-                and 'contourf_levels' in kwargs and k not in results):
-            results[k] = [int(kwargs.get('contourf_levels', 100))]
-            debug_kw[k] = results[k]
         elog.debug("Some tmpl_contourf kwargs: %s" % debug_kw)
         return results, debug_kw
 

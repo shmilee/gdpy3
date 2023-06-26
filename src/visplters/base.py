@@ -155,7 +155,7 @@ class BaseVisplter(object):
                 vlog.error("AxesStructure[%s] must be list. Not %s."
                            % (k, type(axstructure[k])))
         layout = axstructure['layout']
-        if not(isinstance(layout, list) and len(layout) == 2):
+        if not (isinstance(layout, list) and len(layout) == 2):
             check_pass = False
             vlog.error("AxesStructure['layout'] must have 2 elements.")
         if not check_pass:
@@ -405,7 +405,6 @@ class BaseVisplter(object):
         results['title']: str, optional
         results['xlabel']: str, optional
         results['ylabel']: str, optional
-        results['aspect']: str, optional
         results['xlim']: (`left`, `right`), optional
         results['ylim']: (`up`, `down`), optional
         results['plot_method']: str, optional
@@ -416,11 +415,19 @@ class BaseVisplter(object):
         results['plot_method_kwargs']: dict, optional
             kwargs for *plot_method*,
             like cmap for 'plot_surface', default in style
+        results['contourf_levels']: int, optional
+            how many contourf lines/regions, default 100
         results['clabel_levels']: list, optional
             draw contour lines and add labels or not.
             The values will be sorted in increasing order.
+        results['center_norm']: bool, optional
+            Normalize symmetrical data around 0.0, default False
+        results['center_norm_half_ratio']: float, (0,1], optional
+            halfrange=the largest absolute difference to 0.0 for Z values
+            decrease CenteredNorm halfrange by this ratio, default 1.0
         results['colorbar']: bool, optional
             add colorbar or not, default True
+        results['aspect']: str, optional
         results['grid_alpha']: float, optional
             transparency of grid, use this when 'grid.alpha' has no effect
         results['plot_surface_shadow']: list, optional
@@ -447,25 +454,30 @@ class BaseVisplter(object):
         elif len(X.shape) == 2 and len(Y.shape) == 2:
             # X, Y: 2 dimension
             if not (X.shape == Y.shape == Z.shape):
-                vlog.error("Invalid `X`, `Y` or `Z` shape!")
+                vlog.error("Invalid `X`, `Y` or `Z` shape! %s, %s, %s"
+                           % (X.shape, Y.shape, Z.shape))
                 return [], []
         else:
-            vlog.error("Invalid `X`, `Y` dimension!")
+            vlog.error("Invalid `X`, `Y` dimension! %s, %s"
+                       % (X.shape, Y.shape))
             return [], []
-        title, xlabel, ylabel, aspect = self._get_my_optional_vals(
-            results, ('title', str, None), ('xlabel', str, None),
-            ('ylabel', str, None), ('aspect', str, None))
         xlim, ylim = self._get_my_points(results, 'xlim', 'ylim')
-        plot_method, plot_method_args, plot_method_kwargs, \
-            clabel_levels, colorbar, grid_alpha, plot_surface_shadow = \
-            self._get_my_optional_vals(results,
-                                       ('plot_method', str, 'contourf'),
-                                       ('plot_method_args', list, []),
-                                       ('plot_method_kwargs', dict, {}),
-                                       ('clabel_levels', list, []),
-                                       ('colorbar', bool, True),
-                                       ('grid_alpha', float, None),
-                                       ('plot_surface_shadow', list, []))
+        title, xlabel, ylabel, \
+            plot_method, plot_method_args, plot_method_kwargs, \
+            contourf_levels, clabel_levels, \
+            center_norm, center_norm_half_ratio, colorbar, \
+            aspect, grid_alpha, plot_surface_shadow = \
+            self._get_my_optional_vals(
+                results, ('title', str, None), ('xlabel', str, None),
+                ('ylabel', str, None), ('plot_method', str, 'contourf'),
+                ('plot_method_args', list, []),
+                ('plot_method_kwargs', dict, {}),
+                ('contourf_levels', int, 100), ('clabel_levels', list, []),
+                ('center_norm', bool, True),
+                ('center_norm_half_ratio', float, 1.0),
+                ('colorbar', bool, True),
+                ('aspect', str, None), ('grid_alpha', float, None),
+                ('plot_surface_shadow', list, []))
         if plot_method not in ('contourf', 'pcolor', 'pcolormesh',
                                'plot_surface'):
             plot_method = 'contourf'
@@ -475,21 +487,21 @@ class BaseVisplter(object):
             plot_method = 'pcolormesh'
         if clabel_levels:
             clabel_levels = sorted(clabel_levels)
+        if center_norm_half_ratio <= 0.0 or center_norm_half_ratio > 1.0:
+            center_norm_half_ratio = 1.0
         plot_surface_shadow = list(filter(
             lambda x: True if x in ['x', 'y', 'z'] else False,
             plot_surface_shadow))
         vlog.debug("Some template contourf parameters: %s" % [
-            plot_method, plot_method_args, plot_method_kwargs,
-            colorbar, grid_alpha, plot_surface_shadow])
+            plot_method, plot_method_args, plot_method_kwargs, colorbar])
         return self._tmpl_contourf(
-            X, Y, Z, title, xlabel, ylabel, aspect, xlim, ylim,
+            X, Y, Z, title, xlabel, ylabel, xlim, ylim,
             plot_method, plot_method_args, plot_method_kwargs,
-            clabel_levels, colorbar, grid_alpha, plot_surface_shadow)
+            contourf_levels, clabel_levels,
+            center_norm, center_norm_half_ratio, colorbar,
+            aspect, grid_alpha, plot_surface_shadow)
 
-    def _tmpl_contourf(
-            self, X, Y, Z, title, xlabel, ylabel, aspect, xlim, ylim,
-            plot_method, plot_method_args, plot_method_kwargs,
-            clabel_levels, colorbar, grid_alpha, plot_surface_shadow):
+    def _tmpl_contourf(self, X, Y, Z, *args):
         '''For :meth:`tmpl_contourf`.'''
         raise NotImplementedError()
 
