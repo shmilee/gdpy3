@@ -425,6 +425,9 @@ class BaseVisplter(object):
         results['center_norm_half_ratio']: float, (0,1], optional
             halfrange=the largest absolute difference to 0.0 for Z values
             decrease CenteredNorm halfrange by this ratio, default 1.0
+        results['center_norm_half']: float, optional
+            set halfrange of CenteredNorm, overwrite center_norm_half_ratio.
+            useful for comparison of different Z contourf figures.
         results['colorbar']: bool, optional
             add colorbar or not, default True
         results['aspect']: str, optional
@@ -465,8 +468,8 @@ class BaseVisplter(object):
         title, xlabel, ylabel, \
             plot_method, plot_method_args, plot_method_kwargs, \
             contourf_levels, clabel_levels, \
-            center_norm, center_norm_half_ratio, colorbar, \
-            aspect, grid_alpha, plot_surface_shadow = \
+            center_norm, center_norm_half_ratio, center_norm_half, \
+            colorbar, aspect, grid_alpha, plot_surface_shadow = \
             self._get_my_optional_vals(
                 results, ('title', str, None), ('xlabel', str, None),
                 ('ylabel', str, None), ('plot_method', str, 'contourf'),
@@ -475,6 +478,7 @@ class BaseVisplter(object):
                 ('contourf_levels', int, 100), ('clabel_levels', list, []),
                 ('center_norm', bool, True),
                 ('center_norm_half_ratio', float, 1.0),
+                ('center_norm_half', (float, int), None),
                 ('colorbar', bool, True),
                 ('aspect', str, None), ('grid_alpha', float, None),
                 ('plot_surface_shadow', list, []))
@@ -498,8 +502,8 @@ class BaseVisplter(object):
             X, Y, Z, title, xlabel, ylabel, xlim, ylim,
             plot_method, plot_method_args, plot_method_kwargs,
             contourf_levels, clabel_levels,
-            center_norm, center_norm_half_ratio, colorbar,
-            aspect, grid_alpha, plot_surface_shadow)
+            center_norm, center_norm_half_ratio, center_norm_half,
+            colorbar, aspect, grid_alpha, plot_surface_shadow)
 
     def _tmpl_contourf(self, X, Y, Z, *args):
         '''For :meth:`tmpl_contourf`.'''
@@ -593,9 +597,7 @@ class BaseVisplter(object):
             lin3d, zlabel, scale_xyz,
             xlim, ylim, ylabel_rotation, legend_kwargs)
 
-    def _tmpl_line(self, LINE, title, xlabel, ylabel, aspect,
-                   lin3d, zlabel, scale_xyz,
-                   xlim, ylim, ylabel_rotation, legend_kwargs):
+    def _tmpl_line(self, LINE, *args):
         '''For :meth:`tmpl_line`.'''
         raise NotImplementedError()
 
@@ -703,9 +705,7 @@ class BaseVisplter(object):
             X, YINFO,
             hspace, title, xlabel, xlim, ylabel_rotation)
 
-    def _tmpl_sharextwinx(
-            self, X, YINFO,
-            hspace, title, xlabel, xlim, ylabel_rotation):
+    def _tmpl_sharextwinx(self, X, YINFO, *args):
         '''For :meth:`tmpl_sharextwinx`.'''
         raise NotImplementedError()
 

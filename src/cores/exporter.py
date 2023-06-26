@@ -181,6 +181,7 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
         *center_norm*: bool, use CenteredNorm or not, default False
         *center_norm_half_ratio*: float, (0,1]
             decrease CenteredNorm halfrange by this ratio, default 1.0
+        *center_norm_half*: float, halfrange, overwrite center_norm_half_ratio
         *colorbar*: bool
         *aspect*: str
         *grid_alpha*: float
@@ -194,8 +195,8 @@ class Exporter(BaseCore, metaclass=AppendDocstringMeta):
         debug_kw = {}
         for k in ['plot_method', 'plot_method_args', 'plot_method_kwargs',
                   'contourf_levels',
-                  'center_norm', 'center_norm_half_ratio', 'colorbar',
-                  'aspect', 'grid_alpha', 'plot_surface_shadow']:
+                  'center_norm', 'center_norm_half_ratio', 'center_norm_half',
+                  'colorbar', 'aspect', 'grid_alpha', 'plot_surface_shadow']:
             if k in kwargs:
                 results[k] = kwargs[k]
             if k in results:

@@ -456,14 +456,18 @@ class MatplotlibVisplter(BaseVisplter):
             self, X, Y, Z, title, xlabel, ylabel, xlim, ylim,
             plot_method, plot_method_args, plot_method_kwargs,
             contourf_levels, clabel_levels,
-            center_norm, center_norm_half_ratio, colorbar,
-            aspect, grid_alpha, plot_surface_shadow):
+            center_norm, center_norm_half_ratio, center_norm_half,
+            colorbar, aspect, grid_alpha, plot_surface_shadow):
         '''For :meth:`tmpl_contourf`.'''
         vlog.debug("Getting contourf Axes %s ..." % 111)
         Zmax, Zmin = Z.max(), Z.min()
         # color norm
         if center_norm:
-            half = max(abs(Zmax), abs(Zmin)) * center_norm_half_ratio
+            if center_norm_half:
+                half = abs(center_norm_half)
+                center_norm_half_ratio = half/max(abs(Zmax), abs(Zmin))
+            else:
+                half = max(abs(Zmax), abs(Zmin)) * center_norm_half_ratio
             norm = matplotlib.colors.CenteredNorm(halfrange=half)
             _levels = np.linspace(norm.vmin, norm.vmax, contourf_levels)
             _extend = 'both' if center_norm_half_ratio < 1.0 else 'neither'
