@@ -64,12 +64,15 @@ def nparray_default_bitsize(size=None, isize=None, fsize=None):
         def _newarray(obj, **kwargs):
             if 'dtype' not in kwargs:
                 _o, _t = obj, None
-                for i in range(10):
-                    try:
-                        _t = type(_o[0])
-                        _o = _o[0]
-                    except Exception as e:
-                        break
+                if isinstance(_o, np.ndarray):
+                    _t = _o.dtype
+                else:
+                    for i in range(10):
+                        try:
+                            _t = type(_o[0])
+                            _o = _o[0]
+                        except Exception as e:
+                            break
                 if _t:
                     if _t in int_types:
                         kwargs['dtype'] = idtype
