@@ -143,6 +143,12 @@ def get_parser():
 def cli_script():
     '''Entry point for gdpy3'''
     parserlib = get_parser()
+    try:
+        import argcomplete
+        argcomplete.autocomplete(parserlib['top'])
+        log.debug("Using argcomplete ...")
+    except Exception as e:
+        pass
     args = parserlib['top'].parse_args()
     log.debug("Get input arguments: %s" % args)
 

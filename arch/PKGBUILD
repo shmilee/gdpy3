@@ -16,7 +16,8 @@ optdepends=('xz: for npz lzma compression method'
             'jupyter-notebook: GUI in Jupyter Notebook support'
             'python-ipywidgets: GUI in Jupyter Notebook support'
             'python-pillow: display graphics in terminal support'
-            'libsixel: display graphics in terminal support')
+            'libsixel: display graphics in terminal support'
+            'python-argcomplete: autocomplete in shell support')
 makedepends=()
 source=("https://github.com/shmilee/$pkgname/archive/v$pkgver.tar.gz" "gdpy3.desktop" "gdpy3-data.xml")
 sha512sums=('SKIP'

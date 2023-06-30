@@ -41,7 +41,7 @@ class my_build_py(build_py):
         # for idx, attr in enumerate(dir(self)):
         #    print('---', idx, attr, ':', getattr(self, attr))
         if not self.dry_run:
-            #print('---', os.listdir(os.path.join('src', data_dir)))
+            # print('---', os.listdir(os.path.join('src', data_dir)))
             source_file = os.path.join('src', data_dir, _git_versionstr_file)
             target_dir = os.path.join(self.build_lib, 'gdpy3', data_dir)
             self.mkpath(target_dir)
@@ -103,6 +103,7 @@ setup(
         'tkui': ['screeninfo>=0.4.1'],
         'nbui': ['ipython[notebook]', 'ipywidgets'],
         'imcat': ['pillow>=4.0.0', 'libsixel-python>=0.5.0'],
+        'autocomplete': ['argcomplete>=2.0.0'],
     },
     cmdclass={
         'sdist': my_sdist,
