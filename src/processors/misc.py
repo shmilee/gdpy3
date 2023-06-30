@@ -120,6 +120,7 @@ def change_pckdata_ext(path, ext):
             results = oldloader.get_by_group(grp)
             plog.info("Copy: %s" % grp)
             newsaver.write(grp, results)
+            oldloader.clear_cache()
     plog.info("Done. %s -> %s." % (path, os.path.basename(newpath)))
 
 
@@ -167,6 +168,7 @@ def change_pckdata_array_bitsize(path, size=32):
                         # create new array by new default dtype
                         results[k] = np.array(v)
             newsaver.write(grp, results)
+            oldloader.clear_cache()
     plog.info("Done. %s -> %s." % (path, os.path.basename(newpath)))
 
 
@@ -250,6 +252,7 @@ def slim_v060_digged_data(path):
                     if equal:
                         other = dl
                         break
+                oldloader.clear_cache()
         # collect all default, other
         if default and other:
             assert os.path.dirname(default) == os.path.dirname(other)
@@ -273,6 +276,7 @@ def slim_v060_digged_data(path):
                 results = oldloader.get_by_group(dl)
                 plog.info("Copy: %s" % dl)
                 newsaver.write(dl, results)
+                oldloader.clear_cache()
     plog.info("v060 digged data in %s is slimed: %s." % (path, slimpath))
 
 
@@ -324,6 +328,7 @@ def remove_digged_data(path, by_groups=None, by_groups_pattern=None):
                 results = oldloader.get_by_group(dl)
                 plog.info("Copy: %s" % dl)
                 newsaver.write(dl, results)
+                oldloader.clear_cache()
     backpath = '%s-backup%s%s' % (root, ext2, ext1)
     plog.info("Backup old digged data: %s -> %s" % (path, backpath))
     oldloader.close()
