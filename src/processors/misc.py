@@ -8,11 +8,13 @@ Module for miscellaneous functions and methods.
 
 import os
 import re
+import random
 import numpy as np
 
 from ..glogger import getGLogger
 from ..loaders import get_pckloader
 from ..savers import get_pcksaver, pcksaver_types
+from ..tools import nparray_default_bitsize
 
 __all__ = [
     'change_v04x_pickled_data', 'change_pckdata_ext',
@@ -56,6 +58,38 @@ def change_v04x_pickled_data(path):
         plog.error("This is a invalid pickled data!")
 
 
+def _check_get_pckdata_ext(path):
+    if not os.path.isfile(path):
+        plog.error("Path %s not found!" % path)
+        return (None,)*3
+    root, ext1 = os.path.splitext(path)
+    root, ext2 = os.path.splitext(root)
+    if ext2 == '.converted' and ext1 in pcksaver_types[1:]:
+        plog.info("This is a converted data path %s!" % path)
+    elif ext2 == '.digged' and ext1 in pcksaver_types[1:]:
+        plog.info("This is a digged data path %s!" % path)
+    else:
+        plog.error("This is not a converted or digged data path %s!" % path)
+        return (None,)*3
+    return root, ext2, ext1
+
+
+def _get_info_of_pckdata(loader, ext2):
+    if 'processor' in loader:
+        info = {'processor': loader['processor']}
+    else:
+        info = {'processor': 'GTCv3'}
+    if ext2 == '.converted':
+        info['description'] = loader['description']
+        if 'saltstr' in loader:
+            info['saltstr'] = loader['saltstr']
+        else:
+            m = re.match('.*-(.{6})\.(?:convert|digg)ed\..*', loader.path)
+            if m:
+                info['saltstr'] = m.groups()[0]
+    return info
+
+
 def change_pckdata_ext(path, ext):
     '''
     yy-xxxxxx.{converted,digged}.npz <-> yy-xxxxxx.{converted,digged}.hdf5 <->
@@ -66,17 +100,8 @@ def change_pckdata_ext(path, ext):
     path: path of converted or digged data
     ext: extension of out path, like '.npz', '.hdf5', '.jsonl', '.jsonz'
     '''
-    if not os.path.isfile(path):
-        plog.error("Path %s not found!" % path)
-        return
-    root, ext1 = os.path.splitext(path)
-    root, ext2 = os.path.splitext(root)
-    if ext2 == '.converted' and ext1 in pcksaver_types[1:]:
-        plog.info("This is a converted data path %s!" % path)
-    elif ext2 == '.digged' and ext1 in pcksaver_types[1:]:
-        plog.info("This is a digged data path %s!" % path)
-    else:
-        plog.error("This is not a converted or digged data path %s!" % path)
+    root, ext2, ext1 = _check_get_pckdata_ext(path)
+    if not root:
         return
     if ext not in pcksaver_types[1:]:
         plog.error("Unsupported extension %s!" % ext)
@@ -89,23 +114,58 @@ def change_pckdata_ext(path, ext):
         plog.warning("Data file %s exists! Nothing to do!" % newpath)
         return
     oldloader = get_pckloader(path)
-    if 'processor' in oldloader:
-        info = {'processor': oldloader['processor']}
-    else:
-        info = {'processor': 'GTCv3'}
-    if ext2 == '.converted':
-        info['description'] = oldloader['description']
-        if 'saltstr' in oldloader:
-            info['saltstr'] = oldloader['saltstr']
-        else:
-            m = re.match('.*-(.{6})\.(?:convert|digg)ed\..*', oldloader.path)
-            if m:
-                info['saltstr'] = m.groups()[0]
     with get_pcksaver(newpath) as newsaver:
-        newsaver.write('/',  info)
+        newsaver.write('/',  _get_info_of_pckdata(oldloader, ext2))
         for grp in oldloader.datagroups:
             results = oldloader.get_by_group(grp)
             plog.info("Copy: %s" % grp)
+            newsaver.write(grp, results)
+    plog.info("Done. %s -> %s." % (path, os.path.basename(newpath)))
+
+
+def change_pckdata_array_bitsize(path, size=32):
+    '''
+    Change array bits size in the converted or digged data.
+    Default size in x86_64 numpy.array is 64, so changing to
+    32 or 16 can reduce the file size.
+
+    Parameters
+    ----------
+    path: path of converted or digged data
+    size: 16 or 32
+        bits size for integer and float
+    '''
+    root, ext2, ext1 = _check_get_pckdata_ext(path)
+    if not root:
+        return
+    if size not in (16, 32):
+        plog.warning("Invalid size=%d! Please set size= 16 or 32!" % size)
+        return
+    newpath = '%s-np%d%s%s' % (root, size, ext2, ext1)
+    if os.path.exists(newpath):
+        plog.warning("New data file %s exists!" % newpath)
+        return
+    oldloader = get_pckloader(path)
+    # check size
+    oldsize = None
+    for k in random.sample(oldloader.keys(), min(256, len(oldloader.keys()))):
+        a = oldloader[k]
+        if isinstance(a, np.ndarray):
+            oldsize = a.itemsize * 8
+            break
+    if oldsize and oldsize <= size:
+        plog.warning("No need to do: oldsize=%d, newsize=%d" % (oldsize, size))
+        return
+    with get_pcksaver(newpath) as newsaver:
+        newsaver.write('/',  _get_info_of_pckdata(oldloader, ext2))
+        for grp in oldloader.datagroups:
+            results = oldloader.get_by_group(grp)
+            plog.info("Copy: %s" % grp)
+            with nparray_default_bitsize(size=size):
+                for k, v in results.items():
+                    if isinstance(v, np.ndarray):
+                        # create new array by new default dtype
+                        results[k] = np.array(v)
             newsaver.write(grp, results)
     plog.info("Done. %s -> %s." % (path, os.path.basename(newpath)))
 
@@ -234,7 +294,7 @@ def remove_digged_data(path, by_groups=None, by_groups_pattern=None):
         return
     root, ext1 = os.path.splitext(path)
     root, ext2 = os.path.splitext(root)
-    if not (ext2 == '.digged' and ext1 in ['.npz', '.hdf5', '.jsonl', '.jsonz']):
+    if not (ext2 == '.digged' and ext1 in pcksaver_types[1:]):
         plog.error("This is not a digged data path %s!" % path)
         return
     oldloader = get_pckloader(path)
