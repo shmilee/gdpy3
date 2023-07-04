@@ -462,6 +462,9 @@ class MatplotlibVisplter(BaseVisplter):
         vlog.debug("Getting contourf Axes %s ..." % 111)
         Zmax, Zmin = Z.max(), Z.min()
         # color norm
+        if LooseVersion(matplotlib.__version__) < LooseVersion('3.4.0'):
+            vlog.warning("'CenteredNorm' needs matplotlib >= 3.4.0!")
+            center_norm = False
         if center_norm:
             if center_norm_half:
                 half = abs(center_norm_half)

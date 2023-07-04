@@ -476,7 +476,7 @@ class BaseVisplter(object):
                 ('plot_method_args', list, []),
                 ('plot_method_kwargs', dict, {}),
                 ('contourf_levels', int, 100), ('clabel_levels', list, []),
-                ('center_norm', bool, True),
+                ('center_norm', bool, False),
                 ('center_norm_half_ratio', float, 1.0),
                 ('center_norm_half', (float, int), None),
                 ('colorbar', bool, True),
