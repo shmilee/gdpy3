@@ -349,6 +349,8 @@ class SnapshotFieldFluxThetaDigger(SnapshotFieldFluxAlphaDigger):
         if sep == 0:
             lastdata = data[:, 0]
         else:
+            # !! seq is int, so tile zeta may have tiny problem
+            # !! TODO data interpolation at zeta=2pi
             lastdata = np.append(data[-sep:, 0], data[:(aM-sep), 0])
         data = np.append(data, np.array([lastdata]).T, axis=1)  # [0, 2pi]
         zeta, aN = np.append(zeta, [pi2]), aN+1  # [0, 2pi]
@@ -481,8 +483,8 @@ class SnapshotFieldFluxThetaTileDigger(SnapshotFieldFluxThetaDigger):
         '''
         res, acckwargs = super(
             SnapshotFieldFluxThetaTileDigger, self)._dig(kwargs)
-        title, zeta = res['title'], res['zeta'][:-1]  # [0, 2pi)
-        field, theta = res['field'][:-1, :-1], res['theta'][:-1]  # [0, 2pi)
+        title, zeta = res['title'], res['zeta'][:]  # [0, 2pi]
+        field, theta = res['field'][:, :], res['theta'][:]  # [0, 2pi]
         M, N = kwargs.get('M', 2), kwargs.get('N', 2)
         if not (isinstance(M, int) and M >= 2):
             M = 2
@@ -500,12 +502,12 @@ class SnapshotFieldFluxThetaTileDigger(SnapshotFieldFluxThetaDigger):
                        description='zeta N_2pi:'))
         acckwargs.update(M=M, N=N)
         for i in range(1, N):
-            field = np.column_stack((field, res['field'][:-1, :-1]))
-            zeta = np.append(zeta, res['zeta'][:-1]+2*np.pi*i)
+            field = np.column_stack((field, res['field'][:, :]))
+            zeta = np.append(zeta, res['zeta'][:]+2*np.pi*i)
         fieldM = field
         for j in range(1, M):
             fieldM = np.row_stack((fieldM, field))
-            theta = np.append(theta, res['theta'][:-1]+2*np.pi*j)
+            theta = np.append(theta, res['theta'][:]+2*np.pi*j)
         # print(fieldM.shape, zeta.shape, theta.shape)
         return dict(title=title, field=fieldM,
                     zeta=zeta, theta=theta), acckwargs
