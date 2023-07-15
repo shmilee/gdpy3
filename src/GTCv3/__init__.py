@@ -21,12 +21,12 @@ from . import (
     history,
     meshgrid,
     simugrid,
-    snapevphase,
-    rzf,
-    flux3d,
     snapshot,
     trackparticle,
+    rzf,
     zetapsi3d,
+    flux3d,
+    snapevphase,
     snapphi,
 )
 from ..processors.processor import plog
@@ -39,12 +39,12 @@ _load_modules = (
     history,
     meshgrid,
     simugrid,
-    snapevphase,
-    rzf,
-    flux3d,
     snapshot,
     trackparticle,
+    rzf,
     zetapsi3d,
+    flux3d,
+    snapevphase,
     snapphi,
 )
 
