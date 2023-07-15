@@ -16,7 +16,7 @@ _all_Converters = ['GtcConverter']
 _all_Diggers = []
 __all__ = _all_Converters + _all_Diggers
 
-Ndigits_tstep = 8
+Ndigits_tstep = 4
 
 
 class GtcConverter(Converter):
@@ -189,7 +189,7 @@ class GtcConverter(Converter):
                 for key, val in mdata.groupdict().items():
                     try:
                         val = c_val_method(val)
-                        #clog.debug("Filling datakey: %s=%s ..." % (key, val))
+                        # clog.debug("Filling datakey: %s=%s ..." % (key, val))
                         debugkeys.append(key)
                         sd.update({key: val})
                     except Exception:

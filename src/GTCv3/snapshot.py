@@ -42,8 +42,9 @@ from .gtc import Ndigits_tstep
 _all_Converters = ['SnapshotConverter']
 _all_Diggers = [
     'SnapshotProfileDigger', 'SnapshotPdfDigger',
-    'SnapshotFieldFluxDigger', 'SnapshotFieldFluxTileDigger',
-    'SnapshotFieldFluxCorrLenDigger', 'SnapshotFieldPoloidalDigger',
+    'SnapshotFieldFluxAlphaDigger', 'SnapshotFieldFluxThetaDigger',
+    'SnapshotFieldFluxAlphaTileDigger', 'SnapshotFieldFluxThetaTileDigger',
+    'SnapshotFieldFluxAlphaCorrLenDigger', 'SnapshotFieldPoloidalDigger',
     'SnapshotFieldSpectrumDigger', 'SnapshotTimeFieldSpectrumDigger',
     'SnapshotFieldProfileDigger',
     'SnapshotFieldmDigger', 'SnapshotFieldmkthetaDigger']
@@ -67,7 +68,7 @@ class SnapshotConverter(Converter):
     3) phi, a_para, fluidne on poloidal plane
        poloidata 2d array is poloidata[theta,r].
     4) phi, a_para, fluidne on flux surface
-       fluxdata 2d array is fluxdata[theta,zeta].
+       fluxdata 2d array is fluxdata[alpha,zeta].
     '''
     __slots__ = []
     nitems = '?'
@@ -169,8 +170,8 @@ class SnapshotConverter(Converter):
 def _snap_get_timestr(snapgroup, pckloader):
     istep = int(re.match('.*snap(\d{5,7}).*', snapgroup).groups()[0])
     tstep = pckloader.get('gtc/tstep')
-    tstep = round(tstep, Ndigits_tstep)
-    return r'istep=%d, time=%s$R_0/c_s$' % (istep, istep * tstep)
+    time = round(istep * tstep, Ndigits_tstep)
+    return r'istep=%d, time=%s$R_0/c_s$' % (istep, time)
 
 
 class SnapshotProfileDigger(Digger):
@@ -273,8 +274,8 @@ field_tex_str = {
 }
 
 
-class SnapshotFieldFluxDigger(Digger):
-    '''phi, a_para, fluidne, or densityi, densitye on flux surface.'''
+class SnapshotFieldFluxAlphaDigger(Digger):
+    '''phi(alpha,zeta), a_para, fluidne, or densityi,e on flux surface.'''
     __slots__ = ['ipsi']
     nitems = '?'
     itemspattern = [
@@ -282,11 +283,10 @@ class SnapshotFieldFluxDigger(Digger):
         + '/fluxdata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))$']
     commonpattern = ['gtc/tstep', 'gtc/mpsi']
     post_template = 'tmpl_contourf'
-    _field_theta_start0 = True
 
     def _set_fignum(self, numseed=None):
         self.ipsi = self.pckloader.get('gtc/mpsi') // 2
-        self._fignum = '%s_flux' % self.section[1]
+        self._fignum = '%s_fluxa' % self.section[1]
 
     def _get_timestr(self):
         return _snap_get_timestr(self.group, self.pckloader)
@@ -298,16 +298,104 @@ class SnapshotFieldFluxDigger(Digger):
         title = self._get_timestr()
         fstr = self._get_fieldstr()
         data = self.pckloader.get(self.srckeys[0])
-        y, x = data.shape  # 0-mtgrid; 1-mtoroidal
-        if self._field_theta_start0:
-            theta = np.arange(0, y) / (y-1) * 2 * np.pi  # [0,2pi]
-        else:
-            theta = np.arange(1, y+1) / y * 2 * np.pi  # (0,2pi]
+        y, x = data.shape  # y: 0-mtgrid, x: 0-(mtoroidal-1)
+        alpha = np.arange(0, y) / (y-1) * 2 * np.pi  # [0,2pi]
+        zeta = np.arange(0, x) / x * 2 * np.pi  # [0,2pi)
         return dict(
-            zeta=np.arange(1, x+1) / x * 2 * np.pi,  # (0,2pi]
-            theta=theta, field=data,
-            title=r'$%s$ on flux surface(ipsi=%d), %s' % (
+            alpha=alpha, zeta=zeta, field=data,
+            title=r'$%s(\alpha,\zeta)$ on flux surface(ipsi=%d), %s' % (
                 fstr, self.ipsi, title)), {}
+
+    def _post_dig(self, results):
+        r = results
+        return dict(X=r['zeta'], Y=r['alpha'], Z=r['field'],
+                    title=r['title'], xlabel=r'$\zeta$',
+                    ylabel=r'$\alpha$', aspect='equal')
+
+
+class SnapshotFieldFluxThetaDigger(SnapshotFieldFluxAlphaDigger):
+    '''phi(theta,zeta), a_para etc. on flux surface, magnetic coordinates.'''
+    __slots__ = []
+    commonpattern = ['gtc/tstep', 'gtc/qiflux', 'gtc/mpsi']
+
+    def _set_fignum(self, numseed=None):
+        self.ipsi = self.pckloader.get('gtc/mpsi') // 2
+        self._fignum = '%s_fluxt' % self.section[1]
+        self.kwoptions = None
+
+    def _get_q_psi(self):
+        '''Return q at ipsi=mpsi//2.'''
+        return self.pckloader.get('gtc/qiflux')
+
+    def _dig(self, kwargs):
+        '''
+        kwargs
+        ------
+        *iM*: int, default mtgrid+1
+            how many interpolation grid points in the theta direction
+        *iN*: int, default (mtgrid+1)//q
+            how many interpolation grid points in the zeta direction
+        *fielddir*: int, 0, 1, 2 or 3, default 0
+            magnetic field & current direction, see subroutine eqdata in .F90
+        '''
+        res, _ = super(SnapshotFieldFluxThetaDigger, self)._dig(kwargs)
+        title, zeta = res['title'], res['zeta']  # [0, 2pi)
+        data, alpha = res['field'], res['alpha']  # [0, 2pi]
+        q = self._get_q_psi()
+        dlog.parm("q(ipsi=%d)=%f" % (self.ipsi, q))
+        pi2 = 2*np.pi
+        aM, aN = len(alpha), len(zeta)  # old grids
+        sep = round(aM*(1.0-1.0/q))  # q>=1
+        if sep == 0:
+            lastdata = data[:, 0]
+        else:
+            lastdata = np.append(data[-sep:, 0], data[:(aM-sep), 0])
+        data = np.append(data, np.array([lastdata]).T, axis=1)  # [0, 2pi]
+        zeta, aN = np.append(zeta, [pi2]), aN+1  # [0, 2pi]
+        iM, iN = kwargs.get('iM', aM), kwargs.get('iN', int(aM/q))
+        if not (isinstance(iM, int) and iM > 0):
+            iM = aM
+        if not (isinstance(iN, int) and iN > 0):
+            iN = int(aM/q)
+        fielddir = kwargs.get('fielddir', 0)
+        if fielddir not in (0, 1, 2, 3):  # see eqdata.F90
+            fielddir = 0
+        if self.kwoptions is None:
+            self.kwoptions = dict(
+                iM=dict(widget='IntSlider',
+                        rangee=(128, 1024, 64),
+                        value=aM,
+                        description='theta grids:'),
+                iN=dict(widget='IntSlider',
+                        rangee=(128, 1024, 64),
+                        value=int(aM/q),
+                        description='zeta grids:'),
+                fielddir=dict(widget='IntSlider',
+                              rangee=(0, 3, 1),
+                              value=0,
+                              description='fielddir:'))
+        acckwargs = dict(iM=iM, iN=iN, fielddir=fielddir)
+        dlog.parm("aM=%d, aN=%d; iM=%d, iN=%d; fielddir=%d"
+                  % (aM, aN, iM, iN, fielddir))
+        zeta2 = np.arange(0, iN) / (iN-1) * pi2
+        theta2 = np.arange(0, iM) / (iM-1) * pi2
+        res2 = np.zeros((iM, iN))
+        for ii, zdum in enumerate(zeta2):
+            i = max(0, min(int(zdum/pi2*(aN-1)), (aN - 2)))  # left
+            wz = zdum/(pi2/(aN-1)) - i
+            # print('i=', i, ', wz=', wz)
+            for jj, tdum in enumerate(theta2):
+                if (fielddir == 1 or fielddir == 3):
+                    adum = np.mod(tdum - (zdum-pi2)/q, pi2)
+                else:
+                    adum = np.mod(tdum - zdum/q, pi2)
+                j = max(0, min(int(adum/pi2*(aM-1)), (aM - 2)))  # lower
+                wt = adum/(pi2/(aM-1)) - j
+                # print('j=', j, ', wt=', wt)
+                res2[jj, ii] = (data[j, i+1]*(1-wt) + data[j+1, i+1]*wt)*wz \
+                    + (data[j, i]*(1-wt) + data[j+1, i]*wt)*(1-wz)
+        return dict(zeta=zeta2, theta=theta2, field=res2,
+                    title=title.replace(r'(\alpha,', r'(\theta,')), acckwargs
 
     def _post_dig(self, results):
         r = results
@@ -316,14 +404,14 @@ class SnapshotFieldFluxDigger(Digger):
                     ylabel=r'$\theta$', aspect='equal')
 
 
-class SnapshotFieldFluxTileDigger(SnapshotFieldFluxDigger):
-    '''Tiled phi, a_para etc. on flux surface.'''
+class SnapshotFieldFluxAlphaTileDigger(SnapshotFieldFluxAlphaDigger):
+    '''Tiled phi(alpha,zeta) etc. on flux surface.'''
     __slots__ = []
     commonpattern = ['gtc/tstep', 'gtc/qiflux', 'gtc/mpsi']
 
     def _set_fignum(self, numseed=None):
         self.ipsi = self.pckloader.get('gtc/mpsi') // 2
-        self._fignum = '%s_flux_tiled' % self.section[1]
+        self._fignum = '%s_fluxa_tile' % self.section[1]
         self.kwoptions = None
 
     def _get_q_psi(self):
@@ -337,15 +425,12 @@ class SnapshotFieldFluxTileDigger(SnapshotFieldFluxDigger):
         *N*: int, >=2, default 3
             how many zeta(2pi) will be tiled
         '''
-        res, _ = super(SnapshotFieldFluxTileDigger, self)._dig(kwargs)
+        res, _ = super(SnapshotFieldFluxAlphaTileDigger, self)._dig(kwargs)
         title, zeta = res['title'], res['zeta']
-        if self._field_theta_start0:
-            field, theta = res['field'][1:, :], res['theta'][1:]  # (0, 2pi]
-        else:
-            field, theta = res['field'], res['theta']
+        field, alpha = res['field'][:-1, :], res['alpha'][:-1]  # [0, 2pi)
         q = self._get_q_psi()
         dlog.parm("q(ipsi=%d)=%f" % (self.ipsi, q))
-        sep = round(field.shape[0]*(1.0-1.0/q))  # q>1
+        sep = round(field.shape[0]*(1.0-1.0/q))  # q>=1
         N = kwargs.get('N', 3)
         if not (isinstance(N, int) and N >= 2):
             N = 3
@@ -357,78 +442,127 @@ class SnapshotFieldFluxTileDigger(SnapshotFieldFluxDigger):
                        description='zeta N_2pi:'))
         acckwargs = dict(N=N)
         c1, c2 = field, field
-        zeta1, theta1 = zeta, theta
+        zeta1, alpha1 = zeta, alpha
         for i in range(1, N):
             h1 = c1[sep*(i-1):sep*i]
             t2 = c2[-sep:] if (i == 1 and sep != 0) else c2[-sep*i:-sep*(i-1)]
             c1, c2 = np.row_stack((c1, h1)), np.row_stack((t2, c2))
             c1 = np.column_stack((c1, c2))
             zeta1 = np.append(zeta1, zeta+2*np.pi*i)
-            theta1 = np.append(theta1, theta1[sep*(i-1):sep*i]+2*np.pi)
+            alpha1 = np.append(alpha1, alpha1[sep*(i-1):sep*i]+2*np.pi)
         if sep != 0:
-            # c1 theta cutoff [0, 2pi]
-            i = np.where(theta1 > 2*np.pi)[0][0]
-            c1, theta1 = c1[:i, :], theta1[:i]
+            # c1 alpha cutoff [0, 2pi]
+            i = np.where(alpha1 > 2*np.pi)[0][0]
+            c1, alpha1 = c1[:i, :], alpha1[:i]
         return dict(title=title, field=c1,
-                    zeta=zeta1, theta=theta1), acckwargs
+                    zeta=zeta1, alpha=alpha1), acckwargs
 
     def _post_dig(self, results):
         r = results
-        return dict(X=r['zeta'], Y=r['theta'], Z=r['field'],
-                    title=r['title'], xlabel=r'$\zeta$', ylabel=r'$\theta$')
+        return dict(X=r['zeta'], Y=r['alpha'], Z=r['field'],
+                    title=r['title'], xlabel=r'$\zeta$', ylabel=r'$\alpha$')
 
 
-class SnapshotFieldFluxCorrLenDigger(SnapshotFieldFluxTileDigger):
-    '''Get field correlation(d_zeta, d_theta) from tiled flux surface.'''
+class SnapshotFieldFluxThetaTileDigger(SnapshotFieldFluxThetaDigger):
+    '''Tiled phi(theta,zeta) etc. on flux surface, magnetic coordinates.'''
+    __slots__ = []
+
+    def _set_fignum(self, numseed=None):
+        super(SnapshotFieldFluxThetaTileDigger,
+              self)._set_fignum(numseed=numseed)
+        self._fignum = '%s_tile' % self._fignum
+        self.kwoptions = None
+
+    def _dig(self, kwargs):
+        '''*M*: int, >=2, default 2
+            how many theta(2pi) will be tiled
+        *N*: int, >=2, default 2
+            how many zeta(2pi) will be tiled
+        '''
+        res, acckwargs = super(
+            SnapshotFieldFluxThetaTileDigger, self)._dig(kwargs)
+        title, zeta = res['title'], res['zeta'][:-1]  # [0, 2pi)
+        field, theta = res['field'][:-1, :-1], res['theta'][:-1]  # [0, 2pi)
+        M, N = kwargs.get('M', 2), kwargs.get('N', 2)
+        if not (isinstance(M, int) and M >= 2):
+            M = 2
+        if not (isinstance(N, int) and N >= 2):
+            N = 2
+        if 'M' not in self.kwoptions:
+            self.kwoptions.update(
+                M=dict(widget='IntSlider',
+                       rangee=(2, 4, 1),
+                       value=2,
+                       description='theta N_2pi:'),
+                N=dict(widget='IntSlider',
+                       rangee=(2, 4, 1),
+                       value=2,
+                       description='zeta N_2pi:'))
+        acckwargs.update(M=M, N=N)
+        for i in range(1, N):
+            field = np.column_stack((field, res['field'][:-1, :-1]))
+            zeta = np.append(zeta, res['zeta'][:-1]+2*np.pi*i)
+        fieldM = field
+        for j in range(1, M):
+            fieldM = np.row_stack((fieldM, field))
+            theta = np.append(theta, res['theta'][:-1]+2*np.pi*j)
+        # print(fieldM.shape, zeta.shape, theta.shape)
+        return dict(title=title, field=fieldM,
+                    zeta=zeta, theta=theta), acckwargs
+
+
+class SnapshotFieldFluxAlphaCorrLenDigger(SnapshotFieldFluxAlphaTileDigger):
+    '''Get field correlation(d_zeta, d_alpha) from tiled flux surface.'''
     __slots__ = []
     post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
 
     def _set_fignum(self, numseed=None):
         self.ipsi = self.pckloader.get('gtc/mpsi') // 2
-        self._fignum = '%s_flux_corrlen' % self.section[1]
+        self._fignum = '%s_fluxa_corrlen' % self.section[1]
         self.kwoptions = None
 
     def _dig(self, kwargs):
         '''*dzeta*: float
             set dzeta range, default 2*pi (6.3), max N*pi
-        *dtheta*: float
-            set dtheta range, default 0.1 (0.10), max 1.5
+        *dalpha*: float
+            set dalpha range, default 0.1 (0.10), max 1.5
         '''
-        res, acckws = super(SnapshotFieldFluxCorrLenDigger, self)._dig(kwargs)
+        res, acckws = super(
+            SnapshotFieldFluxAlphaCorrLenDigger, self)._dig(kwargs)
         title, field = res['title'], res['field']
-        zeta, theta = res['zeta'], res['theta']
-        title = r'CorrLen$(\Delta\zeta, \Delta\theta)$ of ' + title
+        zeta, alpha = res['zeta'], res['alpha']
+        title = r'CorrLen$(\Delta\zeta, \Delta\alpha)$ of ' + title
         N = zeta[-1]/np.pi/2
-        maxdzeta, maxdtheta = round(N*np.pi, 1), 1.5
-        dzeta, dtheta = kwargs.get('dzeta', None), kwargs.get('dtheta', None)
+        maxdzeta, maxdalpha = round(N*np.pi, 1), 1.5
+        dzeta, dalpha = kwargs.get('dzeta', None), kwargs.get('dalpha', None)
         if not (isinstance(dzeta, (int, float)) and 0 < dzeta <= maxdzeta):
             dzeta = round(2*np.pi, 1)
-        if not (isinstance(dtheta, (int, float)) and 0 < dtheta <= maxdtheta):
-            dtheta = 0.1
+        if not (isinstance(dalpha, (int, float)) and 0 < dalpha <= maxdalpha):
+            dalpha = 0.1
         if 'dzeta' not in self.kwoptions:
             self.kwoptions.update(dict(
                 dzeta=dict(widget='FloatSlider',
                            rangee=(0.2, round(8*np.pi, 1), 0.1),
                            value=round(2*np.pi, 1),
                            description='dzeta:'),
-                dtheta=dict(widget='FloatSlider',
-                            rangee=(0.05, maxdtheta, 0.05),
+                dalpha=dict(widget='FloatSlider',
+                            rangee=(0.05, maxdalpha, 0.05),
                             value=0.1,
-                            description='dtheta:')))
-        acckws.update(dzeta=round(dzeta, 1), dtheta=round(dtheta, 2))
+                            description='dalpha:')))
+        acckws.update(dzeta=round(dzeta, 1), dalpha=round(dalpha, 2))
         y, x = field.shape
-        dlog.parm('Data shape of fflux(theta,zeta) is %s.' % ((y, x),))
+        dlog.parm('Data shape of fflux(alpha,zeta) is %s.' % ((y, x),))
         mdzeta = int(dzeta/(zeta[1]-zeta[0]))
-        mdtheta = int(dtheta/(theta[1]-theta[0]))
-        dlog.parm("Use dzeta=%s, dtheta=%s, mdzeta=%s, mdtheta=%s. "
-                  "Maximal maxdzeta=%s, maxdtheta=%s"
-                  % (dzeta, dtheta, mdzeta, mdtheta, maxdzeta, maxdtheta))
-        tau, cdt, vdz = tools.correlation(field, 0, y, 0, x, mdtheta, mdzeta)
-        mdzeta, mdtheta = np.arange(1, mdzeta+1), np.arange(1, mdtheta+1)
-        dzeta, dtheta = mdzeta*(zeta[1]-zeta[0]), mdtheta*(theta[1]-theta[0])
+        mdalpha = int(dalpha/(alpha[1]-alpha[0]))
+        dlog.parm("Use dzeta=%s, dalpha=%s, mdzeta=%s, mdalpha=%s. "
+                  "Maximal maxdzeta=%s, maxdalpha=%s"
+                  % (dzeta, dalpha, mdzeta, mdalpha, maxdzeta, maxdalpha))
+        tau, cdt, vdz = tools.correlation(field, 0, y, 0, x, mdalpha, mdzeta)
+        mdzeta, mdalpha = np.arange(1, mdzeta+1), np.arange(1, mdalpha+1)
+        dzeta, dalpha = mdzeta*(zeta[1]-zeta[0]), mdalpha*(alpha[1]-alpha[0])
         mtau, Cx = [], []
         for n, X, Y in [(0, dzeta, tau.max(axis=0)), (1, dzeta, tau[0, :]),
-                        (2, dtheta, tau.max(axis=1)), (3, dtheta, tau[:, 0])]:
+                        (2, dalpha, tau.max(axis=1)), (3, dalpha, tau[:, 0])]:
             index = np.where(Y <= 1.0/np.e)[0]
             if index.size > 0:
                 i, j = index[0] - 1,  index[0]
@@ -437,42 +571,42 @@ class SnapshotFieldFluxCorrLenDigger(SnapshotFieldFluxTileDigger):
                     X[i], 1.0/np.e, X[j], 1.0/np.e)
             else:
                 Xm = X[-1]
-                dlog.info("Increase dzeta/dtheta to find correlation %d!" % n)
+                dlog.info("Increase dzeta/dalpha to find correlation %d!" % n)
             mtau.append(Y)
             Cx.append(Xm)
-        dlog.parm("Get correlation: dzeta=%.6f, dtheta=%.6f" % (Cx[0], Cx[2]))
-        return dict(title=title, dzeta=dzeta, dtheta=dtheta, tau=tau,
-                    zetatau=mtau[0], zetatau0=mtau[1], thetatau=mtau[2],
-                    thetatau0=mtau[3], zetaC=Cx[0], zetaC0=Cx[1],
-                    thetaC=Cx[2], thetaC0=Cx[3]), acckws
+        dlog.parm("Get correlation: dzeta=%.6f, dalpha=%.6f" % (Cx[0], Cx[2]))
+        return dict(title=title, dzeta=dzeta, dalpha=dalpha, tau=tau,
+                    zetatau=mtau[0], zetatau0=mtau[1], alphatau=mtau[2],
+                    alphatau0=mtau[3], zetaC=Cx[0], zetaC0=Cx[1],
+                    alphaC=Cx[2], alphaC0=Cx[3]), acckws
 
     def _post_dig(self, results):
         r = results
         ax1_calc = dict(
-            X=r['dzeta'], Y=r['dtheta'], Z=r['tau'], clabel_levels=[1/np.e],
-            title=r['title'], xlabel=r'$\Delta\zeta$', ylabel=r'$\Delta\theta$')
+            X=r['dzeta'], Y=r['dalpha'], Z=r['tau'], clabel_levels=[1/np.e],
+            title=r['title'], xlabel=r'$\Delta\zeta$', ylabel=r'$\Delta\alpha$')
         ax2_calc = dict(
             LINE=[
                 (r['dzeta'], r['zetatau'], r'$maxC(\Delta\zeta)$'),
-                (r['dzeta'], r['zetatau0'], r'$C(\Delta\zeta,\Delta\theta=0)$'),
+                (r['dzeta'], r['zetatau0'], r'$C(\Delta\zeta,\Delta\alpha=0)$'),
                 ([r['dzeta'][0], r['dzeta'][-1]], [1/np.e, 1/np.e], '1/e'),
             ],
-            title=r'$maxC(\Delta\zeta=%.3f)=C(\Delta\zeta=%.3f,\Delta\theta=0)=1/e$' % (
+            title=r'$maxC(\Delta\zeta=%.3f)=C(\Delta\zeta=%.3f,\Delta\alpha=0)=1/e$' % (
                 r['zetaC'], r['zetaC0']),
             xlabel=r'$\Delta\zeta$',
             xlim=[r['dzeta'][0], r['dzeta'][-1]],
             ylim=[min(0, r['zetatau'].min()), 1])
         ax3_calc = dict(
             LINE=[
-                (r['dtheta'], r['thetatau'], r'$maxC(\Delta\theta)$'),
-                (r['dtheta'], r['thetatau0'], r'$C(\Delta\zeta=0,\Delta\theta)$'),
-                ([r['dtheta'][0], r['dtheta'][-1]], [1/np.e, 1/np.e], '1/e'),
+                (r['dalpha'], r['alphatau'], r'$maxC(\Delta\alpha)$'),
+                (r['dalpha'], r['alphatau0'], r'$C(\Delta\zeta=0,\Delta\alpha)$'),
+                ([r['dalpha'][0], r['dalpha'][-1]], [1/np.e, 1/np.e], '1/e'),
             ],
-            title=r'$maxC(\Delta\theta=%.6f)=C(\Delta\zeta=0,\Delta\theta=%.6f)=1/e$' % (
-                r['thetaC'], r['thetaC0']),
-            xlabel=r'$\Delta\theta$',
-            xlim=[r['dtheta'][0], r['dtheta'][-1]],
-            ylim=[min(0, r['thetatau'].min()), 1])
+            title=r'$maxC(\Delta\alpha=%.6f)=C(\Delta\zeta=0,\Delta\alpha=%.6f)=1/e$' % (
+                r['alphaC'], r['alphaC0']),
+            xlabel=r'$\Delta\alpha$',
+            xlim=[r['dalpha'][0], r['dalpha'][-1]],
+            ylim=[min(0, r['alphatau'].min()), 1])
         return dict(zip_results=[
             ('tmpl_contourf', 211, ax1_calc),
             ('tmpl_line', 223, ax2_calc),
