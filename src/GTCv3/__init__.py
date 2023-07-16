@@ -3,7 +3,7 @@
 # Copyright (c) 2019-2021 shmilee
 
 '''
-GTC Processor Version 3 (V110922) and its cores.
+GTC Processor Version 3 and its cores for GTC v3.x and v4.x.
 
 Notes
 -----

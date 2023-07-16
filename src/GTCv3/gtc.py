@@ -99,6 +99,13 @@ class GtcConverter(Converter):
                             for li in val.strip().split('\n')
                             if not li.startswith(' write to restart_dir')])
 
+    @staticmethod
+    def _c_val_v4_cputime(val):
+        '''For GTCv4 cputimeusage'''
+        val = val.strip().split('\n')
+        val = numpy.array([[float(n) for n in li.split()[1:]] for li in val])
+        return val.T
+
     @property
     def twoDarraypats(self):
         '''
@@ -117,6 +124,22 @@ class GtcConverter(Converter):
             (r'poisson solver=(\s*?' + self.numpat + r'){4}\s*$'
              + r'(?P<arr3>.*)$'
              + r'\s*CPU TIME USAGE \(in SEC\):$', 'float_2d_arr3'),
+            # for GTCv4 arr1 arr2 arr3 cputimeusage
+            r'meshte\s+?meshti\s+?meshne\s+?meshni\s*?$'
+            + r'(?P<arr1>.*)$'
+            + r'\s*?eq_flux at i=\s*?' + self.numpat + r'$',
+            r'rg_sp/rg - 1,\s+?dtorpsi/q\s*?$'
+            + r'(?P<arr2>.*)?$'
+            + r'\s*?\*+?$'
+            + r'\s*?=+?$'
+            + r'\s*?No Radial Boundary Decay',
+            (r'poisson solver=(\s*?' + self.numpat + r'){4}\s*$'
+             + r'(?P<arr3>.*)$'
+             + r'\s+routine\s+count\s+rank0.*$', 'float_2d_arr3'),
+            (r'CPU TIME USAGE \(in SEC\):$'
+             + '(?P<cputimeusage>.*)$'
+             + r'\s*?MPush/sec:\s+?' + self.numpat + '\s*?$', 'v4_cputime'),
+
         ]
 
     def _convert(self):
@@ -196,4 +219,48 @@ class GtcConverter(Converter):
                         pass
         clog.debug("Filled datakeys: %s ..." % str(debugkeys))
 
+        # GTCv3 GTCv4 arr2 compatibility; shape: v4(Y,6) vs v3(Y,5)
+        # v3: 0 i, 1 rg,              2 q, 3 rg_sp/rg-1, 4 dtorpsi/q
+        # v4: 0 i, 1 rg/a, 2 psi/ped, 3 q, 4 rg_sp/rg-1, 5 dtorpsi/q
+        # =>: 0 i, 1 rg, 2 q, 3 rg_sp/rg-1, 4 dtorpsi/q; 5 psi/ped
+        if 'arr2' in sd and 'a_minor' in sd:
+            val, a_minor = sd['arr2'], sd['a_minor']
+            if val.shape[1] == 5:  # v3
+                pass
+            elif val.shape[1] == 6:  # v4
+                clog.debug("Update datakey 'arr2' for GTCv4 ...")
+                a2val = val[:, :2]  # 01: i, rg/a
+                a2val[:, 1] = val[:, 1] * a_minor  # rg/a -> rg
+                a2val = numpy.append(a2val, values=val[:, 3:6], axis=1)  # 345
+                a2val = numpy.insert(a2val, 5, values=val[:, 2], axis=1)  # 2
+                sd['arr2'] = a2val
+            else:
+                clog.warning("Unexpected 'arr2' shape for GTCv3 or GTCv4!")
+            if 'qiflux' not in sd or 'rgiflux' not in sd:
+                self._update_qiflux_rgiflux(sd)
+
         return sd
+
+    def _update_qiflux_rgiflux(self, sd):
+        '''
+        If no qiflux in *sd*, try to get it from arr2
+        GTCv3: qiflux at iflux=mpis//2
+        GTCv4: qiflux at diag_flux
+        '''
+        try:
+            iflux = sd['diag_flux']
+        except Exception:
+            iflux = sd['mpsi']
+        try:
+            arr2 = sd['arr2']
+            if int(arr2[iflux-1][0]) == iflux:
+                row = arr2[iflux-1]
+            else:
+                for i in range(len(arr2)):
+                    if int(arr2[i][0]) == iflux:
+                        row = arr2[i]
+                        break
+            sd['rgiflux'], sd['qiflux'] = row[1], row[2]
+            clog.debug("Update datakeys: 'rgiflux', 'qiflux' ...")
+        except Exception:
+            pass

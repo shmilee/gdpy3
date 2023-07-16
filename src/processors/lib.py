@@ -51,7 +51,6 @@ def register_Processor(name, mod_path, alias=None, loc='$sys', overlay=True):
 
 # GTC Processors
 register_Processor('GTCv3', '..GTCv3', 'G3')
-register_Processor('GTCv4', '..GTCv4', 'G4')
 
 
 def register_user_Processors(dirname):
