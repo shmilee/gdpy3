@@ -313,6 +313,39 @@ class SnapshotFieldFluxAlphaDigger(Digger):
                     ylabel=r'$\alpha$', aspect='equal')
 
 
+def _fluxdata_theta_interpolation(data, q, iM, iN, fielddir):
+    '''Interpolation flux(alpha,zeta) -> flux(theta,zeta).'''
+    aM, aN = data.shape  # old grids
+    sep = round(aM*(1.0-1.0/q))  # q>=1
+    if sep == 0:
+        lastdata = data[:, 0]
+    else:
+        # !! seq is int, so tile zeta may have tiny problem
+        # !! TODO data interpolation at zeta=2pi
+        lastdata = np.append(data[-sep:, 0], data[:(aM-sep), 0])
+    data = np.append(data, np.array([lastdata]).T, axis=1)  # [0, 2pi]
+    aN += 1
+    pi2 = 2*np.pi
+    zeta = np.arange(0, iN) / (iN-1) * pi2
+    theta = np.arange(0, iM) / (iM-1) * pi2
+    res = np.zeros((iM, iN))
+    for ii, zdum in enumerate(zeta):
+        i = max(0, min(int(zdum/pi2*(aN-1)), (aN - 2)))  # left
+        wz = zdum/(pi2/(aN-1)) - i
+        # print('i=', i, ', wz=', wz)
+        for jj, tdum in enumerate(theta):
+            if (fielddir == 1 or fielddir == 3):
+                adum = np.mod(tdum - (zdum-pi2)/q, pi2)
+            else:
+                adum = np.mod(tdum - zdum/q, pi2)
+            j = max(0, min(int(adum/pi2*(aM-1)), (aM - 2)))  # lower
+            wt = adum/(pi2/(aM-1)) - j
+            # print('j=', j, ', wt=', wt)
+            res[jj, ii] = (data[j, i+1]*(1-wt) + data[j+1, i+1]*wt)*wz \
+                + (data[j, i]*(1-wt) + data[j+1, i]*wt)*(1-wz)
+    return theta, zeta, res
+
+
 class SnapshotFieldFluxThetaDigger(SnapshotFieldFluxAlphaDigger):
     '''phi(theta,zeta), a_para etc. on flux surface, magnetic coordinates.'''
     __slots__ = []
@@ -339,21 +372,11 @@ class SnapshotFieldFluxThetaDigger(SnapshotFieldFluxAlphaDigger):
             magnetic field & current direction, see subroutine eqdata in .F90
         '''
         res, _ = super(SnapshotFieldFluxThetaDigger, self)._dig(kwargs)
-        title, zeta = res['title'], res['zeta']  # [0, 2pi)
-        data, alpha = res['field'], res['alpha']  # [0, 2pi]
+        title, data = res['title'], res['field']  # Y[0, 2pi], X[0, 2pi)
         q = self._get_q_psi()
         dlog.parm("q(ipsi=%d)=%f" % (self.ipsi, q))
-        pi2 = 2*np.pi
-        aM, aN = len(alpha), len(zeta)  # old grids
-        sep = round(aM*(1.0-1.0/q))  # q>=1
-        if sep == 0:
-            lastdata = data[:, 0]
-        else:
-            # !! seq is int, so tile zeta may have tiny problem
-            # !! TODO data interpolation at zeta=2pi
-            lastdata = np.append(data[-sep:, 0], data[:(aM-sep), 0])
-        data = np.append(data, np.array([lastdata]).T, axis=1)  # [0, 2pi]
-        zeta, aN = np.append(zeta, [pi2]), aN+1  # [0, 2pi]
+        aM, aN = data.shape
+        aN += 1
         iM, iN = kwargs.get('iM', aM), kwargs.get('iN', int(aM/q))
         if not (isinstance(iM, int) and iM > 0):
             iM = aM
@@ -379,24 +402,9 @@ class SnapshotFieldFluxThetaDigger(SnapshotFieldFluxAlphaDigger):
         acckwargs = dict(iM=iM, iN=iN, fielddir=fielddir)
         dlog.parm("aM=%d, aN=%d; iM=%d, iN=%d; fielddir=%d"
                   % (aM, aN, iM, iN, fielddir))
-        zeta2 = np.arange(0, iN) / (iN-1) * pi2
-        theta2 = np.arange(0, iM) / (iM-1) * pi2
-        res2 = np.zeros((iM, iN))
-        for ii, zdum in enumerate(zeta2):
-            i = max(0, min(int(zdum/pi2*(aN-1)), (aN - 2)))  # left
-            wz = zdum/(pi2/(aN-1)) - i
-            # print('i=', i, ', wz=', wz)
-            for jj, tdum in enumerate(theta2):
-                if (fielddir == 1 or fielddir == 3):
-                    adum = np.mod(tdum - (zdum-pi2)/q, pi2)
-                else:
-                    adum = np.mod(tdum - zdum/q, pi2)
-                j = max(0, min(int(adum/pi2*(aM-1)), (aM - 2)))  # lower
-                wt = adum/(pi2/(aM-1)) - j
-                # print('j=', j, ', wt=', wt)
-                res2[jj, ii] = (data[j, i+1]*(1-wt) + data[j+1, i+1]*wt)*wz \
-                    + (data[j, i]*(1-wt) + data[j+1, i]*wt)*(1-wz)
-        return dict(zeta=zeta2, theta=theta2, field=res2,
+        theta, zeta, res = _fluxdata_theta_interpolation(
+            data, q, iM, iN, fielddir)
+        return dict(zeta=zeta, theta=theta, field=res,
                     title=title.replace(r'(\alpha,', r'(\theta,')), acckwargs
 
     def _post_dig(self, results):

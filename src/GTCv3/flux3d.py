@@ -25,7 +25,8 @@ from .snapshot import (SnapshotFieldFluxAlphaDigger,
                        SnapshotFieldFluxThetaDigger,
                        SnapshotFieldFluxAlphaTileDigger,
                        SnapshotFieldFluxThetaTileDigger,
-                       SnapshotFieldFluxAlphaCorrLenDigger)
+                       SnapshotFieldFluxAlphaCorrLenDigger,
+                       _fluxdata_theta_interpolation)
 from .zetapsi3d import field_tex_str
 from .gtc import Ndigits_tstep
 from .. import tools
@@ -140,6 +141,30 @@ class Flux3DThetaDigger(Flux3DAlphaDigger, SnapshotFieldFluxThetaDigger):
     def _get_q_psi(self):
         '''Return q at ipsi.'''
         return self.pckloader.get('gtc/arr2')[self.ipsi-1, 2]
+
+
+def flux3d_theta_interpolation(loader, key, iM, iN, fielddir=0):
+    '''
+    Interpolation flux(alpha,zeta) -> flux(theta,zeta).
+    Return theta, zeta, flux(theta,zeta)
+
+    Parameters
+    ----------
+    loader: pckloader instance
+    key: str, flux3d field key
+    iM: int, interpolation grid points in theta
+    iN: int, interpolation grid points in zeta
+    fielddir: int, 0, 1, 2 or 3, magnetic field & current direction
+    '''
+    m = re.match(Flux3DAlphaDigger.itemspattern[0], key)
+    if not m:
+        dlog.error('Invalid flux3d key: %s! Example: flux3d\d+/phi-\d+' % key)
+        return
+    data = loader[key]
+    ipsi = int(m.groupdict()['ipsi'])
+    q = loader['gtc/arr2'][ipsi-1, 2]
+    dlog.info("Get q(ipsi=%d)=%f" % (ipsi, q))
+    return _fluxdata_theta_interpolation(data, q, iM, iN, fielddir)
 
 
 class Flux3DAlphaTileDigger(Flux3DAlphaDigger, SnapshotFieldFluxAlphaTileDigger):
