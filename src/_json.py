@@ -8,6 +8,7 @@ For jsonlines & json zipfile.
 '''
 
 import os
+import re
 import json
 import base64
 import numpy as np
@@ -47,6 +48,30 @@ def guess_json_strbytes(s):
         return base64.b64decode(s[7:-4])
     else:
         return s
+
+
+def dumps(obj, *, indent=None, indent_limit=None, cls=JsonEncoder, **kw):
+    '''
+    Call `json.dumps`. Add kwargs `indent_limit`.
+    Use class `JsonEncoder` which supports numpy.
+
+    Printed indent of object members will be eliminated,
+    if their indent level bigger than `indent_limit`.
+
+    ref: https://stackoverflow.com/a/72611442
+    '''
+    res = json.dumps(obj, indent=indent, cls=cls, **kw)
+    if indent and indent_limit:
+        pat = re.compile(f'\n(\s){{{indent_limit}}}((\s)+|(?=(}}|])))')
+        return pat.sub('', res)
+    else:
+        return res
+
+
+def dump(obj, fp, *, indent=None, indent_limit=None, cls=JsonEncoder, **kw):
+    ''' Call :fun:`dumps`, then save stream to ``fp`` (file-like object). '''
+    res = dumps(obj, indent=indent, indent_limit=indent_limit, cls=cls, **kw)
+    fp.write(res)
 
 
 def test_path_writable(path, overwrite):
@@ -392,18 +417,18 @@ class JsonZip(object):
             n = max(len(keys)//100, 10)
             keys = [keys[i:i + n] for i in range(0, len(keys), n)]
             for subkeys in keys:
-                #log.info("--- Record %d keys ---" % n)
+                # log.info("--- Record %d keys ---" % n)
                 try:
                     rcs = jl._get_raw_records(subkeys)
-                    #log.info("--- Get raw Done ---")
+                    # log.info("--- Get raw Done ---")
                     if redump:
                         rcs = [self._dumps(json.loads(rc)) for rc in rcs]
-                        #log.info("--- Re-dump Done ---Slow---")
+                        # log.info("--- Re-dump Done ---Slow---")
                     for k, rc in zip(subkeys, rcs):
                         z.writestr(k + '.json', rc.encode('utf-8'))
                         if k not in self.record_keys:
                             self.record_keys.append(k)
-                    #log.info("--- Write Done ---Slow---")
+                    # log.info("--- Write Done ---Slow---")
                 except Exception as e:
                     log.error("Failed to record %s in %s!" % (
                         subkeys, jl.path), exc_info=1)
