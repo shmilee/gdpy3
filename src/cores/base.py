@@ -7,6 +7,7 @@ Contains core base class.
 '''
 
 import re
+import time
 import types
 import functools
 
@@ -52,6 +53,8 @@ class BaseCore(object):
     def clsname(self):
         return type(self).__name__
 
+    match_cache = {}
+
     @classmethod
     def match_items(cls, all_items):
         '''
@@ -60,21 +63,38 @@ class BaseCore(object):
         After (S1, S2), (S1, S2.1) found, (S1) will join in all of them.
         '''
         res = {}
-        for pat in cls.itemspattern:
-            for it in all_items:
-                m = re.match(pat, it)
-                if m:
-                    sect = m.groups()
-                    if sect in res:
-                        res[sect].append(it)
-                    else:
-                        subkey = False
-                        for key in res.keys():
-                            if set(sect).issubset(set(key)):
-                                res[key].append(it)
-                                subkey = True
-                        if not subkey:
-                            res[sect] = [it]
+        match_tuple = (tuple(cls.itemspattern), tuple(all_items))
+        if match_tuple in cls.match_cache:
+            log.debug("%s: Using match-cache for %s"
+                      % (cls.__name__, cls.itemspattern))
+            return cls.match_cache[match_tuple]
+        start = time.time()
+        # first pat
+        pat = re.compile(cls.itemspattern[0])
+        for itm in filter(None, map(pat.match, all_items)):
+            sect, it = itm.groups(), itm.string
+            if sect in res:
+                res[sect].append(it)
+            else:
+                res[sect] = [it]
+        # others
+        for pat in map(re.compile, cls.itemspattern[1:]):
+            for itm in filter(None, map(pat.match, all_items)):
+                sect, it = itm.groups(), itm.string
+                if sect in res:
+                    res[sect].append(it)
+                else:
+                    subkey = False
+                    _issub = set(sect).issubset
+                    for key in filter(lambda k: _issub(set(k)), res.keys()):
+                        res[key].append(it)
+                        subkey = True
+                    if not subkey:
+                        res[sect] = [it]
+        cls.match_cache[match_tuple] = res
+        end = time.time()
+        log.debug("%s: %d items matched, costs %.1fs."
+                  % (cls.__name__, len(res), end-start))
         return res
 
     @classmethod
@@ -83,10 +103,8 @@ class BaseCore(object):
         Return items matched with :attr:`commonpattern` in list *all_items*.
         '''
         res = []
-        for pat in cls.commonpattern:
-            for it in all_items:
-                if re.match(pat, it):
-                    res.append(it)
+        for pat in map(re.compile, cls.commonpattern):
+            res.extend(filter(pat.match, all_items))
         return res
 
     @classmethod

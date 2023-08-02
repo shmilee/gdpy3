@@ -80,6 +80,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
     @classmethod
     def generate_cores(cls, pckloader):
         '''Return generated Core instances for *pckloader*.'''
+        start = time.time()
         dcss = super(Digger, cls).generate_cores(
             pckloader, pckloader.datakeys, duplicate=cls.numseeds)
         res = []
@@ -100,10 +101,14 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
                     if dc.__second_init__():
                         res.append(dc)
                         figlabels.append(dc.figlabel)
+        end = time.time()
         if res:
-            dlog.debug("%s: loader, %s; %d figlabels, %s."
-                       % (res[0].clsname, pckloader.path,
-                          len(figlabels), figlabels))
+            clsname, N = res[0].clsname, len(figlabels)
+            dlog.debug("%s: loader, %s; %d figlabels, cost %.1fs."
+                       % (clsname, pckloader.path, N, end-start))
+            if N > 64:
+                figlabels = figlabels[:32] + ['... ...'] + figlabels[-32:]
+            dlog.debug("%s: %d figlabels, %s." % (clsname, N, figlabels))
         return res
 
     def __second_init__(self, numseed=None):
