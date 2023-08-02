@@ -132,6 +132,20 @@ def getGLogger(name):
     return logging.getLogger(name)
 
 
+def setConsoleLevel(level):
+    '''
+    Set the logging level of 'console' handler for all loggers.
+    '''
+    names = ''.join(glogger_config_main['loggers'].keys())
+    for name in names[0]:  # all loggers share the same console handler!
+        log = getGLogger(name)
+        for handler in log.handlers:
+            if handler.name == 'console':
+                handler.setLevel(level)
+                print('Set console: %s' % handler)
+                break
+
+
 logging.setLoggerClass(GLogger)
 logging.config.dictConfig(glogger_config_main)
 
