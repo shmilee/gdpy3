@@ -118,31 +118,50 @@ field_tex_str = {
 
 class ZetaPsi3DDigger(Digger):
     '''field(zeta,psi) at theta=j/mtdiag*2pi'''
-    __slots__ = ['field', '_part', 'theta', 'timestr']
+    __slots__ = ['field', '_deg', '_rad', 'thetastr', 'timestr']
     nitems = '+'
     itemspattern = ['^(?P<section>zp3d\d{5})/(?P<field>(?:phi|apara|fluidne|densityi'
-                    + '|temperi|densitye|tempere|densityf|temperf))-(?P<j>\d+)',
-                    '^(?P<section>zp3d\d{5})/j_list']
-    commonpattern = ['gtc/tstep', 'gtc/arr2', 'gtc/a_minor', 'gtc/mtdiag']
+                    + '|temperi|densitye|tempere|densityf|temperf))-(?P<j>\d+)']
+    commonpattern = ['gtc/tstep', 'gtc/arr2', 'gtc/a_minor', 'gtc/mtdiag',
+                     '^(?P<section>zp3d\d{5})/j_list']
     post_template = 'tmpl_contourf'
 
     def _set_fignum(self, numseed=None):
-        j_list = self.pckloader.get(self.srckeys[1])
         self.field = self.section[1]
         j = int(self.section[2])
-        assert j in j_list
-        self._part = j / self.pckloader.get('gtc/mtdiag')
-        self._fignum = '%s-%03d' % (self.field, round(self._part*360))
-        self.theta = r'$\theta=%.3f=%g^\circ$' % (
-            round(self._part*2*np.pi, ndigits=3), self._part*360)
+        self._deg, self._rad,  self.thetastr = self._get_deg_rad_thetastr(j)
+        self._fignum = '%s_%03d' % (self.field, round(self._deg))
         self.timestr = self._get_timestr()
         self.kwoptions = None
 
+    _deg_rad_thetastr_timestr_cache = {}
+
+    def _get_deg_rad_thetastr(self, j):
+        ''' Return deg, rad, thetastr '''
+        cache_key = (self.pckloader, j, 'deg&rad&thetastr')
+        if cache_key not in self._deg_rad_thetastr_timestr_cache:
+            k = self.pckloader.refind(self.commonpattern[-1])[0]
+            j_list = self.pckloader.get(k)
+            assert j in j_list
+            mtdiag = self.pckloader.get('gtc/mtdiag')
+            for _j in j_list:  # cache all
+                part = _j / mtdiag
+                deg, rad = part*360, part*2*np.pi
+                s1 = r'$\theta=%.3f=%g^\circ$' % (round(rad, ndigits=3), deg)
+                _ckey = (self.pckloader, _j, 'deg&rad&thetastr')
+                self._deg_rad_thetastr_timestr_cache[_ckey] = (deg, rad, s1)
+        return self._deg_rad_thetastr_timestr_cache[cache_key]
+
     def _get_timestr(self):
-        istep = int(re.match('.*zp3d(\d{5,7}).*', self.group).groups()[0])
-        tstep = self.pckloader.get('gtc/tstep')
-        time = round(istep * tstep, Ndigits_tstep)
-        return r'istep=%d, time=%s$R_0/c_s$' % (istep, time)
+        ''' Return time, timestr '''
+        cache_key = (self.pckloader, self.group, 'time&timestr')
+        if cache_key not in self._deg_rad_thetastr_timestr_cache:
+            istep = int(re.match('.*zp3d(\d{5,7}).*', self.group).groups()[0])
+            tstep = self.pckloader.get('gtc/tstep')
+            time = round(istep * tstep, Ndigits_tstep)
+            s2 = r'istep=%d, time=%s$R_0/c_s$' % (istep, time)
+            self._deg_rad_thetastr_timestr_cache[cache_key] = (time, s2)
+        return self._deg_rad_thetastr_timestr_cache[cache_key]
 
     def _dig(self, kwargs):
         '''
@@ -172,12 +191,12 @@ class ZetaPsi3DDigger(Digger):
                 dlog.warning("Cannot use r/a!", exc_info=1)
             else:
                 title = r'$%s(\zeta,r)$, %s, %s' % (
-                    fstr, self.theta, self.timestr)
+                    fstr, self.thetastr, self.timestr)
                 xlabel = r'$r/a$'
                 acckwargs = dict(use_ra=True)
         else:
             title = r'$%s(\zeta,\psi)$, %s, %s' % (
-                fstr, self.theta, self.timestr)
+                fstr, self.thetastr, self.timestr)
             xlabel = r'$\psi$(mpsi)'
             acckwargs = dict(use_ra=False)
             X = np.arange(0, x)
@@ -199,7 +218,7 @@ class ZetaPsi3DCorrLenDigger(BreakDigDoc, ZetaPsi3DDigger):
 
     def _set_fignum(self, numseed=None):
         super(ZetaPsi3DCorrLenDigger, self)._set_fignum(numseed=numseed)
-        self._fignum = '%s_%03d_corrlen' % (self.field, round(self._part*360))
+        self._fignum = '%s_%03d_corrlen' % (self.field, round(self._deg))
         self.kwoptions = None
 
     def _dig(self, kwargs):
@@ -279,13 +298,13 @@ class ZetaPsi3DCorrLenDigger(BreakDigDoc, ZetaPsi3DDigger):
         if use_ra:
             # print(rr, rr.size, Z.shape, step_x)
             title1 = r'Correlation $%s(\Delta\zeta,\Delta r)$, %s, %s' % (
-                fstr, self.theta, self.timestr)
+                fstr, self.thetastr, self.timestr)
             xlabel = r'$\Delta r/a$'
             tau, vdz, X = tools.correlation(
                 Z, 0, y, 0, x, mdzeta, mdpsi, ruler_c=rr)
         else:
             title1 = r'Correlation $%s(\Delta\zeta,\Delta\psi)$, %s, %s' % (
-                fstr, self.theta, self.timestr)
+                fstr, self.thetastr, self.timestr)
             xlabel = r'$\Delta\psi(mpsi)$'
             tau, vdz, vdp = tools.correlation(Z, 0, y, 0, x, mdzeta, mdpsi)
             X = Xpsi
@@ -374,23 +393,18 @@ class ZetaPsi3DCorrLenDigger(BreakDigDoc, ZetaPsi3DDigger):
 
 class ZetaPsi3DFieldnDigger(ZetaPsi3DDigger, SnapshotFieldmDigger):
     '''profile of field_n'''
-    __slots__ = ['_part']
+    __slots__ = []
     nitems = '+'
-    itemspattern = ['^(?P<section>zp3d\d{5})/(?P<field>(?:phi|apara|fluidne|densityi'
-                    + '|temperi|densitye|tempere|densityf|temperf))-(?P<j>\d+)',
-                    '^(?P<section>zp3d\d{5})/j_list']
     commonpattern = ['gtc/tstep', 'gtc/arr2', 'gtc/a_minor', 'gtc/mpsi']
     post_template = 'tmpl_line'
 
     def _set_fignum(self, numseed=None):
         super(ZetaPsi3DFieldnDigger, self)._set_fignum(numseed=numseed)
-        self._fignum = '%s_%03d_n' % (self.field, round(self._part*360))
+        self._fignum = '%s_%03d_n' % (self.field, round(self._deg))
         self.kwoptions = None
 
     def _dig(self, kwargs):
-        theta = r'$\theta=%.2f=%g^\circ$' % (
-            round(self._part*2*np.pi, ndigits=2), self._part*360)
-        data, j_list, dt, arr2, a, mpsi = self.pckloader.get_many(
+        data, dt, arr2, a, mpsi = self.pckloader.get_many(
             *self.srckeys, *self.common)
         mpsi1 = mpsi + 1
         Lz, Lr = data.shape
@@ -413,7 +427,7 @@ class ZetaPsi3DFieldnDigger(ZetaPsi3DDigger, SnapshotFieldmDigger):
             envY=envY, envXp=envXp, envYp=envYp,
             envXmax=envXmax, envYmax=envYmax,
             title=r'$\left|%s,_n(r)\right|$, %s, %s' % (
-                fstr, theta, self.timestr)
+                fstr, self.thetastr, self.timestr)
         ), acckwargs
 
     def _post_dig(self, results):
@@ -477,7 +491,7 @@ class ZetaPsi3DFieldnkzetaDigger(BreakDigDoc, ZetaPsi3DFieldnDigger):
         n2_r = np.array([np.average(n**order, weights=fieldn[:, i]**order)
                          for i in range(rr.size)])
         mean_n = np.power(n2_r, 1.0/order)
-        kzrho0 = mean_n/(1+rr*a*np.cos(self._part*2*np.pi))*rho0
+        kzrho0 = mean_n/(1+rr*a*np.cos(self._rad))*rho0
         dlog.parm("at r=0.5a, mean n=%.1f." % mean_n[rr.size//2])
         if 'n_max' not in self.kwoptions:
             self.kwoptions['n_max'] = dict(widget='IntSlider',
