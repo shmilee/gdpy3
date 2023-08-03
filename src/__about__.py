@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2018-2022 shmilee
+# Copyright (c) 2018-2023 shmilee
 
 import os
 import sys
 
-VERSION = (0, 8, 1)
+VERSION = (0, 8, 3)
 
 __description__ = "Gyrokinetic Toroidal Code Data Processing tools written in python3"
 __url__ = "https://github.com/shmilee/gdpy3.git"
