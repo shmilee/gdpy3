@@ -114,6 +114,13 @@ class Flux3DAlphaDigger(SnapshotFieldFluxAlphaDigger):
         '^(?P<section>flux3da*\d{5,7})/(?P<field>(?:phi|apara|fluidne|densityi'
         + '|temperi|densitye|tempere|densityf|temperf))-(?P<ipsi>\d+)']
 
+    def _set_group(self):
+        '''Set :attr:`group`, 'flux3da(\d{5,7})' -> 'flux3d(\d{5,7})' .'''
+        if 'flux3da' in self.section[0]:
+            self._group = self.section[0].replace('flux3da', 'flux3d')
+        else:
+            self._group = self.section[0]
+
     def _set_fignum(self, numseed=None):
         self.ipsi = int(self.section[-1])
         self._fignum = '%s_%03da' % (self.section[1], self.ipsi)
