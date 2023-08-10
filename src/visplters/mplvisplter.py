@@ -567,7 +567,7 @@ class MatplotlibVisplter(BaseVisplter):
                                  (ln[0], ln[1], ln[2]), dict(label=ln[3])])
                     addlegend = True
                 elif len(ln) == 3:
-                    data.append([i, 'plot', (ln[0], ln[1], ln[2]), {}])
+                    data.append([i, 'plot3D', (ln[0], ln[1], ln[2]), {}])
             if scale_xyz:
                 i += 1
                 data.append([i, 'auto_scale_xyz', scale_xyz, dict()])
