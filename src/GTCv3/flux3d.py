@@ -149,32 +149,19 @@ class Flux3DThetaDigger(Flux3DAlphaDigger, SnapshotFieldFluxThetaDigger):
         return self.pckloader.get('gtc/arr2')[self.ipsi-1, 2]
 
 
-def flux3d_theta_interpolation(loader, key, iM, iN, fielddir=0):
+def _flux3d_interpolate_worker(i, total, data, q, iM, iN, fielddir):
     '''
-    Interpolation flux(alpha,zeta) -> flux(theta,zeta).
-    Return theta, zeta, flux(theta,zeta)
-
-    Parameters
-    ----------
-    loader: pckloader instance
-    key: str, flux3d field key
-    iM: int, interpolation grid points in theta
-    iN: int, interpolation grid points in zeta
-    fielddir: int, 0, 1, 2 or 3, magnetic field & current direction
+    Interpolate flux(alpha,zeta) -> flux(theta,zeta). Return flux(theta,zeta)
     '''
-    m = re.match(Flux3DAlphaDigger.itemspattern[0], key)
-    if not m:
-        dlog.error('Invalid flux3d key: %s! Example: flux3d\d+/phi-\d+' % key)
-        return
-    data = loader[key]
-    ipsi = int(m.groupdict()['ipsi'])
-    q = loader['gtc/arr2'][ipsi-1, 2]
-    dlog.info("Get q(ipsi=%d)=%f" % (ipsi, q))
-    return _fluxdata_theta_interpolation(data, q, iM, iN, fielddir)
+    logstep = max(1, round(total/20))
+    res = _fluxdata_theta_interpolation(data, q, iM, iN, fielddir)[2]
+    if (i+1) % logstep == 0 or i == 0 or i+1 == total:
+        dlog.info("Interpolation %d/%d, done." % (i+1, total))
+    return res
 
 
-def flux3d_interpolate_stack(loader, saver, iM, iN, field='phi', fielddir=0,
-                             dry=False):
+def flux3d_interpolate_stack(loader, iM, iN, field, fielddir=0,
+                             saver=None, dry=False):
     '''
     Interpolate of flux(alpha,zeta) -> flux(theta,zeta), then stack 2-D array
     into a 4-D array flux(time,psi,theta,zeta).
@@ -183,19 +170,15 @@ def flux3d_interpolate_stack(loader, saver, iM, iN, field='phi', fielddir=0,
     Parameters
     ----------
     loader: pckloader instance
-    saver: pcksaver instance
     iM: int, interpolation grid points in theta
     iN: int, interpolation grid points in zeta
     field: str, phi|apara|fluidne|densityi|temperi|densitye etc.
     fielddir: int, 0, 1, 2 or 3, magnetic field & current direction
+    saver: pcksaver instance
     dry: bool, dry run, show array info then return
     '''
     import multiprocessing
     from ..savers import is_pcksaver
-
-    if not is_pcksaver(saver):
-        dlog.error('Invalid pcksaver instance!')
-        return
 
     _pat = re.compile('^flux3da*\d{5,7}/%s-(?P<ipsi>\d+)' % field)
     keys = loader.refind(_pat)
@@ -221,33 +204,40 @@ def flux3d_interpolate_stack(loader, saver, iM, iN, field='phi', fielddir=0,
     shape = (len(steps), len(psis), iM, iN)
     size = len(steps)*len(psis)*iM*iN*4/1024/1024  # MB
     if dry:
-        print('=> 4-D array shape: %s, size=%.1fMB' % (shape, size))
+        print('=> %s 4-D array shape: %s, size=%.1fMB' % (field, shape, size))
         print('=> steps found(%d): %s ... ... %s'
-              % (len(steps), steps[:10], steps[-10:]))
-        print('=> psis found: %s' % psis)
+              % (len(steps), steps[:5], steps[-5:]))
+        print('=> psis found(%d): %s ... ... %s' %
+              (len(psis), psis[:5], psis[-5:]))
         return
+    if not is_pcksaver(saver):
+        dlog.error('Invalid pcksaver instance!')
+        return
+
     f4d_arr = np.zeros(shape, dtype=np.float32)
     ncpu = multiprocessing.cpu_count()
-
-    def worker(i, data, q):
-        dlog.info("Interpolation of step=%s, time=%f" % (steps[i], time[i]))
-        return _fluxdata_theta_interpolation(data, q, iM, iN, fielddir)[2]
-
     for i in range(len(psis)):
-        dlog.info("Get raw-data of ipsi=%s, q=%f" % (psis[i], qs[i]))
+        dlog.info("Getting raw-data of %s(ipsi=%s), q=%f" %
+                  (field, psis[i], qs[i]))
         rawdata = loader.get_many(*keys[:, i])
+        total = len(rawdata)
         with multiprocessing.Pool(processes=ncpu) as pool:
-            results = [pool.apply_async(worker, (idx, rawdata[idx], qs[i]))
-                       for idx in range(len(rawdata))]
+            results = [
+                pool.apply_async(
+                    _flux3d_interpolate_worker,
+                    (idx, total, rawdata[idx], qs[i], iM, iN, fielddir)
+                ) for idx in range(total)
+            ]
             pool.close()
             pool.join()
         dlog.info("Set interpolate-data of ipsi=%s, q=%f" % (psis[i], qs[i]))
         # tmp(time, psi=i, theta, zeta)
         tmp = [res.get() for res in results]
         f4d_arr[:, i, :, :] = tmp
-
+        loader.clear_cache()
     with saver:
-        dlog.info("Writing interpolate-data(size=%.1fMB) ..." % size)
+        dlog.info("Writing interpolate-data(size=%.1fMB) of %s ..." %
+                  (field, size))
         saver.write('/', {
             field: f4d_arr,
             'time': time,
