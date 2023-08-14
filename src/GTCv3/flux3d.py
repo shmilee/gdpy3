@@ -26,6 +26,7 @@ from .snapshot import (SnapshotFieldFluxAlphaDigger,
                        SnapshotFieldFluxAlphaTileDigger,
                        SnapshotFieldFluxThetaTileDigger,
                        SnapshotFieldFluxAlphaCorrLenDigger,
+                       _snap_get_timestr,
                        _fluxdata_theta_interpolation)
 from .zetapsi3d import field_tex_str
 from .gtc import Ndigits_tstep
@@ -126,10 +127,8 @@ class Flux3DAlphaDigger(SnapshotFieldFluxAlphaDigger):
         self._fignum = '%s_%03da' % (self.section[1], self.ipsi)
 
     def _get_timestr(self):
-        istep = int(re.match('.*flux3da*(\d{5,7}).*', self.group).groups()[0])
-        tstep = self.pckloader.get('gtc/tstep')
-        time = round(istep * tstep, Ndigits_tstep)
-        return r'istep=%d, time=%s$R_0/c_s$' % (istep, time)
+        return _snap_get_timestr(self.group, self.pckloader,
+                                 pat=r'.*flux3da*(\d{5,7}).*')
 
     def _get_fieldstr(self):
         return field_tex_str[self.section[1]]
@@ -207,3 +206,19 @@ class Flux3DAlphaCorrLenDigger(Flux3DAlphaTileDigger, SnapshotFieldFluxAlphaCorr
         self.ipsi = int(self.section[-1])
         self._fignum = '%s_%03da_corrlen' % (self.section[1], self.ipsi)
         self.kwoptions = None
+
+
+class Flux3DAlphaKthetaOmegaDigger(Flux3DAlphaDigger):  #TODO
+    '''phi(ktheta,omega), a_para etc. on every flux surface.'''
+    __slots__ = []
+    itemspattern = [
+        '^(?P<section>flux3da*\d{5,7})/(?P<field>(?:phi|apara|fluidne|densityi'
+        + '|temperi|densitye|tempere|densityf|temperf))-(?P<ipsi>\d+)']
+
+    def _set_group(self):
+        '''Set :attr:`group`, 'flux3da(\d{5,7})' -> 'flux3d(\d{5,7})' .'''
+        if 'flux3da' in self.section[0]:
+            self._group = self.section[0].replace('flux3da', 'flux3d')
+        else:
+            self._group = self.section[0]
+

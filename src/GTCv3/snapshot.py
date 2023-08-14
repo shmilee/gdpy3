@@ -46,6 +46,8 @@ _all_Diggers = [
     'SnapshotFieldFluxAlphaTileDigger', 'SnapshotFieldFluxThetaTileDigger',
     'SnapshotFieldFluxAlphaCorrLenDigger', 'SnapshotFieldPoloidalDigger',
     'SnapshotFieldSpectrumDigger', 'SnapshotTimeFieldSpectrumDigger',
+    'SnapshotTimeFieldFluxDigger', 'SnapshotTimeFieldPoloidalDigger',
+    'SnapshotTimeFieldFluxFFTDigger',
     'SnapshotFieldProfileDigger',
     'SnapshotFieldmDigger', 'SnapshotFieldmkthetaDigger']
 __all__ = _all_Converters + _all_Diggers
@@ -167,10 +169,15 @@ class SnapshotConverter(Converter):
         return sd
 
 
-def _snap_get_timestr(snapgroup, pckloader):
-    istep = int(re.match('.*snap(\d{5,7}).*', snapgroup).groups()[0])
-    tstep = pckloader.get('gtc/tstep')
+def _snap_get_time(snapgroup, pckloader, pat=None, tstep=None):
+    istep = int(re.match(pat or r'.*snap(\d{5,7}).*', snapgroup).groups()[0])
+    tstep = tstep or pckloader.get('gtc/tstep')
     time = round(istep * tstep, Ndigits_tstep)
+    return istep, time
+
+
+def _snap_get_timestr(snapgroup, pckloader, pat=None, tstep=None):
+    istep, time = _snap_get_time(snapgroup, pckloader, pat=pat, tstep=tstep)
     return r'istep=%d, time=%s$R_0/c_s$' % (istep, time)
 
 
@@ -819,6 +826,40 @@ class SnapshotFieldSpectrumDigger(Digger):
         ], suptitle=r'%s, m=%d, p=%d' % (r['title'], r['m'], r['p']))
 
 
+def _snaptime_fluxdata_tcutoff(fluxdatakeys, pckloader,
+                               kwoptions, kwargs, acckwargs):
+    '''Return time, cut index, set kwoptions, acckwargs '''
+    tstep = pckloader.get('gtc/tstep')
+    time = [_snap_get_time(k.split('/')[0], pckloader, tstep=tstep)[1]
+            for k in fluxdatakeys]
+    time = np.around(np.array(time), 5)
+    dt = time[-1] - time[-2]
+    if 'tcutoff' not in kwoptions:
+        kwoptions['tcutoff'] = dict(
+            widget='FloatRangeSlider',
+            rangee=[time[0], time[-1], dt],
+            value=[time[0], time[-1]],
+            description='time cutoff:')
+    acckwargs['tcutoff'] = [time[0], time[-1]]
+    i0, i1 = 0, time.size
+    if 'tcutoff' in kwargs:
+        t0, t1 = kwargs['tcutoff']
+        idx = np.where((time >= t0) & (time < t1 + dt))[0]
+        if idx.size > 0:
+            i0, i1 = idx[0], idx[-1]+1
+            acckwargs['tcutoff'] = [time[i0], time[i1-1]]
+            time = time[i0:i1]
+        else:
+            dlog.warning('Cannot cutoff: %s <= time <= %s!' % (t0, t1))
+    if len(time) < 3:
+        dlog.error("Less than 3 fluxdata!")
+        return None, 0, 0, 0
+    else:
+        dlog.info('%d fluxdata to do ...' % (i1 - i0))
+        _idxlog = max(1, (i1 - i0) // 10)
+        return time, i0, i1, _idxlog
+
+
 class SnapshotTimeFieldSpectrumDigger(SnapshotFieldSpectrumDigger):
     '''field or density poloidal and parallel spectra as time varied.'''
     __slots__ = []
@@ -841,42 +882,17 @@ class SnapshotTimeFieldSpectrumDigger(SnapshotFieldSpectrumDigger):
         acckwargs = self._set_params(kwargs, mtgrid, mtoroidal)
         mmode, pmode = acckwargs['mmode'], acckwargs['pmode']
         X1, X2 = np.arange(1, mmode + 1), np.arange(1, pmode + 1)
-        # rm first item in fluxdata
-        all_fluxdata = self.pckloader.get_many(*self.srckeys[1:index])
-        tstep = self.pckloader.get('gtc/tstep')
-        tstep = round(tstep, Ndigits_tstep)
-        time = [self.srckeys[idx].split('/')[0] for idx in range(index)]
-        time = np.around(np.array(  # rm first item in time
-            [int(t.replace('snap', '')) * tstep for t in time[1:]]), 5)
-        if len(time) < 2:
-            dlog.error("Less than 3 snapshots!")
+        time, i0, i1, _idxlog = _snaptime_fluxdata_tcutoff(
+            self.srckeys[:index], self.pckloader,
+            self.kwoptions, kwargs, acckwargs)
+        if time is None:
             return {}, {}
-        dt = time[-1] - time[-2]
-        if 'tcutoff' not in self.kwoptions:
-            self.kwoptions['tcutoff'] = dict(
-                widget='FloatRangeSlider',
-                rangee=[time[0], time[-1], dt],
-                value=[time[0], time[-1]],
-                description='time cutoff:')
-        acckwargs['tcutoff'] = [time[0], time[-1]]
-        i0, i1 = 0, time.size
-        if 'tcutoff' in kwargs:
-            t0, t1 = kwargs['tcutoff']
-            idx = np.where((time >= t0) & (time < t1 + dt))[0]
-            if idx.size > 0:
-                i0, i1 = idx[0], idx[-1]+1
-                acckwargs['tcutoff'] = [time[i0], time[i1-1]]
-                time = time[i0:i1]
-            else:
-                dlog.warning('Cannot cutoff: %s <= time <= %s!' % (t0, t1))
         YT1, YT2, mY, pY = [], [], [], []
-        dlog.info('%d snapshot fluxdata to do ...' % (i1 - i0))
-        _idxlog = max(1, (i1 - i0) // 10)
         for idx in range(i0, i1):
             if idx % _idxlog == 0 or idx == i1 - 1:
                 dlog.info('Calculating [%d/%d] %s' % (
                     idx+1-i0, i1 - i0, self.srckeys[idx]))
-            fluxdata = all_fluxdata[idx]
+            fluxdata = self.pckloader.get(self.srckeys[idx])
             if fluxdata.shape != (mtgrid1, mtoroidal):
                 dlog.error("Invalid fluxdata shape!")
                 return {}, {}
@@ -912,6 +928,218 @@ class SnapshotTimeFieldSpectrumDigger(SnapshotFieldSpectrumDigger):
             ('tmpl_contourf', 212, ax2_calc),
             ('tmpl_line', 212, dict(LINE=[(r['time'], r['pY'], 'max n')])),
         ])
+
+
+class SnapshotTimeFieldFluxDigger(Digger):
+    '''phi(alpha, time), a_para, fluidne, or densityi,e of mpis//2 flux.'''
+    __slots__ = ['ipsi']
+    nitems = '+'
+    itemspattern = [
+        '^(?P<section>snap)\d{5,7}'
+        + '/fluxdata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))$']
+    commonpattern = ['gtc/mpsi', 'gtc/tstep', 'gtc/mtoroidal']
+    post_template = 'tmpl_contourf'
+
+    def _set_fignum(self, numseed=None):
+        self._fignum = '%s_fluxa_time' % self.section[1]
+        self.ipsi = self.pckloader.get('gtc/mpsi') // 2
+        self.kwoptions = None
+
+    def _dig(self, kwargs):
+        '''
+        kwargs
+        ------
+        *izeta*: int, 0-mtoroidal-1
+            which zeta, default 0
+        *tcutoff*: [t0,t1], t0 t1 float
+            t0<=time[x0:x1]<=t1
+        '''
+        mtoroidal = self.pckloader.get('gtc/mtoroidal')
+        izeta = kwargs.get('izeta', 0)
+        if not isinstance(izeta, int):
+            izeta = 0
+        izeta = min(max(0, izeta), mtoroidal-1)
+        dlog.parm("toroidal izeta=%s" % izeta)
+        acckwargs = dict(izeta=izeta)
+        if self.kwoptions is None:
+            self.kwoptions = dict(
+                izeta=dict(widget='IntSlider',
+                           rangee=(0, mtoroidal-1, 1),
+                           value=izeta,
+                           description='izeta:'))
+        time, i0, i1, _idxlog = _snaptime_fluxdata_tcutoff(
+            self.srckeys, self.pckloader,
+            self.kwoptions, kwargs, acckwargs)
+        if time is None:
+            return {}, {}
+        data = []
+        for idx in range(i0, i1):
+            if idx % _idxlog == 0 or idx == i1 - 1:
+                dlog.info('Collecting [%d/%d] %s' % (
+                    idx+1-i0, i1 - i0, self.srckeys[idx]))
+            fluxdata = self.pckloader.get(self.srckeys[idx])
+            data.append(fluxdata[:, izeta])
+        data = np.array(data).T  # (alpha, time)
+        y = data.shape[0]
+        alpha = np.arange(0, y) / (y-1) * 2 * np.pi  # [0,2pi]
+        fstr = field_tex_str[self.section[1]]
+        pos = 'izeta=%d, ipsi=%d' % (izeta, self.ipsi)
+        title = r'$%s(\alpha, t)$ at %s' % (fstr, pos)
+        return dict(X=time, Y=alpha, Z=data, title=title, fstr=fstr,
+                    ylabel=r'$\alpha$', xlabel=r'time($R_0/c_s$)'), acckwargs
+
+    def _post_dig(self, results):
+        return results
+
+
+class SnapshotTimeFieldPoloidalDigger(Digger):
+    '''phi(theta, time), a_para, fluidne, or densityi,e at zeta=0.'''
+    __slots__ = []
+    nitems = '+'
+    itemspattern = [
+        '^(?P<section>snap)\d{5,7}'
+        + '/poloidata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))']
+    commonpattern = ['gtc/mpsi', 'gtc/tstep']
+    post_template = 'tmpl_contourf'
+
+    def _set_fignum(self, numseed=None):
+        self._fignum = '%s_poloi_time' % self.section[1]
+        self.kwoptions = None
+
+    def _dig(self, kwargs):
+        '''
+        kwargs
+        ------
+        *ipsi*: int, 0-mpsi
+            which psi, default mpsi//2
+        *tcutoff*: [t0,t1], t0 t1 float
+            t0<=time[x0:x1]<=t1
+        '''
+        mpsi = self.pckloader.get('gtc/mpsi')
+        ipsi = kwargs.get('ipsi', mpsi//2)
+        if not isinstance(ipsi, int):
+            izeta = mpsi//2
+        izeta = min(max(0, ipsi), mpsi)
+        dlog.parm("ipsi=%s" % ipsi)
+        acckwargs = dict(ipsi=ipsi)
+        if self.kwoptions is None:
+            self.kwoptions = dict(
+                ipsi=dict(widget='IntSlider',
+                          rangee=(0, mpsi, 1),
+                          value=ipsi,
+                          description='ipsi:'))
+        time, i0, i1, _idxlog = _snaptime_fluxdata_tcutoff(
+            self.srckeys, self.pckloader,
+            self.kwoptions, kwargs, acckwargs)
+        if time is None:
+            return {}, {}
+        data = []
+        for idx in range(i0, i1):
+            if idx % _idxlog == 0 or idx == i1 - 1:
+                dlog.info('Collecting [%d/%d] %s' % (
+                    idx+1-i0, i1 - i0, self.srckeys[idx]))
+            poloidata = self.pckloader.get(self.srckeys[idx])
+            data.append(poloidata[:, ipsi])
+        data = np.array(data).T  # (theta, time)
+        y = data.shape[0]
+        theta = np.arange(0, y) / (y-1) * 2 * np.pi  # [0,2pi]
+        fstr = field_tex_str[self.section[1]]
+        pos = 'izeta=%d, ipsi=%d' % (0, ipsi)
+        title = r'$%s(\theta, t)$ at %s' % (fstr, pos)
+        return dict(X=time, Y=theta, Z=data, title=title, fstr=fstr,
+                    ylabel=r'$\theta$', xlabel=r'time($R_0/c_s$)'), acckwargs
+
+    def _post_dig(self, results):
+        return results
+
+
+def _snaptime_field_fft2(data, theta, time, kwoptions, kwargs, acckwargs):
+    '''data(theta, time), kwargs[fft_tselect]: [t0,t1], t0 float '''
+    difftime = np.diff(time)
+    dt, stdt = np.mean(difftime), np.std(difftime)
+    if stdt != 0:
+        dlog.warn("Snap step time (%f, +-%f) is not a constant!" % (dt, stdt))
+    # fft_tselect
+    tcutoff = acckwargs['tcutoff']
+    fft_tselect = kwargs.get('fft_tselect', tcutoff)
+    if 'fft_tselect' not in kwoptions:
+        kwoptions.update(fft_tselect=dict(
+            widget='FloatRangeSlider',
+            rangee=kwoptions['tcutoff']['rangee'].copy(),
+            value=kwoptions['tcutoff']['value'].copy(),
+            description='FFT time select:'))
+    it0, it1 = 0, time.size
+    acckwargs['fft_tselect'] = tcutoff
+    if (fft_tselect != tcutoff
+            and fft_tselect[0] >= tcutoff[0]
+            and fft_tselect[1] <= tcutoff[1]):
+        s0, s1 = fft_tselect
+        index = np.where((time >= s0) & (time <= s1))[0]
+        if index.size > 0:
+            it0, it1 = index[0], index[-1]+1
+            acckwargs['fft_tselect'] = [time[it0], time[it1-1]]
+        else:
+            dlog.warning("Can't select: %s <= fft time <= %s!" % (s0, s1))
+    # select FFT data
+    if (it0, it1) == (0, time.size):
+        select_data, select_time = data, None
+    else:
+        select_data = data[:, it0:it1]
+        select_time = time[[it0, it1-1]]
+    dtheta = np.diff(theta).mean()*0.1801275 #TODO
+    tf, yf, af, pf = tools.fft2(dt, dtheta, select_data)
+    return select_data, select_time, tf, yf, pf
+
+
+class SnapshotTimeFieldFluxFFTDigger(SnapshotTimeFieldFluxDigger):
+    '''phi(ktheta,omega), a_para, fluidne, or densityi,e of mpis//2 flux.'''
+    __slots__ = []
+    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
+
+    def _set_fignum(self, numseed=None):
+        super()._set_fignum(numseed=numseed)
+        self._fignum = '%s_fft' % self._fignum
+
+    def _dig(self, kwargs):
+        '''*fft_tselect*: [t0,t1], t0 float
+            time[x0:x1], data[:,x0:x1] where t0<=time[x0:x1]<=t1
+        '''
+        results, acckwargs = super()._dig(kwargs)
+        time, alpha, data = results['X'], results['Y'], results['Z']
+        select_data, select_time, tf, yf, pf = _snaptime_field_fft2(
+            data, alpha, time, self.kwoptions, kwargs, acckwargs)
+        results.update(
+            select_time=select_time, tf=tf, yf=yf, pf=pf,
+            tf_label=r'$\omega$($c_s/R_0$)', yf_label=r'$k_{\theta}$')
+        return results, acckwargs
+
+    def _post_dig(self, results):
+        r = results
+        zip_results = [('tmpl_contourf', 221, dict(
+            X=r['X'], Y=r['Y'], Z=r['Z'], title=r['title'],
+            xlabel=r'time($R_0/c_s$)', ylabel=r'$\alpha$'))]
+        if r['select_time'] is not None:
+            t0, t1 = r['select_time']
+            y0, y1 = r['Y'][0], r['Y'][-1]
+            l_t, l_y = [t0, t1, t1, t0, t0], [y0, y0, y1, y1, y0]
+            zip_results.append(
+                ('tmpl_line', 221, dict(LINE=[(l_t, l_y, 'FFT region')])))
+        title2 = r'FFT of $%s$' % r['fstr']
+        zip_results.append(
+            ('tmpl_contourf', 222, dict(
+                X=r['tf'], Y=r['yf'], Z=r['pf'], title=title2,
+                xlabel=r['tf_label'], ylabel=r['yf_label'])))
+        # 3, 4
+        my, mt = r['pf'].shape
+        pf_tlist, pf_ylist = range(mt), range(my)
+        tf_hf, yf_hf = r['tf'].size//2, r['yf'].size//2
+        LINEt = [(r['tf'][tf_hf:], r['pf'][j, tf_hf:]) for j in pf_ylist]
+        LINEy = [(r['yf'][yf_hf:], r['pf'][yf_hf:, j]) for j in pf_tlist]
+        zip_results.extend([
+            ('tmpl_line', 223, dict(LINE=LINEt, xlabel=r['tf_label'])),
+            ('tmpl_line', 224, dict(LINE=LINEy, xlabel=r['yf_label'])),
+        ])
+        return dict(zip_results=zip_results)
 
 
 class SnapshotFieldProfileDigger(Digger):
