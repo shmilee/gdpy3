@@ -153,7 +153,7 @@ def _flux3d_interpolate_worker(i, total, data, q, iM, iN, fielddir):
     '''
     Interpolate flux(alpha,zeta) -> flux(theta,zeta). Return flux(theta,zeta)
     '''
-    logstep = max(1, round(total/20))
+    logstep = max(1, round(total/10))
     res = _fluxdata_theta_interpolation(data, q, iM, iN, fielddir)[2]
     if (i+1) % logstep == 0 or i == 0 or i+1 == total:
         dlog.info("Interpolation %d/%d, done." % (i+1, total))
@@ -161,11 +161,11 @@ def _flux3d_interpolate_worker(i, total, data, q, iM, iN, fielddir):
 
 
 def flux3d_interpolate_stack(loader, iM, iN, field, fielddir=0,
-                             saver=None, dry=False):
+                             float64=False, savepath=None, dry=False):
     '''
     Interpolate of flux(alpha,zeta) -> flux(theta,zeta), then stack 2-D array
     into a 4-D array flux(time,psi,theta,zeta).
-    Save time, ipsi, theta, zeta, flux 4-D array in the *saver*.
+    Save time, ipsi, theta, zeta, flux 4-D array in *savepath*.
 
     Parameters
     ----------
@@ -174,11 +174,17 @@ def flux3d_interpolate_stack(loader, iM, iN, field, fielddir=0,
     iN: int, interpolation grid points in zeta
     field: str, phi|apara|fluidne|densityi|temperi|densitye etc.
     fielddir: int, 0, 1, 2 or 3, magnetic field & current direction
-    saver: pcksaver instance
+    float64: bool, default False
+        array dtype is float64 or float32, default float32
+    savepath: str, pcksaver path
+        default 'gtcv3-XXXXXX.flux4d-%s-iM%d-iN%d.npz' % (field, iM, iN)
     dry: bool, dry run, show array info then return
     '''
+    import os
+    import time as mod_time
     import multiprocessing
-    from ..savers import is_pcksaver
+    from ..savers import get_pcksaver
+    from .. import __gversion__
 
     _pat = re.compile('^flux3da*\d{5,7}/%s-(?P<ipsi>\d+)' % field)
     keys = loader.refind(_pat)
@@ -202,26 +208,36 @@ def flux3d_interpolate_stack(loader, iM, iN, field, fielddir=0,
     theta = np.arange(0, iM) / (iM-1) * 2*np.pi
     zeta = np.arange(0, iN) / (iN-1) * 2*np.pi
     shape = (len(steps), len(psis), iM, iN)
-    size = len(steps)*len(psis)*iM*iN*4/1024/1024  # MB
-    if dry:
-        print('=> %s 4-D array shape: %s, size=%.1fMB' % (field, shape, size))
-        print('=> steps found(%d): %s ... ... %s'
+    size = len(steps)*len(psis)*iM*iN*(8 if float64 else 4)/1024/1024  # MB
+    dlog.info('%s 4-D array shape: %s, size=%.1fMB' % (field, shape, size))
+    dlog.info('steps found(%d): %s ... ... %s'
               % (len(steps), steps[:5], steps[-5:]))
-        print('=> psis found(%d): %s ... ... %s' %
+    dlog.info('psis found(%d): %s ... ... %s' %
               (len(psis), psis[:5], psis[-5:]))
+    if dry:
         return
-    if not is_pcksaver(saver):
-        dlog.error('Invalid pcksaver instance!')
-        return
+    if savepath is None:
+        idx = loader.path.rfind('.converted.')
+        if idx < 0:
+            dlog.error('Cannot set default savepath by loader.path!')
+            return
+        name = 'flux4d-%s-iM%d-iN%d' % (field, iM, iN)
+        savepath = '.'.join([loader.path[:idx], name, loader.path[idx+11:]])
+        dlog.info('Default flux4d data path is %s.' % savepath)
+    if os.path.exists(savepath):
+        dlog.warning("Path '%s' exists!" % savepath)
 
-    f4d_arr = np.zeros(shape, dtype=np.float32)
-    ncpu = multiprocessing.cpu_count()
+    if float64:
+        f4d_arr = np.zeros(shape, dtype=np.float64)
+    else:
+        f4d_arr = np.zeros(shape, dtype=np.float32)
     for i in range(len(psis)):
         dlog.info("Getting raw-data of %s(ipsi=%s), q=%f" %
                   (field, psis[i], qs[i]))
         rawdata = loader.get_many(*keys[:, i])
         total = len(rawdata)
-        with multiprocessing.Pool(processes=ncpu) as pool:
+        nproc = min(multiprocessing.cpu_count(), total)
+        with multiprocessing.Pool(processes=nproc) as pool:
             results = [
                 pool.apply_async(
                     _flux3d_interpolate_worker,
@@ -235,7 +251,10 @@ def flux3d_interpolate_stack(loader, iM, iN, field, fielddir=0,
         tmp = [res.get() for res in results]
         f4d_arr[:, i, :, :] = tmp
         loader.clear_cache()
-    with saver:
+    desc = "Flux4D array: %s(time, psi, theta, zeta)." % field
+    desc = ("%s\nCreated by gdpy3 v%s.\nCreated on %s."
+            % (desc, __gversion__, mod_time.asctime()))
+    with get_pcksaver(savepath) as saver:
         dlog.info("Writing interpolate-data(size=%.1fMB) of %s ..." %
                   (size, field))
         saver.write('/', {
@@ -244,6 +263,8 @@ def flux3d_interpolate_stack(loader, iM, iN, field, fielddir=0,
             'ipsi': ipsi,
             'theta': theta,
             'zeta': zeta,
+            'description': desc,
+            'version': 1,
         })
     dlog.info('Done.')
 
