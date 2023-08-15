@@ -237,7 +237,7 @@ def flux3d_interpolate_stack(loader, iM, iN, field, fielddir=0,
         loader.clear_cache()
     with saver:
         dlog.info("Writing interpolate-data(size=%.1fMB) of %s ..." %
-                  (field, size))
+                  (size, field))
         saver.write('/', {
             field: f4d_arr,
             'time': time,
