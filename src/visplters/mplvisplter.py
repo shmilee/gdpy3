@@ -175,7 +175,7 @@ class MatplotlibVisplter(BaseVisplter):
 
     preset_revisefuns = [
         'remove_spines', 'center_spines', 'arrow_spines',
-        'multi_merge_legend',
+        'multi_merge_legend', 'aspect_3d_equal',
     ]
 
     # some revise functions
@@ -386,6 +386,37 @@ class MatplotlibVisplter(BaseVisplter):
                 'index', 'handles', 'labels', 'handler_map')}
             lg = ax.legend(handles, labels, handler_map=handler_map, **kws)
             ax.add_artist(lg)
+
+    @staticmethod
+    def aspect_3d_equal(fig, axesdict, artistdict, axindex=0,
+                        aspect=None, zoom=1):
+        '''
+        Set 'equal' or other aspect for 3D plots.
+
+        Parameters
+        ----------
+        axindex: int key, select axes from axesdict
+        aspect: 3-tuple of floats or None, must be > 0
+        zoom : float, default 1, must be > 0
+        '''
+        ax = axesdict[axindex]
+        if '3d' not in ax.name:
+            vlog.warning("aspect_3d_equal is used for 3D Axes!")
+            return
+        aspect = aspect or [ub - lb for lb, ub in (
+                            getattr(ax, f'get_{a}lim')() for a in 'xyz')]
+        try:
+            # ref: https://github.com/matplotlib/matplotlib/issues/17172/
+            # TODO LooseVersion(matplotlib.__version__) > LooseVersion('3.?')
+            ax.set_box_aspect(aspect, zoom=zoom)
+        except Exception:
+            # ref: https://stackoverflow.com/questions/30223161/
+            normX = max(aspect)
+            scale_x, scale_y, scale_z = [a/normX for a in aspect]
+            ax.get_proj = lambda: np.dot(
+                Axes3D.get_proj(ax),
+                np.diag([scale_x, scale_y, scale_z, 1])
+            )
 
     def _create_figure(self, num, axesstructures, figstyle):
         '''Create object *fig*.'''
