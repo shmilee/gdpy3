@@ -176,6 +176,7 @@ class MatplotlibVisplter(BaseVisplter):
     preset_revisefuns = [
         'remove_spines', 'center_spines', 'arrow_spines',
         'multi_merge_legend', 'aspect_3d_equal',
+        'fix_Poly3dCollection_color',
     ]
 
     # some revise functions
@@ -417,6 +418,43 @@ class MatplotlibVisplter(BaseVisplter):
                 Axes3D.get_proj(ax),
                 np.diag([scale_x, scale_y, scale_z, 1])
             )
+
+    @staticmethod
+    def fix_Poly3dCollection_color(fig, axesdict, artistdict, poly3d_index=[]):
+        '''
+        Fix Poly3dCollection facecolor and edgecolor issue.
+        Call this before legend, when using plot_surface(label=?)+legend, etc.
+
+        Parameters
+        ----------
+        poly3d_index: list of int key, select art3d from artistdict
+        '''
+        from mpl_toolkits.mplot3d.art3d import Poly3DCollection
+        for i in poly3d_index:
+            if i in artistdict:
+                art = artistdict[i]
+            else:
+                vlog.warning("Skip 'art3d[%d]', not exists." % i)
+                continue
+            if not isinstance(art, Poly3DCollection):
+                vlog.warning(
+                    "Skip 'art3d[%d]', not Poly3DCollection object." % i)
+                continue
+            # https://github.com/matplotlib/matplotlib/issues/4067
+            # https://github.com/matplotlib/matplotlib/pull/23562
+            if not (hasattr(art, '_facecolors2d')
+                    and hasattr(art, '_edgecolors2d')):
+                vlog.info(
+                    "Fix 'art3d[%d]' no attr 'facecolor' or 'edgecolor'." % i)
+                art.axes.M = art.axes.get_proj()
+                art.do_3d_projection()
+            # https://github.com/matplotlib/matplotlib/issues/25560
+            # https://github.com/matplotlib/matplotlib/pull/25565
+            if not hasattr(art._facecolors2d, 'size'):
+                vlog.info("Fix 'art3d[%d]._facecolors2d' no attr 'size'." % i)
+                art._facecolors2d = np.asarray(art._facecolors2d)
+            if not hasattr(art._edgecolors2d, 'size'):
+                vlog.info("Fix 'art3d[%d]._edgecolors2d' no attr 'size'." % i)
 
     def _create_figure(self, num, axesstructures, figstyle):
         '''Create object *fig*.'''
