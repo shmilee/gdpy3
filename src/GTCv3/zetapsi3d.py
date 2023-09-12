@@ -5,15 +5,16 @@
 '''
 Source fortran code:
 
-v3.26-48-gc5aa68dc
+v3.21-222-g12dd9b6
 ------------------
 
-shmilee.F90, subroutine zetapsi3d_init zetapsi3d_diagnosis
+shmilee.F90, subroutine zetapsi3d_init
   do i=1, size(r_params)
       j_list(i)=int(r_params(i)/2.0*real(mtdiag))
   end do
   mzeach=min(zgridmax,mtheta(iflux))/mtoroidal
-  ......
+
+shmilee.F90, subroutine zetapsi3d_diagnosis
   write(fdum,'("phi_dir/zetapsi3d",i5.5,"_tor",i4.4,".out")') (mstepall+istep),myrank_toroidal
   open(iozetapsi,file=trim(fdum),status='replace')
   if(myrank_toroidal==0)then
@@ -21,6 +22,16 @@ shmilee.F90, subroutine zetapsi3d_init zetapsi3d_diagnosis
     write(iozetapsi,101)mzeach,mpsi+1, size(j_list), j_list, zetapsi3d_nfield, zetapsi3d_fields
   endif
   write(iozetapsi,102)zp3d !(mzeach,0:mpsi,size(j_list),zetapsi3d_nfield)
+
+v3.21-250-g43c648b
+------------------
+
+shmilee.F90, subroutine zetapsi3d_diagnosis
+  write(fdum,'("phi_dir/zetapsi3d",i5.5,".out")') (mstepall+istep)
+  open(iozetapsi,file=trim(fdum),status='replace')
+  ! parameters: shape of data; all selected j, last one is mtdiag; and field info
+  write(iozetapsi,101) mzeach, mpsi+1, size(j_list), j_list, zetapsi3d_nfield, zetapsi3d_fields, mtoroidal
+  write(iozetapsi,102) allzp3d !(mzeach,0:mpsi,size(j_list),zetapsi3d_nfield,mtoroidal)
 '''
 import re
 import numpy as np
@@ -31,7 +42,7 @@ from .snapshot import SnapshotFieldmDigger
 from .gtc import Ndigits_tstep
 from .. import tools
 
-_all_Converters = ['ZetaPsi3DConverter']
+_all_Converters = ['ZetaPsi3DConverter', 'ZetaPsi3DoldConverter']
 _all_Diggers = ['ZetaPsi3DDigger', 'ZetaPsi3DCorrLenDigger',
                 'ZetaPsi3DFieldnDigger', 'ZetaPsi3DFieldnkzetaDigger']
 __all__ = _all_Converters + _all_Diggers
@@ -44,13 +55,13 @@ class ZetaPsi3DConverter(Converter):
     Shape of array data is (mzeach*mtoroidal,mpsi+1)
     '''
     __slot__ = []
-    nitems = '+'
-    itemspattern = ['^phi_dir/(?P<section>zetapsi3d\d{5})_tor\d{4}\.out$',
-                    '.*/phi_dir/(?P<section>zetapsi3d\d{5})_tor\d{4}\.out$']
-    _short_files_subs = (0, '^(.*\d{5}_tor)\d{4}\.out$', r'\1*.out')
+    nitems = '?'
+    itemspattern = ['^phi_dir/(?P<section>zetapsi3d\d{5})\.out$',
+                    '.*/phi_dir/(?P<section>zetapsi3d\d{5})\.out$']
     _datakeys = (
         # 1. parameters
         'mzeach', 'mpsi+1', 'nj', 'j_list', 'nfield', 'zp3d_fields',
+        'mtoroidal',
         # 2. field(zeta,psi,nj),
         'phi', 'apara', 'fluidne',  # -%d % j
         'densityi', 'temperi', 'densitye', 'tempere', 'densityf', 'temperf'
@@ -65,6 +76,45 @@ class ZetaPsi3DConverter(Converter):
         return self._group
 
     def _convert(self):
+        '''Read 'phi_dir/zetapsi3d%05d.out'.'''
+        with self.rawloader.get(self.files) as fid:
+            # parameters
+            mzeach, mpsi1, nj = (int(fid.readline()) for j in range(3))
+            j_list = [int(fid.readline()) for j in range(nj)]
+            nfield = int(fid.readline())
+            zp3d_fields = [int(fid.readline().strip()) for v in range(nfield)]
+            fields_name = []
+            for nf in zp3d_fields:
+                fields_name.append(self._datakeys[6+nf])  # nf=1 -> phi
+            assert len(fields_name) == nfield
+            mtoroidal = int(fid.readline())
+            # data
+            shape = (mzeach, mpsi1, nj, nfield, mtoroidal)
+            outdata = np.array([float(n.strip()) for n in fid.readlines()])
+        outdata = outdata.reshape(shape, order='F')
+        # 1. parameters
+        clog.debug("Filling datakeys: %s ..." % 'mzeach, nj, j_list')
+        sd = dict(mzeach=mzeach, nj=nj, j_list=j_list)
+        # 2. data
+        for nf in range(nfield):
+            for idx, j in enumerate(j_list):
+                key = r'%s-%d' % (fields_name[nf], j)
+                fdata = outdata[:, :, idx, nf, :]
+                fdata = fdata.transpose(0, 2, 1)  # sawp 2nd and 3rd axes
+                fdata = fdata.reshape(-1, mpsi1)  # flatten 1st, 2nd axes
+                clog.debug("Filling datakeys: %s ..." % key)
+                sd[key] = fdata
+        return sd
+
+
+class ZetaPsi3DoldConverter(ZetaPsi3DConverter):
+    __slot__ = []
+    nitems = '+'
+    itemspattern = ['^phi_dir/(?P<section>zetapsi3d\d{5})_tor\d{4}\.out$',
+                    '.*/phi_dir/(?P<section>zetapsi3d\d{5})_tor\d{4}\.out$']
+    _short_files_subs = (0, '^(.*\d{5}_tor)\d{4}\.out$', r'\1*.out')
+
+    def _convert(self):
         '''Read 'phi_dir/zetapsi3d%05d_tor%04d.out'.'''
         fdata = []
         # tor0000.out
@@ -77,7 +127,7 @@ class ZetaPsi3DConverter(Converter):
             zp3d_fields = [int(fid.readline().strip()) for v in range(nfield)]
             fields_name = []
             for nf in zp3d_fields:
-                fields_name.append(self._datakeys[5+nf])  # nf=1 -> phi
+                fields_name.append(self._datakeys[6+nf])  # nf=1 -> phi
             assert len(fields_name) == nfield
             # data
             shape = (mzeach, mpsi1, nj, nfield)
@@ -131,7 +181,7 @@ class ZetaPsi3DDigger(Digger):
         j = int(self.section[2])
         self._deg, self._rad,  self.thetastr = self._get_deg_rad_thetastr(j)
         self._fignum = '%s_%03d' % (self.field, round(self._deg))
-        self.timestr = self._get_timestr()
+        _, self.timestr = self._get_timestr()
         self.kwoptions = None
 
     _deg_rad_thetastr_timestr_cache = {}
