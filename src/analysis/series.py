@@ -10,6 +10,7 @@ import os
 import json
 import numpy as np
 from ..processors import get_processor
+from ..visplters import get_visplter
 from .._json import dumps as json_dumps
 from ..glogger import getGLogger
 
@@ -115,7 +116,7 @@ class LabelInfoSeries(object):
         Parameters
         ----------
         label_list: list of manually built label info
-            dict(path=path, name=name, label=label) for each case,
+            dict(path, name, saltstr, label=label) for each case,
             echo label dict has time (start, end) pairs for 'linear',
             'nonlinear', 'saturation' stage, and unit is R0/cs.
         ls_json: str, path of Label Studio json results
@@ -140,6 +141,10 @@ class LabelInfoSeries(object):
                 self.search_names[n].append(s)
             else:
                 self.search_names[n] = [s]
+
+    def __contains__(self, saltstr):
+        ''' Return True if saltstr is in :attr:`info` '''
+        return saltstr in self.info
 
     def get(self, key, stage='linear', by='saltstr'):
         '''
@@ -230,25 +235,23 @@ class CaseSeries(obejct):
 
     Attributes
     ----------
-    paths: list of (realpath, key) pairs for each case
+    paths: list of (realpath, saltstr) pairs for each case
         same order as input real paths *casepaths*
     cases: dict
-        key is path, name or saltstr; value is gdpy3 processor for each case
+        key is saltstr; value is gdpy3 processor for each case
     labelinfo: LabelInfoSeries instance
         label information of these cases
+    chiDresults: dict, cache of :meth:`dig_chi_D`
+        key is input parameters tuple of :meth:`dig_chi_D`
+        value is :meth:`dig_chi_D` return
     '''
 
-    def __init__(self, casepaths, key_type='saltstr', key_replace=None,
-                 skip_lost=True, labelinfo=None):
+    def __init__(self, casepaths, skip_lost=True, labelinfo=None):
         '''
         Parameters
         ----------
         casepaths: list
             real cases paths of GTC parameter series
-        key_type: str
-            use name, path or saltstr(default) as key for :attr:`cases`
-        key_replace: function
-            change key string for :attr:`cases`, when key_type is name or path
         skip_lost: bool
             skip these paths which have no 'gtc.out' or not(raise error)
         labelinfo: LabelInfoSeries instance
@@ -263,15 +266,7 @@ class CaseSeries(obejct):
                 else:
                     raise IOError("Lost 'gtc.out' in '%s'!" % path)
             gdp = get_processor(path)
-            if key_type in ('name', 'path'):
-                if key_type == 'name':
-                    key = os.path.basename(os.path.realpath(path))
-                else:
-                    key = path
-                if key_replace and callable(key_replace):
-                    key = key_replace(key)
-            else:
-                key = gdp.saltstr
+            key = gdp.saltstr
             self.paths.append((path, key))
             if key in self.cases:
                 log.warning("key '%s' collision, path '%s'!" % (key, path))
@@ -280,10 +275,17 @@ class CaseSeries(obejct):
             self.labelinfo = labelinfo
         else:
             self.labelinfo = None
+        self.chiDresults = {}
+        self.plotter = get_visplter('mpl::series')
+        self.plotter.style = ['gdpy3-paper-aip']
 
-    def dig_chi_D(self, particle, gyroBohm=True, Ln=None):
+    def dig_chi_D(self, particle, gyroBohm=True, Ln=None,
+                  fallback_sat_time=(0.7, 1.0)):
         '''
-        Get chi and D of particle.
+        Get particle chi and D of each case.
+        Return a list of tuple in order of :attr:`paths`.
+        The tuple has 6 elements: time t array, chi(t) array, D(t) array,
+            saturation (start-time, end-time), saturation chi, saturation D.
 
         Parameters
         ----------
@@ -294,34 +296,138 @@ class CaseSeries(obejct):
         Ln: float
             Set R0/Ln for gyroBohm unit. Ln=1.0/2.22 when R0/Ln=2.22
             If Ln=None, use a_minor as default Ln.
+        fallback_sat_time: tuple
+            If saturation time not found in :attr:`labelinfo`, use this
+            to set saturation (start,end) time ratio. limit: 0.0 -> 1.0
         '''
         if particle in ('ion', 'electron', 'fastion'):
             figlabel = 'history/%s_flux' % particle
         else:
             raise ValueError('unsupported particle: %s ' % particle)
-        time_chi, time_D = {}, {}
-        time_chi_sat, time_D_sat = {}, {}
-        for k, v in self.cases.items():
-            a, b, c = v.dig(figlabel, post=False)
+        cache_key = (particle, gyroBohm, Ln, tuple(fallback_sat_time))
+        if cache_key in self.chiDresults:
+            return self.chiDresults[cache_key]
+        chiDresult = []
+        for path, key in self.paths:
+            gdp = self.cases[key]
+            a, b, c = gdp.dig(figlabel, post=False)
             time = b['time']
             chi, D = b['energy'], b['particle']
             if gyroBohm:
-                Ln = v.pckloader['gtc/a_minor'] if Ln is None else Ln
-                rho0 = v.pckloader['gtc/rho0']
+                Ln = gdp.pckloader['gtc/a_minor'] if Ln is None else Ln
+                rho0 = gdp.pckloader['gtc/rho0']
                 chi, D = chi*Ln/rho0, D*Ln/rho0
-            time_chi[k] = (time, chi)  # TODO saturation
-            time_D[k] = (time, D)
-            if self.sat_time and self.paths[k] in self.sat_time:
-                start, end = self.sat_time[self.paths[k]]
-                start, end = np.where(time > start)[
-                    0][0], np.where(time > end)[0]
-                end = end[0] if len(end) > 0 else len(time)
+            if self.labelinfo:
+                start, end = self.labelinfo.get(key, stage='saturation')
+                if start is not None:
+                    start = np.where(time > start)[0][0]
+                    end = np.where(time > end)[0]
+                    end = end[0] if len(end) > 0 else len(time)
             else:
-                start, end = len(time)*7//10, len(time)
-            sat_x = np.linspace(time[start], time[end-1], 2)
+                start, end = fallback_sat_time
+                start, end = int(len(time)*start), int(len(time)*end)
+            sat_t = np.linspace(time[start], time[end-1], 2)
             chi_sat = np.mean(chi[start:end])
+            # chi_sat_std = np.std(chi[start:end])
             D_sat = np.mean(D[start:end])
-            # sat_std = np.std(chi[start:end])
-            time_chi_sat[k] = (sat_x, np.linspace(chi_sat, chi_sat,  2))
-            time_D_sat[k] = (sat_x, np.linspace(D_sat, D_sat,  2))
-        return time_chi, time_D, time_chi_sat, time_D_sat
+            chiDresult.append((time, chi, D, sat_t, chi_sat, D_sat))
+        self.chiDresults[cache_key] = chiDresult
+        return chiDresult
+
+    def plot_chi_D(self, casepaths, particles=('ion', 'electron'),
+                   fignum='fig1-1', add_style=[],
+                   suptitle=None, title_y=0.95, savepath=None,
+                   xlim=None, ylim1=None, ylim2=None, ylim3=None, ylim4=None):
+        '''
+        Plot chi, D figures of particle ion and electron.
+
+        Parameters
+        ----------
+        casepaths: list
+            selected cases paths from :attr:`paths`, selected cases to plot
+        particles: tuple, particles to plot
+        ylim1: ylim for chi_i
+        ylim2: ylim for D_i
+        ylim3: ylim for chi_e
+        ylim4: ylim for D_e
+        savepath: str
+            default savepath is f'./{fignum}.jpg'
+        '''
+        xlim_kws = {'xlim': xlim} if xlim else {}
+        ylim_kws = {
+            k: {'ylim': v}
+            for k, v in filter(lambda kw: kw[1] is not None, [
+                ('ylim1', ylim1), ('ylim2', ylim2), ('ylim3', ylim3), ('ylim4', ylim4)])
+        }
+        Mrow = 2
+        Ncol = len(particles)
+        MN = Mrow*100 + Ncol*10
+        all_axes = []
+        axes_idx = 1
+        if 'ion' in particles:
+            chiDresult = self.dig_chi_D('ion')  # TODO
+            axes_chii = {
+                'layout': [MN+axes_idx, dict(ylabel=r'$\chi_i$', **xlim_kws, **ylim_kws.get('ylim1', {}))],
+                'data': [
+                    *[[1+i, 'plot', (*self.time_chii[key], '-'), dict(color="C{}".format(i), label=r'$%s, \chi_i=%.2f$' % (key, self.time_chii_sat[key][1][0]))]
+                      for i, key in enumerate(parakeys)],
+                    *[[30+i, 'plot', (*self.time_chii_sat[key], 'o'), dict(color="C{}".format(i))]
+                      for i, key in enumerate(parakeys)],
+                    [50, 'legend', (), {}],
+                    [51, 'set_xticklabels', ([],), {}],
+                ],
+            }
+            axes_idx += 1
+            axes_Di = {
+                'layout': [MN+axes_idx, dict(ylabel=r'$D_i$', **xlim_kws, **ylim_kws.get('ylim2', {}))],
+                'data': [
+                    *[[1+i, 'plot', (*self.time_Di[key], '-'), dict(color="C{}".format(i), label=r'$%s, D_i=%.2f$' % (key, self.time_Di_sat[key][1][0]))]
+                      for i, key in enumerate(parakeys)],
+                    *[[30+i, 'plot', (*self.time_Di_sat[key], 'o'), dict(color="C{}".format(i))]
+                      for i, key in enumerate(parakeys)],
+                    [50, 'legend', (), {}],
+                    [51 if Ncol != 1 else -51, 'set_xticklabels', ([],), {}],
+                    [-52 if Ncol != 1 else 52, 'set_xlabel',
+                     (r'$t(R_0/c_s)$',), {}],
+                ],
+            }
+            axes_idx += 1
+            all_axes.extend([axes_chii, axes_Di])
+        if 'electron' in particles:
+            axes_chie = {
+                'layout': [MN+axes_idx, dict(ylabel=r'$\chi_e$', **xlim_kws, **ylim_kws.get('ylim3', {}))],
+                'data': [
+                    *[[1+i, 'plot', (*self.time_chie[key], '-'), dict(color="C{}".format(i), label=r'$%s, \chi_e=%.2f$' % (key, self.time_chie_sat[key][1][0]))]
+                      for i, key in enumerate(parakeys)],
+                    *[[30+i, 'plot', (*self.time_chie_sat[key], 'o'), dict(color="C{}".format(i))]
+                      for i, key in enumerate(parakeys)],
+                    [50, 'legend', (), {}],
+                    [51 if axes_idx == 1 else -51,
+                        'set_xticklabels', ([],), {}],
+                    [-52 if axes_idx == 1 else 52,
+                     'set_xlabel', (r'$t(R_0/c_s)$',), {}],
+                ],
+            }
+            axes_idx += 1
+            axes_De = {
+                'layout': [MN+axes_idx, dict(ylabel=r'$D_e$', **xlim_kws, **ylim_kws.get('ylim4', {}))],
+                'data': [
+                    *[[1+i, 'plot', (*self.time_De[key], '-'), dict(color="C{}".format(i), label=r'$%s, D_e=%.2f$' % (key, self.time_De_sat[key][1][0]))]
+                      for i, key in enumerate(parakeys)],
+                    *[[30+i, 'plot', (*self.time_De_sat[key], 'o'), dict(color="C{}".format(i))]
+                      for i, key in enumerate(parakeys)],
+                    [50, 'legend', (), {}],
+                    [52, 'set_xlabel', (r'$t(R_0/c_s)$',), {}],
+                ],
+            }
+            all_axes.extend([axes_chie, axes_De])
+        fig = self.plotter.create_figure(
+            fignum, *all_axes, add_style=[{
+                'figure.figsize': (4, 6) if Ncol == 1 else (8, 6),
+                # 'figure.autolayout': False,
+                'figure.subplot.hspace': 0.02,
+                'legend.handlelength': 2.0,
+                # 'legend.fontsize': 8,
+            }] + add_style)
+        fig.suptitle(suptitle or fignum, y=title_y)
+        fig.savefig(savepath or './%s.jpg' % fignum)
