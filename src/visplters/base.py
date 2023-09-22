@@ -421,7 +421,11 @@ class BaseVisplter(object):
             draw contour lines and add labels or not.
             The values will be sorted in increasing order.
         results['center_norm']: bool, optional
-            Normalize symmetrical data around 0.0, default False
+            Normalize symmetrical data around center_norm_zero=0.0,
+            default False
+        results['center_norm_zero']: foat, optional
+            A.K.A vcenter for CenteredNorm, data value that defines ``0.5``
+            in the normalization, default 0
         results['center_norm_half_ratio']: float, (0,1], optional
             halfrange=the largest absolute difference to 0.0 for Z values
             decrease CenteredNorm halfrange by this ratio, default 1.0
@@ -468,7 +472,8 @@ class BaseVisplter(object):
         title, xlabel, ylabel, \
             plot_method, plot_method_args, plot_method_kwargs, \
             contourf_levels, clabel_levels, \
-            center_norm, center_norm_half_ratio, center_norm_half, \
+            center_norm, center_norm_zero, \
+            center_norm_half_ratio, center_norm_half, \
             colorbar, aspect, grid_alpha, plot_surface_shadow = \
             self._get_my_optional_vals(
                 results, ('title', str, None), ('xlabel', str, None),
@@ -477,6 +482,7 @@ class BaseVisplter(object):
                 ('plot_method_kwargs', dict, {}),
                 ('contourf_levels', int, 100), ('clabel_levels', list, []),
                 ('center_norm', bool, False),
+                ('center_norm_zero', float, 0.0),
                 ('center_norm_half_ratio', float, 1.0),
                 ('center_norm_half', (float, int), None),
                 ('colorbar', bool, True),
@@ -502,7 +508,8 @@ class BaseVisplter(object):
             X, Y, Z, title, xlabel, ylabel, xlim, ylim,
             plot_method, plot_method_args, plot_method_kwargs,
             contourf_levels, clabel_levels,
-            center_norm, center_norm_half_ratio, center_norm_half,
+            center_norm, center_norm_zero,
+            center_norm_half_ratio, center_norm_half,
             colorbar, aspect, grid_alpha, plot_surface_shadow)
 
     def _tmpl_contourf(self, X, Y, Z, *args):

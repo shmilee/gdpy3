@@ -525,7 +525,8 @@ class MatplotlibVisplter(BaseVisplter):
             self, X, Y, Z, title, xlabel, ylabel, xlim, ylim,
             plot_method, plot_method_args, plot_method_kwargs,
             contourf_levels, clabel_levels,
-            center_norm, center_norm_half_ratio, center_norm_half,
+            center_norm, center_norm_zero,
+            center_norm_half_ratio, center_norm_half,
             colorbar, aspect, grid_alpha, plot_surface_shadow):
         '''For :meth:`tmpl_contourf`.'''
         vlog.debug("Getting contourf Axes %s ..." % 111)
@@ -537,16 +538,32 @@ class MatplotlibVisplter(BaseVisplter):
         if center_norm:
             if center_norm_half:
                 half = abs(center_norm_half)
-                center_norm_half_ratio = half/max(abs(Zmax), abs(Zmin))
+                center_norm_half_ratio = half / \
+                    max(abs(Zmax-center_norm_zero), abs(Zmin-center_norm_zero))
             else:
-                half = max(abs(Zmax), abs(Zmin)) * center_norm_half_ratio
-            norm = matplotlib.colors.CenteredNorm(halfrange=half)
+                half = max(abs(Zmax-center_norm_zero),
+                           abs(Zmin-center_norm_zero)) * center_norm_half_ratio
+            vlog.debug('CenteredNorm: Zmax-0=%s 0-Zmin=%s, half_ratio=%s' % (
+                abs(Zmax-center_norm_zero), abs(Zmin-center_norm_zero),
+                center_norm_half_ratio))
+            norm = matplotlib.colors.CenteredNorm(vcenter=center_norm_zero,
+                                                  halfrange=half)
+            vlog.debug('CenteredNorm: (%s, %s), vcenter=%s, halfrange=%s' % (
+                norm.vmin, norm.vmax, norm.vcenter, norm.halfrange))
             _levels = np.linspace(norm.vmin, norm.vmax, contourf_levels)
             _extend = 'both' if center_norm_half_ratio < 1.0 else 'neither'
             contourf_kws = dict(norm=norm, levels=_levels, extend=_extend)
             if colorbar:
-                ndigits = int(np.log10(norm.vmax)+0.5)+2  # ~2digits for Ae-B
-                colorbar_ticks = np.linspace(  # 10 non-zero ticks
+                # ~2digits for Ae-B
+                # test: arr = np.linspace(1e-10,1,11)/np.e/np.pi/300
+                # ndigitlist = zip(arr, list(map(lambda n: int(n)+2, abs(np.log10(arr))+0.5)))
+                # for n, ndigits in ndigitlist:
+                #   print('==> %.2e' % n, ndigits, np.linspace(round(-n, ndigits), round(n, ndigits), 11))
+                ndigits = int(abs(np.log10(
+                    max(abs(norm.vmax), abs(norm.vmin))
+                ) + 0.5)) + 2
+                # 10 non-zero ticks for center_norm_zero=0, a.k.a vcenter
+                colorbar_ticks = np.linspace(
                     round(norm.vmin, ndigits), round(norm.vmax, ndigits), 11)
         else:
             contourf_kws = dict(levels=contourf_levels)
@@ -593,7 +610,6 @@ class MatplotlibVisplter(BaseVisplter):
             vlog.debug('Set contourf levels: %d' % contourf_levels)
             plotkw.update(contourf_kws)
         if center_norm:
-            vlog.debug('Use CenteredNorm: (%s, %s)' % (norm.vmin, norm.vmax))
             plotkw.update(norm=norm)
         else:
             plotkw.update(vmin=Zmin, vmax=Zmax)
