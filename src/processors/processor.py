@@ -155,15 +155,12 @@ class Processor(object):
             raise IOError("%s: Need a rawloader object!" % self.name)
         # salt
         saltfile = self.rawloader.refind('^(?:|.*/)%s$' % self.saltname)[0]
-        if self.rawloader.loader_type in ['sftp.directory']:
+        try:
+            with self.rawloader.get(saltfile) as f:
+                salt = hashlib.sha1(f.read().encode('utf-8')).hexdigest()
+        except Exception:
+            plog.warning("Failed to read salt file '%s'!" % saltfile)
             salt = hashlib.sha1(saltfile.encode('utf-8')).hexdigest()
-        else:
-            try:
-                with self.rawloader.get(saltfile) as f:
-                    salt = hashlib.sha1(f.read().encode('utf-8')).hexdigest()
-            except Exception:
-                plog.warning("Failed to read salt file '%s'!" % saltfile)
-                salt = hashlib.sha1(saltfile.encode('utf-8')).hexdigest()
         plog.debug("Get salt string: '%s'." % salt)
         # prefix
         prefix = self.rawloader.beside_path(self.name.lower())

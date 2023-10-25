@@ -7,15 +7,97 @@ Function, class to compare different cases.
 '''
 
 import os
+import re
+import shutil
 import json
 import numpy as np
+from ..loaders import get_rawloader
 from ..processors import get_processor
 from ..visplters import get_visplter
 from .._json import dumps as json_dumps
 from ..glogger import getGLogger
 
-__all__ = ['get_label_ts_data', 'LabelInfoSeries']
+__all__ = [
+    'get_selected_converted_data',
+    'get_label_ts_data', 'LabelInfoSeries',
+]
 log = getGLogger('G.a')
+
+
+def get_selected_converted_data(pathsmap, parallel='off', **kwargs):
+    '''
+    Get selected GTC raw data from original directory (like sftp://xxx),
+    then convert and save to a new directory (like local path).
+    Return a list of failed cases.
+
+    Parameters
+    ----------
+    pathsmap: list of 3-tuple
+        casepaths to do, format (original, newpath, filenames_exclude), like,
+
+        .. code::
+
+            pathsmap = [(
+                'sftp://u1@a.b.c.d##scan-2023/P1P2', './GTC-scan-2023/P1P2',
+                ['phi_dir/.*out',  # pattern, exclude
+                 r'(?!^(?:gtc|history)\.out|gtc-input.*lua$)']  # ?! selected
+            ), next case, ...]
+
+    parallel: str, 'off' or 'multiprocess'
+        'sftp://xxx' case needs parallel='off'.
+    kwargs: other parameters passed to :meth:`processors.get_processor`
+
+    Notes
+    -----
+    1. Use :meth:`utils.GetPasswd.set` to set password of sftp.
+    '''
+    for k in list(kwargs.keys()):
+        if k in ('path', 'parallel', 'filenames_exclude', 'Sid'):
+            remove = kwargs.pop(k)
+    if 'name' in kwargs:
+        gdpcls = get_processor(name=kwargs.get('name'), parallel='off')
+    else:
+        gdpcls = get_processor(parallel='off')
+    failed = []
+    N = len(pathsmap)
+    for i, pmap in enumerate(pathsmap, 1):
+        try:
+            print('', flush=True)
+            print('-'*16, '%d/%d' % (i, N), '-'*16, flush=True)
+            path, dest, exclude = pmap
+            if os.path.exists(dest):
+                test = get_rawloader(dest)
+                if (test.refind('%s-.*converted.*' % gdpcls.__name__.lower())
+                        and test.refind(gdpcls.saltname)):
+                    log.warning('Skip path %s that has converted data!' % dest)
+                    continue
+            else:
+                log.info('Create directory: %s' % dest)
+                os.mkdir(dest)
+            gdp = get_processor(
+                path, parallel=parallel, filenames_exclude=exclude, Sid=True,
+                **kwargs)
+            converted = gdp.pcksaver.path
+            idx = converted.rfind(gdp.name.lower() + '-')
+            file = os.path.join(dest, converted[idx:])
+            log.info('Move converted data: %s -> %s' % (converted, file))
+            shutil.move(converted, file)
+            # copy gtc.out, gtc-input.lua
+            todo = [gdp.saltname]
+            todo.extend(gdp.rawloader.refind('gtc-input.*\.lua'))
+            for file1 in todo:
+                file2 = os.path.join(dest, file1)
+                if os.path.exists(file2):
+                    log.warning('Skip file: %s' % file2)
+                    continue
+                log.info('Copy file: %s -> %s' % (file1, file2))
+                with gdp.rawloader.get(file1) as f1:
+                    with open(file2, 'w') as f2:
+                        f2.write(f1.read())
+        except Exception as e:
+            log.error('%s failed: %s' % (pmap[0], e), exc_info=1)
+            failed.append(pmap)
+    return failed
 
 
 def get_label_ts_data(casepaths, path_replace=None, name_replace=None,
@@ -229,7 +311,7 @@ class LabelInfoSeries(object):
             return ls_ts_list
 
 
-class CaseSeries(obejct):
+class CaseSeries(object):
     '''
     GTC parameter series cases.
 
