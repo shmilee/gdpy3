@@ -60,6 +60,10 @@ def get_processor(path=None, name='GTCv3', parallel='multiprocess', **kwargs):
             % (name, ', '.join(Processor_Names), ', '.join(Processor_Alias)))
     gdpcls = find_Processor(name, parallel)
     if path:
+        if path.startswith('sftp://') and parallel != 'off':
+            raise ValueError(
+                'Sftp data path cannot work with multiprocessing! '
+                "Please set parallel='off'")
         if kwargs:
             sig = inspect.signature(gdpcls)
             for k in list(kwargs.keys()):

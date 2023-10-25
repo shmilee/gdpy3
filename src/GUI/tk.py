@@ -324,14 +324,20 @@ class GTkApp(object):
 
     def after_pick(self):
         if self.processor_name.get():
-            gdpcls = get_processor(
-                name=self.processor_name.get()[1:], parallel=self.parallel)
             if self.path.startswith('sftp://'):
+                if self.parallel != 'off':
+                    log.warning(
+                        'Sftp data path cannot work with multiprocessing! '
+                        "Set parallel='off'")
+                    self.parallel = 'off'
+
                 def tk_gepasswd(prompt):
                     return simpledialog.askstring(
                         "Input Password", prompt, show='*', parent=self.root)
                 from ..utils import GetPasswd
                 GetPasswd.set(tk_gepasswd)
+            gdpcls = get_processor(
+                name=self.processor_name.get()[1:], parallel=self.parallel)
             if self.path.endswith(gdpcls.saltname):
                 self.path = self.path[:-len(gdpcls.saltname)]
             # close and hide old fig windows
