@@ -84,6 +84,7 @@ def get_selected_converted_data(pathsmap, parallel='off', **kwargs):
             shutil.move(converted, file)
             # copy gtc.out, gtc-input.lua
             todo = [gdp.saltname]
+            todo.extend(gdp.rawloader.refind('gtc-\d+\.out'))
             todo.extend(gdp.rawloader.refind('gtc-input.*\.lua'))
             for file1 in todo:
                 file2 = os.path.join(dest, file1)
@@ -114,9 +115,10 @@ def get_label_ts_data(casepaths, path_replace=None, name_replace=None,
     casepaths: list
         real cases paths of GTC parameter series
     path_replace: function
-        change path in results for each case
+        change path in results for each case, input: case path
     name_replace: function
-        change name in results for each case, default: basename of its path
+        change name in results for each case, input: case path
+        default: basename of case path
     skip_lost: bool
         skip these paths which have no 'gtc.out' or not(raise error)
     ts_key_ver: str, version for ts keys.
@@ -139,9 +141,9 @@ def get_label_ts_data(casepaths, path_replace=None, name_replace=None,
         gdp = get_processor(path)
         if path_replace and callable(path_replace):
             path = path_replace(path)
-        name = os.path.basename(os.path.realpath(path))
+        name = os.path.basename(os.path.realpath(path))  # a/b/ -> b
         if name_replace and callable(name_replace):
-            name = name_replace(name)
+            name = name_replace(path)
         # ts_data
         if ts_key_ver == 'v1':
             a, b, c = gdp.dig('history/ion_flux', post=False)
