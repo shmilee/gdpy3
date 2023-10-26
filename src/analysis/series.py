@@ -294,23 +294,36 @@ class LabelInfoSeries(object):
         return info
 
     @staticmethod
-    def merge_ls_jsons(*jsonfiles, savepath=None):
-        ''' jsonfiles: path of Label Studio json results '''
-        ls_ts_list = []
-        i = 1
+    def merge_ls_jsons(*jsonfiles, savepath=None,
+                       result_modify=None, sort_key=None, start_id=None):
+        '''
+        Parameters
+        ----------
+        jsonfiles: str, path of Label Studio json results
+        savepath: str, new path
+        result_modify: function
+            modify result of each case, like change case path and name
+            input: case result, return: modified result
+        sort_key: function, custom function to sort results
+            do after result_modify, input: case result
+        start_id: int, change start id in json results, >=1
+        '''
+        result_list = []
         for file in jsonfiles:
             with open(file, 'r') as f1:
                 reslist = json.loads(f1.read())
-            ls_ts_list.extend([
-                dict(id=i, data=data)
-                for i, data in enumerate(reslist, i)
-            ])
-            i += len(reslist)
+            result_list.extend(reslist)
+        if result_modify and callable(result_modify):
+            result_list = list(map(result_modify, result_list))
+        if sort_key and callable(sort_key):
+            result_list.sort(key=sort_key)
+        if isinstance(start_id, int):
+            for i, result in enumerate(result_list, max(start_id, 1)):
+                result['id'] = i
         if savepath:
             with open(savepath, 'w') as f2:
-                f2.write(json_dumps(ls_ts_list, indent=2, indent_limit=8))
-        else:
-            return ls_ts_list
+                f2.write(json_dumps(result_list, indent=2, indent_limit=8))
+        return result_list
 
 
 class CaseSeries(object):
