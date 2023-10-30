@@ -10,6 +10,7 @@ import os
 import re
 import shutil
 import json
+import math
 import numpy as np
 from ..loaders import get_rawloader
 from ..processors import get_processor
@@ -18,8 +19,8 @@ from .._json import dumps as json_dumps
 from ..glogger import getGLogger
 
 __all__ = [
-    'get_selected_converted_data',
-    'get_label_ts_data', 'LabelInfoSeries',
+    'get_selected_converted_data', 'get_label_ts_data',
+    'LabelInfoSeries', 'CaseSeries',
 ]
 log = getGLogger('G.a')
 
@@ -414,117 +415,103 @@ class CaseSeries(object):
                 Ln = gdp.pckloader['gtc/a_minor'] if Ln is None else Ln
                 rho0 = gdp.pckloader['gtc/rho0']
                 chi, D = chi*Ln/rho0, D*Ln/rho0
+            start, end = None, None
             if self.labelinfo:
                 start, end = self.labelinfo.get(key, stage='saturation')
-                if start is not None:
-                    start = np.where(time > start)[0][0]
-                    end = np.where(time > end)[0]
-                    end = end[0] if len(end) > 0 else len(time)
+            if start is not None:
+                log.info('Get saturation time: %6.2f, %6.2f for %s'
+                         % (start, end, path))
+                start = np.where(time > start)[0][0]
+                end = np.where(time > end)[0]
+                end = end[0] if len(end) > 0 else len(time)
             else:
                 start, end = fallback_sat_time
+                log.info('Use fallback sat_time ratio: %.1f, %.1f for %s'
+                         % (start, end, path))
                 start, end = int(len(time)*start), int(len(time)*end)
             sat_t = np.linspace(time[start], time[end-1], 2)
-            chi_sat = np.mean(chi[start:end])
-            # chi_sat_std = np.std(chi[start:end])
-            D_sat = np.mean(D[start:end])
-            chiDresult.append((time, chi, D, sat_t, chi_sat, D_sat))
+            sat_chi = np.mean(chi[start:end])
+            # sat_chi_std = np.std(chi[start:end])
+            sat_D = np.mean(D[start:end])
+            chiDresult.append((time, chi, D, sat_t, sat_chi, sat_D))
         self.chiDresults[cache_key] = chiDresult
         return chiDresult
 
-    def plot_chi_D(self, casepaths, particles=('ion', 'electron'),
-                   fignum='fig1-1', add_style=[],
-                   suptitle=None, title_y=0.95, savepath=None,
-                   xlim=None, ylim1=None, ylim2=None, ylim3=None, ylim4=None):
+    def plot_chi_D(self, particle, chiDresult, labels, nlines=2,
+                   xlims={}, ylims={}, fignum='fig-1-chi-D', add_style=[],
+                   suptitle=None, title_y=0.95, savepath=None):
         '''
-        Plot chi, D figures of particle ion and electron.
+        Plot chi, D figures of particle(like ion or electron).
 
         Parameters
         ----------
-        casepaths: list
-            selected cases paths from :attr:`paths`, selected cases to plot
-        particles: tuple, particles to plot
-        ylim1: ylim for chi_i
-        ylim2: ylim for D_i
-        ylim3: ylim for chi_e
-        ylim4: ylim for D_e
+        chiDresult: list
+            chiDresult of particle get by :meth:`dig_chi_D
+        labels: list
+            set line labels for chiDresult
+        nlines: int, >=2
+            number of lines in each Axes
+        xlims, ylims: dict, set xlim, ylim for some Axes
+            key is axes index
         savepath: str
             default savepath is f'./{fignum}.jpg'
         '''
-        xlim_kws = {'xlim': xlim} if xlim else {}
-        ylim_kws = {
-            k: {'ylim': v}
-            for k, v in filter(lambda kw: kw[1] is not None, [
-                ('ylim1', ylim1), ('ylim2', ylim2), ('ylim3', ylim3), ('ylim4', ylim4)])
-        }
-        Mrow = 2
-        Ncol = len(particles)
-        MN = Mrow*100 + Ncol*10
+        if particle not in ('ion', 'electron', 'fastion'):
+            raise ValueError('unsupported particle: %s ' % particle)
+        nlines = max(2, nlines)
+        Mrow = math.ceil(len(chiDresult)/nlines)
         all_axes = []
-        axes_idx = 1
-        if 'ion' in particles:
-            chiDresult = self.dig_chi_D('ion')  # TODO
-            axes_chii = {
-                'layout': [MN+axes_idx, dict(ylabel=r'$\chi_i$', **xlim_kws, **ylim_kws.get('ylim1', {}))],
+        ie = 'i' if 'ion' == particle else (
+            'e' if 'electron' in particle else 'f')
+        for row in range(1, Mrow+1, 1):
+            ress = chiDresult[(row-1)*nlines:row*nlines]
+            lbls = labels[(row-1)*nlines:row*nlines]
+            ax_idx = 2*(row-1)+1
+            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
+            xylim_kws = {'xlim': xlim} if xlim else {}
+            if ylim:
+                xylim_kws['ylim'] = ylim
+            ax_chi = {
+                'layout': [
+                    (Mrow, 2, ax_idx), dict(
+                        xlabel=r'$t(R_0/c_s)$', ylabel=r'$\chi_%s$' % ie,
+                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
                 'data': [
-                    *[[1+i, 'plot', (*self.time_chii[key], '-'), dict(color="C{}".format(i), label=r'$%s, \chi_i=%.2f$' % (key, self.time_chii_sat[key][1][0]))]
-                      for i, key in enumerate(parakeys)],
-                    *[[30+i, 'plot', (*self.time_chii_sat[key], 'o'), dict(color="C{}".format(i))]
-                      for i, key in enumerate(parakeys)],
+                    *[[1+i, 'plot', (r[0], r[1], '-'), dict(
+                        color="C{}".format(i),
+                        label=r'$%s, \chi_%s=%.2f$' % (l, ie, r[4]))]
+                      for i, (r, l) in enumerate(zip(ress, lbls))],
+                    *[[30+i, 'plot', (r[3], [r[4], r[4]], 'o'), dict(
+                        color="C{}".format(i))]
+                      for i, r in enumerate(ress)],
                     [50, 'legend', (), {}],
-                    [51, 'set_xticklabels', ([],), {}],
+                    # [51, 'set_xticklabels', ([],), {}],
+                    # [52, 'set_xlabel', (r'$t(R_0/c_s)$',), {}],
                 ],
             }
-            axes_idx += 1
-            axes_Di = {
-                'layout': [MN+axes_idx, dict(ylabel=r'$D_i$', **xlim_kws, **ylim_kws.get('ylim2', {}))],
+            ax_idx = 2*(row-1)+2
+            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
+            xylim_kws = {'xlim': xlim} if xlim else {}
+            if ylim:
+                xylim_kws['ylim'] = ylim
+            ax_D = {
+                'layout': [
+                    (Mrow, 2, ax_idx), dict(
+                        xlabel=r'$t(R_0/c_s)$', ylabel=r'$D_%s$' % ie,
+                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
                 'data': [
-                    *[[1+i, 'plot', (*self.time_Di[key], '-'), dict(color="C{}".format(i), label=r'$%s, D_i=%.2f$' % (key, self.time_Di_sat[key][1][0]))]
-                      for i, key in enumerate(parakeys)],
-                    *[[30+i, 'plot', (*self.time_Di_sat[key], 'o'), dict(color="C{}".format(i))]
-                      for i, key in enumerate(parakeys)],
+                    *[[1+i, 'plot', (r[0], r[2], '-'), dict(
+                        color="C{}".format(i),
+                        label=r'$%s, D_%s=%.2f$' % (l, ie, r[5]))]
+                      for i, (r, l) in enumerate(zip(ress, lbls))],
+                    *[[30+i, 'plot', (r[3], [r[5], r[5]], 'o'), dict(
+                        color="C{}".format(i))]
+                      for i, r in enumerate(ress)],
                     [50, 'legend', (), {}],
-                    [51 if Ncol != 1 else -51, 'set_xticklabels', ([],), {}],
-                    [-52 if Ncol != 1 else 52, 'set_xlabel',
-                     (r'$t(R_0/c_s)$',), {}],
                 ],
             }
-            axes_idx += 1
-            all_axes.extend([axes_chii, axes_Di])
-        if 'electron' in particles:
-            axes_chie = {
-                'layout': [MN+axes_idx, dict(ylabel=r'$\chi_e$', **xlim_kws, **ylim_kws.get('ylim3', {}))],
-                'data': [
-                    *[[1+i, 'plot', (*self.time_chie[key], '-'), dict(color="C{}".format(i), label=r'$%s, \chi_e=%.2f$' % (key, self.time_chie_sat[key][1][0]))]
-                      for i, key in enumerate(parakeys)],
-                    *[[30+i, 'plot', (*self.time_chie_sat[key], 'o'), dict(color="C{}".format(i))]
-                      for i, key in enumerate(parakeys)],
-                    [50, 'legend', (), {}],
-                    [51 if axes_idx == 1 else -51,
-                        'set_xticklabels', ([],), {}],
-                    [-52 if axes_idx == 1 else 52,
-                     'set_xlabel', (r'$t(R_0/c_s)$',), {}],
-                ],
-            }
-            axes_idx += 1
-            axes_De = {
-                'layout': [MN+axes_idx, dict(ylabel=r'$D_e$', **xlim_kws, **ylim_kws.get('ylim4', {}))],
-                'data': [
-                    *[[1+i, 'plot', (*self.time_De[key], '-'), dict(color="C{}".format(i), label=r'$%s, D_e=%.2f$' % (key, self.time_De_sat[key][1][0]))]
-                      for i, key in enumerate(parakeys)],
-                    *[[30+i, 'plot', (*self.time_De_sat[key], 'o'), dict(color="C{}".format(i))]
-                      for i, key in enumerate(parakeys)],
-                    [50, 'legend', (), {}],
-                    [52, 'set_xlabel', (r'$t(R_0/c_s)$',), {}],
-                ],
-            }
-            all_axes.extend([axes_chie, axes_De])
+            all_axes.extend([ax_chi, ax_D])
         fig = self.plotter.create_figure(
-            fignum, *all_axes, add_style=[{
-                'figure.figsize': (4, 6) if Ncol == 1 else (8, 6),
-                # 'figure.autolayout': False,
-                'figure.subplot.hspace': 0.02,
-                'legend.handlelength': 2.0,
-                # 'legend.fontsize': 8,
-            }] + add_style)
+            fignum, *all_axes, add_style=add_style)
         fig.suptitle(suptitle or fignum, y=title_y)
         fig.savefig(savepath or './%s.jpg' % fignum)
