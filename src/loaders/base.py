@@ -164,20 +164,16 @@ class BaseRawLoader(BaseLoader):
 
     Attributes
     ----------
-    path: str
-        path of directory or archive file
     pathobj: opened path object
     filenames: tuple
         filenames using forward slashes (/) in the directory or archive file
-    filenames_exclude: list
-        list of filenames or regular expressions
 
     Parameters
     ----------
     path: str
-        path of directory or file
+        path of directory or archive file
     filenames_exclude: list
-        a list of filenames or regular expressions to exclude filenames,
+        a list of function or regular expression to exclude filenames,
         example: [r'.*\.txt$', 'bigdata.out'] or [r'(?!^include\.out$)']
 
     Notes
@@ -204,9 +200,9 @@ class BaseRawLoader(BaseLoader):
             pathobj = self._special_open()
             log.debug("Getting filenames from %s ..." % self.path)
             filenames = self._special_getkeys(pathobj)
-            for pat in self.filenames_exclude:
-                pat = re.compile(pat)
-                filenames = [k for k in filenames if not pat.match(k)]
+            for exc in self.filenames_exclude:
+                excfun = exc if callable(exc) else re.compile(exc).match
+                filenames = [k for k in filenames if not excfun(k)]
             self.pathobj = pathobj
             self.filenames = tuple(sorted(filenames))
         except (IOError, ValueError):
@@ -255,15 +251,11 @@ class BasePckLoader(BaseLoader):
 
     Attributes
     ----------
-    path: str
-        path of the file or cache
     pathobj: opened path object
     datakeys: tuple
         keys in the loader, contain group name
     datagroups: tuple
         groups of datakeys
-    datagroups_exclude: list
-        list of filenames or regular expressions
     description: str or None
         description of the data, if 'description' is in datakeys
     desc: alias description
@@ -273,9 +265,9 @@ class BasePckLoader(BaseLoader):
     Parameters
     ----------
     path: str
-        path to open
+        path of the file to open
     datagroups_exclude: list
-        a list of datagroups or regular expressions to exclude datagroups,
+        a list of function or regular expression to exclude datagroups,
         example: [r'sanp\d+$', 'bigdata']
     '''
     __slots__ = ['datakeys', 'datagroups', 'datagroups_exclude',
@@ -310,9 +302,9 @@ class BasePckLoader(BaseLoader):
             if '' in all_datagroups:
                 all_datagroups.remove('')
             datagroups = list(all_datagroups)
-            for pat in self.datagroups_exclude:
-                pat = re.compile(pat)
-                datagroups = [k for k in datagroups if not pat.match(k)]
+            for exc in self.datagroups_exclude:
+                excfun = exc if callable(exc) else re.compile(exc).match
+                datagroups = [k for k in datagroups if not excfun(k)]
             self.datagroups = tuple(sorted(datagroups))
             exc_datagroups = all_datagroups - set(datagroups)
             if exc_datagroups:
