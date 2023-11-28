@@ -17,6 +17,7 @@ from ..processors import get_processor
 from ..visplters import get_visplter
 from .._json import dumps as json_dumps
 from ..glogger import getGLogger
+from .. import tools
 
 __all__ = [
     'get_selected_converted_data', 'get_label_ts_data',
@@ -339,9 +340,6 @@ class CaseSeries(object):
         key is saltstr; value is gdpy3 processor for each case
     labelinfo: LabelInfoSeries instance
         label information of these cases
-    chiDresults: dict, cache of :meth:`dig_chi_D`
-        key is input parameters tuple of :meth:`dig_chi_D`
-        value is :meth:`dig_chi_D` return
     '''
 
     def __init__(self, casepaths, skip_lost=True, labelinfo=None):
@@ -373,7 +371,6 @@ class CaseSeries(object):
             self.labelinfo = labelinfo
         else:
             self.labelinfo = None
-        self.chiDresults = {}
         self.plotter = get_visplter('mpl::series')
         self.plotter.style = ['gdpy3-paper-aip']
 
@@ -382,8 +379,10 @@ class CaseSeries(object):
         '''
         Get particle chi and D of each case.
         Return a list of tuple in order of :attr:`paths`.
-        The tuple has 6 elements: time t array, chi(t) array, D(t) array,
-            saturation (start-time, end-time), saturation chi, saturation D.
+        The tuple has 6 elements:
+            1) time t array, 2) chi(t) array, 3) D(t) array,
+            4) saturation time (start-time, end-time),
+            5) saturation chi, 6) saturation D.
 
         Parameters
         ----------
@@ -402,9 +401,6 @@ class CaseSeries(object):
             figlabel = 'history/%s_flux' % particle
         else:
             raise ValueError('unsupported particle: %s ' % particle)
-        cache_key = (particle, gyroBohm, Ln, tuple(fallback_sat_time))
-        if cache_key in self.chiDresults:
-            return self.chiDresults[cache_key]
         chiDresult = []
         for path, key in self.paths:
             gdp = self.cases[key]
@@ -434,19 +430,18 @@ class CaseSeries(object):
             # sat_chi_std = np.std(chi[start:end])
             sat_D = np.mean(D[start:end])
             chiDresult.append((time, chi, D, sat_t, sat_chi, sat_D))
-        self.chiDresults[cache_key] = chiDresult
         return chiDresult
 
     def plot_chi_D(self, particle, chiDresult, labels, nlines=2,
                    xlims={}, ylims={}, fignum='fig-1-chi-D', add_style=[],
                    suptitle=None, title_y=0.95, savepath=None):
         '''
-        Plot chi, D figures of particle(like ion or electron).
+        Plot chi, D figure of particle(like ion or electron).
 
         Parameters
         ----------
         chiDresult: list
-            chiDresult of particle get by :meth:`dig_chi_D
+            chiDresult of particle get by :meth:`dig_chi_D`
         labels: list
             set line labels for chiDresult
         nlines: int, >=2
@@ -511,6 +506,136 @@ class CaseSeries(object):
                 ],
             }
             all_axes.extend([ax_chi, ax_D])
+        fig = self.plotter.create_figure(
+            fignum, *all_axes, add_style=add_style)
+        fig.suptitle(suptitle or fignum, y=title_y)
+        fig.savefig(savepath or './%s.jpg' % fignum)
+
+    def dig_gamma_phi(self, R0Ln=None, fallback_growth_time='auto'):
+        '''
+        Get phi-RMS linear growth rate of each case.
+        Return a list of tuple in order of :attr:`paths`.
+        The tuple has 5 elements:
+            1) time t array, 2) log(phirms)(t) array,
+            3) linear growth time (start-time t0, end-time t1),
+            4) associated log(phirms) (log(phirms)(t0), log(phirms)(t1)),
+            5) linear growth rate.
+
+        Parameters
+        ----------
+        removeNaN: bool
+            remove NaN data in log(phirms) array, cut off by array index
+        R0Ln: float
+            Set R0/Ln for normlization, use Cs/Ln as unit.
+            If R0Ln=None, use Cs/R0.
+        fallback_growth_time: tuple of float, or 'auto'
+            If linear growth time not found in :attr:`labelinfo`, use this
+            to set growth (start,end) time ratio. limit: 0.0 -> 1.0
+            'auto', use :func:`tools.findgrowth` to find growth time
+        '''
+        gammaresult = []
+        removeNaN = True
+        for path, key in self.paths:
+            gdp = self.cases[key]
+            a, b, c = gdp.dig('history/phi', post=False)
+            time = b['time']
+            logphirms = np.log(b['fieldrms'])
+            if removeNaN:
+                idx = len(time)
+                checkNaN = np.where(np.isnan(logphirms))[0]
+                if checkNaN.size > 0:
+                    idx = min(checkNaN[0], idx)
+                if idx < len(time):
+                    time = time[:idx]
+                    logphirms = logphirms[:idx]
+            start, end = None, None
+            if self.labelinfo:
+                start, end = self.labelinfo.get(key, stage='linear')
+            if start is not None:
+                log.info('Get growth time: %6.2f, %6.2f for %s'
+                         % (start, end, path))
+                start = np.where(time > start)[0][0]
+                end = np.where(time > end)[0]
+                end = end[0] if len(end) > 0 else len(time)
+            else:
+                if fallback_growth_time == 'auto':
+                    start, region_len = tools.findgrowth(logphirms, 1e-4)
+                    if region_len == 0:
+                        start, region_len = 0, max(len(time) // 4, 2)
+                    end = start + region_len
+                    log.info(
+                        "Find growth time: [%s,%s], index: [%s,%s], for %s"
+                        % (time[start], time[end-1], start, end-1, path))
+                else:
+                    start, end = fallback_growth_time
+                    log.info(
+                        'Use fallback growth time ratio: %.1f, %.1f for %s'
+                        % (start, end, path))
+                    start, end = int(len(time)*start), int(len(time)*end)
+            growth_time = np.linspace(time[start], time[end-1], 2)
+            growth_logphi = np.linspace(logphirms[start], logphirms[end-1], 2)
+            # polyfit growth line
+            resparm, fitya = tools.line_fit(
+                time[start:end], logphirms[start:end], 1,
+                info='%s growth rate' % path)
+            growth = resparm[0][0]
+            log.info("Get growth rate: %.6f for %s" % (growth, path))
+            gammaresult.append((
+                time, logphirms, growth_time, growth_logphi, growth))
+        return gammaresult
+
+    def plot_gamma_phi(self, gammaresult, labels, nlines=2, ncols=1,
+                       xlims={}, ylims={}, fignum='fig-2-phi', add_style=[],
+                       suptitle=None, title_y=0.95, savepath=None):
+        '''
+        Plot figure of phi-RMS and its growth range.
+
+        Parameters
+        ----------
+        gammaresult: list
+            phi-RMS gammaresult get by :meth:`dig_gamma_phi`
+        labels: list
+            set line labels for gammaresult
+        nlines: int, >=2
+            number of lines in each Axes
+        ncols: int, >=1
+            number of columns in this figure
+        xlims, ylims: dict, set xlim, ylim for some Axes
+            key is axes index
+        savepath: str
+            default savepath is f'./{fignum}.jpg'
+        '''
+        nlines = max(2, nlines)
+        Mrow = math.ceil(len(gammaresult)/nlines/ncols)
+        all_axes = []
+        for row in range(1, Mrow+1, 1):
+            for col in range(1, ncols+1, 1):
+                ax_idx = ncols*(row-1) + col  # ax, 1, 2, ...
+                ress = gammaresult[(ax_idx-1)*nlines:ax_idx*nlines]
+                lbls = labels[(ax_idx-1)*nlines:ax_idx*nlines]
+                xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
+                xylim_kws = {'xlim': xlim} if xlim else {}
+                if ylim:
+                    xylim_kws['ylim'] = ylim
+                ax_logphi = {
+                    'layout': [
+                        (Mrow, ncols, ax_idx), dict(
+                            xlabel=r'$t(R_0/c_s)$',
+                            ylabel=r'$log(\phi_{RMS})$',
+                            title='%d/%s' % (ax_idx, Mrow*ncols),
+                            **xylim_kws)],
+                    'data': [
+                        *[[1+i, 'plot', (r[0], r[1], '-'), dict(
+                            color="C{}".format(i),
+                            label=r'$%s, \gamma_{\phi}=%.2f$' % (l, r[4]))]
+                          for i, (r, l) in enumerate(zip(ress, lbls))],
+                        *[[30+i, 'plot', (r[2], r[3], 'o'), dict(
+                            color="C{}".format(i))]
+                          for i, r in enumerate(ress)],
+                        [50, 'legend', (), {}],
+                    ],
+                }
+                all_axes.append(ax_logphi)
         fig = self.plotter.create_figure(
             fignum, *all_axes, add_style=add_style)
         fig.suptitle(suptitle or fignum, y=title_y)
