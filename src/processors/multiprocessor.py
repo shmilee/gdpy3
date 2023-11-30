@@ -42,6 +42,15 @@ class MultiProcessor(Processor):
     def name(self):
         return type(self).__name__[5:]
 
+    @classmethod
+    def set_workers_number(cls, number):
+        if number >= 1:
+            plog.info("Change worker processes' number: %d -> %d!"
+                      % (cls.multiproc, int(number)))
+            cls.multiproc = int(number)
+        else:
+            plog.error("'number' must be >=1!")
+
     def _count_task_done(self, lock, count, total, desc):
         '''
         Parameters
