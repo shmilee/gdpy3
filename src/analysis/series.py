@@ -327,6 +327,40 @@ class LabelInfoSeries(object):
                 f2.write(json_dumps(result_list, indent=2, indent_limit=8))
         return result_list
 
+    @classmethod
+    def slim_ls_json(cls, jsonfile, savepath=None, result_modify=None):
+        '''
+        Parameters
+        ----------
+        jsonfile: str, path of Label Studio json results
+        savepath: str, new path
+        result_modify: function
+            remove some data of each case.
+            input: case result, return: slimmed result
+            default: remove None, [], {}, 0; delete result[data][ts]
+        '''
+        if not (result_modify and callable(result_modify)):
+            def result_modify(result):
+                for k in list(result.keys()):
+                    if result[k] in [None, [], {}, 0]:
+                        result.pop(k)
+                for k in ['file_upload', 'created_at', 'updated_at']:
+                    if k in result:
+                        result.pop(k)
+                if 'annotations' in result:
+                    for a in result['annotations']:
+                        for k in list(a.keys()):
+                            if a[k] in [None, [], {}, 0]:
+                                a.pop(k)
+                        for k in ['unique_id', 'created_at', 'updated_at']:
+                            if k in a:
+                                a.pop(k)
+                if 'data' in result and 'ts' in result['data']:
+                    result['data'].pop('ts')
+                return result
+        return cls.merge_ls_jsons(
+            jsonfile, savepath=savepath, result_modify=result_modify)
+
 
 class CaseSeries(object):
     '''
@@ -523,8 +557,6 @@ class CaseSeries(object):
 
         Parameters
         ----------
-        removeNaN: bool
-            remove NaN data in log(phirms) array, cut off by array index
         R0Ln: float
             Set R0/Ln for normlization, use Cs/Ln as unit.
             If R0Ln=None, use Cs/R0.
