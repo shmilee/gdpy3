@@ -8,6 +8,7 @@ Function, class to compare different cases.
 
 import os
 import re
+import time
 import shutil
 import json
 import math
@@ -26,7 +27,8 @@ __all__ = [
 log = getGLogger('G.a')
 
 
-def get_selected_converted_data(pathsmap, parallel='off', **kwargs):
+def get_selected_converted_data(pathsmap, parallel='off', printETA=True,
+                                **kwargs):
     '''
     Get selected GTC raw data from original directory (like sftp://xxx),
     then convert and save to a new directory (like local path).
@@ -47,6 +49,9 @@ def get_selected_converted_data(pathsmap, parallel='off', **kwargs):
 
     parallel: str, 'off' or 'multiprocess'
         'sftp://xxx' case needs parallel='off'.
+    printETA: bool or function
+        print ETA information and process state
+        input of function is a list of time cost.
     kwargs: other parameters passed to :meth:`processors.get_processor`
 
     Notes
@@ -62,6 +67,7 @@ def get_selected_converted_data(pathsmap, parallel='off', **kwargs):
         gdpcls = get_processor(parallel='off')
     failed = []
     N = len(pathsmap)
+    timecost = []
     for i, pmap in enumerate(pathsmap, 1):
         try:
             print('', flush=True)
@@ -72,10 +78,12 @@ def get_selected_converted_data(pathsmap, parallel='off', **kwargs):
                 if (test.refind('%s-.*converted.*' % gdpcls.__name__.lower())
                         and test.refind(gdpcls.saltname)):
                     log.warning('Skip path %s that has converted data!' % dest)
+                    timecost.append(None)
                     continue
             else:
                 log.info('Create directory: %s' % dest)
                 os.mkdir(dest)
+            start = time.time()
             gdp = get_processor(
                 path, parallel=parallel, filenames_exclude=exclude, Sid=True,
                 **kwargs)
@@ -97,6 +105,19 @@ def get_selected_converted_data(pathsmap, parallel='off', **kwargs):
                 with gdp.rawloader.get(file1) as f1:
                     with open(file2, 'w') as f2:
                         f2.write(f1.read())
+            end = time.time()
+            timecost.append(end-start)
+            if printETA and callable(printETA):
+                printETA(timecost)
+            else:
+                left = N - len(timecost)
+                valid = tuple(filter(None, timecost))
+                if len(valid) > 0:
+                    ETA = int(np.mean(valid)*left)
+                else:
+                    ETA = 0
+                print('-'*8, ' Done %d/%d, ETA=%ds' % (i, N, ETA), '-'*8,
+                      flush=True)
         except Exception as e:
             log.error('%s failed: %s' % (pmap[0], e), exc_info=1)
             failed.append(pmap)
