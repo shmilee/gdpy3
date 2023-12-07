@@ -27,7 +27,8 @@ __all__ = [
 log = getGLogger('G.a')
 
 
-def get_selected_converted_data(pathsmap, parallel='off', printETA=True,
+def get_selected_converted_data(pathsmap, parallel='off',
+                                printETA=None, printETAweights=None,
                                 **kwargs):
     '''
     Get selected GTC raw data from original directory (like sftp://xxx),
@@ -49,9 +50,12 @@ def get_selected_converted_data(pathsmap, parallel='off', printETA=True,
 
     parallel: str, 'off' or 'multiprocess'
         'sftp://xxx' case needs parallel='off'.
-    printETA: bool or function
-        print ETA information and process & converted file status
-        input of function is a list of time cost and a list of file size.
+    printETA: function
+        custom function to print ETA infor and process & converted file status
+        The inputs are a list of time cost, a list of file size,
+        and a dict of (i=, size=, sumsize=, ETA=).
+    printETAweights: list
+        weights for the list of time cost of cases
     kwargs: other parameters passed to :meth:`processors.get_processor`
 
     Notes
@@ -74,55 +78,61 @@ def get_selected_converted_data(pathsmap, parallel='off', printETA=True,
             print('', flush=True)
             print('-'*16, '%d/%d' % (i, N), '-'*16, flush=True)
             path, dest, exclude = pmap
+            done = False
             if os.path.exists(dest):
                 test = get_rawloader(dest)
                 tc = test.refind('%s-.*converted.*' % gdpcls.__name__.lower())
                 if tc and test.refind(gdpcls.saltname):
                     log.warning('Skip path %s that has converted data!' % dest)
                     timecost.append(None)
-                    filesize.append(os.path.getsize(tc[0]))
-                    continue
-            else:
+                    filesize.append(os.path.getsize(
+                        os.path.join(dest, tc[0])))
+                    done = True
+            if not done:
                 log.info('Create directory: %s' % dest)
                 os.mkdir(dest)
-            start = time.time()
-            gdp = get_processor(
-                path, parallel=parallel, filenames_exclude=exclude, Sid=True,
-                **kwargs)
-            converted = gdp.pcksaver.path
-            idx = converted.rfind(gdp.name.lower() + '-')
-            file = os.path.join(dest, converted[idx:])
-            log.info('Move converted data: %s -> %s' % (converted, file))
-            shutil.move(converted, file)
-            # copy gtc.out, gtc-input.lua
-            todo = [gdp.saltname]
-            todo.extend(gdp.rawloader.refind('gtc-\d+\.out'))
-            todo.extend(gdp.rawloader.refind('gtc-input.*\.lua'))
-            for file1 in todo:
-                file2 = os.path.join(dest, file1)
-                if os.path.exists(file2):
-                    log.warning('Skip file: %s' % file2)
-                    continue
-                log.info('Copy file: %s -> %s' % (file1, file2))
-                with gdp.rawloader.get(file1) as f1:
-                    with open(file2, 'w') as f2:
-                        f2.write(f1.read())
-            end = time.time()
-            timecost.append(end-start)
-            filesize.append(os.path.getsize(file))
-            if printETA and callable(printETA):
-                printETA(timecost, filesize)
+                start = time.time()
+                gdp = get_processor(
+                    path, parallel=parallel, filenames_exclude=exclude, Sid=True,
+                    **kwargs)
+                converted = gdp.pcksaver.path
+                idx = converted.rfind(gdp.name.lower() + '-')
+                file = os.path.join(dest, converted[idx:])
+                log.info('Move converted data: %s -> %s' % (converted, file))
+                shutil.move(converted, file)
+                # copy gtc.out, gtc-input.lua
+                todo = [gdp.saltname]
+                todo.extend(gdp.rawloader.refind('gtc-\d+\.out'))
+                todo.extend(gdp.rawloader.refind('gtc-input.*\.lua'))
+                for file1 in todo:
+                    file2 = os.path.join(dest, file1)
+                    if os.path.exists(file2):
+                        log.warning('Skip file: %s' % file2)
+                        continue
+                    log.info('Copy file: %s -> %s' % (file1, file2))
+                    with gdp.rawloader.get(file1) as f1:
+                        with open(file2, 'w') as f2:
+                            f2.write(f1.read())
+                end = time.time()
+                timecost.append(end-start)
+                filesize.append(os.path.getsize(file))
+            ETA = 0
+            size, sumsize = filesize[-1], sum(filesize)
+            if printETAweights:
+                val = np.array(tuple(filter(
+                    lambda tw: tw[0], zip(timecost, printETAweights[:i]))))
+                if len(val) > 0:
+                    ETA = int(np.average(val[:, 0], weights=val[:, 1])*(N-i))
             else:
-                left = N - len(timecost)
-                valid = tuple(filter(None, timecost))
-                if len(valid) > 0:
-                    ETA = int(np.mean(valid)*left)
-                else:
-                    ETA = 0
-                size, sumsize = filesize[-1], sum(filesize)
-                print('-'*8, ' Done %d/%d, %.1fM/%.1fM, ETA=%ds'
-                      % (i, N, size/1024/1024, sumsize/1024/1024, ETA),
-                      '-'*8, flush=True)
+                val = tuple(filter(None, timecost))
+                if len(val) > 0:
+                    ETA = int(np.mean(valid)*(N-i))
+            print('-'*8, ' Done %d/%d, %.1fM/%.1fM, ETA=%ds'
+                  % (i, N, size/1024/1024, sumsize/1024/1024, ETA),
+                  '-'*8, flush=True)
+            if printETA and callable(printETA):
+                printETA(timecost, filesize, dict(
+                    i=i, size=size, sumsize=sumsize, ETA=ETA))
         except Exception as e:
             log.error('%s failed: %s' % (pmap[0], e), exc_info=1)
             failed.append(pmap)
