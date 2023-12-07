@@ -90,7 +90,7 @@ def get_selected_converted_data(pathsmap, parallel='off',
                     done = True
             if not done:
                 log.info('Create directory: %s' % dest)
-                os.mkdir(dest)
+                os.makedirs(dest, exist_ok=True)
                 start = time.time()
                 gdp = get_processor(
                     path, parallel=parallel, filenames_exclude=exclude, Sid=True,
