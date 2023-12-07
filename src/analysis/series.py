@@ -50,8 +50,8 @@ def get_selected_converted_data(pathsmap, parallel='off', printETA=True,
     parallel: str, 'off' or 'multiprocess'
         'sftp://xxx' case needs parallel='off'.
     printETA: bool or function
-        print ETA information and process state
-        input of function is a list of time cost.
+        print ETA information and process & converted file status
+        input of function is a list of time cost and a list of file size.
     kwargs: other parameters passed to :meth:`processors.get_processor`
 
     Notes
@@ -68,6 +68,7 @@ def get_selected_converted_data(pathsmap, parallel='off', printETA=True,
     failed = []
     N = len(pathsmap)
     timecost = []
+    filesize = []
     for i, pmap in enumerate(pathsmap, 1):
         try:
             print('', flush=True)
@@ -75,10 +76,11 @@ def get_selected_converted_data(pathsmap, parallel='off', printETA=True,
             path, dest, exclude = pmap
             if os.path.exists(dest):
                 test = get_rawloader(dest)
-                if (test.refind('%s-.*converted.*' % gdpcls.__name__.lower())
-                        and test.refind(gdpcls.saltname)):
+                tc = test.refind('%s-.*converted.*' % gdpcls.__name__.lower())
+                if tc and test.refind(gdpcls.saltname):
                     log.warning('Skip path %s that has converted data!' % dest)
                     timecost.append(None)
+                    filesize.append(os.path.getsize(tc[0]))
                     continue
             else:
                 log.info('Create directory: %s' % dest)
@@ -107,8 +109,9 @@ def get_selected_converted_data(pathsmap, parallel='off', printETA=True,
                         f2.write(f1.read())
             end = time.time()
             timecost.append(end-start)
+            filesize.append(os.path.getsize(file))
             if printETA and callable(printETA):
-                printETA(timecost)
+                printETA(timecost, filesize)
             else:
                 left = N - len(timecost)
                 valid = tuple(filter(None, timecost))
@@ -116,8 +119,10 @@ def get_selected_converted_data(pathsmap, parallel='off', printETA=True,
                     ETA = int(np.mean(valid)*left)
                 else:
                     ETA = 0
-                print('-'*8, ' Done %d/%d, ETA=%ds' % (i, N, ETA), '-'*8,
-                      flush=True)
+                size, sumsize = filesize[-1], sum(filesize)
+                print('-'*8, ' Done %d/%d, %.1fM/%.1fM, ETA=%ds'
+                      % (i, N, size/1024/1024, sumsize/1024/1024, ETA),
+                      '-'*8, flush=True)
         except Exception as e:
             log.error('%s failed: %s' % (pmap[0], e), exc_info=1)
             failed.append(pmap)
