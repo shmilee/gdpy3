@@ -126,7 +126,7 @@ def get_selected_converted_data(pathsmap, parallel='off',
             else:
                 val = tuple(filter(None, timecost))
                 if len(val) > 0:
-                    ETA = int(np.mean(valid)*(N-i))
+                    ETA = int(np.mean(val)*(N-i))
             print('-'*8, ' Done %d/%d, %.1fM/%.1fM, ETA=%ds'
                   % (i, N, size/1024/1024, sumsize/1024/1024, ETA),
                   '-'*8, flush=True)
