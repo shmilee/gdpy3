@@ -25,6 +25,9 @@ __all__ = ['nparray_default_bitsize', 'max_subarray',
            ]
 log = getGLogger('C')
 
+int_types = (int, np.int8, np.int16, np.int32, np.int64)
+float_types = (float, np.float16, np.float32, np.float64, np.float128)
+
 
 @contextlib.contextmanager
 def nparray_default_bitsize(size=None, isize=None, fsize=None):
@@ -44,8 +47,6 @@ def nparray_default_bitsize(size=None, isize=None, fsize=None):
         bits size for float
     '''
     idtype, fdtype = None, None
-    int_types = (int, np.int8, np.int16, np.int32, np.int64)
-    float_types = (float, np.float16, np.float32, np.float64, np.float128)
     if isize in (8, 16, 32, 64):
         idtype = getattr(np, 'int%d' % isize)
     elif size in (16, 32, 64):
@@ -436,7 +437,7 @@ def fft(dt, signal):
     '''
     FFT in one dimension, return tf, af, pf
     '''
-    if isinstance(dt, float) and isinstance(signal, np.ndarray):
+    if isinstance(dt, float_types) and isinstance(signal, np.ndarray):
         size = signal.size
         if size % 2 == 0:
             tf = np.linspace(-0.5, 0.5, size, endpoint=False)
@@ -457,7 +458,7 @@ def fft2(dt, dx, signal):
     FFT in two dimension, return tf, xf, af, pf
     signal.shape == (X.size, T.size)
     '''
-    if (isinstance(dt, float) and isinstance(dx, float)
+    if (isinstance(dt, float_types) and isinstance(dx, float_types)
             and isinstance(signal, np.ndarray)
             and len(signal.shape) == 2):
         xsize, tsize = signal.shape
