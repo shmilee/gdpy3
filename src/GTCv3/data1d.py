@@ -325,149 +325,60 @@ class _Data1dMeanDigger(_Data1dDigger):
     post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
 
     def _dig(self, kwargs):
-        '''*mean_select*: str 'iflux' or 'peak'
-            default 'mean_iflux'
-        *mean_iflux*: [i0, i1], i0 int
-            mean data[y0:y1,:] where i0<=mpsi[y0:y1]<=i1
-            default i0, i1 = (y0+y1)//2, (y0+y1)//2
-        *mean_peak_limit*: float
-            set percentage of the min value near peak, default 1.0/e
-            mean data[y0:y1,t] where [y0,y1] near the peak
-        *mean_peak_greedy*: bool
-            if greedy is True, then search from edge, else from peak.
-            default False
-        *mean_z_abs*: bool
-            use z or sqrt(z**2), default False
+        '''*mean_time*: [t0, t1], float
+            mean data[:,x0:x1] where t0<=time[x0:x1]<=t1
+            default t0, t1 = time[-1]*0.7, time[-1]
         *mean_smooth*: bool
-            smooth results or not, default True
-        *mean_z_weight_order*: int
-            use 'abs(z)^mean_z_weight_order * dy' as weight, default 0
+            smooth results or not, default False
         '''
         results, acckwargs = super(_Data1dMeanDigger, self)._dig(kwargs)
         X, Y, Z = results['X'], results['Y'], results['Z']
-        y0, y1 = acckwargs['pcutoff']
+        t0, t1 = acckwargs['tcutoff']
         use_ra = acckwargs['use_ra']
-        select = kwargs.get('mean_select', 'iflux')
-        iflux = kwargs.get('mean_iflux', [(y1+y0)//2, (y1+y0)//2])
-        peak_limit = kwargs.get('mean_peak_limit', 1.0/numpy.e)
-        peak_greedy = bool(kwargs.get('mean_peak_greedy', False))
-        z_abs = bool(kwargs.get('mean_z_abs', False))
-        smooth = bool(kwargs.get('mean_smooth', True))
-        weight_order = kwargs.get('mean_z_weight_order', 0)
-        if select == 'iflux':
-            i0, i1 = iflux
-            if i0 < y0:
-                i0 = y0
-            if i1 > y1:
-                i1 = y1
-            # [y0:y1] -> [0:y1-y0]
-            i0, i1 = i0-y0, i1-y0
-            if z_abs:
-                selectZ = numpy.abs(Z[i0:i1+1])
-                weight = selectZ**weight_order
-            else:
-                selectZ = Z[i0:i1+1]
-                weight = numpy.abs(selectZ)**weight_order
-            if i0 < i1:
-                dY = numpy.array([numpy.gradient(Y[i0:i1+1])]).T
-                # weight = numpy.repeat(dY, len(X), axis=1) * weight
-                weight = numpy.tile(dY, (1, len(X))) * weight
-            meanZ = numpy.average(selectZ, axis=0, weights=weight)
-            upY = numpy.linspace(Y[i1], Y[i1], len(X))
-            downY = numpy.linspace(Y[i0], Y[i0], len(X))
-            midY, maxY = None, None
+        mt0, mt1 = kwargs.get('mean_time', [X[-1]*0.7, X[-1]])
+        smooth = bool(kwargs.get('mean_smooth', False))
+        index = numpy.where((X >= mt0) & (X <= mt1))[0]
+        if index.size > 0:
+            start, end = index[0], index[-1]
         else:
-            maxZ = Z.max(axis=0)
-            maxidx = Z.argmax(axis=0)
-            meanZ, upY, downY, midY = [], [], [], []
-            maxY = Y[maxidx]
-            for t in range(len(X)):
-                tZ = Z[:, t]
-                nY, ntZ = tools.near_peak(
-                    tZ, X=Y, intersection=True, lowerlimit=peak_limit,
-                    select='one', greedy=peak_greedy)
-                if z_abs:
-                    ntZ = numpy.abs(ntZ)
-                    weight = numpy.gradient(nY) * ntZ**weight_order
-                else:
-                    weight = numpy.gradient(nY) * numpy.abs(ntZ)**weight_order
-                upY.append(nY[-1])
-                downY.append(nY[0])
-                midY.append(numpy.average(nY, weights=weight))
-                meanZ.append(numpy.average(ntZ, weights=weight))
-            upY, downY = numpy.array(upY), numpy.array(downY)
-            midY, meanZ = numpy.array(midY), numpy.array(meanZ)
-            if smooth:
-                upY = tools.savgolay_filter(numpy.array(upY), info='up')
-                downY = tools.savgolay_filter(numpy.array(downY), info='down')
-                maxY = tools.savgolay_filter(Y[maxidx], info='max')
-                midY = tools.savgolay_filter(numpy.array(midY), info='mid')
-                # min(Y) <= up, down, max, mid <= max(Y)
-                ymin, ymax = Y.min(), Y.max()
-                upY[upY > ymax] = ymax
-                downY[downY < ymin] = ymin
-                maxY[maxY > ymax] = ymax
-                maxY[maxY < ymin] = ymin
-                midY[midY > ymax] = ymax
-                midY[midY < ymin] = ymin
+            dlog.warning('Cannot set mean time: %s <= t <= %s!' % (mt0, mt1))
+            start, end = int(len(X)*0.7), len(X)-1
+        mt0, mt1 = X[start], X[end]
+        dlog.parm("Set mean time: [%s,%s], index: [%s,%s]."
+                  % (X[start], X[end], start, end))
+        selectZ = Z[:, start:end]
+        meanZ = numpy.average(selectZ, axis=1)
         if smooth:
             meanZ = tools.savgolay_filter(meanZ, info='Z mean')
-        if 'mean_select' not in self.kwoptions:
+        if 'mean_time' not in self.kwoptions:
             self.kwoptions.update(dict(
-                mean_select=dict(
-                    widget='Dropdown',
-                    options=['iflux', 'peak'],
-                    value='iflux',
-                    description='select mean:'),
-                mean_iflux=dict(
-                    widget='IntRangeSlider',
-                    rangee=self.kwoptions['pcutoff']['rangee'].copy(),
-                    value=iflux,
-                    description='mean iflux:'),
-                mean_peak_limit=dict(
-                    widget='FloatSlider',
-                    rangee=(0, 1, 0.05),
-                    value=1.0/numpy.e,
-                    description='mean peak limit:'),
-                mean_peak_greedy=dict(widget='Checkbox',
-                                      value=False,
-                                      description='mean peak greedy'),
-                mean_z_abs=dict(widget='Checkbox',
-                                value=False,
-                                description='mean z abs'),
+                mean_time=dict(
+                    widget='FloatRangeSlider',
+                    rangee=self.kwoptions['tcutoff']['rangee'].copy(),
+                    value=[mt0, mt1],
+                    description='mean time:'),
                 mean_smooth=dict(widget='Checkbox',
-                                 value=True,
+                                 value=False,
                                  description='mean smooth'),
-                mean_z_weight_order=dict(widget='IntSlider',
-                                         rangee=(0, 6, 1),
-                                         value=0,
-                                         description='mean z weight order:')
             ))
-        acckwargs.update(dict(
-            mean_select=select, mean_iflux=iflux,
-            mean_peak_limit=round(peak_limit, 2), mean_peak_greedy=peak_greedy,
-            mean_z_abs=z_abs, mean_smooth=smooth,
-            mean_z_weight_order=weight_order))
-        results.update(dict(
-            meanZ=meanZ, upY=upY, maxY=maxY, midY=midY, downY=downY))
+        acckwargs.update(dict(mean_time=[mt0, mt1], mean_smooth=smooth))
+        results.update(dict(mean_time=[mt0, mt1], meanZ=meanZ))
         return results, acckwargs
 
     def _post_dig(self, results):
         r = results
-        LINE = [(r['X'], r['downY'], 'down'), (r['X'], r['upY'], 'up')]
-        if r['maxY'] is not None:
-            LINE.insert(0, (r['X'], r['maxY'], 'max'))
-        if r['midY'] is not None:
-            LINE.insert(0, (r['X'], r['midY'], 'mean'))
+        mt0, mt1 = r['mean_time']
+        LINE = [([mt0, mt0], r['Y'][[0, -1]], 'mean t0'),
+                ([mt1, mt1], r['Y'][[0, -1]], 'mean t1')]
         zip_results = [
-            ('tmpl_contourf', 211, dict(
+            ('tmpl_contourf', 121, dict(
                 X=r['X'], Y=r['Y'], Z=r['Z'], title=r['title'],
                 xlabel=r'time($R_0/c_s$)', ylabel=r['ylabel'])),
-            ('tmpl_line', 211, dict(LINE=LINE)),
-            ('tmpl_line', 212, dict(
-                LINE=[(r['X'], r['meanZ'], 'mean')],
-                xlim=[r['X'][0], r['X'][-1]],
-                xlabel=r'time($R_0/c_s$)'))]
+            ('tmpl_line', 121, dict(LINE=LINE)),
+            ('tmpl_line', 122, dict(
+                LINE=[(r['meanZ'], r['Y'], 'mean')],
+                ylim=[r['Y'][0], r['Y'][-1]], ylabel=r['ylabel'],
+                xlabel=r'mean Z'))]
         return dict(zip_results=zip_results)
 
 
