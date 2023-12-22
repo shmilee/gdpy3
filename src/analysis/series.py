@@ -447,7 +447,7 @@ class CaseSeries(object):
     def dig_chi_D(self, particle, gyroBohm=True, Ln=None,
                   fallback_sat_time=(0.7, 1.0)):
         '''
-        Get particle chi and D of each case.
+        Get particle chi(t) and D(t) of each case.
         Return a list of tuple in order of :attr:`paths`.
         The tuple has 6 elements:
             1) time t array, 2) chi(t) array, 3) D(t) array,
@@ -506,7 +506,7 @@ class CaseSeries(object):
                    xlims={}, ylims={}, fignum='fig-1-chi-D', add_style=[],
                    suptitle=None, title_y=0.95, savepath=None):
         '''
-        Plot chi, D figure of particle(like ion or electron).
+        Plot chi(t), D(t) figure of particle(like ion or electron).
 
         Parameters
         ----------
@@ -544,7 +544,7 @@ class CaseSeries(object):
                 'data': [
                     *[[1+i, 'plot', (r[0], r[1], '-'), dict(
                         color="C{}".format(i),
-                        label=r'$%s, \chi_%s=%.2f$' % (l, ie, r[4]))]
+                        label=r'%s, $\chi_%s=%.2f$' % (l, ie, r[4]))]
                       for i, (r, l) in enumerate(zip(ress, lbls))],
                     *[[30+i, 'plot', (r[3], [r[4], r[4]], 'o'), dict(
                         color="C{}".format(i))]
@@ -567,11 +567,137 @@ class CaseSeries(object):
                 'data': [
                     *[[1+i, 'plot', (r[0], r[2], '-'), dict(
                         color="C{}".format(i),
-                        label=r'$%s, D_%s=%.2f$' % (l, ie, r[5]))]
+                        label=r'%s, $D_%s=%.2f$' % (l, ie, r[5]))]
                       for i, (r, l) in enumerate(zip(ress, lbls))],
                     *[[30+i, 'plot', (r[3], [r[5], r[5]], 'o'), dict(
                         color="C{}".format(i))]
                       for i, r in enumerate(ress)],
+                    [50, 'legend', (), {}],
+                ],
+            }
+            all_axes.extend([ax_chi, ax_D])
+        fig = self.plotter.create_figure(
+            fignum, *all_axes, add_style=add_style)
+        fig.suptitle(suptitle or fignum, y=title_y)
+        fig.savefig(savepath or './%s.jpg' % fignum)
+
+    def dig_chi_D_r(self, particle, gyroBohm=True, Ln=None,
+                    fallback_sat_time=(0.7, 1.0), **kwargs):
+        '''
+        Get particle chi(r) and D(r) of each case.
+        Return a list of tuple in order of :attr:`paths`.
+        The tuple has 3 elements:
+            1) radial r array, 2) chi(r) array, 3) D(r) array
+
+        Parameters
+        ----------
+        particle: str
+            ion, electron or fastion
+        gyroBohm: bool
+            use gyroBohm unit. rho0/Ln*(Bohm unit)
+        Ln: float
+            Set R0/Ln for gyroBohm unit. Ln=1.0/2.22 when R0/Ln=2.22
+            If Ln=None, use a_minor as default Ln.
+        fallback_sat_time: tuple
+            If saturation time not found in :attr:`labelinfo`, use this
+            to set saturation (start,end) time ratio. limit: 0.0 -> 1.0
+        kwargs: dict
+            other kwargs for digging 'data1d/xx_xx_flux_mean', such as
+            'use_ra'(default False), 'mean_smooth'(default False)
+        '''
+        if particle in ('ion', 'electron', 'fastion'):
+            figlabel = 'data1d/%s_%%s_flux_mean' % particle
+        else:
+            raise ValueError('unsupported particle: %s ' % particle)
+        chiDresult = []
+        for path, key in self.paths:
+            gdp = self.cases[key]
+            a, b, c = gdp.dig('history/%s_flux' % particle, post=False)
+            time = b['time']
+            if self.labelinfo:
+                start, end = self.labelinfo.get(key, stage='saturation')
+                log.info('Get saturation time: %6.2f, %6.2f for %s'
+                         % (start, end, path))
+            else:
+                start, end = fallback_sat_time
+                log.info('Use fallback sat_time ratio: %.1f, %.1f for %s'
+                         % (start, end, path))
+                start, end = time[-1]*start, time[-1]*end
+            a, b1, c = gdp.dig(figlabel % 'energy', post=False,
+                               mean_time=[start, end], **kwargs)
+            chi, r = b1['meanZ'], b1['Y']
+            a, b2, c = gdp.dig(figlabel % 'particle', post=False,
+                               mean_time=[start, end], **kwargs)
+            D = b2['meanZ']
+            if gyroBohm:
+                Ln = gdp.pckloader['gtc/a_minor'] if Ln is None else Ln
+                rho0 = gdp.pckloader['gtc/rho0']
+                chi, D = chi*Ln/rho0, D*Ln/rho0
+            chiDresult.append((r, chi, D))
+        return chiDresult
+
+    def plot_chi_D_r(self, particle, chiDresult, labels, nlines=2,
+                     xlims={}, ylims={}, fignum='fig-1-chi-D(r)', add_style=[],
+                     suptitle=None, title_y=0.95, savepath=None):
+        '''
+        Plot chi(r), D(r) figure of particle(like ion or electron).
+
+        Parameters
+        ----------
+        chiDresult: list
+            chiDresult of particle get by :meth:`dig_chi_D_r`
+        labels: list
+            set line labels for chiDresult
+        nlines: int, >=2
+            number of lines in each Axes
+        xlims, ylims: dict, set xlim, ylim for some Axes
+            key is axes index
+        savepath: str
+            default savepath is f'./{fignum}.jpg'
+        '''
+        if particle not in ('ion', 'electron', 'fastion'):
+            raise ValueError('unsupported particle: %s ' % particle)
+        nlines = max(2, nlines)
+        Mrow = math.ceil(len(chiDresult)/nlines)
+        all_axes = []
+        ie = 'i' if 'ion' == particle else (
+            'e' if 'electron' in particle else 'f')
+        for row in range(1, Mrow+1, 1):
+            ress = chiDresult[(row-1)*nlines:row*nlines]
+            lbls = labels[(row-1)*nlines:row*nlines]
+            ax_idx = 2*(row-1)+1
+            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
+            xylim_kws = {'xlim': xlim} if xlim else {}
+            if ylim:
+                xylim_kws['ylim'] = ylim
+            ax_chi = {
+                'layout': [
+                    (Mrow, 2, ax_idx), dict(
+                        xlabel=r'$r/a$', ylabel=r'$\chi_%s$' % ie,
+                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
+                'data': [
+                    *[[1+i, 'plot', (r[0], r[1], '-'), dict(
+                        color="C{}".format(i), label=l)]
+                      for i, (r, l) in enumerate(zip(ress, lbls))],
+                    [50, 'legend', (), {}],
+                    # [51, 'set_xticklabels', ([],), {}],
+                    # [52, 'set_xlabel', (r'$t(R_0/c_s)$',), {}],
+                ],
+            }
+            ax_idx = 2*(row-1)+2
+            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
+            xylim_kws = {'xlim': xlim} if xlim else {}
+            if ylim:
+                xylim_kws['ylim'] = ylim
+            ax_D = {
+                'layout': [
+                    (Mrow, 2, ax_idx), dict(
+                        xlabel=r'$t(R_0/c_s)$', ylabel=r'$D_%s$' % ie,
+                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
+                'data': [
+                    *[[1+i, 'plot', (r[0], r[2], '-'), dict(
+                        color="C{}".format(i), label=l)]
+                      for i, (r, l) in enumerate(zip(ress, lbls))],
                     [50, 'legend', (), {}],
                 ],
             }
@@ -695,7 +821,7 @@ class CaseSeries(object):
                     'data': [
                         *[[1+i, 'plot', (r[0], r[1], '-'), dict(
                             color="C{}".format(i),
-                            label=r'$%s, \gamma_{\phi}=%.2f$' % (l, r[4]))]
+                            label=r'%s, $\gamma_{\phi}=%.2f$' % (l, r[4]))]
                           for i, (r, l) in enumerate(zip(ress, lbls))],
                         *[[30+i, 'plot', (r[2], r[3], 'o'), dict(
                             color="C{}".format(i))]
