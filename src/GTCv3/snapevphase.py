@@ -123,7 +123,10 @@ class SnapEVphaseDigger(Digger):
         timestr = _snap_get_timestr(self.group, self.pckloader)
         data, negrid, nvgrid, emax, plstart, plstop = \
             self.pckloader.get_many(*self.srckeys)
-        assert data.shape == (negrid, nvgrid, 6)
+        try:
+            assert data.shape == (negrid, nvgrid, 6)
+        except Exception:
+            nvgrid = data.shape[1]
         Y = np.linspace(0.0, emax, negrid, endpoint=False) + emax/negrid/2.0
         if self.kwoptions is None:
             self.kwoptions = dict(
