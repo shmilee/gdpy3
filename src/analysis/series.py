@@ -692,7 +692,7 @@ class CaseSeries(object):
             ax_D = {
                 'layout': [
                     (Mrow, 2, ax_idx), dict(
-                        xlabel=r'$t(R_0/c_s)$', ylabel=r'$D_%s$' % ie,
+                        xlabel=r'$r/a$', ylabel=r'$D_%s$' % ie,
                         title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
                 'data': [
                     *[[1+i, 'plot', (r[0], r[2], '-'), dict(
@@ -830,6 +830,94 @@ class CaseSeries(object):
                     ],
                 }
                 all_axes.append(ax_logphi)
+        fig = self.plotter.create_figure(
+            fignum, *all_axes, add_style=add_style)
+        fig.suptitle(suptitle or fignum, y=title_y)
+        fig.savefig(savepath or './%s.jpg' % fignum)
+
+    def dig_phirms_r(self, fallback_sat_time=(0.7, 1.0), **kwargs):
+        '''
+        Get phi-RMS(r) of each case.
+        Return a list of tuple in order of :attr:`paths`.
+        The tuple has 2 elements:
+            1) radial r array, 2) phi-RMS(r) array
+
+        Parameters
+        ----------
+        fallback_sat_time: tuple
+            If saturation time not found in :attr:`labelinfo`, use this
+            to set saturation (start,end) time ratio. limit: 0.0 -> 1.0
+        kwargs: dict
+            other kwargs for digging 'data1d/xx_xx_flux_mean', such as
+            'use_ra'(default False), 'mean_smooth'(default False)
+        '''
+        figlabel = 'data1d/phi_rms_mean'
+        phiresult = []
+        for path, key in self.paths:
+            gdp = self.cases[key]
+            a, b, c = gdp.dig(figlabel, post=False)
+            time = b['X']
+            if self.labelinfo:
+                start, end = self.labelinfo.get(key, stage='saturation')
+                log.info('Get saturation time: %6.2f, %6.2f for %s'
+                         % (start, end, path))
+            else:
+                start, end = fallback_sat_time
+                log.info('Use fallback sat_time ratio: %.1f, %.1f for %s'
+                         % (start, end, path))
+                start, end = time[-1]*start, time[-1]*end
+            a, b, c = gdp.dig(figlabel, post=False,
+                              mean_time=[start, end], **kwargs)
+            phirms, r = b['meanZ'], b['Y']
+            phiresult.append((r, phirms))
+        return phiresult
+
+    def plot_phirms_r(self, phirmsresult, labels, nlines=2, ncols=1,
+                      xlims={}, ylims={}, fignum='fig-1-phirms(r)', add_style=[],
+                      suptitle=None, title_y=0.95, savepath=None):
+        '''
+        Plot phi-RMS(r) figure.
+
+        Parameters
+        ----------
+        phirmsresult: list
+            phi-RMS result get by :meth:`dig_phirms_r`
+        labels: list
+            set line labels for chiDresult
+        nlines: int, >=2
+            number of lines in each Axes
+        xlims, ylims: dict, set xlim, ylim for some Axes
+            key is axes index
+        savepath: str
+            default savepath is f'./{fignum}.jpg'
+        '''
+        nlines = max(2, nlines)
+        Mrow = math.ceil(len(phirmsresult)/nlines/ncols)
+        all_axes = []
+        for row in range(1, Mrow+1, 1):
+            for col in range(1, ncols+1, 1):
+                ax_idx = ncols*(row-1) + col  # ax, 1, 2, ...
+                ress = phirmsresult[(ax_idx-1)*nlines:ax_idx*nlines]
+                lbls = labels[(ax_idx-1)*nlines:ax_idx*nlines]
+                xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
+                xylim_kws = {'xlim': xlim} if xlim else {}
+                if ylim:
+                    xylim_kws['ylim'] = ylim
+                ax_phi = {
+                    'layout': [
+                        (Mrow, ncols, ax_idx), dict(
+                            xlabel=r'$r/a$',
+                            ylabel=r'$\phi_{RMS}$',
+                            title='%d/%s' % (ax_idx, Mrow*ncols),
+                            **xylim_kws)],
+                    'data': [
+                        *[[1+i, 'plot', (r[0], r[1], '-'), dict(
+                            color="C{}".format(i), label=l)]
+                          for i, (r, l) in enumerate(zip(ress, lbls))],
+                        [50, 'legend', (), {}],
+                    ],
+                }
+                all_axes.append(ax_phi)
         fig = self.plotter.create_figure(
             fignum, *all_axes, add_style=add_style)
         fig.suptitle(suptitle or fignum, y=title_y)
