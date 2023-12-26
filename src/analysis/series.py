@@ -444,6 +444,27 @@ class CaseSeries(object):
         self.plotter = get_visplter('mpl::series')
         self.plotter.style = ['gdpy3-paper-aip']
 
+    def _get_start_end(self, path, key, stage, time=None, fallback=(0.7, 1.0)):
+        ''' Return t0, t1, index0, index1 '''
+        if time is None:
+            mstep, tstep, ndiag = self.cases[key].pckloader.get_many(
+                'gtc/mstep', 'gtc/tstep', 'gtc/ndiag')
+            dt = tstep * ndiag
+            time = np.around(np.arange(0, mstep+1, ndiag)[1:]*dt, 8)
+        if self.labelinfo:
+            start, end = self.labelinfo.get(key, stage=stage)
+            if start is not None:
+                log.info('Get %s time: %6.2f, %6.2f for %s'
+                         % (stage, start, end, path))
+                index = np.where((time >= start) & (time <= end))[0]
+                if index.size > 0:
+                    return start, end, index[0], index[-1]
+        start, end = fallback
+        log.info('Use fallback %s time ratio: %.1f, %.1f for %s'
+                 % (stage, start, end, path))
+        idx0, idx1 = int(len(time)*start) - 1, int(len(time)*end) - 1
+        return time[idx0], time[idx1], idx0, idx1
+
     def dig_chi_D(self, particle, gyroBohm=True, Ln=None,
                   fallback_sat_time=(0.7, 1.0)):
         '''
@@ -481,24 +502,12 @@ class CaseSeries(object):
                 Ln = gdp.pckloader['gtc/a_minor'] if Ln is None else Ln
                 rho0 = gdp.pckloader['gtc/rho0']
                 chi, D = chi*Ln/rho0, D*Ln/rho0
-            start, end = None, None
-            if self.labelinfo:
-                start, end = self.labelinfo.get(key, stage='saturation')
-            if start is not None:
-                log.info('Get saturation time: %6.2f, %6.2f for %s'
-                         % (start, end, path))
-                start = np.where(time > start)[0][0]
-                end = np.where(time > end)[0]
-                end = end[0] if len(end) > 0 else len(time)
-            else:
-                start, end = fallback_sat_time
-                log.info('Use fallback sat_time ratio: %.1f, %.1f for %s'
-                         % (start, end, path))
-                start, end = int(len(time)*start), int(len(time)*end)
-            sat_t = np.linspace(time[start], time[end-1], 2)
-            sat_chi = np.mean(chi[start:end])
+            _, _, start, end = self._get_start_end(
+                path, key, 'saturation', time=time, fallback=fallback_sat_time)
+            sat_t = np.linspace(time[start], time[end], 2)
+            sat_chi = np.mean(chi[start:end+1])
             # sat_chi_std = np.std(chi[start:end])
-            sat_D = np.mean(D[start:end])
+            sat_D = np.mean(D[start:end+1])
             chiDresult.append((time, chi, D, sat_t, sat_chi, sat_D))
         return chiDresult
 
@@ -614,15 +623,8 @@ class CaseSeries(object):
             gdp = self.cases[key]
             a, b, c = gdp.dig('history/%s_flux' % particle, post=False)
             time = b['time']
-            if self.labelinfo:
-                start, end = self.labelinfo.get(key, stage='saturation')
-                log.info('Get saturation time: %6.2f, %6.2f for %s'
-                         % (start, end, path))
-            else:
-                start, end = fallback_sat_time
-                log.info('Use fallback sat_time ratio: %.1f, %.1f for %s'
-                         % (start, end, path))
-                start, end = time[-1]*start, time[-1]*end
+            start, end, _, _ = self._get_start_end(
+                path, key, 'saturation', time=time, fallback=fallback_sat_time)
             a, b1, c = gdp.dig(figlabel % 'energy', post=False,
                                mean_time=[start, end], **kwargs)
             chi, r = b1['meanZ'], b1['Y']
@@ -848,24 +850,15 @@ class CaseSeries(object):
             If saturation time not found in :attr:`labelinfo`, use this
             to set saturation (start,end) time ratio. limit: 0.0 -> 1.0
         kwargs: dict
-            other kwargs for digging 'data1d/xx_xx_flux_mean', such as
+            other kwargs for digging 'data1d/phi_rms_mean', such as
             'use_ra'(default False), 'mean_smooth'(default False)
         '''
         figlabel = 'data1d/phi_rms_mean'
         phiresult = []
         for path, key in self.paths:
             gdp = self.cases[key]
-            a, b, c = gdp.dig(figlabel, post=False)
-            time = b['X']
-            if self.labelinfo:
-                start, end = self.labelinfo.get(key, stage='saturation')
-                log.info('Get saturation time: %6.2f, %6.2f for %s'
-                         % (start, end, path))
-            else:
-                start, end = fallback_sat_time
-                log.info('Use fallback sat_time ratio: %.1f, %.1f for %s'
-                         % (start, end, path))
-                start, end = time[-1]*start, time[-1]*end
+            start, end, _, _ = self._get_start_end(
+                path, key, 'saturation', fallback=fallback_sat_time)
             a, b, c = gdp.dig(figlabel, post=False,
                               mean_time=[start, end], **kwargs)
             phirms, r = b['meanZ'], b['Y']
@@ -908,6 +901,100 @@ class CaseSeries(object):
                         (Mrow, ncols, ax_idx), dict(
                             xlabel=r'$r/a$',
                             ylabel=r'$\phi_{RMS}$',
+                            title='%d/%s' % (ax_idx, Mrow*ncols),
+                            **xylim_kws)],
+                    'data': [
+                        *[[1+i, 'plot', (r[0], r[1], '-'), dict(
+                            color="C{}".format(i), label=l)]
+                          for i, (r, l) in enumerate(zip(ress, lbls))],
+                        [50, 'legend', (), {}],
+                    ],
+                }
+                all_axes.append(ax_phi)
+        fig = self.plotter.create_figure(
+            fignum, *all_axes, add_style=add_style)
+        fig.suptitle(suptitle or fignum, y=title_y)
+        fig.savefig(savepath or './%s.jpg' % fignum)
+
+    def dig_phiktheta_r(self, fallback_sat_time=(0.7, 1.0), **kwargs):
+        '''
+        Get phi-ktheta(r) of each case. Need snapshot data!
+        Return a list of tuple in order of :attr:`paths`.
+        The tuple has 2 elements:
+            1) radial r array, 2) ktheta-rho0(r) array
+
+        Parameters
+        ----------
+        fallback_sat_time: tuple
+            If saturation time not found in :attr:`labelinfo`, use this
+            to set saturation (start,end) time ratio. limit: 0.0 -> 1.0
+        kwargs: dict
+            other kwargs for digging 'snapxxxxx/phi_mktheta', such as
+            'm_max'(default mtheta//5), 'mean_weight_order'(default 2)
+        '''
+        result = []
+        for path, key in self.paths:
+            gdp = self.cases[key]
+            start, end, _, _ = self._get_start_end(
+                path, key, 'saturation', fallback=fallback_sat_time)
+            step = [int(fl[4:9]) for fl in gdp.refind('snap.*/phi_m')]
+            tstep = gdp.pckloader['gtc/tstep']
+            time = np.array([round(i*tstep, 3) for i in step])
+            index = np.where((time >= start) & (time <= end))[0]
+            if index.size > 0:
+                idx0, idx1 = index[0], index[-1]
+            else:
+                log.error('No snap time: %s <= t <= %s!' % (start, end))
+                result.append(([], []))
+                continue
+            ktrho0_rt = []
+            for i in step[idx0:idx1]:
+                a, data, c = gdp.dig(
+                    'snap%05d/phi_mktheta' % i, post=False, **kwargs)
+                ktrho0_rt.append(data['ktrho0'])
+            ktrho0_rt = np.array(ktrho0_rt).T
+            r = data['rr']
+            ktheta_r = np.average(ktrho0_rt, axis=1)
+            result.append((r, ktheta_r))
+        return result
+
+    def plot_phiktheta_r(self, result, labels, nlines=2, ncols=1,
+                         xlims={}, ylims={}, fignum='fig-1-phiktheta(r)',
+                         add_style=[], suptitle=None, title_y=0.95,
+                         savepath=None):
+        '''
+        Plot phi-ktheta(r) figure.
+
+        Parameters
+        ----------
+        result: list
+            phi-ktheta result get by :meth:`dig_phiktheta_r`
+        labels: list
+            set line labels for chiDresult
+        nlines: int, >=2
+            number of lines in each Axes
+        xlims, ylims: dict, set xlim, ylim for some Axes
+            key is axes index
+        savepath: str
+            default savepath is f'./{fignum}.jpg'
+        '''
+        nlines = max(2, nlines)
+        Mrow = math.ceil(len(result)/nlines/ncols)
+        all_axes = []
+        for row in range(1, Mrow+1, 1):
+            for col in range(1, ncols+1, 1):
+                ax_idx = ncols*(row-1) + col  # ax, 1, 2, ...
+                ress = result[(ax_idx-1)*nlines:ax_idx*nlines]
+                lbls = labels[(ax_idx-1)*nlines:ax_idx*nlines]
+                xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
+                xylim_kws = {'xlim': xlim} if xlim else {}
+                if ylim:
+                    xylim_kws['ylim'] = ylim
+                ax_phi = {
+                    'layout': [
+                        (Mrow, ncols, ax_idx), dict(
+                            xlabel=r'$r/a$',
+                            ylabel=r'$k_{\theta}\rho_0$',
                             title='%d/%s' % (ax_idx, Mrow*ncols),
                             **xylim_kws)],
                     'data': [

@@ -1086,7 +1086,7 @@ def _snaptime_field_fft2(data, theta, time, kwoptions, kwargs, acckwargs):
     else:
         select_data = data[:, it0:it1]
         select_time = time[[it0, it1-1]]
-    dtheta = np.diff(theta).mean()*0.1801275 #TODO
+    dtheta = np.diff(theta).mean()*0.1801275  # TODO
     tf, yf, af, pf = tools.fft2(dt, dtheta, select_data)
     return select_data, select_time, tf, yf, pf
 
@@ -1410,7 +1410,8 @@ class SnapshotFieldmkthetaDigger(BreakDigDoc, SnapshotFieldmDigger):
         ------
         *m_max*: int, default mtgrid1//5
         *mean_weight_order*: int
-            use fieldm^mean_weight_order as weight to average(m), default 4
+            use fieldm^mean_weight_order as weight to average(m), default 2
+            higher order(>4) almost means max(m).
         '''
         if self.kwoptions is None:
             self.kwoptions = dict(
