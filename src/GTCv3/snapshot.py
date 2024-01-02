@@ -1000,7 +1000,7 @@ class SnapshotTimeFieldPoloidalDigger(Digger):
         '^(?P<section>snap)\d{5,7}'
         + '/poloidata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))']
     commonpattern = ['gtc/mpsi', 'gtc/tstep']
-    post_template = 'tmpl_contourf'
+    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_poloi_time' % self.section[1]
@@ -1012,8 +1012,12 @@ class SnapshotTimeFieldPoloidalDigger(Digger):
         ------
         *ipsi*: int, 0-mpsi
             which psi, default mpsi//2
+        *nearby*: int, 0-mpsi//4
+            how many psi near by *ipsi* used to average, default 1
         *tcutoff*: [t0,t1], t0 t1 float
             t0<=time[x0:x1]<=t1
+        *fft_tselect*: [t0,t1], t0 float
+            time[x0:x1], data[:,x0:x1] where t0<=time[x0:x1]<=t1
         '''
         mpsi = self.pckloader.get('gtc/mpsi')
         ipsi = kwargs.get('ipsi', mpsi//2)
@@ -1046,11 +1050,101 @@ class SnapshotTimeFieldPoloidalDigger(Digger):
         fstr = field_tex_str[self.section[1]]
         pos = 'izeta=%d, ipsi=%d' % (0, ipsi)
         title = r'$%s(\theta, t)$ at %s' % (fstr, pos)
-        return dict(X=time, Y=theta, Z=data, title=title, fstr=fstr,
-                    ylabel=r'$\theta$', xlabel=r'time($R_0/c_s$)'), acckwargs
+        # FFT
+        if 'fft_tselect' not in self.kwoptions:
+            self.kwoptions.update(dict(
+                fft_tselect=dict(
+                    widget='FloatRangeSlider',
+                    rangee=self.kwoptions['tcutoff']['rangee'].copy(),
+                    value=self.kwoptions['tcutoff']['value'].copy(),
+                    description='FFT time select:'),
+            ))
+        tcutoff = acckwargs['tcutoff']  # TODO
+        fft_tselect = kwargs.get('fft_tselect', tcutoff)
+        it0, it1, dt = 0, time.size, time[1] - time[0]
+        acckwargs['fft_tselect'] = tcutoff
+        if (fft_tselect != tcutoff
+                and fft_tselect[1] <= tcutoff[1]):
+            s0, s1 = fft_tselect
+            index = np.where((time >= s0) & (time <= s1))[0]
+            if index.size > 0:
+                it0, it1 = index[0], index[-1]
+                acckwargs['fft_tselect'] = [time[it0], time[it1]]
+            else:
+                dlog.warning("Can't select: %s <= fft time <= %s!" % (s0, s1))
+        # select FFT data
+        if (it0, it1) == (0, time.size):
+            select_X, select_Y, select_Z = None, None, data
+        else:
+            select_Z = data[:, it0:it1+1]
+            select_X = time[[it0, it1, it1, it0, it0]]
+            select_Y = theta[[0, 0, y-1, y-1, 0]]
+        tf, yf, af, pf = tools.fft2(dt, 1.0, select_Z)
+        results = dict(
+            X=time, Y=theta, Z=data, title=title, fstr=fstr,
+            ylabel=r'$\theta$', xlabel=r'time($R_0/c_s$)',
+            select_X=select_X, select_Y=select_Y, tf=tf, yf=yf, pf=pf,
+            tf_label=r'$\omega$($c_s/R_0$)', yf_label=r'$k_{\theta}$',
+        )
+        # Cauchy fitting omega
+        idx = pf.shape[0]//2
+        Pomega = pf[idx:].max(axis=0)
+        popt1, pcov1, fitP1 = tools.curve_fit('cauchy', tf, Pomega)
+        # fitting k-theta
+        idx = pf.shape[1]//2
+        Pk = pf[:, idx:].max(axis=1)
+        popt2, pcov2, fitP2 = tools.curve_fit('cauchy', yf, Pk)
+        results.update(dict(
+            Pomega=Pomega, fitPomega=fitP1,
+            Cauchy_gamma1=popt1[1], Cauchy_mu1=popt1[2],
+            Pktheta=Pk, fitPktheta=fitP2,
+            Cauchy_gamma2=popt2[1], Cauchy_mu2=popt2[2],
+        ))
+        return results, acckwargs
 
     def _post_dig(self, results):
-        return results
+        r = results
+        zip_results = [('tmpl_contourf', 221, dict(
+            X=r['X'], Y=r['Y'], Z=r['Z'], title=r['title'],
+            xlabel=r['xlabel'], ylabel=r['ylabel']))]
+        if r['select_X'] is not None:
+            zip_results.append(
+                ('tmpl_line', 221, dict(
+                    LINE=[(r['select_X'], r['select_Y'], 'FFT region')]))
+            )
+        title2 = r'FFT of %s' % r['title']
+        zip_results.append(
+            ('tmpl_contourf', 222, dict(
+                X=r['tf'], Y=r['yf'], Z=r['pf'], title=title2,
+                xlabel=r['tf_label'], ylabel=r['yf_label'],
+            ))
+        )
+        # fitting
+        mu1, hw1 = r['Cauchy_mu1'], r['Cauchy_gamma1']
+        cly = [min(r['Pomega']), max(r['Pomega'])]
+        llx, rlx = mu1 - hw1, mu1 + hw1
+        LINEt = [(r['tf'], r['Pomega']),
+                 (r['tf'], r['fitPomega'], 'fitting'),
+                 ([mu1, mu1], cly, r'median, $\mu=%f$' % mu1),
+                 ([llx, llx], cly, r'half width, $\gamma=%f$' % hw1),
+                 ([rlx, rlx], cly)]
+        mu2, hw2 = r['Cauchy_mu2'], r['Cauchy_gamma2']
+        cly = [min(r['Pktheta']), max(r['Pktheta'])]
+        llx, rlx = mu2 - hw2, mu2 + hw2
+        LINEy = [(r['yf'], r['Pktheta']),
+                 (r['yf'], r['fitPktheta'], 'fitting'),
+                 ([mu2, mu2], cly, r'median, $\mu=%f$' % mu2),
+                 ([llx, llx], cly, r'half width, $\gamma=%f$' % hw2),
+                 ([rlx, rlx], cly)]
+        zip_results.extend([
+            ('tmpl_line', 223, dict(
+                LINE=LINEt, xlabel=r['tf_label'],
+                title=r'Cauchy fitting, $\omega$ | max(axis=k)')),
+            ('tmpl_line', 224, dict(
+                LINE=LINEy, xlabel=r['yf_label'],
+                title=r'Cauchy fitting, $k_{\theta}$ | max(axis=$\omega$)')),
+        ])
+        return dict(zip_results=zip_results)
 
 
 def _snaptime_field_fft2(data, theta, time, kwoptions, kwargs, acckwargs):
