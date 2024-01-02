@@ -212,6 +212,7 @@ def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
         'exp', 'exponential', Y = a*e^(b*x) + c + eps
         'ln', 'log', 'lograrithmic', Y = a*ln(x) + b + eps
         'gauss', 'gaussian', Y = a*e^(-(x-b)^2/(2*c^2)) + d + eps
+        'cauchy', 'lorentz', Y = a/pi * b/((x-c)^2 + b^2) + d + eps
     X, Y, kwargs: passed to `scipy.optimize.curve_fit`
     fitX: init or array
         N X interpolation points or new X used to calculate fitY
@@ -252,8 +253,27 @@ def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
                 if f_constant is None:
                     guess_p0.append(Ymin)
                 kwargs['p0'] = np.array(guess_p0)
-                log.debug("Initial guess parameters for fitting 'gaussian': "
-                          "p0=%s" % kwargs['p0'])
+                log.info("Initial guess parameters for fitting 'gaussian': "
+                         "p0=%s" % kwargs['p0'])
+        elif f in ('cauchy', 'lorentz'):
+            if f_constant is None:
+                def func(x, a, b, c, d): return (
+                    a/np.pi * b/((x-c)**2 + b**2) + d)
+            else:
+                def func(x, a, b, c): return (
+                    a/np.pi * b/((x-c)**2 + b**2) + f_constant)
+            if 'p0' not in kwargs:
+                Ymax, Ymin = np.max(Y), np.min(Y)
+                idx_Ymax = np.where(Y[:] == Ymax)[0][0]
+                std = np.std(X)
+                guess_p0 = [(Ymax-Ymin)*np.pi*std, std, X[idx_Ymax]]
+                if f_constant is None:
+                    guess_p0.append(Ymin)
+                else:
+                    guess_p0[0] = (Ymax-f_constant)*np.pi*std
+                kwargs['p0'] = np.array(guess_p0)
+                log.info("Initial guess parameters for fitting 'Cauchy': "
+                         "p0=%s" % kwargs['p0'])
     elif callable(f):
         func = f
     if func is None:
