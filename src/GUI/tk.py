@@ -234,17 +234,21 @@ class GTkApp(object):
     def _set_path(self, path):
         self.__path = path
         if use_short_pathlabel:
-            if path.endswith(os.sep):  # /pa/th/case/
+            if os.path.isdir(path) or path.endswith(os.sep):
+                # /pa/th/case; or /pa/th/case/
+                path = path[:-1] if path.endswith(os.sep) else path
                 tail = os.sep
-                path = os.path.dirname(path)
-            else:
+                dirname = os.path.dirname(path)  # /pa/th
+                basename = [os.path.basename(path)]  # case
+            else:  # /pa/th/case/xx.npz
                 tail = ''
-            dirname = os.path.dirname(path)
-            if len(dirname) > 8:
+                d1 = os.path.dirname(path)
+                dirname = os.path.dirname(d1)
+                basename = [os.path.basename(d1), os.path.basename(path)]
+            if len(dirname) > 20:
                 # show short path
-                dirname = [s[:1] for s in dirname.split(os.sep)]
-                basename = os.path.basename(path)
-                self.pathlabel.set(os.sep.join(dirname + [basename]) + tail)
+                dirname = [s[:2] for s in dirname.split(os.sep)]  # [p, t]
+                self.pathlabel.set(os.sep.join(dirname + basename) + tail)
             else:
                 self.pathlabel.set(path + tail)
         else:
