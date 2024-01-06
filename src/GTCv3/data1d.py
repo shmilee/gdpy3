@@ -66,7 +66,7 @@ from .gtc import Ndigits_tstep
 _all_Converters = ['Data1dConverter']
 _all_Diggers = ['Data1dFluxDigger', 'Data1dFieldDigger',
                 'Data1dMeanFluxDigger', 'Data1dMeanFieldDigger',
-                'Data1dFFTFluxDigger', 'Data1dFFTFieldDigger']
+                'Data1dFFTFieldDigger']
 __all__ = _all_Converters + _all_Diggers
 
 
@@ -204,7 +204,7 @@ class _Data1dDigger(Digger):
         if self.kwoptions is None:
             self.kwoptions = dict(
                 tcutoff=dict(widget='FloatRangeSlider',
-                             rangee=[X[0], X[-1], dt],
+                             rangee=[X[0], X[-1], 1.0],
                              value=[X[0], X[-1]],
                              description='time cutoff:'),
                 pcutoff=dict(widget='IntRangeSlider',
@@ -412,12 +412,8 @@ class _Data1dFFTDigger(_Data1dDigger):
             X[x0:x1], data[:,x0:x1] where t0<=X[x0:x1]<=t1
         *fft_pselect*: [p0,p1], p0 int
             Y[y0:y1], data[y0:y1,:] where p0<=Y[y0:y1]<=p1
-        *fft_ymaxlimit*: float, default 0
-            if (ymax of power line) < fft_ymaxlimit * (ymax of power lines),
-            then remove it.
         *fft_unit_rho0*: bool
-            set Y unit of FFT results to rho0 or not when use_ra is True,
-            default False
+            set Y unit of FFT results to rho0 or not, default False
         *fft_autoxlimit*: bool
             auto set short xlimt for FFT results or not, default True
         '''
@@ -428,7 +424,6 @@ class _Data1dFFTDigger(_Data1dDigger):
         use_ra = acckwargs['use_ra']
         fft_tselect = kwargs.get('fft_tselect', tcutoff)
         fft_pselect = kwargs.get('fft_pselect', pcutoff)
-        fft_ymaxlimit = kwargs.get('fft_ymaxlimit', 0.0)
         fft_unit_rho0 = kwargs.get('fft_unit_rho0', False)
         fft_autoxlimit = kwargs.get('fft_autoxlimit', True)
         if 'fft_tselect' not in self.kwoptions:
@@ -443,15 +438,10 @@ class _Data1dFFTDigger(_Data1dDigger):
                     rangee=self.kwoptions['pcutoff']['rangee'].copy(),
                     value=self.kwoptions['pcutoff']['value'].copy(),
                     description='FFT mpsi select:'),
-                fft_ymaxlimit=dict(
-                    widget='FloatSlider',
-                    rangee=(0, 1, 0.05),
-                    value=0.0,
-                    description='FFT ymaxlimit:'),
                 fft_unit_rho0=dict(
                     widget='Checkbox',
                     value=False,
-                    description='FFT unit rho0:'),
+                    description='FFT unit rho0'),
                 fft_autoxlimit=dict(
                     widget='Checkbox',
                     value=True,
@@ -461,8 +451,8 @@ class _Data1dFFTDigger(_Data1dDigger):
         it0, it1, dt = 0, X.size, X[1] - X[0]
         acckwargs['fft_tselect'] = tcutoff
         if (fft_tselect != tcutoff
-                and fft_tselect[0] >= tcutoff[0]
-                and fft_tselect[1] <= tcutoff[1]):
+                and (fft_tselect[0] >= tcutoff[0]
+                     or fft_tselect[1] <= tcutoff[1])):
             s0, s1 = fft_tselect
             index = numpy.where((X >= s0) & (X <= s1))[0]
             if index.size > 0:
@@ -502,39 +492,32 @@ class _Data1dFFTDigger(_Data1dDigger):
             select_Y = Y[[ip0, ip0, ip1-1, ip1-1, ip0]]
         dy = numpy.diff(Y).mean() if use_ra else 1.0
         tf, yf, af, pf = tools.fft2(dt, dy, select_Z)
-        # fft_ymaxlimit
-        pf_tmax = pf.max(axis=0)
-        pf_ymax = pf.max(axis=1)
-        pf_max = pf_tmax.max()
-        if isinstance(fft_ymaxlimit, float) and 0 < fft_ymaxlimit < 1:
-            acckwargs['fft_ymaxlimit'] = fft_ymaxlimit
-            maxlimit = pf_max * fft_ymaxlimit
-            pf_tpass = pf_tmax >= maxlimit
-            pf_ypass = pf_ymax >= maxlimit
-            pf_tlist = [i for i, j in enumerate(pf_tpass) if j]
-            pf_ylist = [i for i, j in enumerate(pf_ypass) if j]
-        else:
-            acckwargs['fft_ymaxlimit'] = 0.0
-            pf_tlist, pf_ylist = 'all', 'all'
         # yf unit
         acckwargs['fft_unit_rho0'] = False
         yf_label = r'$k_r$(1/a)' if use_ra else r'$k_r$(1/mpsi)'
-        if use_ra and fft_unit_rho0:
+        if fft_unit_rho0:
             try:
                 a, rho0 = self.pckloader.get_many('gtc/a_minor', 'gtc/rho0')
+                if not use_ra:
+                    arr2 = self.pckloader.get('gtc/arr2')
+                    yf = yf/numpy.diff(arr2[:, 1]).mean() * a
                 yf = yf*rho0/a
             except Exception:
                 dlog.warning("Cannot use unit rho0!", exc_info=1)
             else:
                 yf_label = r'$k_r\rho_0$'
                 acckwargs['fft_unit_rho0'] = True
+        # max line
+        pf_tmax = pf.max(axis=0)
+        pf_ymax = pf.max(axis=1)
+        pf_max = pf_tmax.max()
         # tf, yf xlimit
         if fft_autoxlimit:
             acckwargs['fft_autoxlimit'] = True
             minlimit = pf_max * 5.0e-2
             idx_t = numpy.where(pf_tmax >= minlimit)[0][-1]
             idx_y = numpy.where(pf_ymax >= minlimit)[0][-1]
-            tf_xlimit, yf_xlimit = round(tf[idx_t], 2),  round(yf[idx_y], 2)
+            tf_xlimit, yf_xlimit = round(tf[idx_t], 3),  round(yf[idx_y], 3)
         else:
             acckwargs['fft_autoxlimit'] = False
             tf_xlimit, yf_xlimit = None, None
@@ -542,7 +525,7 @@ class _Data1dFFTDigger(_Data1dDigger):
             select_X=select_X, select_Y=select_Y,
             tf=tf, yf=yf, pf=pf,
             tf_label=r'$\omega$($c_s/R_0$)', yf_label=yf_label,
-            pf_tlist=pf_tlist, pf_ylist=pf_ylist,
+            pf_tmax=pf_tmax, pf_ymax=pf_ymax,
             tf_xlimit=tf_xlimit, yf_xlimit=yf_xlimit,
         ))
         return results, acckwargs
@@ -573,30 +556,15 @@ class _Data1dFFTDigger(_Data1dDigger):
                 xlim=[-tf_xlimit2, tf_xlimit2],
                 ylim=[-yf_xlimit2, yf_xlimit2]))
         )
-        if r['pf_tlist'] == 'all':
-            my, mt = r['pf'].shape
-            pf_tlist, pf_ylist = range(mt), range(my)
-        else:
-            pf_tlist, pf_ylist = r['pf_tlist'], r['pf_ylist']
-        tf_hf, yf_hf = r['tf'].size//2, r['yf'].size//2
-        LINEt = [(r['tf'][tf_hf:], r['pf'][j, tf_hf:]) for j in pf_ylist]
-        LINEy = [(r['yf'][yf_hf:], r['pf'][yf_hf:, j]) for j in pf_tlist]
         zip_results.extend([
-            ('tmpl_line', 223, dict(LINE=LINEt, xlabel=r['tf_label'],
-                                    xlim=[0, tf_xlimit])),
-            ('tmpl_line', 224, dict(LINE=LINEy, xlabel=r['yf_label'],
-                                    xlim=[0, yf_xlimit])),
+            ('tmpl_line', 223, dict(
+                LINE=[(r['tf'], r['pf_tmax'], 'max')], xlabel=r['tf_label'],
+                xlim=[-tf_xlimit, tf_xlimit])),
+            ('tmpl_line', 224, dict(
+                LINE=[(r['yf'], r['pf_ymax'], 'max')], xlabel=r['yf_label'],
+                xlim=[-yf_xlimit, yf_xlimit])),
         ])
         return dict(zip_results=zip_results)
-
-
-class Data1dFFTFluxDigger(_Data1dFFTDigger, Data1dFluxDigger):
-    '''FFT particle, energy and momentum flux of ion, electron, fastion.'''
-    __slots__ = []
-
-    def _set_fignum(self, numseed=None):
-        super(Data1dFFTFluxDigger, self)._set_fignum(numseed=numseed)
-        self._fignum = '%s_fft' % self._fignum
 
 
 class Data1dFFTFieldDigger(_Data1dFFTDigger, Data1dFieldDigger):
