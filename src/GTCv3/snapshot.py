@@ -45,9 +45,9 @@ _all_Diggers = [
     'SnapshotFieldFluxAlphaDigger', 'SnapshotFieldFluxThetaDigger',
     'SnapshotFieldFluxAlphaTileDigger', 'SnapshotFieldFluxThetaTileDigger',
     'SnapshotFieldFluxAlphaCorrLenDigger', 'SnapshotFieldPoloidalDigger',
-    'SnapshotFieldSpectrumDigger', 'SnapshotTimeFieldSpectrumDigger',
-    'SnapshotTimeFieldFluxDigger', 'SnapshotTimeFieldPoloidalDigger',
-    'SnapshotTimeFieldFluxFFTDigger',
+    'SnapshotFieldSpectrumDigger', 'SnapshotFieldSpectrumTimeDigger',
+    'SnapshotFieldFluxTimeDigger', 'SnapshotFieldPoloidalTimeDigger',
+    'SnapshotFieldFluxTimeFFTDigger', 'SnapshotFieldPoloidalTimeFFTDigger',
     'SnapshotFieldProfileDigger',
     'SnapshotFieldmDigger', 'SnapshotFieldmkthetaDigger']
 __all__ = _all_Converters + _all_Diggers
@@ -852,15 +852,15 @@ def _snaptime_fluxdata_tcutoff(fluxdatakeys, pckloader,
         else:
             dlog.warning('Cannot cutoff: %s <= time <= %s!' % (t0, t1))
     if len(time) < 3:
-        dlog.error("Less than 3 fluxdata!")
+        dlog.error("Less than 3 flux data!")
         return None, 0, 0, 0
     else:
-        dlog.info('%d fluxdata to do ...' % (i1 - i0))
+        dlog.info('%d flux data to do ...' % (i1 - i0))
         _idxlog = max(1, (i1 - i0) // 10)
         return time, i0, i1, _idxlog
 
 
-class SnapshotTimeFieldSpectrumDigger(SnapshotFieldSpectrumDigger):
+class SnapshotFieldSpectrumTimeDigger(SnapshotFieldSpectrumDigger):
     '''field or density poloidal and parallel spectra as time varied.'''
     __slots__ = []
     itemspattern = [
@@ -930,7 +930,7 @@ class SnapshotTimeFieldSpectrumDigger(SnapshotFieldSpectrumDigger):
         ])
 
 
-class SnapshotTimeFieldFluxDigger(Digger):
+class SnapshotFieldFluxTimeDigger(Digger):
     '''phi(alpha, time), a_para, fluidne, or densityi,e of mpis//2 flux.'''
     __slots__ = ['ipsi']
     nitems = '+'
@@ -949,7 +949,7 @@ class SnapshotTimeFieldFluxDigger(Digger):
         '''
         kwargs
         ------
-        *izeta*: int, 0-mtoroidal-1
+        *izeta*: int, [0, mtoroidal-1]
             which zeta, default 0
         *tcutoff*: [t0,t1], t0 t1 float
             t0<=time[x0:x1]<=t1
@@ -992,7 +992,7 @@ class SnapshotTimeFieldFluxDigger(Digger):
         return results
 
 
-class SnapshotTimeFieldPoloidalDigger(Digger):
+class SnapshotFieldPoloidalTimeDigger(Digger):
     '''phi(theta, time), a_para, fluidne, or densityi,e at zeta=0.'''
     __slots__ = []
     nitems = '+'
@@ -1000,7 +1000,7 @@ class SnapshotTimeFieldPoloidalDigger(Digger):
         '^(?P<section>snap)\d{5,7}'
         + '/poloidata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))']
     commonpattern = ['gtc/mpsi', 'gtc/tstep']
-    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
+    post_template = 'tmpl_contourf'
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_poloi_time' % self.section[1]
@@ -1010,20 +1010,16 @@ class SnapshotTimeFieldPoloidalDigger(Digger):
         '''
         kwargs
         ------
-        *ipsi*: int, 0-mpsi
+        *ipsi*: int, [0,mpsi]
             which psi, default mpsi//2
-        *nearby*: int, 0-mpsi//4
-            how many psi near by *ipsi* used to average, default 1
         *tcutoff*: [t0,t1], t0 t1 float
             t0<=time[x0:x1]<=t1
-        *fft_tselect*: [t0,t1], t0 float
-            time[x0:x1], data[:,x0:x1] where t0<=time[x0:x1]<=t1
         '''
         mpsi = self.pckloader.get('gtc/mpsi')
         ipsi = kwargs.get('ipsi', mpsi//2)
         if not isinstance(ipsi, int):
-            izeta = mpsi//2
-        izeta = min(max(0, ipsi), mpsi)
+            ipsi = mpsi//2
+        ipsi = min(max(0, ipsi), mpsi)
         dlog.parm("ipsi=%s" % ipsi)
         acckwargs = dict(ipsi=ipsi)
         if self.kwoptions is None:
@@ -1050,109 +1046,28 @@ class SnapshotTimeFieldPoloidalDigger(Digger):
         fstr = field_tex_str[self.section[1]]
         pos = 'izeta=%d, ipsi=%d' % (0, ipsi)
         title = r'$%s(\theta, t)$ at %s' % (fstr, pos)
-        # FFT
-        if 'fft_tselect' not in self.kwoptions:
-            self.kwoptions.update(dict(
-                fft_tselect=dict(
-                    widget='FloatRangeSlider',
-                    rangee=self.kwoptions['tcutoff']['rangee'].copy(),
-                    value=self.kwoptions['tcutoff']['value'].copy(),
-                    description='FFT time select:'),
-            ))
-        tcutoff = acckwargs['tcutoff']  # TODO
-        fft_tselect = kwargs.get('fft_tselect', tcutoff)
-        it0, it1, dt = 0, time.size, time[1] - time[0]
-        acckwargs['fft_tselect'] = tcutoff
-        if (fft_tselect != tcutoff
-                and fft_tselect[1] <= tcutoff[1]):
-            s0, s1 = fft_tselect
-            index = np.where((time >= s0) & (time <= s1))[0]
-            if index.size > 0:
-                it0, it1 = index[0], index[-1]
-                acckwargs['fft_tselect'] = [time[it0], time[it1]]
-            else:
-                dlog.warning("Can't select: %s <= fft time <= %s!" % (s0, s1))
-        # select FFT data
-        if (it0, it1) == (0, time.size):
-            select_X, select_Y, select_Z = None, None, data
-        else:
-            select_Z = data[:, it0:it1+1]
-            select_X = time[[it0, it1, it1, it0, it0]]
-            select_Y = theta[[0, 0, y-1, y-1, 0]]
-        tf, yf, af, pf = tools.fft2(dt, 1.0, select_Z)
-        results = dict(
-            X=time, Y=theta, Z=data, title=title, fstr=fstr,
-            ylabel=r'$\theta$', xlabel=r'time($R_0/c_s$)',
-            select_X=select_X, select_Y=select_Y, tf=tf, yf=yf, pf=pf,
-            tf_label=r'$\omega$($c_s/R_0$)', yf_label=r'$k_{\theta}$',
-        )
-        # Cauchy fitting omega
-        idx = pf.shape[0]//2
-        Pomega = pf[idx:].max(axis=0)
-        popt1, pcov1, fitP1 = tools.curve_fit('cauchy', tf, Pomega)
-        # fitting k-theta
-        idx = pf.shape[1]//2
-        Pk = pf[:, idx:].max(axis=1)
-        popt2, pcov2, fitP2 = tools.curve_fit('cauchy', yf, Pk)
-        results.update(dict(
-            Pomega=Pomega, fitPomega=fitP1,
-            Cauchy_gamma1=popt1[1], Cauchy_mu1=popt1[2],
-            Pktheta=Pk, fitPktheta=fitP2,
-            Cauchy_gamma2=popt2[1], Cauchy_mu2=popt2[2],
-        ))
-        return results, acckwargs
+        return dict(X=time, Y=theta, Z=data, title=title, fstr=fstr,
+                    ylabel=r'$\theta$', xlabel=r'time($R_0/c_s$)'), acckwargs
 
     def _post_dig(self, results):
-        r = results
-        zip_results = [('tmpl_contourf', 221, dict(
-            X=r['X'], Y=r['Y'], Z=r['Z'], title=r['title'],
-            xlabel=r['xlabel'], ylabel=r['ylabel']))]
-        if r['select_X'] is not None:
-            zip_results.append(
-                ('tmpl_line', 221, dict(
-                    LINE=[(r['select_X'], r['select_Y'], 'FFT region')]))
-            )
-        title2 = r'FFT of %s' % r['title']
-        zip_results.append(
-            ('tmpl_contourf', 222, dict(
-                X=r['tf'], Y=r['yf'], Z=r['pf'], title=title2,
-                xlabel=r['tf_label'], ylabel=r['yf_label'],
-            ))
-        )
-        # fitting
-        mu1, hw1 = r['Cauchy_mu1'], r['Cauchy_gamma1']
-        cly = [min(r['Pomega']), max(r['Pomega'])]
-        llx, rlx = mu1 - hw1, mu1 + hw1
-        LINEt = [(r['tf'], r['Pomega']),
-                 (r['tf'], r['fitPomega'], 'fitting'),
-                 ([mu1, mu1], cly, r'median, $\mu=%f$' % mu1),
-                 ([llx, llx], cly, r'half width, $\gamma=%f$' % hw1),
-                 ([rlx, rlx], cly)]
-        mu2, hw2 = r['Cauchy_mu2'], r['Cauchy_gamma2']
-        cly = [min(r['Pktheta']), max(r['Pktheta'])]
-        llx, rlx = mu2 - hw2, mu2 + hw2
-        LINEy = [(r['yf'], r['Pktheta']),
-                 (r['yf'], r['fitPktheta'], 'fitting'),
-                 ([mu2, mu2], cly, r'median, $\mu=%f$' % mu2),
-                 ([llx, llx], cly, r'half width, $\gamma=%f$' % hw2),
-                 ([rlx, rlx], cly)]
-        zip_results.extend([
-            ('tmpl_line', 223, dict(
-                LINE=LINEt, xlabel=r['tf_label'],
-                title=r'Cauchy fitting, $\omega$ | max(axis=k)')),
-            ('tmpl_line', 224, dict(
-                LINE=LINEy, xlabel=r['yf_label'],
-                title=r'Cauchy fitting, $k_{\theta}$ | max(axis=$\omega$)')),
-        ])
-        return dict(zip_results=zip_results)
+        return results
 
 
-def _snaptime_field_fft2(data, theta, time, kwoptions, kwargs, acckwargs):
-    '''data(theta, time), kwargs[fft_tselect]: [t0,t1], t0 float '''
+def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
+                        kwoptions, kwargs, acckwargs):
+    '''*fft_tselect*: [t0,t1], t0 float
+            time[i0:i1], data[:,i0:i1] where t0<=time[i0:i1]<=t1
+        *fft_unit_rho0*: bool
+            normalize k_theta by rho0 or not, default False
+        *fft_autoxlimit*: bool
+            auto set short xlimt for FFT results or not, default True
+    '''
+    # data(theta, time), neardata(near-psi-or-zeta, theta, time) for FFT
+    # ipsi of *data* for k_theta, pckloader for arr2 rho0
     difftime = np.diff(time)
     dt, stdt = np.mean(difftime), np.std(difftime)
     if stdt != 0:
-        dlog.warn("Snap step time (%f, +-%f) is not a constant!" % (dt, stdt))
+        dlog.warn("Snap step time (%f, +-%f) isn't a constant!" % (dt, stdt))
     # fft_tselect
     tcutoff = acckwargs['tcutoff']
     fft_tselect = kwargs.get('fft_tselect', tcutoff)
@@ -1162,30 +1077,149 @@ def _snaptime_field_fft2(data, theta, time, kwoptions, kwargs, acckwargs):
             rangee=kwoptions['tcutoff']['rangee'].copy(),
             value=kwoptions['tcutoff']['value'].copy(),
             description='FFT time select:'))
-    it0, it1 = 0, time.size
+    it0, it1 = 0, time.size-1
     acckwargs['fft_tselect'] = tcutoff
     if (fft_tselect != tcutoff
-            and fft_tselect[0] >= tcutoff[0]
-            and fft_tselect[1] <= tcutoff[1]):
+            and (fft_tselect[0] >= tcutoff[0]
+                 or fft_tselect[1] <= tcutoff[1])):
         s0, s1 = fft_tselect
         index = np.where((time >= s0) & (time <= s1))[0]
         if index.size > 0:
-            it0, it1 = index[0], index[-1]+1
-            acckwargs['fft_tselect'] = [time[it0], time[it1-1]]
+            it0, it1 = index[0], index[-1]
+            acckwargs['fft_tselect'] = [time[it0], time[it1]]
         else:
             dlog.warning("Can't select: %s <= fft time <= %s!" % (s0, s1))
     # select FFT data
-    if (it0, it1) == (0, time.size):
-        select_data, select_time = data, None
+    if (it0, it1) == (0, time.size-1):
+        select_data, select_time, select_theta = data, None, None
     else:
-        select_data = data[:, it0:it1]
-        select_time = time[[it0, it1-1]]
-    dtheta = np.diff(theta).mean()*0.1801275  # TODO
-    tf, yf, af, pf = tools.fft2(dt, dtheta, select_data)
-    return select_data, select_time, tf, yf, pf
+        select_data = data[:, it0:it1+1]
+        select_time = time[[it0, it1, it1, it0, it0]]
+        y = len(theta)
+        select_theta = theta[[0, 0, y-1, y-1, 0]]
+    tf, yf, af, pf = tools.fft2(dt, 1.0, select_data)
+    # mean FFT
+    if neardata is not None:
+        if select_time is None:
+            select_neardata = neardata
+        else:
+            select_neardata = neardata[:, :, it0:it1+1]
+        N = select_neardata.shape[0]
+        for idx in range(N):
+            _, _, _, _pf = tools.fft2(dt, 1.0, select_neardata[idx])
+            pf += _pf
+        pf = pf / (N+1)
+    mtgrid, Ntime = select_data.shape
+    pf = pf / mtgrid / Ntime * 2.0  # 2.0, fitting half
+    # yf unit; xlim
+    fft_unit_rho0 = kwargs.get('fft_unit_rho0', False)
+    fft_autoxlimit = kwargs.get('fft_autoxlimit', True)
+    if 'fft_unit_rho0' not in kwoptions:
+        kwoptions.update(dict(
+            fft_unit_rho0=dict(
+                widget='Checkbox',
+                value=False,
+                description='FFT unit rho0'),
+            fft_autoxlimit=dict(
+                widget='Checkbox',
+                value=True,
+                description='FFT xlimit: auto'),
+        ))
+    acckwargs['fft_unit_rho0'] = False
+    yf_label = r'$k_{\theta}$'
+    if fft_unit_rho0:
+        try:
+            arr2, rho0 = pckloader.get_many('gtc/arr2', 'gtc/rho0')
+            # print(yf[[0,-1]], '\n !!!', pf.shape, select_data.shape, rho0)
+            mtgrid = data.shape[0]  # [-mtgrid/2, mtgrid/2]
+            yf = yf/(2.0*np.pi*arr2[ipsi-1, 1]/mtgrid)*rho0
+        except Exception:
+            dlog.warning("Cannot use unit rho0!", exc_info=1)
+        else:
+            yf_label = r'$k_{\theta}\rho_0$'
+            acckwargs['fft_unit_rho0'] = True
+    # FFT max line
+    pf_tmax = pf.max(axis=0)
+    pf_ymax = pf.max(axis=1)
+    pf_max = pf_tmax.max()
+    # tf, yf xlimit
+    if fft_autoxlimit:
+        acckwargs['fft_autoxlimit'] = True
+        minlimit = pf_max * 5.0e-2
+        idx_t = np.where(pf_tmax >= minlimit)[0][-1]
+        idx_y = np.where(pf_ymax >= minlimit)[0][-1]
+        tf_xlimit, yf_xlimit = round(tf[idx_t], 3),  round(yf[idx_y], 3)
+    else:
+        acckwargs['fft_autoxlimit'] = False
+        tf_xlimit, yf_xlimit = None, None
+    # Cauchy fitting omega
+    idx = pf.shape[0]//2
+    Pomega = pf[idx:].max(axis=0)
+    popt1, pcov1, fitP1 = tools.curve_fit('cauchy', tf, Pomega)
+    # fitting k-theta
+    idx = pf.shape[1]//2
+    Pk = pf[:, idx:].max(axis=1)
+    popt2, pcov2, fitP2 = tools.curve_fit('cauchy', yf, Pk)
+    return dict(
+        select_time=select_time, select_theta=select_theta,
+        tf=tf, yf=yf, pf=pf, tf_xlimit=tf_xlimit, yf_xlimit=yf_xlimit,
+        tf_label=r'$\omega$($c_s/R_0$)', yf_label=yf_label,
+        Pomega=Pomega, fitPomega=fitP1,
+        Cauchy_gamma1=popt1[1], Cauchy_mu1=popt1[2],
+        Pktheta=Pk, fitPktheta=fitP2,
+        Cauchy_gamma2=popt2[1], Cauchy_mu2=popt2[2],
+    )
 
 
-class SnapshotTimeFieldFluxFFTDigger(SnapshotTimeFieldFluxDigger):
+def _snap_fieldtime_fft__post_dig(results):
+    r = results
+    zip_results = [('tmpl_contourf', 221, dict(
+        X=r['X'], Y=r['Y'], Z=r['Z'], title=r['title'],
+        xlabel=r['xlabel'], ylabel=r['ylabel']))]
+    if r['select_time'] is not None:
+        l_t, l_y = r['select_time'], r['select_theta']
+        zip_results.append(
+            ('tmpl_line', 221, dict(LINE=[(l_t, l_y, 'FFT region')])))
+    title2 = r'FFT of $%s$' % r['fstr']
+    if r['tf_xlimit']:
+        tf_xlimit, yf_xlimit = r['tf_xlimit'], r['yf_xlimit']
+        tf_xlimit2 = min(tf_xlimit*2.0, r['tf'][-1])
+        yf_xlimit2 = min(yf_xlimit*2.0, r['yf'][-1])
+    else:
+        tf_xlimit, yf_xlimit = r['tf'][-1], r['yf'][-1]
+        tf_xlimit2, yf_xlimit2 = tf_xlimit, yf_xlimit
+    zip_results.append(('tmpl_contourf', 222, dict(
+        X=r['tf'], Y=r['yf'], Z=r['pf'], title=title2,
+        xlabel=r['tf_label'], ylabel=r['yf_label'],
+        xlim=[-tf_xlimit2, tf_xlimit2], ylim=[-yf_xlimit2, yf_xlimit2]))
+    )
+    # 3, 4 and fitting
+    mu1, hw1 = r['Cauchy_mu1'], r['Cauchy_gamma1']
+    cly = [min(r['Pomega']), max(r['Pomega'])]
+    llx, rlx = mu1 - hw1, mu1 + hw1
+    LINEt = [(r['tf'], r['Pomega']), (r['tf'], r['fitPomega'], 'fitting'),
+             ([mu1, mu1], cly, r'median, $\mu=%f$' % mu1),
+             ([llx, llx], cly, r'half width, $\gamma=%f$' % hw1),
+             ([rlx, rlx], cly)]
+    mu2, hw2 = r['Cauchy_mu2'], r['Cauchy_gamma2']
+    cly = [min(r['Pktheta']), max(r['Pktheta'])]
+    llx, rlx = mu2 - hw2, mu2 + hw2
+    LINEy = [(r['yf'], r['Pktheta']), (r['yf'], r['fitPktheta'], 'fitting'),
+             ([mu2, mu2], cly, r'median, $\mu=%f$' % mu2),
+             ([llx, llx], cly, r'half width, $\gamma=%f$' % hw2),
+             ([rlx, rlx], cly)]
+    zip_results.extend([
+        ('tmpl_line', 223, dict(
+            LINE=LINEt, xlabel=r['tf_label'], xlim=[-tf_xlimit, tf_xlimit],
+            title=r'Cauchy fitting, $\omega$ | max(axis=k)')),
+        ('tmpl_line', 224, dict(
+            LINE=LINEy, xlabel=r['yf_label'], xlim=[-yf_xlimit, yf_xlimit],
+            title=r'Cauchy fitting, $k_{\theta}$ | max(axis=$\omega$)')),
+    ])
+    return dict(zip_results=zip_results)
+
+
+class SnapshotFieldFluxTimeFFTDigger(SnapshotFieldFluxTimeDigger):
     '''phi(ktheta,omega), a_para, fluidne, or densityi,e of mpis//2 flux.'''
     __slots__ = []
     post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
@@ -1195,45 +1229,116 @@ class SnapshotTimeFieldFluxFFTDigger(SnapshotTimeFieldFluxDigger):
         self._fignum = '%s_fft' % self._fignum
 
     def _dig(self, kwargs):
-        '''*fft_tselect*: [t0,t1], t0 float
-            time[x0:x1], data[:,x0:x1] where t0<=time[x0:x1]<=t1
+        '''*nearby*: int, [0, mtoroidal//4]
+            how many zeta near by *izeta* used to average FFT, default 0
         '''
         results, acckwargs = super()._dig(kwargs)
         time, alpha, data = results['X'], results['Y'], results['Z']
-        select_data, select_time, tf, yf, pf = _snaptime_field_fft2(
-            data, alpha, time, self.kwoptions, kwargs, acckwargs)
-        results.update(
-            select_time=select_time, tf=tf, yf=yf, pf=pf,
-            tf_label=r'$\omega$($c_s/R_0$)', yf_label=r'$k_{\theta}$')
+        izeta = acckwargs['izeta']
+        # nearby
+        nearby = kwargs.get('nearby', 0)
+        mtoroidal = self.pckloader.get('gtc/mtoroidal')
+        if isinstance(nearby, int) and nearby > 0:
+            nearby = min(max(0, nearby), mtoroidal//4)
+        else:
+            nearby = 0
+        dlog.parm("izeta-nearby=%s" % nearby)
+        acckwargs['nearby'] = nearby
+        if 'nearby' not in self.kwoptions:
+            self.kwoptions.update(nearby=dict(widget='IntSlider',
+                                              rangee=(0, mtoroidal//4, 1),
+                                              value=nearby,
+                                              description='izeta nearby:'))
+        if nearby > 0:
+            neardata = []
+            _, i0, i1, _idxlog = _snaptime_fluxdata_tcutoff(
+                self.srckeys, self.pckloader,
+                self.kwoptions, kwargs, acckwargs)
+            nearidxes = np.r_[izeta-nearby:izeta, izeta+1:izeta+nearby+1]
+            nearidxes %= mtoroidal  # positive index
+            for idx in range(i0, i1):
+                if idx % _idxlog == 0 or idx == i1 - 1:
+                    dlog.info('Collecting nearby [%d/%d] %s' % (
+                        idx+1-i0, i1 - i0, self.srckeys[idx]))
+                fluxdata = self.pckloader.get(self.srckeys[idx])
+                # assert fluxdata.shape[1] == mtoroidal
+                neardata.append(fluxdata[:, nearidxes])
+            neardata = np.array(neardata).T  # (zeta, alpha, time)
+            dlog.info('Collected nearby data shape (zeta, alpha, time): %s'
+                      % (neardata.shape,))
+        else:
+            neardata = None
+        res = _snap_fieldtime_fft(
+            data, neardata, alpha, time, self.ipsi, self.pckloader,
+            self.kwoptions, kwargs, acckwargs)
+        results.update(res)
         return results, acckwargs
 
+    _dig.__doc__ += _snap_fieldtime_fft.__doc__
+
     def _post_dig(self, results):
-        r = results
-        zip_results = [('tmpl_contourf', 221, dict(
-            X=r['X'], Y=r['Y'], Z=r['Z'], title=r['title'],
-            xlabel=r'time($R_0/c_s$)', ylabel=r'$\alpha$'))]
-        if r['select_time'] is not None:
-            t0, t1 = r['select_time']
-            y0, y1 = r['Y'][0], r['Y'][-1]
-            l_t, l_y = [t0, t1, t1, t0, t0], [y0, y0, y1, y1, y0]
-            zip_results.append(
-                ('tmpl_line', 221, dict(LINE=[(l_t, l_y, 'FFT region')])))
-        title2 = r'FFT of $%s$' % r['fstr']
-        zip_results.append(
-            ('tmpl_contourf', 222, dict(
-                X=r['tf'], Y=r['yf'], Z=r['pf'], title=title2,
-                xlabel=r['tf_label'], ylabel=r['yf_label'])))
-        # 3, 4
-        my, mt = r['pf'].shape
-        pf_tlist, pf_ylist = range(mt), range(my)
-        tf_hf, yf_hf = r['tf'].size//2, r['yf'].size//2
-        LINEt = [(r['tf'][tf_hf:], r['pf'][j, tf_hf:]) for j in pf_ylist]
-        LINEy = [(r['yf'][yf_hf:], r['pf'][yf_hf:, j]) for j in pf_tlist]
-        zip_results.extend([
-            ('tmpl_line', 223, dict(LINE=LINEt, xlabel=r['tf_label'])),
-            ('tmpl_line', 224, dict(LINE=LINEy, xlabel=r['yf_label'])),
-        ])
-        return dict(zip_results=zip_results)
+        return _snap_fieldtime_fft__post_dig(results)
+
+
+class SnapshotFieldPoloidalTimeFFTDigger(SnapshotFieldPoloidalTimeDigger):
+    '''phi(ktheta, omega), a_para, fluidne, or densityi,e at zeta=0.'''
+    __slots__ = []
+    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
+
+    def _set_fignum(self, numseed=None):
+        super()._set_fignum(numseed=numseed)
+        self._fignum = '%s_fft' % self._fignum
+
+    def _dig(self, kwargs):
+        '''*nearby*: int, [0, mpsi//4]
+            how many psi near by *ipsi* used to average FFT, default 1
+        '''
+        results, acckwargs = super()._dig(kwargs)
+        time, theta, data = results['X'], results['Y'], results['Z']
+        ipsi = acckwargs['ipsi']
+        # nearby
+        nearby = kwargs.get('nearby', 1)
+        mpsi = self.pckloader.get('gtc/mpsi')
+        if isinstance(nearby, int) and nearby > 0:
+            nearby = min(max(0, nearby), mpsi//4)
+        else:
+            nearby = 1
+        dlog.parm("ipsi-nearby=%s" % nearby)
+        acckwargs['nearby'] = nearby
+        if 'nearby' not in self.kwoptions:
+            self.kwoptions.update(nearby=dict(widget='IntSlider',
+                                              rangee=(0, mpsi//4, 1),
+                                              value=nearby,
+                                              description='ipsi nearby:'))
+        if nearby > 0:
+            neardata = []
+            _, i0, i1, _idxlog = _snaptime_fluxdata_tcutoff(
+                self.srckeys, self.pckloader,
+                self.kwoptions, kwargs, acckwargs)
+            nearidxes = np.r_[ipsi-nearby:ipsi, ipsi+1:ipsi+nearby+1]
+            nearidxes %= mpsi + 1  # positive index
+            for idx in range(i0, i1):
+                if idx % _idxlog == 0 or idx == i1 - 1:
+                    dlog.info('Collecting nearby [%d/%d] %s' % (
+                        idx+1-i0, i1 - i0, self.srckeys[idx]))
+                poloidata = self.pckloader.get(self.srckeys[idx])
+                # assert poloidata.shape[1] == mpsi+1
+                neardata.append(poloidata[:, nearidxes])
+            neardata = np.array(neardata).T  # (psi, theta, time)
+            dlog.info('Collected nearby data shape (psi, alpha, time): %s'
+                      % (neardata.shape,))
+        else:
+            neardata = None
+        res = _snap_fieldtime_fft(
+            data, neardata, theta, time, ipsi, self.pckloader,
+            self.kwoptions, kwargs, acckwargs)
+        results.update(res)
+        return results, acckwargs
+
+    _dig.__doc__ += _snap_fieldtime_fft.__doc__
+
+    def _post_dig(self, results):
+        return _snap_fieldtime_fft__post_dig(results)
 
 
 class SnapshotFieldProfileDigger(Digger):
@@ -1348,7 +1453,7 @@ class SnapshotFieldmDigger(Digger):
         fieldm = []
         for ipsi in range(1, mpsi1 - 1):
             y = pdata[:, ipsi]
-            dy_ft = np.fft.fft(y)/mtgrid1 * 2  # why /mtgrid1 * 2
+            dy_ft = np.fft.fft(y)/mtgrid1 * 2  # why /mtgrid1 * 2  -> \Int-1
             fieldm.append(abs(dy_ft[:mtgrid1//2]))
         fieldm = np.array(fieldm).T
         jlist, acckwargs, rr_s, Y_s, dr, dr_fwhm, envY, envXp, envYp, envXmax, envYmax = \
