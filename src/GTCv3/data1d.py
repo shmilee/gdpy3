@@ -204,7 +204,7 @@ class _Data1dDigger(Digger):
         if self.kwoptions is None:
             self.kwoptions = dict(
                 tcutoff=dict(widget='FloatRangeSlider',
-                             rangee=[X[0], X[-1], 1.0],
+                             rangee=[X[0], X[-1], numpy.around(dt*7, 8)],
                              value=[X[0], X[-1]],
                              description='time cutoff:'),
                 pcutoff=dict(widget='IntRangeSlider',
@@ -402,10 +402,10 @@ class Data1dMeanFieldDigger(_Data1dMeanDigger, Data1dFieldDigger):
 
 class _Data1dFFTDigger(_Data1dDigger):
     '''
-    :meth:`_dig` for Data1dFFTFluxDigger, Data1dFFTFieldDigger
+    :meth:`_dig` for Data1dFFTFluxDigger (ignore), Data1dFFTFieldDigger
     '''
     __slots__ = []
-    post_template = ('tmpl_z111p', 'tmpl_line')
+    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
 
     def _dig(self, kwargs):
         '''*fft_tselect*: [t0,t1], t0 float
@@ -413,9 +413,13 @@ class _Data1dFFTDigger(_Data1dDigger):
         *fft_pselect*: [p0,p1], p0 int
             Y[y0:y1], data[y0:y1,:] where p0<=Y[y0:y1]<=p1
         *fft_unit_rho0*: bool
-            set Y unit of FFT results to rho0 or not, default False
+            normalize FFT kr by rho0 or not, default True
         *fft_autoxlimit*: bool
             auto set short xlimt for FFT results or not, default True
+        *fft_mean_krlimit*: float, %%.1f
+            set |kr| (or |kr*rho0|) limit to average, default None
+        *fft_mean_order*: int
+            use |field_k|^fft_mean_order as weight to average(|kr|), default 2
         '''
         results, acckwargs = super(_Data1dFFTDigger, self)._dig(kwargs)
         X, Y, Z = results['X'], results['Y'], results['Z']
@@ -424,7 +428,7 @@ class _Data1dFFTDigger(_Data1dDigger):
         use_ra = acckwargs['use_ra']
         fft_tselect = kwargs.get('fft_tselect', tcutoff)
         fft_pselect = kwargs.get('fft_pselect', pcutoff)
-        fft_unit_rho0 = kwargs.get('fft_unit_rho0', False)
+        fft_unit_rho0 = kwargs.get('fft_unit_rho0', True)
         fft_autoxlimit = kwargs.get('fft_autoxlimit', True)
         if 'fft_tselect' not in self.kwoptions:
             self.kwoptions.update(dict(
@@ -440,7 +444,7 @@ class _Data1dFFTDigger(_Data1dDigger):
                     description='FFT mpsi select:'),
                 fft_unit_rho0=dict(
                     widget='Checkbox',
-                    value=False,
+                    value=True,
                     description='FFT unit rho0'),
                 fft_autoxlimit=dict(
                     widget='Checkbox',
@@ -492,6 +496,8 @@ class _Data1dFFTDigger(_Data1dDigger):
             select_Y = Y[[ip0, ip0, ip1-1, ip1-1, ip0]]
         dy = numpy.diff(Y).mean() if use_ra else 1.0
         tf, yf, af, pf = tools.fft2(dt, dy, select_Z)
+        M, N = select_Z.shape
+        pf = pf / M / N * 2.0
         # yf unit
         acckwargs['fft_unit_rho0'] = False
         yf_label = r'$k_r$(1/a)' if use_ra else r'$k_r$(1/mpsi)'
@@ -521,13 +527,45 @@ class _Data1dFFTDigger(_Data1dDigger):
         else:
             acckwargs['fft_autoxlimit'] = False
             tf_xlimit, yf_xlimit = None, None
-        results.update(dict(
+        # yf average
+        mean_krlimit = kwargs.get('fft_mean_krlimit', None)
+        mean_order = kwargs.get('fft_mean_order', 2)
+        if mean_krlimit:
+            idx = numpy.where(abs(yf) <= abs(mean_krlimit))[0]
+            i0, i1 = idx[0], idx[-1]
+            weights = abs(pf_ymax[i0:i1+1])**mean_order
+            if sum(weights) == 0:
+                mean_kr = 0.0
+            else:
+                mean_kr = numpy.average(abs(yf[i0:i1+1]), weights=weights)
+        else:
+            mean_krlimit = yf[-1]
+            weights = abs(pf_ymax)**mean_order
+            if sum(weights) == 0:
+                mean_kr = 0.0
+            else:
+                mean_kr = numpy.average(abs(yf), weights=weights)
+        mean_krlimit = round(mean_krlimit, 1)
+        acckwargs.update(
+            fft_mean_krlimit=mean_krlimit, fft_mean_order=mean_order)
+        if 'fft_mean_krlimit' not in self.kwoptions:
+            self.kwoptions.update(
+                fft_mean_krlimit=dict(widget='FloatSlider',
+                                      rangee=(0.0, round(yf[-1], 1), 0.5),
+                                      value=mean_krlimit,
+                                      description='mean kr limit:'),
+                fft_mean_order=dict(widget='IntSlider',
+                                    rangee=(2, 8, 2),
+                                    value=2,
+                                    description='mean kr weight order:'))
+        results.update(
             select_X=select_X, select_Y=select_Y,
             tf=tf, yf=yf, pf=pf,
             tf_label=r'$\omega$($c_s/R_0$)', yf_label=yf_label,
             pf_tmax=pf_tmax, pf_ymax=pf_ymax,
             tf_xlimit=tf_xlimit, yf_xlimit=yf_xlimit,
-        ))
+            mean_krlimit=mean_krlimit, mean_kr=mean_kr, mean_order=mean_order,
+        )
         return results, acckwargs
 
     def _post_dig(self, results):
@@ -556,13 +594,19 @@ class _Data1dFFTDigger(_Data1dDigger):
                 xlim=[-tf_xlimit2, tf_xlimit2],
                 ylim=[-yf_xlimit2, yf_xlimit2]))
         )
+        krli, kr = r['mean_krlimit'], r['mean_kr']
+        lineY = [0, r['pf_ymax'].max()]
+        meaneq = r'$\langle$%s$\rangle_{|f00_k|^%d}$=' % (
+            r['yf_label'], r['mean_order'])
         zip_results.extend([
             ('tmpl_line', 223, dict(
-                LINE=[(r['tf'], r['pf_tmax'], 'max')], xlabel=r['tf_label'],
-                xlim=[-tf_xlimit, tf_xlimit])),
+                LINE=[(r['tf'], r['pf_tmax'], r'max(axis=$k_r$)')],
+                xlabel=r['tf_label'], xlim=[-tf_xlimit, tf_xlimit])),
             ('tmpl_line', 224, dict(
-                LINE=[(r['yf'], r['pf_ymax'], 'max')], xlabel=r['yf_label'],
-                xlim=[-yf_xlimit, yf_xlimit])),
+                LINE=[(r['yf'], r['pf_ymax'], r'max(axis=$\omega$)'),
+                      ([krli, krli], lineY, r'mean limit=%s' % krli),
+                      ([kr, kr], lineY, r'mean %s=%.6f' % (meaneq, kr))],
+                xlabel=r['yf_label'], xlim=[-yf_xlimit, yf_xlimit])),
         ])
         return dict(zip_results=zip_results)
 

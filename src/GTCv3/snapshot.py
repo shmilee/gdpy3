@@ -482,7 +482,7 @@ class SnapshotFieldFluxAlphaTileDigger(SnapshotFieldFluxAlphaDigger):
 
 
 class SnapshotFieldFluxAlphaTileFFTDigger(SnapshotFieldFluxAlphaTileDigger):
-    '''phi(ktheta,k//) of tiled phi(alpha,zeta) etc. on flux surface.'''
+    '''phi(kalpha,k//) of tiled phi(alpha,zeta) etc. on flux surface.'''
     __slots__ = []
     post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
 
@@ -491,40 +491,41 @@ class SnapshotFieldFluxAlphaTileFFTDigger(SnapshotFieldFluxAlphaTileDigger):
         self._fignum = '%s_fft' % self._fignum
 
     def _dig(self, kwargs):
-        '''*fft_unit_r0*: bool
-            normalize k_// by R0 or not, default True
-        *fft_autoxlimit*: bool
-            auto set short xlimt for FFT results or not, default True
+        '''*fft_autoxlimit*: bool
+            auto set short xlimt for FFT result or not, default True
+        *fft_mean_kzlimit*: float, %%.1f
+            set |k//| (|k//*R0|) limit to average, default None
+        *fft_mean_kalimit*: float, %%.1f
+            set |kalpha| (|kalpha|*r) limit to average, default None
+        *fft_mean_order*: int
+            use |field_k|^fft_mean_order as weight to average(|k|), default 2
         '''
-        results, acckwargs = super()._dig(kwargs)
-        zeta, data = results['zeta'], results['field']
-        fft_unit_r0 = bool(kwargs.get('fft_unit_r0', True))
+        result, acckwargs = super()._dig(kwargs)
+        zeta, alpha, data = result['zeta'], result['alpha'], result['field']
         fft_autoxlimit = bool(kwargs.get('fft_autoxlimit', True))
-        acckwargs['fft_unit_r0'] = fft_unit_r0
         acckwargs['fft_autoxlimit'] = fft_autoxlimit
-        if 'fft_unit_r0' not in self.kwoptions:
+        if 'fft_autoxlimit' not in self.kwoptions:
             self.kwoptions.update(
-                fft_unit_r0=dict(
-                    widget='Checkbox',
-                    value=True,
-                    description='FFT unit R0'),
                 fft_autoxlimit=dict(
                     widget='Checkbox',
                     value=True,
                     description='FFT xlimit: auto'),
             )
-        dz = np.mean(np.diff(zeta)) if fft_unit_r0 else 1.0
-        xf, yf, af, pf = tools.fft2(dz, 1.0, data)
-        yf_label = r'$k_{\theta}$'
-        xf_label = r'$k_{\parallel}%s$' % (r'R_0' if fft_unit_r0 else '')
+        dz, da = np.mean(np.diff(zeta)), np.mean(np.diff(alpha))
+        # print(zeta.shape, zeta[[0, -1]], dz, da)
+        xf, yf, af, pf = tools.fft2(dz, da, data)
+        yf_label = r'$k_{\alpha} r$'  # m
+        xf_label = r'$k_{\parallel} R_0$'
         M, N = data.shape
         pf = pf / M / N * 2.0  # 2.0, fitting half
-        # tf, yf xlimit
+        # xf, yf xlimit
+        pf_xmax = pf.max(axis=0)
+        pf_ymax = pf.max(axis=1)
         if fft_autoxlimit:
             acckwargs['fft_autoxlimit'] = True
             minlimit = pf.max() * 5.0e-2
-            idx_x = np.where(pf.max(axis=0) >= minlimit)[0][-1]
-            idx_y = np.where(pf.max(axis=1) >= minlimit)[0][-1]
+            idx_x = np.where(pf_xmax >= minlimit)[0][-1]
+            idx_y = np.where(pf_ymax >= minlimit)[0][-1]
             xf_xlimit, yf_xlimit = round(xf[idx_x], 3),  round(yf[idx_y], 3)
         else:
             acckwargs['fft_autoxlimit'] = False
@@ -535,16 +536,65 @@ class SnapshotFieldFluxAlphaTileFFTDigger(SnapshotFieldFluxAlphaTileDigger):
         popt1, pcov1, fitP1 = tools.curve_fit('cauchy', xf, Pkpara)
         # fitting k-theta
         idx = pf.shape[1]//2
-        Pktheta = pf[:, idx:].max(axis=1)
-        popt2, pcov2, fitP2 = tools.curve_fit('cauchy', yf, Pktheta)
-        results.update(
+        Pkalpha = pf[:, idx:].max(axis=1)
+        popt2, pcov2, fitP2 = tools.curve_fit('cauchy', yf, Pkalpha)
+        # average k// k-theta
+        mean_kzlimit = kwargs.get('fft_mean_kzlimit', None)
+        mean_kalimit = kwargs.get('fft_mean_kalimit', None)
+        mean_order = kwargs.get('fft_mean_order', 2)
+        mean_kpara = 0.0
+        if mean_kzlimit:
+            i0, i1 = np.where(abs(xf) <= abs(mean_kzlimit))[0][[0, -1]]
+            weights = abs(pf_xmax[i0:i1+1])**mean_order
+            if sum(weights) != 0:
+                mean_kpara = np.average(abs(xf[i0:i1+1]), weights=weights)
+        else:
+            mean_kzlimit = xf[-1]
+            weights = abs(pf_xmax)**mean_order
+            if sum(weights) != 0:
+                mean_kpara = np.average(abs(xf), weights=weights)
+        mean_kzlimit = np.around(mean_kzlimit, 1)
+        mean_kalpha = 0.0
+        if mean_kalimit:
+            i0, i1 = np.where(abs(yf) <= abs(mean_kalimit))[0][[0, -1]]
+            weights = abs(pf_ymax[i0:i1+1])**mean_order
+            if sum(weights) != 0:
+                mean_kalpha = np.average(abs(yf[i0:i1+1]), weights=weights)
+        else:
+            mean_kalimit = yf[-1]
+            weights = abs(pf_ymax)**mean_order
+            if sum(weights) != 0:
+                mean_kalpha = np.average(abs(yf), weights=weights)
+        mean_kalimit = np.around(mean_kalimit, 1)
+        acckwargs.update(fft_mean_kzlimit=mean_kzlimit,
+                         fft_mean_kalimit=mean_kalimit,
+                         fft_mean_order=mean_order)
+        if 'fft_mean_kzlimit' not in self.kwoptions:
+            self.kwoptions.update(
+                fft_mean_kzlimit=dict(widget='FloatSlider',
+                                      rangee=(0.0, round(xf[-1], 1), 0.8),
+                                      value=mean_kzlimit,
+                                      description='mean k// limit:'),
+                fft_mean_kalimit=dict(widget='FloatSlider',
+                                      rangee=(0.0, round(yf[-1], 1), 4.9),
+                                      value=mean_kalimit,
+                                      description='mean kalpha limit:'),
+                fft_mean_order=dict(widget='IntSlider',
+                                    rangee=(2, 8, 2),
+                                    value=2,
+                                    description='mean k weight order:'))
+        result.update(
             xf=xf, yf=yf, pf=pf, xf_xlimit=xf_xlimit, yf_xlimit=yf_xlimit,
             xf_label=xf_label, yf_label=yf_label,
             Pkpara=Pkpara, fitPkpara=fitP1,
             Cauchy_gamma1=popt1[1], Cauchy_mu1=popt1[2],
-            Pktheta=Pktheta, fitPktheta=fitP2,
-            Cauchy_gamma2=popt2[1], Cauchy_mu2=popt2[2])
-        return results, acckwargs
+            Pkalpha=Pkalpha, fitPkalpha=fitP2,
+            Cauchy_gamma2=popt2[1], Cauchy_mu2=popt2[2],
+            mean_kzlimit=mean_kzlimit, mean_kpara=mean_kpara,
+            mean_kalimit=mean_kalimit, mean_kalpha=mean_kalpha,
+            mean_order=mean_order,
+        )
+        return result, acckwargs
 
     def _post_dig(self, results):
         r = results
@@ -564,32 +614,43 @@ class SnapshotFieldFluxAlphaTileFFTDigger(SnapshotFieldFluxAlphaTileDigger):
             xlabel=r['xf_label'], ylabel=r['yf_label'],
             xlim=[-xf_xlimit2, xf_xlimit2], ylim=[-yf_xlimit2, yf_xlimit2]))
         )
-        # fitting
+        # fitting, average
         mu1, hw1 = r['Cauchy_mu1'], r['Cauchy_gamma1']
         cly = [min(r['Pkpara']), max(r['Pkpara'])]
         llx, rlx = mu1 - hw1, mu1 + hw1
+        kzlimit, kz = r['mean_kzlimit'], r['mean_kpara']
+        meanzeq = r'$\langle$%s$\rangle_{|\delta f_k|^%d}$=' % (
+            r['xf_label'], r['mean_order'])
         LINEx = [(r['xf'], r['Pkpara']),
                  (r['xf'], r['fitPkpara'], 'fitting'),
                  ([mu1, mu1], cly, r'median, $\mu=%f$' % mu1),
                  ([llx, llx], cly, r'half width, $\gamma=%f$' % hw1),
-                 ([rlx, rlx], cly)]
+                 ([rlx, rlx], cly, r'half width'),
+                 ([kzlimit, kzlimit], cly, r'mean limit=%s' % kzlimit),
+                 ([kz, kz], cly, r'mean %s=%f' % (meanzeq, kz))]
         mu2, hw2 = r['Cauchy_mu2'], r['Cauchy_gamma2']
-        cly = [min(r['Pktheta']), max(r['Pktheta'])]
+        cly = [min(r['Pkalpha']), max(r['Pkalpha'])]
         llx, rlx = mu2 - hw2, mu2 + hw2
-        LINEy = [(r['yf'], r['Pktheta']),
-                 (r['yf'], r['fitPktheta'], 'fitting'),
+        kalimit, kt = r['mean_kalimit'], r['mean_kalpha']
+        meanteq = r'$\langle$%s$\rangle_{|\delta f_k|^%d}$=' % (
+            r['yf_label'], r['mean_order'])
+        LINEy = [(r['yf'], r['Pkalpha']),
+                 (r['yf'], r['fitPkalpha'], 'fitting'),
                  ([mu2, mu2], cly, r'median, $\mu=%f$' % mu2),
                  ([llx, llx], cly, r'half width, $\gamma=%f$' % hw2),
-                 ([rlx, rlx], cly)]
+                 ([rlx, rlx], cly, r'half width'),
+                 ([kalimit, kalimit], cly, r'mean limit=%s' % kalimit),
+                 ([kt, kt], cly, r'mean %s=%f' % (meanteq, kt))]
         zip_results.extend([
             ('tmpl_line', 223, dict(
                 LINE=LINEx, xlabel=r['xf_label'],
                 xlim=[-xf_xlimit, xf_xlimit],
-                title=r'Cauchy fitting, $k_{\parallel}$ '
+                title=r'Cauchy fitting, mean, $k_{\parallel}$ '
                       '| max(axis=$k_{\theta}$)')),
             ('tmpl_line', 224, dict(
-                LINE=LINEy, xlabel=r['yf_label'], xlim=[-yf_xlimit, yf_xlimit],
-                title=r'Cauchy fitting, $k_{\theta}$ '
+                LINE=LINEy, xlabel=r['yf_label'],
+                xlim=[-yf_xlimit, yf_xlimit],
+                title=r'Cauchy fitting, mean, $k_{\alpha}$ '
                       '| max(axis=$k_{\parallel}$)')),
         ])
         return dict(zip_results=zip_results)
@@ -1173,7 +1234,7 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
     '''*fft_tselect*: [t0,t1], t0 float
             time[i0:i1], data[:,i0:i1] where t0<=time[i0:i1]<=t1
         *fft_unit_rho0*: bool
-            normalize k_theta by rho0 or not, default False
+            normalize k_theta by rho0 or not, default True
         *fft_autoxlimit*: bool
             auto set short xlimt for FFT results or not, default True
     '''
@@ -1227,13 +1288,13 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
     mtgrid, Ntime = select_data.shape
     pf = pf / mtgrid / Ntime * 2.0  # 2.0, fitting half
     # yf unit; xlim
-    fft_unit_rho0 = kwargs.get('fft_unit_rho0', False)
+    fft_unit_rho0 = kwargs.get('fft_unit_rho0', True)
     fft_autoxlimit = kwargs.get('fft_autoxlimit', True)
     if 'fft_unit_rho0' not in kwoptions:
         kwoptions.update(dict(
             fft_unit_rho0=dict(
                 widget='Checkbox',
-                value=False,
+                value=True,
                 description='FFT unit rho0'),
             fft_autoxlimit=dict(
                 widget='Checkbox',
@@ -1727,7 +1788,7 @@ class SnapshotFieldmkthetaDigger(BreakDigDoc, SnapshotFieldmDigger):
             self.kwoptions = dict(
                 mean_weight_order=dict(widget='IntSlider',
                                        rangee=(2, 8, 2),
-                                       value=4,
+                                       value=2,
                                        description='mean m weight order:'))
         data, _ = super(SnapshotFieldmkthetaDigger, self)._dig(kwargs)
         rr, fieldm, title = data['rr'], data['fieldm'], data['title']
@@ -1739,9 +1800,8 @@ class SnapshotFieldmkthetaDigger(BreakDigDoc, SnapshotFieldmDigger):
         fieldm = fieldm[:m_max, :]
         order = kwargs.get('mean_weight_order', 2)
         rho0, a = self.pckloader.get_many('gtc/rho0', 'gtc/a_minor')
-        m2_r = np.array([np.average(m**order, weights=fieldm[:, i]**order)
-                         for i in range(rr.size)])
-        mean_m = np.power(m2_r, 1.0/order)
+        mean_m = np.array([np.average(m, weights=fieldm[:, i]**order)
+                           for i in range(rr.size)])
         ktrho0 = mean_m/(rr*a)*rho0
         dlog.parm("at r=0.5a, mean m=%.1f." % mean_m[rr.size//2])
         if 'm_max' not in self.kwoptions:
