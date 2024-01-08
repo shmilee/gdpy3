@@ -574,9 +574,10 @@ class LabeledSpinBoxs(ttk.Frame):
     desc: str
         description
     rangee: tuple
-        (from_, to, step)
-    init_val: one or more int or float numbers
-        initial value, num or [num1, num2, ...]
+        (from_, to, step), range of the numbers
+    init_val: int, float or tuple, list
+        one or more initial int or float numbers, like num, [num1, num2, ...]
+        Set number type as same as the *step*.
         If N>1 numbers given, N Spinboxs will be generated.
     cnf, kw: options for Spinbox
     '''
@@ -585,6 +586,9 @@ class LabeledSpinBoxs(ttk.Frame):
         super(LabeledSpinBoxs, self).__init__(master, borderwidth=1)
         self.label = ttk.Label(self, text=desc)
         from_, to, step = rangee
+        if not isinstance(step, (int, float, numpy.number)):
+            log.error('step type error: %s ' % type(step))
+            raise ValueError("Only int, float step supported!")
         for _k in ['from_', 'to', 'textvariable']:
             _ignore = kw.pop(_k, None)
         if init_val is None:
@@ -594,16 +598,15 @@ class LabeledSpinBoxs(ttk.Frame):
         self.variables = []
         self.spinboxs = []
         for i_val in init_val:
-            if (isinstance(step, (int, numpy.integer))
-                    and isinstance(i_val, (int, numpy.integer))):
+            if not isinstance(i_val, (int, float, numpy.number)):
+                log.error('initial value type error: %s' % type(i_val))
+                raise ValueError("Only int, float number supported!")
+            if isinstance(step, (int, numpy.integer)):
                 self.variables.append(tkinter.IntVar(self))
-            elif (isinstance(step, (float, numpy.floating))
-                    and isinstance(i_val, (float, numpy.floating))):
+            elif isinstance(step, (float, numpy.floating)):
                 self.variables.append(tkinter.DoubleVar(self))
             else:
-                log.error('type error: var %s, step %s ' %
-                          (type(i_val), type(step)))
-                raise ValueError("Only int, float number supported!")
+                raise ValueError("np number: step type bug %s" % type(step))
             self.variables[-1].set(i_val)
             self.spinboxs.append(tkinter.Spinbox(
                 self, cnf=cnf,
