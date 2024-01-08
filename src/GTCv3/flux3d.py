@@ -25,7 +25,10 @@ from .snapshot import (SnapshotFieldFluxAlphaDigger,
                        SnapshotFieldFluxThetaDigger,
                        SnapshotFieldFluxAlphaTileDigger,
                        SnapshotFieldFluxThetaTileDigger,
+                       SnapshotFieldFluxAlphaTileFFTDigger,
                        SnapshotFieldFluxAlphaCorrLenDigger,
+                       SnapshotFieldFluxTimeDigger,
+                       SnapshotFieldFluxTimeFFTDigger,
                        _snap_get_timestr,
                        _fluxdata_theta_interpolation)
 from .zetapsi3d import field_tex_str
@@ -35,7 +38,9 @@ from .. import tools
 _all_Converters = ['Flux3DConverter']
 _all_Diggers = ['Flux3DAlphaDigger', 'Flux3DThetaDigger',
                 'Flux3DAlphaTileDigger', 'Flux3DThetaTileDigger',
-                'Flux3DAlphaCorrLenDigger']
+                'Flux3DAlphaTileFFTDigger',
+                'Flux3DAlphaCorrLenDigger',
+                'Flux3DAlphaTimeDigger', 'Flux3DAlphaTimeFFTDigger']
 __all__ = _all_Converters + _all_Diggers
 
 
@@ -269,7 +274,8 @@ def flux3d_interpolate_stack(loader, iM, iN, field, fielddir=0,
     dlog.info('Done.')
 
 
-class Flux3DAlphaTileDigger(Flux3DAlphaDigger, SnapshotFieldFluxAlphaTileDigger):
+class Flux3DAlphaTileDigger(Flux3DAlphaDigger,
+                            SnapshotFieldFluxAlphaTileDigger):
     '''Tiled phi(alpha,zeta), a_para, etc. on every flux surface.'''
     __slots__ = []
     commonpattern = ['gtc/tstep', 'gtc/arr2']
@@ -284,7 +290,8 @@ class Flux3DAlphaTileDigger(Flux3DAlphaDigger, SnapshotFieldFluxAlphaTileDigger)
         return self.pckloader.get('gtc/arr2')[self.ipsi-1, 2]
 
 
-class Flux3DThetaTileDigger(Flux3DThetaDigger, SnapshotFieldFluxThetaTileDigger):
+class Flux3DThetaTileDigger(Flux3DThetaDigger,
+                            SnapshotFieldFluxThetaTileDigger):
     '''Tiled phi(theta,zeta), a_para, etc. on every flux surface.'''
     __slots__ = []
 
@@ -294,7 +301,18 @@ class Flux3DThetaTileDigger(Flux3DThetaDigger, SnapshotFieldFluxThetaTileDigger)
         self.kwoptions = None
 
 
-class Flux3DAlphaCorrLenDigger(Flux3DAlphaTileDigger, SnapshotFieldFluxAlphaCorrLenDigger):
+class Flux3DAlphaTileFFTDigger(Flux3DAlphaTileDigger,
+                               SnapshotFieldFluxAlphaTileFFTDigger):
+    '''Get phi (kalpha,k//) from tiled flux surface.'''
+    __slot__ = []
+
+    def _set_fignum(self, numseed=None):
+        super()._set_fignum(numseed=numseed)
+        self._fignum = '%s_fft' % self._fignum
+
+
+class Flux3DAlphaCorrLenDigger(Flux3DAlphaTileDigger,
+                               SnapshotFieldFluxAlphaCorrLenDigger):
     '''Get phi correlation(d_zeta, d_alpha) from tiled flux surface.'''
     __slot__ = []
 
@@ -304,12 +322,14 @@ class Flux3DAlphaCorrLenDigger(Flux3DAlphaTileDigger, SnapshotFieldFluxAlphaCorr
         self.kwoptions = None
 
 
-class Flux3DAlphaKthetaOmegaDigger(Flux3DAlphaDigger):  # TODO
-    '''phi(ktheta,omega), a_para etc. on every flux surface.'''
+class Flux3DAlphaTimeDigger(SnapshotFieldFluxTimeDigger):
+    '''phi(alpha, time), a_para etc. on every flux surface at izeta=i.'''
     __slots__ = []
+    nitems = '+'
     itemspattern = [
-        '^(?P<section>flux3da*\d{5,7})/(?P<field>(?:phi|apara|fluidne|densityi'
+        '^(?P<section>flux3da*)\d{5,7}/(?P<field>(?:phi|apara|fluidne|densityi'
         + '|temperi|densitye|tempere|densityf|temperf))-(?P<ipsi>\d+)']
+    _snap_time_pat = r'.*flux3da*(\d{5,7}).*'
 
     def _set_group(self):
         '''Set :attr:`group`, 'flux3da(\d{5,7})' -> 'flux3d(\d{5,7})' .'''
@@ -317,3 +337,21 @@ class Flux3DAlphaKthetaOmegaDigger(Flux3DAlphaDigger):  # TODO
             self._group = self.section[0].replace('flux3da', 'flux3d')
         else:
             self._group = self.section[0]
+
+    def _set_fignum(self, numseed=None):
+        self.ipsi = int(self.section[-1])
+        self._fignum = '%s_%03da_time' % (self.section[1], self.ipsi)
+        self.kwoptions = None
+
+    def _get_fieldstr(self):
+        return field_tex_str[self.section[1]]
+
+
+class Flux3DAlphaTimeFFTDigger(Flux3DAlphaTimeDigger,
+                               SnapshotFieldFluxTimeFFTDigger):
+    '''phi(ktheta,omega), a_para etc. on every flux surface.'''
+    __slots__ = []
+
+    def _set_fignum(self, numseed=None):
+        super()._set_fignum(numseed=numseed)
+        self._fignum = '%s_fft' % self._fignum

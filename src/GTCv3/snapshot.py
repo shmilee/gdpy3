@@ -984,12 +984,14 @@ class SnapshotFieldSpectrumDigger(Digger):
         ], suptitle=r'%s, m=%d, p=%d' % (r['title'], r['m'], r['p']))
 
 
-def _snaptime_fluxdata_tcutoff(fluxdatakeys, pckloader,
-                               kwoptions, kwargs, acckwargs):
+def _snaptime_fluxdata_tcutoff(
+        fluxdatakeys, pckloader, kwoptions, kwargs, acckwargs,
+        snaptimepat=None):
     '''Return time, cut index, set kwoptions, acckwargs '''
     tstep = pckloader.get('gtc/tstep')
-    time = [_snap_get_time(k.split('/')[0], pckloader, tstep=tstep)[1]
-            for k in fluxdatakeys]
+    time = [_snap_get_time(
+        k.split('/')[0], pckloader, pat=snaptimepat, tstep=tstep)[1]
+        for k in fluxdatakeys]
     time = np.around(np.array(time), 5)
     dt = time[-1] - time[-2]
     if 'tcutoff' not in kwoptions:
@@ -1097,11 +1099,15 @@ class SnapshotFieldFluxTimeDigger(Digger):
         + '/fluxdata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))$']
     commonpattern = ['gtc/mpsi', 'gtc/tstep', 'gtc/mtoroidal']
     post_template = 'tmpl_contourf'
+    _snap_time_pat = None
 
     def _set_fignum(self, numseed=None):
         self._fignum = '%s_fluxa_time' % self.section[1]
         self.ipsi = self.pckloader.get('gtc/mpsi') // 2
         self.kwoptions = None
+
+    def _get_fieldstr(self):
+        return field_tex_str[self.section[1]]
 
     def _dig(self, kwargs):
         '''
@@ -1126,8 +1132,8 @@ class SnapshotFieldFluxTimeDigger(Digger):
                            value=izeta,
                            description='izeta:'))
         time, i0, i1, _idxlog = _snaptime_fluxdata_tcutoff(
-            self.srckeys, self.pckloader,
-            self.kwoptions, kwargs, acckwargs)
+            self.srckeys, self.pckloader, self.kwoptions, kwargs, acckwargs,
+            snaptimepat=self._snap_time_pat)
         if time is None:
             return {}, {}
         data = []
@@ -1140,7 +1146,7 @@ class SnapshotFieldFluxTimeDigger(Digger):
         data = np.array(data).T  # (alpha, time)
         y = data.shape[0]
         alpha = np.arange(0, y) / (y-1) * 2 * np.pi  # [0,2pi]
-        fstr = field_tex_str[self.section[1]]
+        fstr = self._get_fieldstr()
         pos = 'izeta=%d, ipsi=%d' % (izeta, self.ipsi)
         title = r'$%s(\alpha, t)$ at %s' % (fstr, pos)
         return dict(X=time, Y=alpha, Z=data, title=title, fstr=fstr,
@@ -1407,7 +1413,8 @@ class SnapshotFieldFluxTimeFFTDigger(SnapshotFieldFluxTimeDigger):
             neardata = []
             _, i0, i1, _idxlog = _snaptime_fluxdata_tcutoff(
                 self.srckeys, self.pckloader,
-                self.kwoptions, kwargs, acckwargs)
+                self.kwoptions, kwargs, acckwargs,
+                snaptimepat=self._snap_time_pat)
             nearidxes = np.r_[izeta-nearby:izeta, izeta+1:izeta+nearby+1]
             nearidxes %= mtoroidal  # positive index
             for idx in range(i0, i1):
