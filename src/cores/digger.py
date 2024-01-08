@@ -169,8 +169,11 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         Check if they in :attr:`kwoptions` or not, and sort by key.
         Return string like, "k1=1,k2=[2],k3='abc'".
         '''
+        doc = self.dig.__doc__
         ckkws = ['%s=%r' % (k, list(v) if isinstance(v, tuple) else v)
-                 for k, v in kwargs.items() if k in self.kwoptions]
+                 for k, v in kwargs.items()
+                 if (self.kwoptions and k in self.kwoptions
+                     or self.kwoptions is None and doc.find('*%s*' % k) > 0)]
         return ','.join(sorted(ckkws))
 
     def dig(self, **kwargs):

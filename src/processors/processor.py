@@ -404,6 +404,7 @@ class Processor(object):
         digcore = self._availablelabels_lib[figlabel]
         gotkwargstr = digcore.str_dig_kwargs(kwargs) or 'DEFAULT'
         plog.debug("Get kwargstr '%s' for %s" % (gotkwargstr, figlabel))
+        # TODO use 'DEFAULT'? gotkwargstr completion for partial kwargs
         gotfiglabel = '%s/%s' % (figlabel, gotkwargstr)
         if not redig and gotfiglabel in self.diggedlabels:
             if gotfiglabel in self.resloader.datagroups:
