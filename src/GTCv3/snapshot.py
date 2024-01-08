@@ -44,6 +44,7 @@ _all_Diggers = [
     'SnapshotProfileDigger', 'SnapshotPdfDigger',
     'SnapshotFieldFluxAlphaDigger', 'SnapshotFieldFluxThetaDigger',
     'SnapshotFieldFluxAlphaTileDigger', 'SnapshotFieldFluxThetaTileDigger',
+    'SnapshotFieldFluxAlphaTileFFTDigger',
     'SnapshotFieldFluxAlphaCorrLenDigger', 'SnapshotFieldPoloidalDigger',
     'SnapshotFieldSpectrumDigger', 'SnapshotFieldSpectrumTimeDigger',
     'SnapshotFieldFluxTimeDigger', 'SnapshotFieldPoloidalTimeDigger',
@@ -478,6 +479,120 @@ class SnapshotFieldFluxAlphaTileDigger(SnapshotFieldFluxAlphaDigger):
         r = results
         return dict(X=r['zeta'], Y=r['alpha'], Z=r['field'],
                     title=r['title'], xlabel=r'$\zeta$', ylabel=r'$\alpha$')
+
+
+class SnapshotFieldFluxAlphaTileFFTDigger(SnapshotFieldFluxAlphaTileDigger):
+    '''phi(ktheta,k//) of tiled phi(alpha,zeta) etc. on flux surface.'''
+    __slots__ = []
+    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
+
+    def _set_fignum(self, numseed=None):
+        super()._set_fignum(numseed=numseed)
+        self._fignum = '%s_fft' % self._fignum
+
+    def _dig(self, kwargs):
+        '''*fft_unit_r0*: bool
+            normalize k_// by R0 or not, default True
+        *fft_autoxlimit*: bool
+            auto set short xlimt for FFT results or not, default True
+        '''
+        results, acckwargs = super()._dig(kwargs)
+        zeta, data = results['zeta'], results['field']
+        fft_unit_r0 = bool(kwargs.get('fft_unit_r0', True))
+        fft_autoxlimit = bool(kwargs.get('fft_autoxlimit', True))
+        acckwargs['fft_unit_r0'] = fft_unit_r0
+        acckwargs['fft_autoxlimit'] = fft_autoxlimit
+        if 'fft_unit_r0' not in self.kwoptions:
+            self.kwoptions.update(
+                fft_unit_r0=dict(
+                    widget='Checkbox',
+                    value=True,
+                    description='FFT unit R0'),
+                fft_autoxlimit=dict(
+                    widget='Checkbox',
+                    value=True,
+                    description='FFT xlimit: auto'),
+            )
+        dz = np.mean(np.diff(zeta)) if fft_unit_r0 else 1.0
+        xf, yf, af, pf = tools.fft2(dz, 1.0, data)
+        yf_label = r'$k_{\theta}$'
+        xf_label = r'$k_{\parallel}%s$' % (r'R_0' if fft_unit_r0 else '')
+        M, N = data.shape
+        pf = pf / M / N * 2.0  # 2.0, fitting half
+        # tf, yf xlimit
+        if fft_autoxlimit:
+            acckwargs['fft_autoxlimit'] = True
+            minlimit = pf.max() * 5.0e-2
+            idx_x = np.where(pf.max(axis=0) >= minlimit)[0][-1]
+            idx_y = np.where(pf.max(axis=1) >= minlimit)[0][-1]
+            xf_xlimit, yf_xlimit = round(xf[idx_x], 3),  round(yf[idx_y], 3)
+        else:
+            acckwargs['fft_autoxlimit'] = False
+            xf_xlimit, yf_xlimit = None, None
+        # Cauchy fitting k//
+        idx = pf.shape[0]//2
+        Pkpara = pf[idx:].max(axis=0)
+        popt1, pcov1, fitP1 = tools.curve_fit('cauchy', xf, Pkpara)
+        # fitting k-theta
+        idx = pf.shape[1]//2
+        Pktheta = pf[:, idx:].max(axis=1)
+        popt2, pcov2, fitP2 = tools.curve_fit('cauchy', yf, Pktheta)
+        results.update(
+            xf=xf, yf=yf, pf=pf, xf_xlimit=xf_xlimit, yf_xlimit=yf_xlimit,
+            xf_label=xf_label, yf_label=yf_label,
+            Pkpara=Pkpara, fitPkpara=fitP1,
+            Cauchy_gamma1=popt1[1], Cauchy_mu1=popt1[2],
+            Pktheta=Pktheta, fitPktheta=fitP2,
+            Cauchy_gamma2=popt2[1], Cauchy_mu2=popt2[2])
+        return results, acckwargs
+
+    def _post_dig(self, results):
+        r = results
+        zip_results = [('tmpl_contourf', 221, dict(
+            X=r['zeta'], Y=r['alpha'], Z=r['field'], title=r['title'],
+            xlabel=r'$\zeta$', ylabel=r'$\alpha$'))]
+        title2 = r'FFT of $%s$' % self._get_fieldstr()
+        if r['xf_xlimit']:
+            xf_xlimit, yf_xlimit = r['xf_xlimit'], r['yf_xlimit']
+            xf_xlimit2 = min(xf_xlimit*2.0, r['xf'][-1])
+            yf_xlimit2 = min(yf_xlimit*2.0, r['yf'][-1])
+        else:
+            xf_xlimit, yf_xlimit = r['xf'][-1], r['yf'][-1]
+            xf_xlimit2, yf_xlimit2 = xf_xlimit, yf_xlimit
+        zip_results.append(('tmpl_contourf', 222, dict(
+            X=r['xf'], Y=r['yf'], Z=r['pf'], title=title2,
+            xlabel=r['xf_label'], ylabel=r['yf_label'],
+            xlim=[-xf_xlimit2, xf_xlimit2], ylim=[-yf_xlimit2, yf_xlimit2]))
+        )
+        # fitting
+        mu1, hw1 = r['Cauchy_mu1'], r['Cauchy_gamma1']
+        cly = [min(r['Pkpara']), max(r['Pkpara'])]
+        llx, rlx = mu1 - hw1, mu1 + hw1
+        LINEx = [(r['xf'], r['Pkpara']),
+                 (r['xf'], r['fitPkpara'], 'fitting'),
+                 ([mu1, mu1], cly, r'median, $\mu=%f$' % mu1),
+                 ([llx, llx], cly, r'half width, $\gamma=%f$' % hw1),
+                 ([rlx, rlx], cly)]
+        mu2, hw2 = r['Cauchy_mu2'], r['Cauchy_gamma2']
+        cly = [min(r['Pktheta']), max(r['Pktheta'])]
+        llx, rlx = mu2 - hw2, mu2 + hw2
+        LINEy = [(r['yf'], r['Pktheta']),
+                 (r['yf'], r['fitPktheta'], 'fitting'),
+                 ([mu2, mu2], cly, r'median, $\mu=%f$' % mu2),
+                 ([llx, llx], cly, r'half width, $\gamma=%f$' % hw2),
+                 ([rlx, rlx], cly)]
+        zip_results.extend([
+            ('tmpl_line', 223, dict(
+                LINE=LINEx, xlabel=r['xf_label'],
+                xlim=[-xf_xlimit, xf_xlimit],
+                title=r'Cauchy fitting, $k_{\parallel}$ '
+                      '| max(axis=$k_{\theta}$)')),
+            ('tmpl_line', 224, dict(
+                LINE=LINEy, xlabel=r['yf_label'], xlim=[-yf_xlimit, yf_xlimit],
+                title=r'Cauchy fitting, $k_{\theta}$ '
+                      '| max(axis=$k_{\parallel}$)')),
+        ])
+        return dict(zip_results=zip_results)
 
 
 class SnapshotFieldFluxThetaTileDigger(SnapshotFieldFluxThetaDigger):
@@ -1138,16 +1253,12 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
         else:
             yf_label = r'$k_{\theta}\rho_0$'
             acckwargs['fft_unit_rho0'] = True
-    # FFT max line
-    pf_tmax = pf.max(axis=0)
-    pf_ymax = pf.max(axis=1)
-    pf_max = pf_tmax.max()
     # tf, yf xlimit
     if fft_autoxlimit:
         acckwargs['fft_autoxlimit'] = True
-        minlimit = pf_max * 5.0e-2
-        idx_t = np.where(pf_tmax >= minlimit)[0][-1]
-        idx_y = np.where(pf_ymax >= minlimit)[0][-1]
+        minlimit = pf.max() * 5.0e-2
+        idx_t = np.where(pf.max(axis=0) >= minlimit)[0][-1]
+        idx_y = np.where(pf.max(axis=1) >= minlimit)[0][-1]
         tf_xlimit, yf_xlimit = round(tf[idx_t], 3),  round(yf[idx_y], 3)
     else:
         acckwargs['fft_autoxlimit'] = False
