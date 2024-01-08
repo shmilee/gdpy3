@@ -416,8 +416,8 @@ class _Data1dFFTDigger(_Data1dDigger):
             normalize FFT kr by rho0 or not, default True
         *fft_autoxlimit*: bool
             auto set short xlimt for FFT results or not, default True
-        *fft_mean_krlimit*: float, %%.1f
-            set |kr| (or |kr*rho0|) limit to average, default None
+        *fft_mean_krlimit*: tuple of float, (%.2f, %.2f)
+            set |kr| (or |kr*rho0|) limit to average, default (0, max(|kr|))
         *fft_mean_order*: int
             use |field_k|^fft_mean_order as weight to average(|kr|), default 2
         '''
@@ -528,30 +528,21 @@ class _Data1dFFTDigger(_Data1dDigger):
             acckwargs['fft_autoxlimit'] = False
             tf_xlimit, yf_xlimit = None, None
         # yf average
-        mean_krlimit = kwargs.get('fft_mean_krlimit', None)
+        mean_krlimit = kwargs.get('fft_mean_krlimit', (0, yf[-1]))
         mean_order = kwargs.get('fft_mean_order', 2)
-        if mean_krlimit:
-            idx = numpy.where(abs(yf) <= abs(mean_krlimit))[0]
-            i0, i1 = idx[0], idx[-1]
-            weights = abs(pf_ymax[i0:i1+1])**mean_order
-            if sum(weights) == 0:
-                mean_kr = 0.0
-            else:
-                mean_kr = numpy.average(abs(yf[i0:i1+1]), weights=weights)
-        else:
-            mean_krlimit = yf[-1]
-            weights = abs(pf_ymax)**mean_order
-            if sum(weights) == 0:
-                mean_kr = 0.0
-            else:
-                mean_kr = numpy.average(abs(yf), weights=weights)
-        mean_krlimit = round(mean_krlimit, 1)
+        mean_kr = 0.0
+        krlim0, krlim1 = round(mean_krlimit[0], 2), round(mean_krlimit[1], 2)
+        mean_krlimit = krlim0, krlim1
+        i0, i1 = numpy.where((krlim0 <= yf) & (yf <= krlim1))[0][[0, -1]]
+        weights = abs(pf_ymax[i0:i1+1])**mean_order
+        if sum(weights) != 0:
+            mean_kr = numpy.average(abs(yf[i0:i1+1]), weights=weights)
         acckwargs.update(
             fft_mean_krlimit=mean_krlimit, fft_mean_order=mean_order)
         if 'fft_mean_krlimit' not in self.kwoptions:
             self.kwoptions.update(
-                fft_mean_krlimit=dict(widget='FloatSlider',
-                                      rangee=(0.0, round(yf[-1], 1), 0.5),
+                fft_mean_krlimit=dict(widget='FloatRangeSlider',
+                                      rangee=(0.0, round(yf[-1], 2), 0.05),
                                       value=mean_krlimit,
                                       description='mean kr limit:'),
                 fft_mean_order=dict(widget='IntSlider',
@@ -594,9 +585,9 @@ class _Data1dFFTDigger(_Data1dDigger):
                 xlim=[-tf_xlimit2, tf_xlimit2],
                 ylim=[-yf_xlimit2, yf_xlimit2]))
         )
-        krli, kr = r['mean_krlimit'], r['mean_kr']
+        (krlim0, krlim1), kr = r['mean_krlimit'], r['mean_kr']
         lineY = [0, r['pf_ymax'].max()]
-        meaneq = r'$\langle$%s$\rangle_{|f00_k|^%d}$=' % (
+        meaneq = r'$\langle|$%s$|\rangle_{|f00_k|^%d}$=' % (
             r['yf_label'], r['mean_order'])
         zip_results.extend([
             ('tmpl_line', 223, dict(
@@ -604,7 +595,8 @@ class _Data1dFFTDigger(_Data1dDigger):
                 xlabel=r['tf_label'], xlim=[-tf_xlimit, tf_xlimit])),
             ('tmpl_line', 224, dict(
                 LINE=[(r['yf'], r['pf_ymax'], r'max(axis=$\omega$)'),
-                      ([krli, krli], lineY, r'mean limit=%s' % krli),
+                      ([krlim0, krlim0], lineY, r'mean limit0=%s' % krlim0),
+                      ([krlim1, krlim1], lineY, r'mean limit1=%s' % krlim1),
                       ([kr, kr], lineY, r'mean %s=%.6f' % (meaneq, kr))],
                 xlabel=r['yf_label'], xlim=[-yf_xlimit, yf_xlimit])),
         ])
