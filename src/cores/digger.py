@@ -166,12 +166,11 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
     def str_dig_kwargs(self, kwargs):
         '''
         Turn :meth:`dig` *kwargs* to str.
-        Check them in :meth:`dig`.__doc__, and sort by key.
+        Check if they in :attr:`kwoptions` or not, and sort by key.
         Return string like, "k1=1,k2=[2],k3='abc'".
         '''
         ckkws = ['%s=%r' % (k, list(v) if isinstance(v, tuple) else v)
-                 for k, v in kwargs.items()
-                 if self.dig.__doc__.find('*%s*' % k) > 0]
+                 for k, v in kwargs.items() if k in self.kwoptions]
         return ','.join(sorted(ckkws))
 
     def dig(self, **kwargs):
@@ -185,6 +184,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         time: :meth:`dig` real execution time in seconds
         '''
         dlog.info("Dig pickled data for %s ..." % self.figlabel)
+        # dlog.info('dig in kwstr: %s' % self.str_dig_kwargs(kwargs))
         start = time.time()
         try:
             results, acckwargs = self._dig(kwargs)
@@ -193,6 +193,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
                        % (self.clsname, self.figlabel), exc_info=1)
             results, acckwargs = {}, {}
         end = time.time()
+        # dlog.info('dig acckwstr: %s' % self.str_dig_kwargs(acckwargs))
         return results, self.str_dig_kwargs(acckwargs), end-start
 
     def _post_dig(self, results):

@@ -181,7 +181,7 @@ class _TimeCutoff(Digger):
         if self.kwoptions is None:
             self.kwoptions = dict(
                 tcutoff=dict(widget='FloatRangeSlider',
-                             rangee=[time[0], time[-1], dt],
+                             rangee=[time[0], time[-1], np.around(dt*5, 8)],
                              value=[time[0], time[-1]],
                              description='time cutoff:'))
         acckwargs = {'tcutoff': [time[0], time[-1]]}
