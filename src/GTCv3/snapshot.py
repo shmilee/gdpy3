@@ -1357,24 +1357,26 @@ def _snap_fieldtime_fft__post_dig(results):
     mu1, hw1 = r['Cauchy_mu1'], r['Cauchy_gamma1']
     cly = [min(r['Pomega']), max(r['Pomega'])]
     llx, rlx = mu1 - hw1, mu1 + hw1
-    LINEt = [(r['tf'], r['Pomega']), (r['tf'], r['fitPomega'], 'fitting'),
+    LINEt = [(r['tf'], r['Pomega']),
+             (r['tf'], r['fitPomega'], 'Cauchy fitting'),
              ([mu1, mu1], cly, r'median, $\mu=%f$' % mu1),
              ([llx, llx], cly, r'half width, $\gamma=%f$' % hw1),
              ([rlx, rlx], cly)]
     mu2, hw2 = r['Cauchy_mu2'], r['Cauchy_gamma2']
     cly = [min(r['Pktheta']), max(r['Pktheta'])]
     llx, rlx = mu2 - hw2, mu2 + hw2
-    LINEy = [(r['yf'], r['Pktheta']), (r['yf'], r['fitPktheta'], 'fitting'),
+    LINEy = [(r['yf'], r['Pktheta']),
+             (r['yf'], r['fitPktheta'], 'Cauchy fitting'),
              ([mu2, mu2], cly, r'median, $\mu=%f$' % mu2),
              ([llx, llx], cly, r'half width, $\gamma=%f$' % hw2),
              ([rlx, rlx], cly)]
     zip_results.extend([
         ('tmpl_line', 223, dict(
             LINE=LINEt, xlabel=r['tf_label'], xlim=[-tf_xlimit, tf_xlimit],
-            title=r'Cauchy fitting, $\omega$ | max(axis=k)')),
+            title=r'$\omega$ | max(axis=k)')),
         ('tmpl_line', 224, dict(
             LINE=LINEy, xlabel=r['yf_label'], xlim=[-yf_xlimit, yf_xlimit],
-            title=r'Cauchy fitting, $k_{\theta}$ | max(axis=$\omega$)')),
+            title=r'$k_{\theta}$ | max(axis=$\omega$)')),
     ])
     return dict(zip_results=zip_results)
 
