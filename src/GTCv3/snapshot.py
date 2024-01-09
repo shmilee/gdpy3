@@ -447,7 +447,6 @@ class SnapshotFieldFluxAlphaTileDigger(SnapshotFieldFluxAlphaDigger):
         title, zeta = res['title'], res['zeta']
         field, alpha = res['field'][:-1, :], res['alpha'][:-1]  # [0, 2pi)
         q = self._get_q_psi()
-        dlog.parm("q(ipsi=%d)=%f" % (self.ipsi, q))
         sep = round(field.shape[0]*(1.0-1.0/q))  # q>=1
         N = kwargs.get('N', 3)
         if not (isinstance(N, int) and N >= 2):
@@ -458,6 +457,7 @@ class SnapshotFieldFluxAlphaTileDigger(SnapshotFieldFluxAlphaDigger):
                        rangee=(2, 10, 1),
                        value=3,
                        description='zeta N_2pi:'))
+        dlog.parm("N=%d, q(ipsi=%d)=%f" % (N, self.ipsi, q))
         acckwargs = dict(N=N)
         c1, c2 = field, field
         zeta1, alpha1 = zeta, alpha
@@ -588,7 +588,8 @@ class SnapshotFieldFluxAlphaTileFFTDigger(SnapshotFieldFluxAlphaTileDigger):
         zip_results = [('tmpl_contourf', 221, dict(
             X=r['zeta'], Y=r['alpha'], Z=r['field'], title=r['title'],
             xlabel=r'$\zeta$', ylabel=r'$\alpha$'))]
-        title2 = r'FFT of $%s$' % self._get_fieldstr()
+        fstr = self._get_fieldstr()
+        title2 = r'FFT of $%s$' % fstr
         if r['xf_xlimit']:
             xf_xlimit, yf_xlimit = r['xf_xlimit'], r['yf_xlimit']
             xf_xlimit2 = min(xf_xlimit*2.0, r['xf'][-1])
@@ -606,8 +607,8 @@ class SnapshotFieldFluxAlphaTileFFTDigger(SnapshotFieldFluxAlphaTileDigger):
         cly = [min(r['Pkpara']), max(r['Pkpara'])]
         llx, rlx = mu1 - hw1, mu1 + hw1
         (kzlim0, kzlim1), kz = r['mean_kzlimit'], r['mean_kpara']
-        meanzeq = r'$\langle|$%s$|\rangle_{|\delta f_k|^%d}$=' % (
-            r['xf_label'], r['mean_order'])
+        meanzeq = r'$\langle|$%s$|\rangle_{|\delta %s_k|^%d}$=' % (
+            r['xf_label'], fstr, r['mean_order'])
         LINEx = [(r['xf'], r['Pkpara']),
                  (r['xf'], r['fitPkpara'], 'fitting'),
                  ([mu1, mu1], cly, r'median, $\mu=%f$' % mu1),
@@ -618,8 +619,8 @@ class SnapshotFieldFluxAlphaTileFFTDigger(SnapshotFieldFluxAlphaTileDigger):
                  ([kz, kz], cly, r'mean %s=%f' % (meanzeq, kz))]
         cly = [min(r['Pkalpha']), max(r['Pkalpha'])]
         (kalim0, kalim1), kt = r['mean_kalimit'], r['mean_kalpha']
-        meanteq = r'$\langle|$%s$|\rangle_{|\delta f_k|^%d}$=' % (
-            r['yf_label'], r['mean_order'])
+        meanteq = r'$\langle|$%s$|\rangle_{|\delta %s_k|^%d}$=' % (
+            r['yf_label'], fstr, r['mean_order'])
         LINEy = [(r['yf'], r['Pkalpha']),
                  ([kalim0, kalim0], cly, r'mean limit0=%s' % kalim0),
                  ([kalim1, kalim1], cly, r'mean limit1=%s' % kalim1),
@@ -1251,6 +1252,7 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
         if index.size > 0:
             it0, it1 = index[0], index[-1]
             acckwargs['fft_tselect'] = [time[it0], time[it1]]
+            dlog.parm("fft time= %s" % (acckwargs['fft_tselect'],))
         else:
             dlog.warning("Can't select: %s <= fft time <= %s!" % (s0, s1))
     # select FFT data
