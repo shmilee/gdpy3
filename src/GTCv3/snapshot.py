@@ -1226,6 +1226,9 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
             normalize k_theta by rho0 or not, default True
         *fft_autoxlimit*: bool
             auto set short xlimt for FFT results or not, default True
+        *fit_wlimit*: [w0, w1], w0 float
+            set cutoff omega for Cauchy fitting, without high frequency.
+            default (0, 0): no cutoff
     '''
     # data(theta, time), neardata(near-psi-or-zeta, theta, time) for FFT
     # ipsi of *data* for k_theta, pckloader for arr2 rho0
@@ -1292,7 +1295,7 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
                 description='FFT xlimit: auto'),
         ))
     acckwargs['fft_unit_rho0'] = False
-    yf_label = r'$k_{\theta}$'
+    yf_label = r'$k_{\theta}(1/Ngrid)$'
     if fft_unit_rho0:
         try:
             arr2, rho0 = pckloader.get_many('gtc/arr2', 'gtc/rho0')
@@ -1315,9 +1318,37 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
         acckwargs['fft_autoxlimit'] = False
         tf_xlimit, yf_xlimit = None, None
     # Cauchy fitting omega
+    fit_wlimit = kwargs.get('fit_wlimit', (0, 0))
+    if 'fit_wlimit' not in kwoptions:
+        kwoptions.update(fit_wlimit=dict(
+            widget='FloatRangeSlider',
+            rangee=[-6.6, 6.6, 0.1],
+            value=fit_wlimit,
+            description='Fit omega cutoff:'))
+    acckwargs['fit_wlimit'] = fit_wlimit
     idx = pf.shape[0]//2
     Pomega = pf[idx:].max(axis=0)
-    popt1, pcov1, fitP1 = tools.curve_fit('cauchy', tf, Pomega)
+    if fit_wlimit[0] != 0 and fit_wlimit[1] != 0:
+        dlog.parm("Fitting with omega cutoff= %s" % (fit_wlimit,))
+        index = np.where((tf >= fit_wlimit[0]) & (tf <= fit_wlimit[1]))[0]
+        try:
+            popt1, pcov1, fitP1 = tools.curve_fit(
+                'cauchy', tf[index], Pomega[index], fitX=tf)
+            err1 = 100.0*np.sqrt(np.mean(
+                (fitP1[index] - Pomega[index])**2))/Pomega[index].max()
+        except Exception:
+            dlog.warning('Fitting(cutoff) failed!', exc_info=1)
+            popt1, fitP1, err1 = np.zeros(4), np.zeros(tf.size), 0
+    else:
+        try:
+            popt1, pcov1, fitP1 = tools.curve_fit('cauchy', tf, Pomega)
+            err1 = np.sqrt(np.mean((fitP1 - Pomega)**2))/Pomega.max()*100
+            # np.sqrt(np.diag(pcov1))
+        except Exception:
+            dlog.error('Fitting failed!', exc_info=1)
+            popt1, fitP1 = np.zeros(4), np.zeros(tf.size)
+    if err1 > 5.0:
+        dlog.warning('Bad fitting: err/max = %.1f%%!' % err1)
     # fitting k-theta
     idx = pf.shape[1]//2
     Pk = pf[:, idx:].max(axis=1)
