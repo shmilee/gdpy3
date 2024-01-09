@@ -555,12 +555,12 @@ class CaseSeries(object):
                         color="C{}".format(i),
                         label=r'%s, $\chi_%s=%.2f$' % (l, ie, r[4]))]
                       for i, (r, l) in enumerate(zip(ress, lbls))],
-                    *[[30+i, 'plot', (r[3], [r[4], r[4]], 'o'), dict(
+                    *[[200+i, 'plot', (r[3], [r[4], r[4]], 'o'), dict(
                         color="C{}".format(i))]
                       for i, r in enumerate(ress)],
-                    [50, 'legend', (), {}],
-                    # [51, 'set_xticklabels', ([],), {}],
-                    # [52, 'set_xlabel', (r'$t(R_0/c_s)$',), {}],
+                    [500, 'legend', (), {}],
+                    # [501, 'set_xticklabels', ([],), {}],
+                    # [502, 'set_xlabel', (r'$t(R_0/c_s)$',), {}],
                 ],
             }
             ax_idx = 2*(row-1)+2
@@ -578,10 +578,10 @@ class CaseSeries(object):
                         color="C{}".format(i),
                         label=r'%s, $D_%s=%.2f$' % (l, ie, r[5]))]
                       for i, (r, l) in enumerate(zip(ress, lbls))],
-                    *[[30+i, 'plot', (r[3], [r[5], r[5]], 'o'), dict(
+                    *[[200+i, 'plot', (r[3], [r[5], r[5]], 'o'), dict(
                         color="C{}".format(i))]
                       for i, r in enumerate(ress)],
-                    [50, 'legend', (), {}],
+                    [500, 'legend', (), {}],
                 ],
             }
             all_axes.extend([ax_chi, ax_D])
@@ -681,9 +681,9 @@ class CaseSeries(object):
                     *[[1+i, 'plot', (r[0], r[1], '-'), dict(
                         color="C{}".format(i), label=l)]
                       for i, (r, l) in enumerate(zip(ress, lbls))],
-                    [50, 'legend', (), {}],
-                    # [51, 'set_xticklabels', ([],), {}],
-                    # [52, 'set_xlabel', (r'$t(R_0/c_s)$',), {}],
+                    [500, 'legend', (), {}],
+                    # [501, 'set_xticklabels', ([],), {}],
+                    # [502, 'set_xlabel', (r'$t(R_0/c_s)$',), {}],
                 ],
             }
             ax_idx = 2*(row-1)+2
@@ -700,7 +700,7 @@ class CaseSeries(object):
                     *[[1+i, 'plot', (r[0], r[2], '-'), dict(
                         color="C{}".format(i), label=l)]
                       for i, (r, l) in enumerate(zip(ress, lbls))],
-                    [50, 'legend', (), {}],
+                    [500, 'legend', (), {}],
                 ],
             }
             all_axes.extend([ax_chi, ax_D])
@@ -825,10 +825,10 @@ class CaseSeries(object):
                             color="C{}".format(i),
                             label=r'%s, $\gamma_{\phi}=%.2f$' % (l, r[4]))]
                           for i, (r, l) in enumerate(zip(ress, lbls))],
-                        *[[30+i, 'plot', (r[2], r[3], 'o'), dict(
+                        *[[200+i, 'plot', (r[2], r[3], 'o'), dict(
                             color="C{}".format(i))]
                           for i, r in enumerate(ress)],
-                        [50, 'legend', (), {}],
+                        [500, 'legend', (), {}],
                     ],
                 }
                 all_axes.append(ax_logphi)
@@ -876,9 +876,11 @@ class CaseSeries(object):
         phirmsresult: list
             phi-RMS result get by :meth:`dig_phirms_r`
         labels: list
-            set line labels for chiDresult
+            set line labels for phirmsresult
         nlines: int, >=2
             number of lines in each Axes
+        ncols: int, >=1
+            number of columns in this figure
         xlims, ylims: dict, set xlim, ylim for some Axes
             key is axes index
         savepath: str
@@ -907,7 +909,7 @@ class CaseSeries(object):
                         *[[1+i, 'plot', (r[0], r[1], '-'), dict(
                             color="C{}".format(i), label=l)]
                           for i, (r, l) in enumerate(zip(ress, lbls))],
-                        [50, 'legend', (), {}],
+                        [500, 'legend', (), {}],
                     ],
                 }
                 all_axes.append(ax_phi)
@@ -916,18 +918,21 @@ class CaseSeries(object):
         fig.suptitle(suptitle or fignum, y=title_y)
         fig.savefig(savepath or './%s.jpg' % fignum)
 
-    def dig_phiktheta_r(self, fallback_sat_time=(0.7, 1.0), **kwargs):
+    def dig_phiktheta_r(self, stage='saturation', fallback_time=(0.7, 1.0),
+                        **kwargs):
         '''
-        Get phi-ktheta(r) of each case. Need snapshot data!
+        Get phi-ktheta(r) in xxx stage time of each case. Need snapshots!
         Return a list of tuple in order of :attr:`paths`.
         The tuple has 2 elements:
             1) radial r array, 2) ktheta-rho0(r) array
 
         Parameters
         ----------
-        fallback_sat_time: tuple
-            If saturation time not found in :attr:`labelinfo`, use this
-            to set saturation (start,end) time ratio. limit: 0.0 -> 1.0
+        stage: str
+            linear, nonlinear, or saturation(default)
+        fallback_time: tuple
+            If xxx stage time not found in :attr:`labelinfo`, use this
+            to set (start,end) time ratio. limit: 0.0 -> 1.0
         kwargs: dict
             other kwargs for digging 'snapxxxxx/phi_mktheta', such as
             'm_max'(default mtheta//5), 'mean_weight_order'(default 2)
@@ -936,7 +941,7 @@ class CaseSeries(object):
         for path, key in self.paths:
             gdp = self.cases[key]
             start, end, _, _ = self._get_start_end(
-                path, key, 'saturation', fallback=fallback_sat_time)
+                path, key, stage, fallback=fallback_time)
             step = [int(fl[4:9]) for fl in gdp.refind('snap.*/phi_m')]
             tstep = gdp.pckloader['gtc/tstep']
             time = np.array([round(i*tstep, 3) for i in step])
@@ -970,9 +975,11 @@ class CaseSeries(object):
         result: list
             phi-ktheta result get by :meth:`dig_phiktheta_r`
         labels: list
-            set line labels for chiDresult
+            set line labels for phi-ktheta result
         nlines: int, >=2
             number of lines in each Axes
+        ncols: int, >=1
+            number of columns in this figure
         xlims, ylims: dict, set xlim, ylim for some Axes
             key is axes index
         savepath: str
@@ -1001,10 +1008,218 @@ class CaseSeries(object):
                         *[[1+i, 'plot', (r[0], r[1], '-'), dict(
                             color="C{}".format(i), label=l)]
                           for i, (r, l) in enumerate(zip(ress, lbls))],
-                        [50, 'legend', (), {}],
+                        [500, 'legend', (), {}],
                     ],
                 }
                 all_axes.append(ax_phi)
+        fig = self.plotter.create_figure(
+            fignum, *all_axes, add_style=add_style)
+        fig.suptitle(suptitle or fignum, y=title_y)
+        fig.savefig(savepath or './%s.jpg' % fignum)
+
+    def dig_phi_spectrum(self, stage='saturation', fallback_time=(0.7, 1.0),
+                         **kwargs):
+        '''
+        Get phi-spectrum in xxx stage time of each case. Need snapshots!
+        Return a list of tuple in order of :attr:`paths`.
+        The tuple has 5 elements:
+            1) omega array, 2) power array, 3) Lorentzian fitting array,
+            4) fitting omega-r, 5) fitting gamma
+
+        Parameters
+        ----------
+        stage: str
+            linear, nonlinear, or saturation(default)
+        fallback_time: tuple
+            If xxx stage time not found in :attr:`labelinfo`, use this
+            to set (start,end) time ratio. limit: 0.0 -> 1.0
+        kwargs: dict
+            other kwargs for digging 'snap/phi_poloi_time_fft', such as
+            'ipsi'(default mpsi//2), 'nearby'(default 1),
+            'fit_wlimit'(default 0,0)
+        '''
+        result = []
+        for path, key in self.paths:
+            gdp = self.cases[key]
+            figlabel = 'snap/phi_poloi_time_fft'
+            if figlabel not in gdp.availablelabels:
+                continue
+            start, end, _, _ = self._get_start_end(
+                path, key, stage, fallback=fallback_time)
+            a, b, c = gdp.dig(figlabel, fft_tselect=(start, end),
+                              post=False, **kwargs)
+            result.append((b['tf'], b['Pomega'], b['fitPomega'],
+                           b['Cauchy_mu1'], b['Cauchy_gamma1']))
+        return result
+
+    def plot_phi_spectrum(self, result, labels, nlines=2, ncols=1,
+                          xlims={}, ylims={}, fignum='fig-1-phiomega',
+                          add_style=[], suptitle=None, title_y=0.95,
+                          savepath=None):
+        '''
+        Plot phi-spectrum figure.
+
+        Parameters
+        ----------
+        result: list
+            phi-spectrum result get by :meth:`dig_phi_spectrum`
+        labels: list
+            set line labels for phi-spectrum result
+        nlines: int, >=2
+            number of lines in each Axes
+        ncols: int, >=1
+            number of columns in this figure
+        xlims, ylims: dict, set xlim, ylim for some Axes
+            key is axes index
+        savepath: str
+            default savepath is f'./{fignum}.jpg'
+        '''
+        nlines = max(2, nlines)
+        Mrow = math.ceil(len(result)/nlines/ncols)
+        all_axes = []
+        for row in range(1, Mrow+1, 1):
+            for col in range(1, ncols+1, 1):
+                ax_idx = ncols*(row-1) + col  # ax, 1, 2, ...
+                ress = result[(ax_idx-1)*nlines:ax_idx*nlines]
+                lbls = labels[(ax_idx-1)*nlines:ax_idx*nlines]
+                xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
+                xylim_kws = {'xlim': xlim} if xlim else {}
+                if ylim:
+                    xylim_kws['ylim'] = ylim
+                ax_phi = {
+                    'layout': [
+                        (Mrow, ncols, ax_idx), dict(
+                            xlabel=r'$\omega(c_s/R_0)$', ylabel=r'power',
+                            title='%d/%s' % (ax_idx, Mrow*ncols),
+                            **xylim_kws)],
+                    'data': [
+                        *[[1+i, 'plot', (r[0], r[1], '-'), dict(
+                            color="C{}".format(i),
+                            label=r'%s, $\omega_{rn}=%.4f, \gamma_n=%.4f$'
+                                  % (l, r[3], r[4]))]
+                          for i, (r, l) in enumerate(zip(ress, lbls))],
+                        *[[200+i, 'plot', (r[0], r[2], '--'), dict(
+                            color="C{}".format(i))]
+                          for i, r in enumerate(ress)],
+                        [500, 'legend', (), {}],
+                    ],
+                }
+                all_axes.append(ax_phi)
+        fig = self.plotter.create_figure(
+            fignum, *all_axes, add_style=add_style)
+        fig.suptitle(suptitle or fignum, y=title_y)
+        fig.savefig(savepath or './%s.jpg' % fignum)
+
+    def dig_phi_spectrum_r(self, stage='saturation', select_psi=None,
+                           fallback_time=(0.7, 1.0), **kwargs):
+        '''
+        Get phi-spectrum(r) in xxx stage time of each case. Need snapshots!
+        Return a list of tuple in order of :attr:`paths`.
+        The tuple has 3 elements:
+            1) radial r array, 2) Lorentzian fitting omega-real array,
+            3) fitting gamma array
+
+        Parameters
+        ----------
+        stage: str
+            linear, nonlinear, or saturation(default)
+        select_psi: list of int
+            only select some 'ipsi' for digging 'snap/phi_poloi_time_fft'
+            default None -> range(nearby*2, mpsi-nearby, nearby)
+        fallback_time: tuple
+            If xxx stage time not found in :attr:`labelinfo`, use this
+            to set (start,end) time ratio. limit: 0.0 -> 1.0
+        kwargs: dict
+            other kwargs for digging 'snap/phi_poloi_time_fft', such as
+            'nearby'(default 5), 'fit_wlimit'(default 0,0)
+        '''
+        result = []
+        nearby = kwargs.pop('nearby', 1)
+        for path, key in self.paths:
+            gdp = self.cases[key]
+            figlabel = 'snap/phi_poloi_time_fft'
+            if figlabel not in gdp.availablelabels:
+                continue
+            start, end, _, _ = self._get_start_end(
+                path, key, stage, fallback=fallback_time)
+            arr2, a_minor, mpsi = gdp.pckloader.get_many(
+                'gtc/arr2', 'gtc/a_minor', 'gtc/mpsi')
+            ra = arr2[:, 1] / a_minor  # ipsi-1: [0, mpsi-2]
+            r, wr, gamma = [], [], []
+            if select_psi is None:
+                select_psi = range(nearby*2, mpsi-nearby, nearby)
+            for ipsi in select_psi:
+                a, b, c = gdp.dig(figlabel,
+                                  fft_tselect=(start, end),
+                                  ipsi=ipsi, nearby=nearby,
+                                  post=False, **kwargs)
+                r.append(ra[ipsi])
+                wr.append(b['Cauchy_mu1'])
+                gamma.append(b['Cauchy_gamma1'])
+            result.append((np.array(r), np.array(wr), np.array(gamma)))
+        return result
+
+    def plot_phi_spectrum_r(self, result, labels, nlines=2,
+                            xlims={}, ylims={}, fignum='fig-1-phiomega(r)',
+                            add_style=[], suptitle=None, title_y=0.95,
+                            savepath=None):
+        '''
+        Plot phi-spectrum(r) figure.
+
+        Parameters
+        ----------
+        result: list
+            phi-spectrum result get by :meth:`dig_phi_spectrum_r`
+        labels: list
+            set line labels for phi-spectrum result
+        nlines: int, >=2
+            number of lines in each Axes
+        xlims, ylims: dict, set xlim, ylim for some Axes
+            key is axes index
+        savepath: str
+            default savepath is f'./{fignum}.jpg'
+        '''
+        nlines = max(2, nlines)
+        Mrow = math.ceil(len(result)/nlines)
+        all_axes = []
+        for row in range(1, Mrow+1, 1):
+            ress = result[(row-1)*nlines:row*nlines]
+            lbls = labels[(row-1)*nlines:row*nlines]
+            ax_idx = 2*(row-1) + 1  # ax, 1, 3, ...
+            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
+            xylim_kws = {'xlim': xlim} if xlim else {}
+            if ylim:
+                xylim_kws['ylim'] = ylim
+            ax_wr = {
+                'layout': [
+                    (Mrow, 2, ax_idx), dict(
+                        xlabel=r'$r/a$', ylabel=r'$\omega_r(c_s/R_0)$',
+                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
+                'data': [
+                    *[[1+i, 'plot', (r[0], r[1], '-'), dict(
+                        color="C{}".format(i), label=l)]
+                      for i, (r, l) in enumerate(zip(ress, lbls))],
+                    [500, 'legend', (), {}],
+                ],
+            }
+            ax_idx = 2*(row-1) + 2
+            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
+            xylim_kws = {'xlim': xlim} if xlim else {}
+            if ylim:
+                xylim_kws['ylim'] = ylim
+            ax_gamma = {
+                'layout': [
+                    (Mrow, 2, ax_idx), dict(
+                        xlabel=r'$r/a$', ylabel=r'$\gamma(c_s/R_0)$',
+                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
+                'data': [
+                    *[[1+i, 'plot', (r[0], r[2], '-'), dict(
+                        color="C{}".format(i), label=l)]
+                      for i, (r, l) in enumerate(zip(ress, lbls))],
+                    [500, 'legend', (), {}],
+                ],
+            }
+            all_axes.extend([ax_wr, ax_gamma])
         fig = self.plotter.create_figure(
             fignum, *all_axes, add_style=add_style)
         fig.suptitle(suptitle or fignum, y=title_y)
