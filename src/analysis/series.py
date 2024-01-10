@@ -12,6 +12,7 @@ import time
 import shutil
 import json
 import math
+import random
 import numpy as np
 from ..loaders import get_rawloader
 from ..processors import get_processor
@@ -1220,6 +1221,153 @@ class CaseSeries(object):
                 ],
             }
             all_axes.extend([ax_wr, ax_gamma])
+        fig = self.plotter.create_figure(
+            fignum, *all_axes, add_style=add_style)
+        fig.suptitle(suptitle or fignum, y=title_y)
+        fig.savefig(savepath or './%s.jpg' % fignum)
+
+    def dig_phi_kparallel(self, ipsi=None, time_sample=0,
+                          fallback_sat_time=(0.7, 1.0), **kwargs):
+        '''
+        Get phi-kparallel(t) of each case. Need snapshots or flux3d!
+        Return a list of tuple in order of :attr:`paths`.
+        The tuple has 5 elements:
+            1) time t array, 2) average kparallel array,
+            3) fitting kparallel-gamma array,
+            4) saturation time (start-time, end-time),
+            5) time averaged kparallel in saturation stage,
+            6) time averaged fitting kparallel-gamma in saturation stage
+
+        Parameters
+        ----------
+        ipsi: int
+            select flux surfece at 'ipsi', default None -> mpsi//2
+        time_sample: int
+            select N random time points, <=0: select all. default 0
+        fallback_sat_time: tuple
+            If saturation stage not found in :attr:`labelinfo`, use this
+            to set (start,end) time ratio. limit: 0.0 -> 1.0
+        kwargs: dict
+            other kwargs for digging 'snapxxxxx/phi_fluxa_tile_fft', such as
+            'N'(default 3), 'fft_mean_kzlimit'(default [0, mtoroidal/2]),
+            'fft_mean_order'(default 2).
+        '''
+        result = []
+        for path, key in self.paths:
+            gdp = self.cases[key]
+            mpsi = gdp.pckloader['gtc/mpsi']
+            ipsi = mpsi//2 if ipsi is None else ipsi
+            figlabel = None
+            if ipsi == mpsi//2:  # try snapshot first
+                step = [int(k[4:9]) for k in gdp.refind('snap.*/phi_fluxa$')]
+                if step:
+                    figlabel = 'snap%05d/phi_fluxa_tile_fft'
+            if figlabel is None:  # fallback flux3d
+                step = [int(k[6:11]) for k in gdp.refind(
+                    'flux3d.*/phi_%03da$' % ipsi)]
+                if step:
+                    figlabel = 'flux3d%%05d/phi_%03da_tile_fft' % ipsi
+            if figlabel is None:
+                log.error('No snap(or 3d) fluxdata for ipsi=%s!' % ipsi)
+                result.append(([], []))
+                continue
+            if time_sample > 0 and len(step) > time_sample:
+                log.info('Select %s of %s random time points!'
+                         % (time_sample, len(step)))
+                step = sorted(random.sample(step, time_sample))
+            start, end, _, _ = self._get_start_end(
+                path, key, 'saturation', fallback=fallback_sat_time)
+            tstep = gdp.pckloader['gtc/tstep']
+            time = np.array([round(i*tstep, 3) for i in step])
+            index = np.where((time >= start) & (time <= end))[0]
+            if index.size > 0:
+                idx0, idx1 = index[0], index[-1]
+            else:
+                log.error('No snap(or 3d): %s <= time <= %s!' % (start, end))
+                idx0, idx1 = 0, time.size-1
+            sat_t = np.linspace(time[idx0], time[idx1], 2)
+            meank, fitkgamma = [], []  # for average k//, k//-fitgamma
+            for i in step:
+                a, b, c = gdp.dig(figlabel % i, post=False, **kwargs)
+                meank.append(b['mean_kpara'])
+                fitkgamma.append(b['Cauchy_gamma1'])
+            meank, fitkgamma = np.array(meank), np.array(fitkgamma)
+            result.append((time, meank, fitkgamma, sat_t,
+                           np.mean(meank[idx0:idx1+1]),
+                           np.mean(fitkgamma[idx0:idx1+1])))
+        return result
+
+    def plot_phi_kparallel(self, result, labels, nlines=2,
+                           xlims={}, ylims={}, fignum='fig-1-kparallel',
+                           add_style=[], suptitle=None, title_y=0.95,
+                           savepath=None):
+        '''
+        Plot phi-kparallel(t) figure.
+
+        Parameters
+        ----------
+        result: list
+            result get by :meth:`dig_phi_kparallel`
+        labels: list
+            set line labels for result
+        nlines: int, >=2
+            number of lines in each Axes
+        xlims, ylims: dict, set xlim, ylim for some Axes
+            key is axes index
+        savepath: str
+            default f'./{fignum}.jpg'
+        '''
+        nlines = max(2, nlines)
+        Mrow = math.ceil(len(result)/nlines)
+        all_axes = []
+        for row in range(1, Mrow+1, 1):
+            ress = result[(row-1)*nlines:row*nlines]
+            lbls = labels[(row-1)*nlines:row*nlines]
+            ax_idx = 2*(row-1)+1
+            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
+            xylim_kws = {'xlim': xlim} if xlim else {}
+            if ylim:
+                xylim_kws['ylim'] = ylim
+            ax_mean = {
+                'layout': [
+                    (Mrow, 2, ax_idx), dict(
+                        xlabel=r'$t(R_0/c_s)$',
+                        ylabel=r'$\langle k_{\parallel}R_0\rangle$',
+                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
+                'data': [
+                    *[[1+i, 'plot', (r[0], r[1], '-'), dict(
+                        color="C{}".format(i),
+                        label=r'%s, saturation=%.2f' % (l, r[4]))]
+                      for i, (r, l) in enumerate(zip(ress, lbls))],
+                    *[[200+i, 'plot', (r[3], [r[4], r[4]], 'o'), dict(
+                        color="C{}".format(i))]
+                      for i, r in enumerate(ress)],
+                    [500, 'legend', (), {}],
+                ],
+            }
+            ax_idx = 2*(row-1)+2
+            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
+            xylim_kws = {'xlim': xlim} if xlim else {}
+            if ylim:
+                xylim_kws['ylim'] = ylim
+            ax_gamma = {
+                'layout': [
+                    (Mrow, 2, ax_idx), dict(
+                        xlabel=r'$t(R_0/c_s)$',
+                        ylabel=r'$k_{\parallel}R_0$, half width',
+                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
+                'data': [
+                    *[[1+i, 'plot', (r[0], r[2], '-'), dict(
+                        color="C{}".format(i),
+                        label=r'%s, saturation=%.2f' % (l, r[5]))]
+                      for i, (r, l) in enumerate(zip(ress, lbls))],
+                    *[[200+i, 'plot', (r[3], [r[5], r[5]], 'o'), dict(
+                        color="C{}".format(i))]
+                      for i, r in enumerate(ress)],
+                    [500, 'legend', (), {}],
+                ],
+            }
+            all_axes.extend([ax_mean, ax_gamma])
         fig = self.plotter.create_figure(
             fignum, *all_axes, add_style=add_style)
         fig.suptitle(suptitle or fignum, y=title_y)
