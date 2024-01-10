@@ -575,7 +575,7 @@ class SnapshotFieldFluxAlphaTileFFTDigger(SnapshotFieldFluxAlphaTileDigger):
             xf=xf, yf=yf, pf=pf, xf_xlimit=xf_xlimit, yf_xlimit=yf_xlimit,
             xf_label=xf_label, yf_label=yf_label,
             Pkpara=Pkpara, fitPkpara=fitP1,
-            Cauchy_gamma1=popt1[1], Cauchy_mu1=popt1[2],
+            Cauchy_gamma1=abs(popt1[1]), Cauchy_mu1=popt1[2],
             Pkalpha=Pkalpha,
             mean_kzlimit=mean_kzlimit, mean_kpara=mean_kpara,
             mean_kalimit=mean_kalimit, mean_kalpha=mean_kalpha,
@@ -1358,9 +1358,9 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
         tf=tf, yf=yf, pf=pf, tf_xlimit=tf_xlimit, yf_xlimit=yf_xlimit,
         tf_label=r'$\omega$($c_s/R_0$)', yf_label=yf_label,
         Pomega=Pomega, fitPomega=fitP1,
-        Cauchy_gamma1=popt1[1], Cauchy_mu1=popt1[2],
+        Cauchy_gamma1=abs(popt1[1]), Cauchy_mu1=popt1[2],
         Pktheta=Pk, fitPktheta=fitP2,
-        Cauchy_gamma2=popt2[1], Cauchy_mu2=popt2[2],
+        Cauchy_gamma2=abs(popt2[1]), Cauchy_mu2=popt2[2],
     )
 
 
