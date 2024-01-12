@@ -597,7 +597,7 @@ class _Data1dFFTDigger(_Data1dDigger):
                 LINE=[(r['yf'], r['pf_ymax'], r'max(axis=$\omega$)'),
                       ([krlim0, krlim0], lineY, r'mean limit0=%s' % krlim0),
                       ([krlim1, krlim1], lineY, r'mean limit1=%s' % krlim1),
-                      ([kr, kr], lineY, r'mean %s=%.6f' % (meaneq, kr))],
+                      ([kr, kr], lineY, r'%s=%.6f' % (meaneq, kr))],
                 xlabel=r['yf_label'], xlim=[-yf_xlimit, yf_xlimit])),
         ])
         return dict(zip_results=zip_results)

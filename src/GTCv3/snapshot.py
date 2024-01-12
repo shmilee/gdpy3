@@ -532,10 +532,14 @@ class SnapshotFieldFluxAlphaTileFFTDigger(SnapshotFieldFluxAlphaTileDigger):
             xf_xlimit, yf_xlimit = None, None
         # Cauchy fitting k//
         idx1 = pf.shape[0]//2
-        Pkpara = pf[idx1:].max(axis=0)
-        popt1, pcov1, fitP1 = tools.curve_fit('cauchy', xf, Pkpara)
         idx2 = pf.shape[1]//2
+        Pkpara = pf[idx1:].max(axis=0)
+        if np.argmax(Pkpara) < idx2:  # maxidx>len/2 for default mean klimit
+            Pkpara = pf[:idx1+1].max(axis=0)
+        popt1, pcov1, fitP1 = tools.curve_fit('cauchy', xf, Pkpara)
         Pkalpha = pf[:, idx2:].max(axis=1)
+        if np.argmax(Pkalpha) < idx1:
+            Pkalpha = pf[:, :idx2+1].max(axis=1)
         # average k// k-theta
         mean_kzlimit = kwargs.get('fft_mean_kzlimit', (0, xf[-1]))
         mean_kalimit = kwargs.get('fft_mean_kalimit', (0, yf[-1]))
@@ -559,18 +563,20 @@ class SnapshotFieldFluxAlphaTileFFTDigger(SnapshotFieldFluxAlphaTileDigger):
                          fft_mean_order=mean_order)
         if 'fft_mean_kzlimit' not in self.kwoptions:
             self.kwoptions.update(
-                fft_mean_kzlimit=dict(widget='FloatRangeSlider',
-                                      rangee=(0.0, round(xf[-1], 1), 0.5),
-                                      value=mean_kzlimit,
-                                      description='mean k// limit:'),
-                fft_mean_kalimit=dict(widget='FloatRangeSlider',
-                                      rangee=(0.0, round(yf[-1], 1), 4.9),
-                                      value=mean_kalimit,
-                                      description='mean kalpha limit:'),
-                fft_mean_order=dict(widget='IntSlider',
-                                    rangee=(2, 8, 2),
-                                    value=2,
-                                    description='mean k weight order:'))
+                fft_mean_kzlimit=dict(
+                    widget='FloatRangeSlider',
+                    rangee=(round(xf[0], 1), round(xf[-1], 1), 0.5),
+                    value=mean_kzlimit,
+                    description='mean k// limit:'),
+                fft_mean_kalimit=dict(
+                    widget='FloatRangeSlider',
+                    rangee=(round(yf[0], 1), round(yf[-1], 1), 4.9),
+                    value=mean_kalimit,
+                    description='mean kalpha limit:'),
+                fft_mean_order=dict(
+                    widget='IntSlider',
+                    rangee=(2, 8, 2), value=2,
+                    description='mean k weight order:'))
         result.update(
             xf=xf, yf=yf, pf=pf, xf_xlimit=xf_xlimit, yf_xlimit=yf_xlimit,
             xf_label=xf_label, yf_label=yf_label,
@@ -616,7 +622,7 @@ class SnapshotFieldFluxAlphaTileFFTDigger(SnapshotFieldFluxAlphaTileDigger):
                  ([rlx, rlx], cly, r'half width'),
                  ([kzlim0, kzlim0], cly, r'mean limit0=%s' % kzlim0),
                  ([kzlim1, kzlim1], cly, r'mean limit1=%s' % kzlim1),
-                 ([kz, kz], cly, r'mean %s=%f' % (meanzeq, kz))]
+                 ([kz, kz], cly, r'%s=%f' % (meanzeq, kz))]
         cly = [min(r['Pkalpha']), max(r['Pkalpha'])]
         (kalim0, kalim1), kt = r['mean_kalimit'], r['mean_kalpha']
         meanteq = r'$\langle|$%s$|\rangle_{|\delta %s_k|^%d}$=' % (
@@ -624,7 +630,7 @@ class SnapshotFieldFluxAlphaTileFFTDigger(SnapshotFieldFluxAlphaTileDigger):
         LINEy = [(r['yf'], r['Pkalpha']),
                  ([kalim0, kalim0], cly, r'mean limit0=%s' % kalim0),
                  ([kalim1, kalim1], cly, r'mean limit1=%s' % kalim1),
-                 ([kt, kt], cly, r'mean %s=%f' % (meanteq, kt))]
+                 ([kt, kt], cly, r'%s=%f' % (meanteq, kt))]
         zip_results.extend([
             ('tmpl_line', 223, dict(
                 LINE=LINEx, xlabel=r['xf_label'],
