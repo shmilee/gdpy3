@@ -636,7 +636,7 @@ class SnapshotFieldFluxAlphaTileFFTDigger(SnapshotFieldFluxAlphaTileDigger):
                 LINE=LINEx, xlabel=r['xf_label'],
                 xlim=[-xf_xlimit, xf_xlimit],
                 title=r'Cauchy fitting, mean, $k_{\parallel}$ '
-                      '| max(axis=$k_{\theta}$)')),
+                      r'| max(axis=$k_{\theta}$)')),
             ('tmpl_line', 224, dict(
                 LINE=LINEy, xlabel=r['yf_label'],
                 xlim=[-yf_xlimit, yf_xlimit],
@@ -1229,12 +1229,16 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
     '''*fft_tselect*: [t0,t1], t0 float
             time[i0:i1], data[:,i0:i1] where t0<=time[i0:i1]<=t1
         *fft_unit_rho0*: bool
-            normalize k_theta by rho0 or not, default True
+            normalize k_theta by rho0 or not, default False
         *fft_autoxlimit*: bool
             auto set short xlimt for FFT results or not, default True
         *fit_wlimit*: [w0, w1], w0 float
             set cutoff omega for Cauchy fitting, without high frequency.
             default (0, 0): no cutoff
+        *fft_mean_ktlimit*: tuple of float, (%.1f, %.1f)
+            set |ktheta| limit to average, default (0, max(|ktheta|))
+        *fft_mean_order*: int
+            use |field_k|^fft_mean_order as weight to average(|k|), default 2
     '''
     # data(theta, time), neardata(near-psi-or-zeta, theta, time) for FFT
     # ipsi of *data* for k_theta, pckloader for arr2 rho0
@@ -1242,6 +1246,7 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
     dt, stdt = np.mean(difftime), np.std(difftime)
     if stdt != 0:
         dlog.warn("Snap step time (%f, +-%f) isn't a constant!" % (dt, stdt))
+    dy = np.mean(np.diff(theta))
     # fft_tselect
     tcutoff = acckwargs['tcutoff']
     fft_tselect = kwargs.get('fft_tselect', tcutoff)
@@ -1272,7 +1277,7 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
         select_time = time[[it0, it1, it1, it0, it0]]
         y = len(theta)
         select_theta = theta[[0, 0, y-1, y-1, 0]]
-    tf, yf, af, pf = tools.fft2(dt, 1.0, select_data)
+    tf, yf, af, pf = tools.fft2(dt, dy, select_data)
     # mean FFT
     if neardata is not None:
         if select_time is None:
@@ -1281,19 +1286,19 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
             select_neardata = neardata[:, :, it0:it1+1]
         N = select_neardata.shape[0]
         for idx in range(N):
-            _, _, _, _pf = tools.fft2(dt, 1.0, select_neardata[idx])
+            _, _, _, _pf = tools.fft2(dt, dy, select_neardata[idx])
             pf += _pf
         pf = pf / (N+1)
     mtgrid, Ntime = select_data.shape
     pf = pf / mtgrid / Ntime * 2.0  # 2.0, fitting half
     # yf unit; xlim
-    fft_unit_rho0 = kwargs.get('fft_unit_rho0', True)
+    fft_unit_rho0 = kwargs.get('fft_unit_rho0', False)
     fft_autoxlimit = kwargs.get('fft_autoxlimit', True)
     if 'fft_unit_rho0' not in kwoptions:
         kwoptions.update(dict(
             fft_unit_rho0=dict(
                 widget='Checkbox',
-                value=True,
+                value=False,
                 description='FFT unit rho0'),
             fft_autoxlimit=dict(
                 widget='Checkbox',
@@ -1301,24 +1306,24 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
                 description='FFT xlimit: auto'),
         ))
     acckwargs['fft_unit_rho0'] = False
-    yf_label = r'$k_{\theta}(1/Ngrid)$'
+    yf_label = r'$k_{\theta}r$'
     if fft_unit_rho0:
         try:
             arr2, rho0 = pckloader.get_many('gtc/arr2', 'gtc/rho0')
-            # print(yf[[0,-1]], '\n !!!', pf.shape, select_data.shape, rho0)
-            mtgrid = data.shape[0]  # [-mtgrid/2, mtgrid/2]
-            yf = yf/(2.0*np.pi*arr2[ipsi-1, 1]/mtgrid)*rho0
+            yf = yf/arr2[ipsi-1, 1]*rho0
         except Exception:
             dlog.warning("Cannot use unit rho0!", exc_info=1)
         else:
             yf_label = r'$k_{\theta}\rho_0$'
             acckwargs['fft_unit_rho0'] = True
     # tf, yf xlimit
+    pf_xmax = pf.max(axis=0)
+    pf_ymax = pf.max(axis=1)
     if fft_autoxlimit:
         acckwargs['fft_autoxlimit'] = True
         minlimit = pf.max() * 5.0e-2
-        idx_t = np.where(pf.max(axis=0) >= minlimit)[0][-1]
-        idx_y = np.where(pf.max(axis=1) >= minlimit)[0][-1]
+        idx_t = np.where(pf_xmax >= minlimit)[0][-1]
+        idx_y = np.where(pf_ymax >= minlimit)[0][-1]
         tf_xlimit, yf_xlimit = round(tf[idx_t], 3),  round(yf[idx_y], 3)
     else:
         acckwargs['fft_autoxlimit'] = False
@@ -1355,18 +1360,38 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
             popt1, fitP1 = np.zeros(4), np.zeros(tf.size)
     if err1 > 5.0:
         dlog.warning('Bad fitting: err/max = %.1f%%!' % err1)
-    # fitting k-theta
-    idx = pf.shape[1]//2
-    Pk = pf[:, idx:].max(axis=1)
-    popt2, pcov2, fitP2 = tools.curve_fit('cauchy', yf, Pk)
+    # average k-theta
+    mean_ktlimit = kwargs.get('fft_mean_ktlimit', (0, yf[-1]))
+    mean_order = kwargs.get('fft_mean_order', 2)
+    mean_ktheta = 0.0
+    ktlim0, ktlim1 = round(mean_ktlimit[0], 1), round(mean_ktlimit[1], 1)
+    mean_ktlimit = ktlim0, ktlim1
+    i0, i1 = np.where((ktlim0 <= yf) & (yf <= ktlim1))[0][[0, -1]]
+    weights = abs(pf_ymax[i0:i1+1])**mean_order
+    if sum(weights) != 0:
+        mean_ktheta = np.average(abs(yf[i0:i1+1]), weights=weights)
+    acckwargs.update(fft_mean_ktlimit=mean_ktlimit,
+                     fft_mean_order=mean_order)
+    if 'fft_mean_ktlimit' not in kwoptions:
+        kwoptions.update(
+            fft_mean_ktlimit=dict(
+                widget='FloatRangeSlider',
+                rangee=(round(yf[0], 1), round(yf[-1], 1), 4.9),
+                value=mean_ktlimit,
+                description='mean ktheta limit:'),
+            fft_mean_order=dict(
+                widget='IntSlider',
+                rangee=(2, 8, 2), value=2,
+                description='mean k weight order:'))
+
     return dict(
         select_time=select_time, select_theta=select_theta,
         tf=tf, yf=yf, pf=pf, tf_xlimit=tf_xlimit, yf_xlimit=yf_xlimit,
         tf_label=r'$\omega$($c_s/R_0$)', yf_label=yf_label,
         Pomega=Pomega, fitPomega=fitP1,
         Cauchy_gamma1=abs(popt1[1]), Cauchy_mu1=popt1[2],
-        Pktheta=Pk, fitPktheta=fitP2,
-        Cauchy_gamma2=abs(popt2[1]), Cauchy_mu2=popt2[2],
+        Pktheta=pf_ymax, mean_ktheta=mean_ktheta,
+        mean_ktlimit=mean_ktlimit, mean_order=mean_order,
     )
 
 
@@ -1401,18 +1426,18 @@ def _snap_fieldtime_fft__post_dig(results):
              ([mu1, mu1], cly, r'median, $\mu=%f$' % mu1),
              ([llx, llx], cly, r'half width, $\gamma=%f$' % hw1),
              ([rlx, rlx], cly)]
-    mu2, hw2 = r['Cauchy_mu2'], r['Cauchy_gamma2']
     cly = [min(r['Pktheta']), max(r['Pktheta'])]
-    llx, rlx = mu2 - hw2, mu2 + hw2
+    (ktlim0, ktlim1), kt = r['mean_ktlimit'], r['mean_ktheta']
+    meanteq = r'$\langle|$%s$|\rangle_{|\delta %s_k|^%d}$=' % (
+        r['yf_label'], r['fstr'], r['mean_order'])
     LINEy = [(r['yf'], r['Pktheta']),
-             (r['yf'], r['fitPktheta'], 'Cauchy fitting'),
-             ([mu2, mu2], cly, r'median, $\mu=%f$' % mu2),
-             ([llx, llx], cly, r'half width, $\gamma=%f$' % hw2),
-             ([rlx, rlx], cly)]
+             ([ktlim0, ktlim0], cly, r'mean limit0=%s' % ktlim0),
+             ([ktlim1, ktlim1], cly, r'mean limit1=%s' % ktlim1),
+             ([kt, kt], cly, r'%s=%f' % (meanteq, kt))]
     zip_results.extend([
         ('tmpl_line', 223, dict(
             LINE=LINEt, xlabel=r['tf_label'], xlim=[-tf_xlimit, tf_xlimit],
-            title=r'$\omega$ | max(axis=k)')),
+            title=r'$\omega$ | max(axis=k), k>0 part')),
         ('tmpl_line', 224, dict(
             LINE=LINEy, xlabel=r['yf_label'], xlim=[-yf_xlimit, yf_xlimit],
             title=r'$k_{\theta}$ | max(axis=$\omega$)')),
