@@ -108,6 +108,47 @@ class ZetaPsi3DConverter(Converter):
         return sd
 
 
+def fix_zetapsi3d_fdata_flatten(path):
+    '''
+    Fix zp3dXXXXX fdata (mtoroidal, mzeach) flatten order.
+
+    Parameters
+    ----------
+    path: path of pickled data, converted '.npz' or '.hdf5' file
+    '''
+    import os
+    from ..loaders import get_pckloader
+    from ..savers import get_pcksaver
+    loader = get_pckloader(path)
+    savepath = path.replace('gtcv3-', 'fix-gtcv3-')
+    if os.path.exists(savepath):
+        clog.warning("Path '%s' exists!" % savepath)
+    with get_pcksaver(savepath) as saver:
+        saver.write('/', {'description': loader.description,
+                          'saltstr': loader['saltstr'],
+                          'processor': loader['processor']})
+        mtoroidal = loader['gtc/mtoroidal']
+        N = len(loader.datagroups)
+        for i, grp in enumerate(loader.datagroups, 1):
+            results = loader.get_by_group(grp)
+            if grp.startswith('zp3d'):
+                mzeach = results['mzeach']
+                for k in results.keys():
+                    if (k not in ['j_list', 'mzeach', 'nj']
+                            and isinstance(results[k], np.ndarray)):
+                        shape = results[k].shape
+                        if len(shape) == 2 and shape[0] == mzeach*mtoroidal:
+                            # find&fix fdata
+                            mpsi1 = shape[1]
+                            f = results[k].reshape((mzeach, mtoroidal, mpsi1))
+                            f = f.transpose(1, 0, 2).reshape(-1, mpsi1)
+                            results[k] = f
+            clog.info("Copy (%d/%d): %s" % (i, N, grp))
+            saver.write(grp, results)
+            loader.clear_cache()
+    clog.info("Done. %s -> %s." % (path, os.path.basename(savepath)))
+
+
 class ZetaPsi3DoldConverter(ZetaPsi3DConverter):
     __slot__ = []
     nitems = '+'
