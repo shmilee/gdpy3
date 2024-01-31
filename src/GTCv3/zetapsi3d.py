@@ -99,9 +99,10 @@ class ZetaPsi3DConverter(Converter):
         for nf in range(nfield):
             for idx, j in enumerate(j_list):
                 key = r'%s-%d' % (fields_name[nf], j)
-                fdata = outdata[:, :, idx, nf, :]
-                fdata = fdata.transpose(0, 2, 1)  # sawp 2nd and 3rd axes
-                fdata = fdata.reshape(-1, mpsi1)  # flatten 1st, 2nd axes
+                fdata = outdata[:, :, idx, nf, :]  # mzeach, mpsi1, mtoroidal
+                fdata = fdata.transpose(2, 0, 1)  # swap 3 axes, 1st-mtoroidal
+                # flatten 1st-mtoroidal row, 2nd-mzeach coloumn, C order
+                fdata = fdata.reshape(-1, mpsi1)
                 clog.debug("Filling datakeys: %s ..." % key)
                 sd[key] = fdata
         return sd
