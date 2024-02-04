@@ -1357,7 +1357,7 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
             # np.sqrt(np.diag(pcov1))
         except Exception:
             dlog.error('Fitting failed!', exc_info=1)
-            popt1, fitP1 = np.zeros(4), np.zeros(tf.size)
+            popt1, fitP1, err1 = np.zeros(4), np.zeros(tf.size), 0
     if err1 > 5.0:
         dlog.warning('Bad fitting: err/max = %.1f%%!' % err1)
     # average k-theta
