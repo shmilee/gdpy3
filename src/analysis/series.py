@@ -448,10 +448,10 @@ class CaseSeries(object):
     def _get_start_end(self, path, key, stage, time=None, fallback=(0.7, 1.0)):
         ''' Return t0, t1, index0, index1 '''
         if time is None:
-            mstep, tstep, ndiag = self.cases[key].pckloader.get_many(
-                'gtc/mstep', 'gtc/tstep', 'gtc/ndiag')
+            ndstep, tstep, ndiag = self.cases[key].pckloader.get_many(
+                'history/ndstep', 'gtc/tstep', 'gtc/ndiag')
             dt = tstep * ndiag
-            time = np.around(np.arange(0, mstep+1, ndiag)[1:]*dt, 8)
+            time = np.around(np.arange(1, ndstep+1)*dt, 8)
         if self.labelinfo:
             start, end = self.labelinfo.get(key, stage=stage)
             if start is not None:
