@@ -163,7 +163,7 @@ def get_label_ts_data(casepaths, path_replace=None, name_replace=None,
     ts_key_ver: str, version for ts keys.
         'v1' means these 4 keys: time, chi_i, d_i, logphirms.
     removeNaN: bool
-        remove NaN data, check array of chi_i etc., cut off by array index
+        remove NaN Infinity, check array of chi_i etc., cut off by array index
     savepath: str, file path
         save results to savepath, then upload to your labeling platform
     savefmt: str, save format
@@ -196,6 +196,9 @@ def get_label_ts_data(casepaths, path_replace=None, name_replace=None,
                     checkNaN = np.where(np.isnan(arr))[0]
                     if checkNaN.size > 0:
                         idx = min(checkNaN[0], idx)
+                    checkInf = np.where(np.isinf(arr))[0]
+                    if checkInf.size > 0:
+                        idx = min(checkInf[0], idx)
                 if idx < len(time):
                     time = time[:idx]
                     chi, D = chi[:idx], D[:idx]
