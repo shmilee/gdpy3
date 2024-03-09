@@ -239,9 +239,9 @@ class HistoryRZFDigger(Digger):
                 start, end = None, None
         if start is None:
             start, region_len = tools.findflat(hiszf, 5e-4*hiszf[maxidx])
-            if region_len == 0:
-                start = hiszf.size // 2
-                region_len = max(hiszf.size // 4, 2)
+            if region_len == 0 or start <= maxidx:
+                start = maxidx + hiszf[maxidx:].size // 2
+                region_len = max(hiszf[maxidx:].size // 4, 2)
             end = start + region_len - 1
             # dlog.debug('res_time_end(2): %s ' % time[end])
         dlog.parm("Find residual time: [%s,%s], index: [%s,%s]."
@@ -321,7 +321,7 @@ class HistoryRZFDigger(Digger):
         idx = tools.argrelextrema(
             d1dzf[:, maxidx:maxidx+nside+1].mean(axis=1))
         add_ipsi, ipsi_use = True, None
-        #print(ipsi, ':::', idx)
+        # print(ipsi, ':::', idx)
         ipsi_side = range(1, max(2, nside)+1)
         for ii in [ipsi] + list(np.array([
                 (ipsi-i, ipsi+i) for i in ipsi_side]).flatten()):
@@ -413,33 +413,37 @@ class HistoryRZFDigger(Digger):
             return arr
 
     def __gamma(self, zf, t, res, info):
-        def f(x, a, b):
-            return (zf[0]-res) * np.exp(-a*(x)**b)+res
-        if zf[0]-res > 0:
-            i = tools.argrelextrema(zf, m='max')
-        else:
-            i = tools.argrelextrema(zf, m='min')
-        i = np.insert(i, 0, 0)
-        _t = t[i] - t[0]
-        _t[0] += 1e-25
         try:
+            def f(x, a, b):
+                return (zf[0]-res) * np.exp(-a*(x)**b)+res
+            if zf[0]-res > 0:
+                i = tools.argrelextrema(zf, m='max')
+            else:
+                i = tools.argrelextrema(zf, m='min')
+            i = np.insert(i, 0, 0)
+            _t = t[i] - t[0]
+            _t[0] += 1e-25
             gamma, pcov, fity = tools.curve_fit(f, _t, zf[i], fitX=t-t[0])
         except Exception:
             dlog.warning("Failed to get fitting gamma!", exc_info=1)
             gamma = np.array([0.0, 0.0])
-            fity = zf[0]*np.ones(len(t))
+            fity = np.zeros(len(t))
         dlog.parm("Get %s gamma: (%.6f, %.6f)" % (info, gamma[0], gamma[1]))
         return gamma, fity
 
     def __omega(self, zf, t, res, g0, g1, info):
-        cosy = (zf-res) * np.exp(g0*(t-t[0])**(g1))
-        # my = tools.savgolay_filter(cosy, info='smooth zonal flow') # mess data
-        index = tools.argrelextrema(cosy, m='both')
-        if len(index) >= 2:
-            idx1, idx2, nT = index[0], index[-1], (len(index) - 1) / 2
-            omega = 2 * np.pi * nT / (t[idx2] - t[idx1])
-        else:
-            idx1, idx2, nT, omega = 0, 1, 0, 0
+        try:
+            cosy = (zf-res) * np.exp(g0*(t-t[0])**(g1))
+            # my = tools.savgolay_filter(cosy, info='smooth zonal flow') # mess data
+            index = tools.argrelextrema(cosy, m='both')
+            if len(index) >= 2:
+                idx1, idx2, nT = index[0], index[-1], (len(index) - 1) / 2
+                omega = 2 * np.pi * nT / (t[idx2] - t[idx1])
+            else:
+                raise ('No enough period!')
+        except Exception:
+            dlog.warning("Failed to get omega!", exc_info=1)
+            cosy, idx1, idx2, nT, omega = zf-res, 0, 1, 0, 0
         dlog.parm("Get %s omega: %.6f" % (info, omega))
         return cosy, idx1, idx2, nT, omega
 
