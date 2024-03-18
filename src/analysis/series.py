@@ -557,7 +557,8 @@ class CaseSeries(object):
                 'data': [
                     *[[1+i, 'plot', (r[0], r[1], '-'), dict(
                         color="C{}".format(i),
-                        label=r'%s, $\chi_%s=%.2f$' % (l, ie, r[4]))]
+                        label=r'%s, $\chi_%s=%s$' % (
+                            l, ie, tools.round_str(r[4], 2)))]
                       for i, (r, l) in enumerate(zip(ress, lbls))],
                     *[[200+i, 'plot', (r[3], [r[4], r[4]], 'o'), dict(
                         color="C{}".format(i))]
@@ -580,7 +581,8 @@ class CaseSeries(object):
                 'data': [
                     *[[1+i, 'plot', (r[0], r[2], '-'), dict(
                         color="C{}".format(i),
-                        label=r'%s, $D_%s=%.2f$' % (l, ie, r[5]))]
+                        label=r'%s, $D_%s=%s$' % (
+                            l, ie, tools.round_str(r[5], 2)))]
                       for i, (r, l) in enumerate(zip(ress, lbls))],
                     *[[200+i, 'plot', (r[3], [r[5], r[5]], 'o'), dict(
                         color="C{}".format(i))]

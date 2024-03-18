@@ -15,12 +15,13 @@ import scipy.interpolate as sp_interpolate
 from .glogger import getGLogger
 from .utils import inherit_docstring
 
-__all__ = ['nparray_default_bitsize', 'max_subarray',
+__all__ = ['nparray_default_bitsize',
+           'round_ndigits', 'round_str',
            'line_fit', 'lines_fit_raw', 'curve_fit', 'curves_fit_raw',
            'argrelextrema', 'intersection_4points',
            'near_peak', 'high_envelope',
            'fft', 'fft2', 'savgolay_filter',
-           'findflat', 'findgrowth',
+           'max_subarray', 'findflat', 'findgrowth',
            'correlation',
            ]
 log = getGLogger('C')
@@ -89,15 +90,35 @@ def nparray_default_bitsize(size=None, isize=None, fsize=None):
         yield
 
 
-def max_subarray(A):
+def round_ndigits(x, default=2):
     '''
-    Maximum subarray problem
+    Get round ~.0{n}digits for float x.
+
+    Example
+    -------
+    >>> round_ndigits(-10.00123567, 3)
+    >>> 5
+    >>> round_ndigits(0.0003567, 3)
+    >>> 6
     '''
-    max_ending_here = max_so_far = A[0]
-    for x in A[1:]:
-        max_ending_here = max(x, max_ending_here + x)
-        max_so_far = max(max_so_far, max_ending_here)
-    return max_so_far
+    dx = x - int(x)
+    if dx != 0 and abs(dx) < 0.1:
+        return int(np.ceil(abs(np.log10(abs(dx))))) + default-1
+    else:
+        return default
+
+
+def round_str(x, ndigits=2):
+    '''
+    Get string of round(float x,  ~.0{n}digits).
+
+    Example
+    -------
+    >>> round_str(-10.00123567, 3)
+    >>> '-10.00124'
+    '''
+    ndigits = round_ndigits(x, ndigits)
+    return (('%%.%df' % ndigits) % x)
 
 
 def line_fit(X, Y, deg, fitX=None, info=None, **kwargs):
@@ -524,6 +545,17 @@ def savgolay_filter(x, window_size=None, polyorder=None, info=None, **kwargs):
     if info:
         log.debug("Use 'scipy.signal.savgol_filter' to smooth %s." % info)
     return sp_signal.savgol_filter(x, window_size, polyorder, **kwargs)
+
+
+def max_subarray(A):
+    '''
+    Maximum subarray problem
+    '''
+    max_ending_here = max_so_far = A[0]
+    for x in A[1:]:
+        max_ending_here = max(x, max_ending_here + x)
+        max_so_far = max(max_so_far, max_ending_here)
+    return max_so_far
 
 
 def findflat(X, upperlimit, info=None):

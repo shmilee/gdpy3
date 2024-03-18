@@ -20,6 +20,7 @@ from distutils.version import LooseVersion
 from ..glogger import getGLogger
 from ..__about__ import __data_path__, __ENABLE_USERBASE__, __userbase__
 from ..utils import inherit_docstring
+from ..tools import round_ndigits
 from .base import BaseVisplter, _copydoc_func
 from . import mpl_extending
 
@@ -556,12 +557,10 @@ class MatplotlibVisplter(BaseVisplter):
             if colorbar:
                 # ~2digits for Ae-B
                 # test: arr = np.linspace(1e-10,1,11)/np.e/np.pi/300
-                # ndigitlist = zip(arr, list(map(lambda n: int(n)+2, abs(np.log10(arr))+0.5)))
+                # ndigitlist = zip(arr, list(map(round_ndigits, arr)))
                 # for n, ndigits in ndigitlist:
                 #   print('==> %.2e' % n, ndigits, np.linspace(round(-n, ndigits), round(n, ndigits), 11))
-                ndigits = int(abs(np.log10(
-                    max(abs(norm.vmax), abs(norm.vmin))
-                ) + 0.5)) + 2
+                ndigits = round_ndigits(max(abs(norm.vmax), abs(norm.vmin)), 2)
                 # 10 non-zero ticks for center_norm_zero=0, a.k.a vcenter
                 colorbar_ticks = np.linspace(
                     round(norm.vmin, ndigits), round(norm.vmax, ndigits), 11)
