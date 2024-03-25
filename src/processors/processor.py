@@ -140,14 +140,16 @@ class Processor(object):
 
     pcksaver = property(_get_pcksaver, _set_pcksaver)
 
-    def set_prefer_pcksaver(self, savetype, ext2='converted'):
+    def set_prefer_pcksaver(self, savetype, savedir, ext2='converted'):
         '''
-        Set preferable pcksaver path beside raw data.
+        Set preferable pcksaver path in savedir or beside raw data.
 
         Parameters
         ----------
         savetype: str
             extension of pcksaver.path, like (.npz)
+        savedir: str
+            directory of pcksaver.path, None -> raw data directory
         ext2: str
             second extension, like name.(converted).npz
         '''
@@ -163,7 +165,10 @@ class Processor(object):
             salt = hashlib.sha1(saltfile.encode('utf-8')).hexdigest()
         plog.debug("Get salt string: '%s'." % salt)
         # prefix
-        prefix = self.rawloader.beside_path(self.name.lower())
+        if savedir and os.path.isdir(savedir) and os.access(savedir, os.W_OK):
+            prefix = os.path.join(savedir, self.name.lower())
+        else:
+            prefix = self.rawloader.beside_path(self.name.lower())
         # savetype
         if os.access(os.path.dirname(prefix) or '.', os.W_OK):  # '' -> '.'
             if savetype not in pcksaver_types[1:]:
@@ -739,7 +744,7 @@ class Processor(object):
             self.__module__, type(self).__name__, hex(id(self)), i)
 
     def __init__(self, path, add_desc=None, filenames_exclude=None,
-                 savetype='.npz', overwrite=False, Sid=False,
+                 savedir=None, savetype='.npz', overwrite=False, Sid=False,
                  datagroups_exclude=None, add_visplter='mpl::'):
         '''
         Pick up raw data or converted data in *path*,
@@ -753,6 +758,8 @@ class Processor(object):
             additional description of raw data
         filenames_exclude: list
             regular expressions to exclude filenames in rawloader
+        savedir: str, default same as raw data
+            directory path of converted data
         savetype: '.npz', '.hdf5' or '.jsonl', '.jsonz'
             extension of pcksaver.path, default '.npz'
             when pcksaver.path isn't writable, use '.cache'
@@ -821,7 +828,7 @@ class Processor(object):
                            % (self.name, path), exc_info=1)
                 return
             try:
-                self.set_prefer_pcksaver(savetype, ext2='converted')
+                self.set_prefer_pcksaver(savetype, savedir, ext2='converted')
             except Exception:
                 plog.error("%s: Failed to set pcksaver object!"
                            % self.name, exc_info=1)

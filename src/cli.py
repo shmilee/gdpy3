@@ -94,6 +94,8 @@ def get_parser_convert(subparsers, parents=[]):
     optgrp.add_argument(
         '--filenames_exclude', type=str, action='append', metavar='Pattern',
         help='Regular expressions to exclude filenames in raw data')
+    optgrp.add_argument('--savedir', type=str, metavar='Dir',
+                        help='directory of savefile, default raw data dir')
     optgrp.add_argument('--savetype', type=str, default='.npz',
                         choices=pcksaver_types[1:],
                         help="Extension of savefile, (default: %(default)s)")
@@ -207,6 +209,7 @@ def cli_script():
                     parallel=args.parallel,
                     add_desc=args.add_desc,
                     filenames_exclude=args.filenames_exclude,
+                    savedir=args.savedir,
                     savetype=args.savetype,
                     overwrite=args.overwrite,
                     Sid=True,
@@ -221,6 +224,7 @@ def cli_script():
                     parallel=args.parallel,
                     add_desc=args.add_desc,
                     filenames_exclude=args.filenames_exclude,
+                    savedir=args.savedir,
                     savetype=args.savetype,
                     overwrite=args.overwrite,
                     Sid=False,
