@@ -215,6 +215,12 @@ class HistoryParticleDigger(_TimeCutoff):
         self.kwoptions = None
 
     def _dig(self, kwargs):
+        '''*gyroBohm*: bool, default False
+            use gyroBohm unit for particle & energy flux. rho0/Ln*(Bohm unit)
+        *R0Ln*: float
+            Set R0/Ln for gyroBohm unit. Ln=1.0/2.22 when R0/Ln=2.22
+            If R0Ln=None, use a_minor as default Ln.
+        '''
         time, x0, x1, acckws = super(HistoryParticleDigger, self)._dig(kwargs)
         data = self.pckloader.get_many(self.srckeys[0])[0][:, x0:x1]
         if self.fignum == self.section[1]:
@@ -229,11 +235,32 @@ class HistoryParticleDigger(_TimeCutoff):
                 title='particle %s' % self.fignum), acckws
         else:
             # flux
+            gyroBohm = kwargs.get('gyroBohm', False)
+            R0Ln = kwargs.get('R0Ln', None)
+            a_minor, rho0 = self.pckloader.get_many('gtc/a_minor', 'gtc/rho0')
+            if R0Ln is None:
+                R0Ln = 1.0/a_minor
+                unit = r'$\rho_0/a$'
+            else:
+                R0Ln = float(R0Ln)
+                unit = r'$%.3f\rho_0$' % R0Ln
+            dlog.parm("R0/a=%.3f; R0/Ln=%.3f" % (1/a_minor, R0Ln))
+            if 'gyroBohm' not in self.kwoptions:
+                self.kwoptions['gyroBohm'] = dict(
+                    widget='Checkbox', value=False, description='gyroBohm:')
+                self.kwoptions['R0Ln'] = dict(
+                    widget='FloatSlider',
+                    rangee=[0.00, max(1/a_minor, R0Ln), 0.055],
+                    value=R0Ln, description='R0/Ln:')
+            acckws['gyroBohm'] = bool(gyroBohm)
+            acckws['R0Ln'] = R0Ln
+            if not gyroBohm:
+                unit = r'Bohm'
             return dict(
                 time=time,
-                particle=data[6],
-                momentum=data[7],
-                energy=data[8],
+                particle=data[6]/rho0/R0Ln if gyroBohm else data[6],
+                momentum=data[7]/rho0/R0Ln if gyroBohm else data[7],
+                energy=data[8]/rho0/R0Ln if gyroBohm else data[8], unit=unit,
                 title='particle %s' % self.fignum), acckws
 
     def _post_dig(self, results):
@@ -253,9 +280,11 @@ class HistoryParticleDigger(_TimeCutoff):
                 'lylabel': r'$E$', 'rylabel': r'$\delta E$',
             }]
         else:
-            YINFO = [{'left': [(r['particle'], 'particle flux')], 'right': []},
-                     {'left': [(r['momentum'], 'momentum flux')], 'right': []},
-                     {'left': [(r['energy'], 'energy flux')], 'right': []}]
+            u = ' flux(%s)' % r['unit']
+            YINFO = [{'left': [(r['particle'], 'particle%s' % u)], 'right': []},
+                     {'left': [(r['momentum'], 'momentum%s' % u)],
+                      'right': []},
+                     {'left': [(r['energy'], 'energy%s' % u)], 'right': []}]
         return dict(X=r['time'], YINFO=YINFO, title=r['title'],
                     xlabel=r'time($R_0/c_s$)', xlim=[0, np.max(r['time'])])
 
