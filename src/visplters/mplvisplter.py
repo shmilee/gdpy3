@@ -159,7 +159,8 @@ class MatplotlibVisplter(BaseVisplter):
                         vlog.debug("Using preset revise function: %s" % fargs)
                         fargs = getattr(self, fargs)
                     try:
-                        fargs(fig, axesdict, artistdict, **fkwargs)
+                        art = fargs(fig, axesdict, artistdict, **fkwargs)
+                        artistdict[index] = art
                     except Exception:
                         vlog.error("Failed to revise axes %s!"
                                    % (axpos,), exc_info=1)
@@ -318,6 +319,7 @@ class MatplotlibVisplter(BaseVisplter):
                            groups=(), sep=', ', max_artists_per_handler=99):
         '''
         Add multiple legends, support several artists to share one same label.
+        Return a list of legend objects.
 
         Parameters
         ----------
@@ -347,6 +349,7 @@ class MatplotlibVisplter(BaseVisplter):
         #        print(i, art)
         # for h, l in handleD.items():
         #    print(h, l)
+        lgs = []
         for grp in groups:
             handles, labels = [], []
             # about index
@@ -388,6 +391,8 @@ class MatplotlibVisplter(BaseVisplter):
                 'index', 'handles', 'labels', 'handler_map')}
             lg = ax.legend(handles, labels, handler_map=handler_map, **kws)
             ax.add_artist(lg)
+            lgs.append(lg)
+        return lgs
 
     @staticmethod
     def aspect_3d_equal(fig, axesdict, artistdict, axindex=0,
