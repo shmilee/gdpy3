@@ -16,6 +16,7 @@ import mpl_toolkits.mplot3d
 from matplotlib.legend_handler import HandlerTuple
 # setuptools._distutils.version.LooseVersion for py3.12
 from distutils.version import LooseVersion
+from operator import attrgetter
 
 from ..glogger import getGLogger
 from ..__about__ import __data_path__, __ENABLE_USERBASE__, __userbase__
@@ -29,16 +30,19 @@ vlog = getGLogger('V')
 
 _Mpl_Axes_Structure = '''
 {
+    'layout': ['int, gridspec, tuple, list', {'add_subplot, add_axes kwargs'}],
     'data': [
         [-1, 'Omitted Axes plot func', (args,), {'kwargs'}],
         [1, 'Axes plot func', (args,), {'kwargs'}],
         [2, 'plot', (xarray, yarray, 'ro-'), {'label': 'line'}],
-        [4, 'legend', (), dict(loc='upper right')],
-        [8, 'twinx or twiny', (), dict(nextcolor='int')],
+        [3, 'Axes attribute names with dots', (args,), {}],
+        [4, 'yaxis.set_major_formatter', (fmt,), {}],
+        [20, 'legend', (), dict(loc='upper right')],
+        [50, 'twinx or twiny', (), dict(nextcolor='int')],
         # def revise_func(fig, axesdict, artistdict, **kw)
-        [9, 'revise', revise_func, {'kw'}],
+        [90, 'revise', revise_func, {'kw'}],
+        [91, 'revise', str-preset_revisefuns, {'kw'}],
     ],
-    'layout': ['int, gridspec, tuple, list', {'add_subplot, add_axes kwargs'}],
     'axstyle': [{'axes.grid': True}],
 }
 '''
@@ -167,7 +171,10 @@ class MatplotlibVisplter(BaseVisplter):
                 else:
                     vlog.debug("Adding artist %s: %s ..." % (index, axfunc))
                     try:
-                        art = getattr(ax, axfunc)(*fargs, **fkwargs)
+                        if '.' in axfunc:
+                            art = attrgetter(axfunc)(ax)(*fargs, **fkwargs)
+                        else:
+                            art = getattr(ax, axfunc)(*fargs, **fkwargs)
                         if index in artistdict:
                             vlog.warning("Duplicate index %s!" % index)
                         artistdict[index] = art
