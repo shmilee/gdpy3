@@ -164,6 +164,8 @@ class HistoryRZFDigger(Digger):
         '''
         kwargs
         ------
+        *p00rms*: bool
+            use phi00rms instead of phi00 in history data or not, default False
         *ipsi*: int
             select psi in data1d results, 0<ipsi<mpsi, defalut mpis//2
         *nside*: int
@@ -197,10 +199,12 @@ class HistoryRZFDigger(Digger):
         else:
             bindex = bstep // ndiag + 1
             dlog.warning('bindex=bstep/ndiag=%.3f=%d' % (bstep/ndiag, bindex))
-        maxidx, minidx = np.argmax(_hist[1]), np.argmin(_hist[1])
-        if abs(_hist[1, maxidx]) < abs(_hist[1, minidx]):
+        p00rms = bool(kwargs.get('p00rms', False))
+        _hisidx = 2 if p00rms else 1
+        maxidx, minidx = np.argmax(_hist[_hisidx]), np.argmin(_hist[_hisidx])
+        if abs(_hist[_hisidx, maxidx]) < abs(_hist[_hisidx, minidx]):
             maxidx = minidx
-        elif abs(_hist[1, maxidx]) == abs(_hist[1, minidx]):
+        elif abs(_hist[_hisidx, maxidx]) == abs(_hist[_hisidx, minidx]):
             maxidx = max(maxidx, minidx)
         dlog.parm('maxindex=%d' % maxidx)
         if maxidx < bindex:
@@ -210,7 +214,7 @@ class HistoryRZFDigger(Digger):
             dlog.warning('maxindex:%d is bigger than bindex!' % maxidx)
         # cutoff data
         time = _time[bindex:]
-        hiszf = _hist[1, bindex:]
+        hiszf = _hist[_hisidx, bindex:]
         d1dzf = _dat1d[:, bindex:]
         maxidx -= bindex
         # select data1d
@@ -219,7 +223,7 @@ class HistoryRZFDigger(Digger):
         nside = int(kwargs.get('nside', 1))
         s1dzf = d1dzf[ipsi-nside:ipsi+nside+1].mean(axis=0)
         dlog.parm('Points beside bindex: %s, %s'
-                  % (_hist[1, bindex-1:bindex+2], _dat1d[ipsi, bindex-1:bindex+2]))
+                  % (_hist[_hisidx, bindex-1:bindex+2], _dat1d[ipsi, bindex-1:bindex+2]))
         # norm
         norm = bool(kwargs.get('norm', True))
         if norm:
@@ -248,6 +252,9 @@ class HistoryRZFDigger(Digger):
                   % (time[start], time[end], start, end))
         if self.kwoptions is None:
             self.kwoptions = dict(
+                p00rms=dict(widget='Checkbox',
+                            value=False,
+                            description='use phi00_RMS:'),
                 ipsi=dict(widget='IntSlider',
                           rangee=(0, mpsi, 1),
                           value=mpsi//2,
@@ -281,8 +288,8 @@ class HistoryRZFDigger(Digger):
         npeakselect = max(min(int(kwargs.get('npeakselect', 3)), 12), 0)
         npeakside = max(min(int(kwargs.get('npeakside', 1)), 5), 0)
         savsmooth = bool(kwargs.get('savsmooth', False))
-        acckwargs = {'ipsi': ipsi, 'nside': nside, 'norm': norm,
-                     'res_time': restime, 'use_ra': False,
+        acckwargs = {'p00rms': p00rms, 'ipsi': ipsi, 'nside': nside,
+                     'norm': norm, 'res_time': restime, 'use_ra': False,
                      'npeakselect': npeakselect, 'npeakside': npeakside,
                      'savsmooth': savsmooth}
         # 1 res
