@@ -469,7 +469,7 @@ class CaseSeries(object):
         idx0, idx1 = int(len(time)*start) - 1, int(len(time)*end) - 1
         return time[idx0], time[idx1], idx0, idx1
 
-    def dig_chi_D(self, particle, gyroBohm=True, Ln=None,
+    def dig_chi_D(self, particle, gyroBohm=True, Ln=None, cutbg=None,
                   fallback_sat_time=(0.7, 1.0)):
         '''
         Get particle chi(t) and D(t) of each case.
@@ -488,20 +488,32 @@ class CaseSeries(object):
         Ln: float
             Set R0/Ln for gyroBohm unit. Ln=1.0/2.22 when R0/Ln=2.22
             If Ln=None, use a_minor as default Ln.
+        cutbg: tuple of int, like (ipsi0, ipsi1)
+            use data1d and cut off the boundary grids to calculate chi, D
         fallback_sat_time: tuple
             If saturation time not found in :attr:`labelinfo`, use this
             to set saturation (start,end) time ratio. limit: 0.0 -> 1.0
         '''
         if particle in ('ion', 'electron', 'fastion'):
-            figlabel = 'history/%s_flux' % particle
+            if cutbg:
+                figlabeld = 'data1d/%s_particle_flux' % particle
+                figlabele = 'data1d/%s_energy_flux' % particle
+            else:
+                figlabel = 'history/%s_flux' % particle
         else:
             raise ValueError('unsupported particle: %s ' % particle)
         chiDresult = []
         for path, key in self.paths:
             gdp = self.cases[key]
-            a, b, c = gdp.dig(figlabel, post=False)
-            time = b['time']
-            chi, D = b['energy'], b['particle']
+            if cutbg:
+                a, b, c = gdp.dig(figlabeld, pcutoff=cutbg, post=False)
+                time, D = b['X'], b['Z'].mean(axis=0)
+                a, b, c = gdp.dig(figlabele, pcutoff=cutbg, post=False)
+                chi = b['Z'].mean(axis=0)
+            else:
+                a, b, c = gdp.dig(figlabel, post=False)
+                time = b['time']
+                chi, D = b['energy'], b['particle']
             if gyroBohm:
                 Ln = gdp.pckloader['gtc/a_minor'] if Ln is None else Ln
                 rho0 = gdp.pckloader['gtc/rho0']
@@ -596,13 +608,14 @@ class CaseSeries(object):
         fig.suptitle(suptitle or fignum, y=title_y)
         fig.savefig(savepath or './%s.jpg' % fignum)
 
-    def dig_chi_D_r(self, particle, gyroBohm=True, Ln=None,
+    def dig_chi_D_r(self, particle, gyroBohm=True, Ln=None, bg=None,
                     fallback_sat_time=(0.7, 1.0), **kwargs):
         '''
         Get particle chi(r) and D(r) of each case.
         Return a list of tuple in order of :attr:`paths`.
-        The tuple has 3 elements:
-            1) radial r array, 2) chi(r) array, 3) D(r) array
+        The tuple has 4 elements:
+            1) radial r array, 2) chi(r) array, 3) D(r) array,
+            4) boundary r tuple (br0, br1)
 
         Parameters
         ----------
@@ -613,6 +626,8 @@ class CaseSeries(object):
         Ln: float
             Set R0/Ln for gyroBohm unit. Ln=1.0/2.22 when R0/Ln=2.22
             If Ln=None, use a_minor as default Ln.
+        bg: tuple of int, like (bgpsi0, bgpsi1), 0-mpsi
+            annotate the boundary grids, default (0.1, 0.9)mpsi
         fallback_sat_time: tuple
             If saturation time not found in :attr:`labelinfo`, use this
             to set saturation (start,end) time ratio. limit: 0.0 -> 1.0
@@ -625,6 +640,8 @@ class CaseSeries(object):
         else:
             raise ValueError('unsupported particle: %s ' % particle)
         chiDresult = []
+        if kwargs.pop('pcutoff', None):
+            log.warning("Ignore 'pcutoff' kwargs!")
         for path, key in self.paths:
             gdp = self.cases[key]
             a, b, c = gdp.dig('history/%s_flux' % particle, post=False)
@@ -641,7 +658,21 @@ class CaseSeries(object):
                 Ln = gdp.pckloader['gtc/a_minor'] if Ln is None else Ln
                 rho0 = gdp.pckloader['gtc/rho0']
                 chi, D = chi*Ln/rho0, D*Ln/rho0
-            chiDresult.append((r, chi, D))
+            mpsi = gdp.pckloader.get('gtc/mpsi')
+            if bg:
+                p0, p1 = bg
+            else:
+                p0, p1 = int(0.1*mpsi), int(0.9*mpsi)
+            if r.size == mpsi+1:
+                br0, br1 = r[p0], r[p1]
+            elif r.size == mpsi-1:  # use_ra=True
+                br0, br1 = r[p0-1], r[p1-1]
+            else:
+                log.warning("Unexcepted r size=%d, (mpsi=%d)!"
+                            % (r.size, mpsi))
+                p0, p1 = int(0.1*r.size), int(0.9*r.size)
+                br0, br1 = r[p0], r[p1]
+            chiDresult.append((r, chi, D, (br0, br1)))
         return chiDresult
 
     def plot_chi_D_r(self, particle, chiDresult, labels, nlines=2,
@@ -687,6 +718,9 @@ class CaseSeries(object):
                     *[[1+i, 'plot', (r[0], r[1], '-'), dict(
                         color="C{}".format(i), label=l)]
                       for i, (r, l) in enumerate(zip(ress, lbls))],
+                    *[[100+i, 'axvspan', r[3], dict(
+                        color="C{}".format(i), ls='--', lw=1.0, fill=False)]
+                      for i, r in enumerate(ress)],
                     [500, 'legend', (), {}],
                     # [501, 'set_xticklabels', ([],), {}],
                     # [502, 'set_xlabel', (r'$t(R_0/c_s)$',), {}],
@@ -706,6 +740,9 @@ class CaseSeries(object):
                     *[[1+i, 'plot', (r[0], r[2], '-'), dict(
                         color="C{}".format(i), label=l)]
                       for i, (r, l) in enumerate(zip(ress, lbls))],
+                    *[[100+i, 'axvspan', r[3], dict(
+                        color="C{}".format(i), ls='--', lw=1.0, fill=False)]
+                      for i, r in enumerate(ress)],
                     [500, 'legend', (), {}],
                 ],
             }
