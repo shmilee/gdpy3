@@ -1431,7 +1431,9 @@ class CaseSeries(object):
         fig.suptitle(suptitle or fignum, y=title_y)
         fig.savefig(savepath or './%s.jpg' % fignum)
 
-    def dig_phi00(self, residual=False, fallback_sat_time='auto', **kwargs):
+    def dig_phi00(self, residual=False, norm=False,
+                  fallback_sat_time='auto', fallback_auto_limit=5e-4,
+                  **kwargs):
         '''
         Get phi00rms(t) and phi00(t) of each case.
         Return a list of tuple in order of :attr:`paths`.
@@ -1445,47 +1447,57 @@ class CaseSeries(object):
         ----------
         residual: bool
             Use phi00 from 'history/residual_zf' phi00(r,t)
-            and return more residual level info.
+            and return more residual level info. default False
+        norm: bool
+            normalize phi00rms, phi00 by the maximum or not, default False
         fallback_sat_time: tuple of float, or 'auto'
             If saturation time not found in :attr:`labelinfo`, use this
             to set saturation (start,end) time ratio. limit: 0.0 -> 1.0.
             'auto', use :func:`tools.findflat` with phi00rms(t)
             to find saturation time
+        fallback_auto_limit: float or function
+            set upperlimit for :func:`tools.findflat`, default 5e-4
+            float: upperlimit=fallback_auto_limit*max(phi00rms)
+            function: upperlimit=fallback_auto_limit(path, phi00rms)
         kwargs: dict
             other kwargs for digging 'history/residual_zf', such as
-            'ipsi'(default mpsi//2), 'nside'(default 1), 'norm'(default True)
+            'ipsi'(default mpsi//2), 'nside'(default 1)
         '''
         result = []
         _ = kwargs.pop('res_time', None)
-        kwargs['post'] = False
-        kwargs['use_ra'] = True
+        kwargs.update(post=False, use_ra=True, p00rms=False, norm=norm)
         for path, key in self.paths:
             gdp = self.cases[key]
             # history phi00rms
             a, b1, c = gdp.dig('history/phi', post=False)
             time1, phi00rms = b1['time'], b1['field00rms']
+            argmax = phi00rms.argmax()
+            if norm:
+                phi00rms = phi00rms/phi00rms[argmax]
             fallback_time = fallback_sat_time
             if fallback_sat_time == 'auto':
-                argmax = phi00rms.argmax()
-                start, length = tools.findflat(
-                    phi00rms[argmax:], 5e-4*phi00rms[argmax])
+                if callable(fallback_auto_limit):
+                    upperlimit = fallback_auto_limit(path, phi00rms)
+                else:
+                    upperlimit = fallback_auto_limit*phi00rms[argmax]
+                start, length = tools.findflat(phi00rms[argmax:], upperlimit)
                 if length == 0:
                     start = (6*len(time1)+4*argmax)//10
                     end = (9*len(time1)+argmax)//10
                 else:
                     start += argmax
                     end = start + length
+                fallback_time = start/len(time1), min(1.0, end/len(time1))
                 log.info(
-                    "Saturation auto-time: [%s,%s], index: [%s,%s], for %s"
-                    % (time1[start], time1[end-1], start, end-1, path))
-                fallback_time = time1[start], time1[end-1]
+                    "Auto-fallback-time: [%s,%s], ratio: [%.4f,%.4f], for %s"
+                    % (time1[start], time1[end-1], *fallback_time, path))
             t0, t1, start, end = self._get_start_end(
                 path, key, 'saturation', time=time1, fallback=fallback_time)
             sat_time = (t0, t1)
             sat_phi00rms = phi00rms[start:end].mean()
             # rzf?
             figlabel = 'history/residual_zf'
-            if residual and figlabel not in gdp.availablelabels:
+            if residual and figlabel in gdp.availablelabels:
                 a, b2, c = gdp.dig(figlabel, res_time=sat_time, **kwargs)
                 time2, phi00 = b2['time'], b2['s1dzf']
                 sat_phi00 = b2['s1dres']
@@ -1494,6 +1506,8 @@ class CaseSeries(object):
                     ['krrho0', 'ipsi', 'ir', 'rzf', 'rmse'])}  # if k in b2}
             else:
                 time2, phi00 = time1, b1['field00']
+                if norm:
+                    phi00 = phi00/phi00.max()
                 sat_phi00 = phi00[start:end].mean()
                 residual_info = None
             result.append(((time1, phi00rms), (time2, phi00),
@@ -1513,6 +1527,14 @@ class CaseSeries(object):
         labels: list
             set line labels for result
         '''
+        def residual_info(res):
+            info = r'\phi_{00}=%s' % tools.round_str(res[4], 2)
+            if res[5]:
+                info += r', R_{ZF}(r=%.1fa)=%s\pm%s' % (
+                    res[5]['ir'],
+                    tools.round_str(res[5]['rzf'], 2),
+                    tools.round_str(res[5]['rmse'], 2))
+            return r'$%s$' % info
         nlines = max(2, nlines)
         Mrow = math.ceil(len(phi00result)/nlines)
         all_axes = []
@@ -1554,8 +1576,7 @@ class CaseSeries(object):
                 'data': [
                     *[[1+i, 'plot', r[1], dict(
                         color="C{}".format(i), ls='-',
-                        label=r'%s, $\phi_{00}=%s$' % (
-                            l, tools.round_str(r[4], 2)))]
+                        label=r'%s, %s' % (l, residual_info(r)))]
                       for i, (r, l) in enumerate(zip(ress, lbls))],
                     *[[200+i, 'plot', (r[2], [r[4], r[4]], 'o'), dict(
                         color="C{}".format(i))]

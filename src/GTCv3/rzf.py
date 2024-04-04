@@ -237,6 +237,11 @@ class HistoryRZFDigger(Digger):
             if index.size > 0:
                 start, end = index[0], index[-1]
                 # dlog.debug('res_time_end(1): %s ' % time[end])
+                if start <= maxidx:
+                    dlog.warning("The res_time range may be too long/wide!")
+                    start = maxidx + 2
+                    if end <= start:
+                        end = start + 1
             else:
                 dlog.warning('Cannot set residual time: %s <= time <= %s!'
                              % (start, end))
