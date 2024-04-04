@@ -162,6 +162,7 @@ def get_label_ts_data(casepaths, path_replace=None, name_replace=None,
         skip these paths which have no 'gtc.out' or not(raise error)
     ts_key_ver: str, version for ts keys.
         'v1' means these 4 keys: time, chi_i, d_i, logphirms.
+        'v2' means 3 phi00 keys: time, phi00, phi00rms
     removeNaN: bool
         remove NaN Infinity, check array of chi_i etc., cut off by array index
     savepath: str, file path
@@ -170,6 +171,18 @@ def get_label_ts_data(casepaths, path_replace=None, name_replace=None,
         'ls-json' is saving to json for the Label Studio Platform
     '''
     ts_data_list = []
+
+    def index_nan_inf(time, *arrs):
+        idx = len(time)
+        for arr in arrs:
+            checkNaN = np.where(np.isnan(arr))[0]
+            if checkNaN.size > 0:
+                idx = min(checkNaN[0], idx)
+            checkInf = np.where(np.isinf(arr))[0]
+            if checkInf.size > 0:
+                idx = min(checkInf[0], idx)
+        return idx if idx < len(time) else None
+
     for path in casepaths:
         if not os.path.exists(os.path.join(path, 'gtc.out')):
             if skip_lost:
@@ -191,19 +204,22 @@ def get_label_ts_data(casepaths, path_replace=None, name_replace=None,
             a, b, c = gdp.dig('history/phi', post=False)
             logphirms = np.log(b['fieldrms'])
             if removeNaN:
-                idx = len(time)
-                for arr in (chi, D, logphirms):
-                    checkNaN = np.where(np.isnan(arr))[0]
-                    if checkNaN.size > 0:
-                        idx = min(checkNaN[0], idx)
-                    checkInf = np.where(np.isinf(arr))[0]
-                    if checkInf.size > 0:
-                        idx = min(checkInf[0], idx)
-                if idx < len(time):
+                idx = index_nan_inf(time, chi, D, logphirms)
+                if idx:
                     time = time[:idx]
                     chi, D = chi[:idx], D[:idx]
                     logphirms = logphirms[:idx]
             ts_data = dict(time=time, chi_i=chi, d_i=D, logphirms=logphirms)
+        elif ts_key_ver == 'v2':
+            a, b, c = gdp.dig('history/phi', post=False)
+            time = b['time']
+            phi00, phi00rms = b['field00'], b['field00rms']
+            if removeNaN:
+                idx = index_nan_inf(time, phi00, phi00rms)
+                if idx:
+                    time = time[:idx]
+                    phi00, phi00rms = phi00[:idx], phi00rms[:idx]
+            ts_data = dict(time=time, phi00=phi00, phi00rms=phi00rms)
         else:
             log.error("Unsupported ts_key_ver: '%s'!" % ts_key_ver)
             return
@@ -1410,6 +1426,144 @@ class CaseSeries(object):
                 ],
             }
             all_axes.extend([ax_mean, ax_gamma])
+        fig = self.plotter.create_figure(
+            fignum, *all_axes, add_style=add_style)
+        fig.suptitle(suptitle or fignum, y=title_y)
+        fig.savefig(savepath or './%s.jpg' % fignum)
+
+    def dig_phi00(self, residual=False, fallback_sat_time='auto', **kwargs):
+        '''
+        Get phi00rms(t) and phi00(t) of each case.
+        Return a list of tuple in order of :attr:`paths`.
+        The tuple has 6 elements:
+            1) (time, phi00rms(t) array), 2) (time, phi00(t) array),
+            3) saturation time (start-time, end-time),
+            4) saturation phi00rms, 5) saturation phi00,
+            6) residual info {krrho0=?, smooth residual level, level rmse}.
+
+        Parameters
+        ----------
+        residual: bool
+            Use phi00 from 'history/residual_zf' phi00(r,t)
+            and return more residual level info.
+        fallback_sat_time: tuple of float, or 'auto'
+            If saturation time not found in :attr:`labelinfo`, use this
+            to set saturation (start,end) time ratio. limit: 0.0 -> 1.0.
+            'auto', use :func:`tools.findflat` with phi00rms(t)
+            to find saturation time
+        kwargs: dict
+            other kwargs for digging 'history/residual_zf', such as
+            'ipsi'(default mpsi//2), 'nside'(default 1), 'norm'(default True)
+        '''
+        result = []
+        _ = kwargs.pop('res_time', None)
+        kwargs['post'] = False
+        kwargs['use_ra'] = True
+        for path, key in self.paths:
+            gdp = self.cases[key]
+            # history phi00rms
+            a, b1, c = gdp.dig('history/phi', post=False)
+            time1, phi00rms = b1['time'], b1['field00rms']
+            fallback_time = fallback_sat_time
+            if fallback_sat_time == 'auto':
+                argmax = phi00rms.argmax()
+                start, length = tools.findflat(
+                    phi00rms[argmax:], 5e-4*phi00rms[argmax])
+                if length == 0:
+                    start = (6*len(time1)+4*argmax)//10
+                    end = (9*len(time1)+argmax)//10
+                else:
+                    start += argmax
+                    end = start + length
+                log.info(
+                    "Saturation auto-time: [%s,%s], index: [%s,%s], for %s"
+                    % (time1[start], time1[end-1], start, end-1, path))
+                fallback_time = time1[start], time1[end-1]
+            t0, t1, start, end = self._get_start_end(
+                path, key, 'saturation', time=time1, fallback=fallback_time)
+            sat_time = (t0, t1)
+            sat_phi00rms = phi00rms[start:end].mean()
+            # rzf?
+            figlabel = 'history/residual_zf'
+            if residual and figlabel not in gdp.availablelabels:
+                a, b2, c = gdp.dig(figlabel, res_time=sat_time, **kwargs)
+                time2, phi00 = b2['time'], b2['s1dzf']
+                sat_phi00 = b2['s1dres']
+                residual_info = {_k: b2[k] for k, _k in zip(
+                    ['krrho0', 'ipsi', 'ir', 's1dresflt', 'Yd1dresrmse'],
+                    ['krrho0', 'ipsi', 'ir', 'rzf', 'rmse'])}  # if k in b2}
+            else:
+                time2, phi00 = time1, b1['field00']
+                sat_phi00 = phi00[start:end].mean()
+                residual_info = None
+            result.append(((time1, phi00rms), (time2, phi00),
+                           sat_time, sat_phi00rms, sat_phi00, residual_info))
+        return result
+
+    def plot_phi00(self, phi00result, labels, nlines=2,
+                   xlims={}, ylims={}, fignum='fig-1-phi00', add_style=[],
+                   suptitle=None, title_y=0.95, savepath=None):
+        '''
+        Plot chi(t), D(t) figure of particle(like ion or electron).
+
+        Parameters
+        ----------
+        phi00result: list
+            result get by :meth:`dig_phi00`
+        labels: list
+            set line labels for result
+        '''
+        nlines = max(2, nlines)
+        Mrow = math.ceil(len(phi00result)/nlines)
+        all_axes = []
+        for row in range(1, Mrow+1, 1):
+            ress = phi00result[(row-1)*nlines:row*nlines]
+            lbls = labels[(row-1)*nlines:row*nlines]
+            ax_idx = 2*(row-1)+1
+            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
+            xylim_kws = {'xlim': xlim} if xlim else {}
+            if ylim:
+                xylim_kws['ylim'] = ylim
+            ax1 = {
+                'layout': [
+                    (Mrow, 2, ax_idx), dict(
+                        xlabel=r'$t(R_0/c_s)$', ylabel=r'$\phi_{00}RMS$',
+                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
+                'data': [
+                    *[[1+i, 'plot', r[0], dict(
+                        color="C{}".format(i), linestyle='-',
+                        label=r'%s, $\phi_{00}RMS=%s$' % (
+                            l, tools.round_str(r[3], 2)))]
+                      for i, (r, l) in enumerate(zip(ress, lbls))],
+                    *[[200+i, 'plot', (r[2], [r[3], r[3]], 'o'), dict(
+                        color="C{}".format(i))]
+                      for i, r in enumerate(ress)],
+                    [500, 'legend', (), {}],
+                ],
+            }
+            ax_idx = 2*(row-1)+2
+            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
+            xylim_kws = {'xlim': xlim} if xlim else {}
+            if ylim:
+                xylim_kws['ylim'] = ylim
+            ax2 = {
+                'layout': [
+                    (Mrow, 2, ax_idx), dict(
+                        xlabel=r'$t(R_0/c_s)$', ylabel=r'$\phi_{00}$',
+                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
+                'data': [
+                    *[[1+i, 'plot', r[1], dict(
+                        color="C{}".format(i), ls='-',
+                        label=r'%s, $\phi_{00}=%s$' % (
+                            l, tools.round_str(r[4], 2)))]
+                      for i, (r, l) in enumerate(zip(ress, lbls))],
+                    *[[200+i, 'plot', (r[2], [r[4], r[4]], 'o'), dict(
+                        color="C{}".format(i))]
+                      for i, r in enumerate(ress)],
+                    [500, 'legend', (), {}],
+                ],
+            }
+            all_axes.extend([ax1, ax2])
         fig = self.plotter.create_figure(
             fignum, *all_axes, add_style=add_style)
         fig.suptitle(suptitle or fignum, y=title_y)
