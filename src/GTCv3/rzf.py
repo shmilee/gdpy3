@@ -167,7 +167,7 @@ class HistoryRZFDigger(Digger):
         *p00rms*: bool
             use phi00rms instead of phi00 in history data or not, default False
         *ipsi*: int
-            select psi in data1d results, 0<ipsi<mpsi, defalut mpis//2
+            select psi in data1d results, 0<ipsi<mpsi, defalut mpsi//2
         *nside*: int
             average 2*nside+1 points around *ipsi*, default 1
         *norm*: bool
