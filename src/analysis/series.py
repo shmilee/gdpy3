@@ -20,6 +20,7 @@ from ..visplters import get_visplter
 from .._json import dumps as json_dumps
 from ..glogger import getGLogger
 from .. import tools
+from ..utils import simple_parse_doc, inherit_docstring
 
 __all__ = [
     'get_selected_converted_data', 'get_label_ts_data',
@@ -418,6 +419,15 @@ class LabelInfoSeries(object):
             jsonfile, savepath=savepath, result_modify=result_modify)
 
 
+def _copy_plot_mrows_doc(docs, kwargs):
+    ''' for _plot_mrows_chi_D_like, _plot_mrows_gamma_phi_like '''
+    name, doc = docs[0]
+    XXX = kwargs.pop('XXX_like', None)
+    if XXX:
+        doc = doc.replace('{{XXX_like}}', XXX)
+    return (), simple_parse_doc(doc, ('TO-Imp-Parameters', 'Parameters'))
+
+
 class CaseSeries(object):
     '''
     GTC parameter series cases.
@@ -543,86 +553,103 @@ class CaseSeries(object):
             chiDresult.append((time, chi, D, sat_t, sat_chi, sat_D))
         return chiDresult
 
-    def plot_chi_D(self, particle, chiDresult, labels, nlines=2,
-                   xlims={}, ylims={}, fignum='fig-1-chi-D', add_style=[],
-                   suptitle=None, title_y=0.95, savepath=None):
+    def _plot_mrows_chi_D_like(
+            self, xylabel1, xylabel2, datafun1, datafun2,
+            result, labels, nlines, fignum, xlims={}, ylims={},
+            suptitle=None, title_y=None, add_style=[], savepath=None):
+        '''
+        Plot by 2 columns for 2 quantity data array.
+
+        TO-Imp-Parameters
+        -----------------
+        xylabel1, xylabel2: dict(xlabel=x, ylabel=x) for Axes layout
+            set xlabel, ylabel for quantities in column1 and column2
+        datafun1, datafun2: function
+            Input: partial result and labels for this Axes
+            Return: Axes data list
+
+        Parameters
+        ----------
+        result: list
+            result get by :meth:`dig_{{XXX_like}}`
+        labels: list
+            set line labels for result
+        nlines: int, >=2
+            number of lines in each Axes
+        fignum: str
+            figure num/label
+        xlims, ylims: dict, set xlim, ylim for some Axes
+            key is axes index
+        suptitle: str
+        title_y: float
+            suptitle y position, 0-1
+        add_style: matplotlib style list
+        savepath: str
+            default savepath is f'./{fignum}.png'
+        '''
+        nlines = max(2, nlines)
+        Mrow = math.ceil(len(result)/nlines)
+        all_axes = []
+        for row in range(1, Mrow+1, 1):
+            ress = result[(row-1)*nlines:row*nlines]
+            lbls = labels[(row-1)*nlines:row*nlines]
+            for ax_idx, xylabel, datafun in zip(
+                    [2*(row-1)+1, 2*(row-1)+2],
+                    [xylabel1, xylabel2],
+                    [datafun1, datafun2]):
+                xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
+                xylim_kws = {'xlim': xlim} if xlim else {}
+                if ylim:
+                    xylim_kws['ylim'] = ylim
+                all_axes.append({
+                    'layout': [(Mrow, 2, ax_idx), dict(
+                        title='%d/%s' % (ax_idx, Mrow*2),
+                        **xylabel, **xylim_kws)],
+                    'data': [*datafun(ress, lbls), [900, 'legend', (), {}]],
+                })
+        fig = self.plotter.create_figure(
+            fignum, *all_axes, add_style=add_style)
+        fig.suptitle(suptitle or fignum, y=title_y)
+        fig.savefig(savepath or ('./%s.png' % fignum))
+
+    @inherit_docstring((_plot_mrows_chi_D_like,), _copy_plot_mrows_doc,
+                       funckwargs=dict(XXX_like='chi_D'))
+    def plot_chi_D(self, particle, result, labels, nlines=2,
+                   fignum='1-chi-D', xlims={}, ylims={},
+                   suptitle=None, title_y=None, add_style=[], savepath=None):
         '''
         Plot chi(t), D(t) figure of particle(like ion or electron).
 
         Parameters
-        ----------
-        chiDresult: list
-            chiDresult of particle get by :meth:`dig_chi_D`
-        labels: list
-            set line labels for chiDresult
-        nlines: int, >=2
-            number of lines in each Axes
-        xlims, ylims: dict, set xlim, ylim for some Axes
-            key is axes index
-        savepath: str
-            default savepath is f'./{fignum}.jpg'
+        {Parameters}
         '''
         if particle not in ('ion', 'electron', 'fastion'):
             raise ValueError('unsupported particle: %s ' % particle)
-        nlines = max(2, nlines)
-        Mrow = math.ceil(len(chiDresult)/nlines)
-        all_axes = []
-        ie = 'i' if 'ion' == particle else (
+        ief = 'i' if 'ion' == particle else (
             'e' if 'electron' in particle else 'f')
-        for row in range(1, Mrow+1, 1):
-            ress = chiDresult[(row-1)*nlines:row*nlines]
-            lbls = labels[(row-1)*nlines:row*nlines]
-            ax_idx = 2*(row-1)+1
-            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
-            xylim_kws = {'xlim': xlim} if xlim else {}
-            if ylim:
-                xylim_kws['ylim'] = ylim
-            ax_chi = {
-                'layout': [
-                    (Mrow, 2, ax_idx), dict(
-                        xlabel=r'$t(R_0/c_s)$', ylabel=r'$\chi_%s$' % ie,
-                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
-                'data': [
-                    *[[1+i, 'plot', (r[0], r[1], '-'), dict(
-                        color="C{}".format(i),
-                        label=r'%s, $\chi_%s=%s$' % (
-                            l, ie, tools.round_str(r[4], 2)))]
-                      for i, (r, l) in enumerate(zip(ress, lbls))],
-                    *[[200+i, 'plot', (r[3], [r[4], r[4]], 'o'), dict(
-                        color="C{}".format(i))]
-                      for i, r in enumerate(ress)],
-                    [500, 'legend', (), {}],
-                    # [501, 'set_xticklabels', ([],), {}],
-                    # [502, 'set_xlabel', (r'$t(R_0/c_s)$',), {}],
-                ],
-            }
-            ax_idx = 2*(row-1)+2
-            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
-            xylim_kws = {'xlim': xlim} if xlim else {}
-            if ylim:
-                xylim_kws['ylim'] = ylim
-            ax_D = {
-                'layout': [
-                    (Mrow, 2, ax_idx), dict(
-                        xlabel=r'$t(R_0/c_s)$', ylabel=r'$D_%s$' % ie,
-                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
-                'data': [
-                    *[[1+i, 'plot', (r[0], r[2], '-'), dict(
-                        color="C{}".format(i),
-                        label=r'%s, $D_%s=%s$' % (
-                            l, ie, tools.round_str(r[5], 2)))]
-                      for i, (r, l) in enumerate(zip(ress, lbls))],
-                    *[[200+i, 'plot', (r[3], [r[5], r[5]], 'o'), dict(
-                        color="C{}".format(i))]
-                      for i, r in enumerate(ress)],
-                    [500, 'legend', (), {}],
-                ],
-            }
-            all_axes.extend([ax_chi, ax_D])
-        fig = self.plotter.create_figure(
-            fignum, *all_axes, add_style=add_style)
-        fig.suptitle(suptitle or fignum, y=title_y)
-        fig.savefig(savepath or './%s.jpg' % fignum)
+        xylabel1 = {'xlabel': r'$t(R_0/c_s)$', 'ylabel': r'$\chi_%s$' % ief}
+        xylabel2 = {'xlabel': r'$t(R_0/c_s)$', 'ylabel': r'$D_%s$' % ief}
+
+        def datafun1(ress, lbls):
+            return [[1+i, 'plot', (r[0], r[1], '-'), dict(
+                    color="C{}".format(i), label=r'%s, $\chi_%s=%s$' % (
+                        l, ief, tools.round_str(r[4], 2)))]
+                    for i, (r, l) in enumerate(zip(ress, lbls))
+                    ] + [[200+i, 'plot', (r[3], [r[4], r[4]], 'o'), dict(
+                        color="C{}".format(i))] for i, r in enumerate(ress)]
+
+        def datafun2(ress, lbls):
+            return [[1+i, 'plot', (r[0], r[2], '-'), dict(
+                color="C{}".format(i), label=r'%s, $D_%s=%s$' % (
+                    l, ief, tools.round_str(r[5], 2)))]
+                    for i, (r, l) in enumerate(zip(ress, lbls))
+                    ] + [[200+i, 'plot', (r[3], [r[5], r[5]], 'o'), dict(
+                        color="C{}".format(i))] for i, r in enumerate(ress)]
+        self._plot_mrows_chi_D_like(
+            xylabel1, xylabel2, datafun1, datafun2,
+            result, labels, nlines, fignum, xlims=xlims, ylims=ylims,
+            suptitle=suptitle, title_y=title_y, add_style=add_style,
+            savepath=savepath)
 
     def dig_chi_D_r(self, particle, gyroBohm=True, Ln=None, bg=None,
                     fallback_sat_time=(0.7, 1.0), **kwargs):
@@ -691,82 +718,44 @@ class CaseSeries(object):
             chiDresult.append((r, chi, D, (br0, br1)))
         return chiDresult
 
-    def plot_chi_D_r(self, particle, chiDresult, labels, nlines=2,
-                     xlims={}, ylims={}, fignum='fig-1-chi-D(r)', add_style=[],
-                     suptitle=None, title_y=0.95, savepath=None):
+    @inherit_docstring((_plot_mrows_chi_D_like,), _copy_plot_mrows_doc,
+                       funckwargs=dict(XXX_like='chi_D_r'))
+    def plot_chi_D_r(self, particle, result, labels, nlines=2,
+                     fignum='1-chi-D(r)', xlims={}, ylims={}, add_style=[],
+                     suptitle=None, title_y=None, savepath=None):
         '''
         Plot chi(r), D(r) figure of particle(like ion or electron).
 
         Parameters
-        ----------
-        chiDresult: list
-            chiDresult of particle get by :meth:`dig_chi_D_r`
-        labels: list
-            set line labels for chiDresult
-        nlines: int, >=2
-            number of lines in each Axes
-        xlims, ylims: dict, set xlim, ylim for some Axes
-            key is axes index
-        savepath: str
-            default savepath is f'./{fignum}.jpg'
+        {Parameters}
         '''
         if particle not in ('ion', 'electron', 'fastion'):
             raise ValueError('unsupported particle: %s ' % particle)
-        nlines = max(2, nlines)
-        Mrow = math.ceil(len(chiDresult)/nlines)
-        all_axes = []
-        ie = 'i' if 'ion' == particle else (
+        ief = 'i' if 'ion' == particle else (
             'e' if 'electron' in particle else 'f')
-        for row in range(1, Mrow+1, 1):
-            ress = chiDresult[(row-1)*nlines:row*nlines]
-            lbls = labels[(row-1)*nlines:row*nlines]
-            ax_idx = 2*(row-1)+1
-            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
-            xylim_kws = {'xlim': xlim} if xlim else {}
-            if ylim:
-                xylim_kws['ylim'] = ylim
-            ax_chi = {
-                'layout': [
-                    (Mrow, 2, ax_idx), dict(
-                        xlabel=r'$r/a$', ylabel=r'$\chi_%s$' % ie,
-                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
-                'data': [
-                    *[[1+i, 'plot', (r[0], r[1], '-'), dict(
-                        color="C{}".format(i), label=l)]
-                      for i, (r, l) in enumerate(zip(ress, lbls))],
-                    *[[100+i, 'axvspan', r[3], dict(
-                        color="C{}".format(i), ls='--', lw=1.0, fill=False)]
-                      for i, r in enumerate(ress)],
-                    [500, 'legend', (), {}],
-                    # [501, 'set_xticklabels', ([],), {}],
-                    # [502, 'set_xlabel', (r'$t(R_0/c_s)$',), {}],
-                ],
-            }
-            ax_idx = 2*(row-1)+2
-            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
-            xylim_kws = {'xlim': xlim} if xlim else {}
-            if ylim:
-                xylim_kws['ylim'] = ylim
-            ax_D = {
-                'layout': [
-                    (Mrow, 2, ax_idx), dict(
-                        xlabel=r'$r/a$', ylabel=r'$D_%s$' % ie,
-                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
-                'data': [
-                    *[[1+i, 'plot', (r[0], r[2], '-'), dict(
-                        color="C{}".format(i), label=l)]
-                      for i, (r, l) in enumerate(zip(ress, lbls))],
-                    *[[100+i, 'axvspan', r[3], dict(
-                        color="C{}".format(i), ls='--', lw=1.0, fill=False)]
-                      for i, r in enumerate(ress)],
-                    [500, 'legend', (), {}],
-                ],
-            }
-            all_axes.extend([ax_chi, ax_D])
-        fig = self.plotter.create_figure(
-            fignum, *all_axes, add_style=add_style)
-        fig.suptitle(suptitle or fignum, y=title_y)
-        fig.savefig(savepath or './%s.jpg' % fignum)
+        xylabel1 = {'xlabel': r'$r/a$', 'ylabel': r'$\chi_%s$' % ief}
+        xylabel2 = {'xlabel': r'$r/a$', 'ylabel': r'$D_%s$' % ief}
+
+        def datafun1(ress, lbls):
+            return [[1+i, 'plot', (r[0], r[1], '-'), dict(
+                color="C{}".format(i), label=l)]
+                for i, (r, l) in enumerate(zip(ress, lbls))
+            ] + [[100+i, 'axvspan', r[3], dict(
+                color="C{}".format(i), ls='--', lw=1.0, fill=False)]
+                for i, r in enumerate(ress)]
+
+        def datafun2(ress, lbls):
+            return [[1+i, 'plot', (r[0], r[2], '-'), dict(
+                color="C{}".format(i), label=l)]
+                for i, (r, l) in enumerate(zip(ress, lbls))
+            ] + [[100+i, 'axvspan', r[3], dict(
+                color="C{}".format(i), ls='--', lw=1.0, fill=False)]
+                for i, r in enumerate(ress)]
+        self._plot_mrows_chi_D_like(
+            xylabel1, xylabel2, datafun1, datafun2,
+            result, labels, nlines, fignum, xlims=xlims, ylims=ylims,
+            suptitle=suptitle, title_y=title_y, add_style=add_style,
+            savepath=savepath)
 
     def dig_gamma_phi(self, R0Ln=None, fallback_growth_time='auto'):
         '''
@@ -838,6 +827,9 @@ class CaseSeries(object):
             gammaresult.append((
                 time, logphirms, growth_time, growth_logphi, growth))
         return gammaresult
+
+    def _plot_mrows_gamma_phi_like(self, result, labels):
+        pass
 
     def plot_gamma_phi(self, gammaresult, labels, nlines=2, ncols=1,
                        xlims={}, ylims={}, fignum='fig-2-phi', add_style=[],
@@ -1218,71 +1210,35 @@ class CaseSeries(object):
             result.append((np.array(r), np.array(wr), np.array(gamma)))
         return result
 
+    @inherit_docstring((_plot_mrows_chi_D_like,), _copy_plot_mrows_doc,
+                       funckwargs=dict(XXX_like='phi_spectrum_r'))
     def plot_phi_spectrum_r(self, result, labels, nlines=2,
-                            xlims={}, ylims={}, fignum='fig-1-phiomega(r)',
-                            add_style=[], suptitle=None, title_y=0.95,
+                            fignum='1-phiomega(r)', xlims={}, ylims={},
+                            suptitle=None, title_y=None, add_style=[],
                             savepath=None):
         '''
         Plot phi-spectrum(r) figure.
 
         Parameters
-        ----------
-        result: list
-            phi-spectrum result get by :meth:`dig_phi_spectrum_r`
-        labels: list
-            set line labels for phi-spectrum result
-        nlines: int, >=2
-            number of lines in each Axes
-        xlims, ylims: dict, set xlim, ylim for some Axes
-            key is axes index
-        savepath: str
-            default savepath is f'./{fignum}.jpg'
+        {Parameters}
         '''
-        nlines = max(2, nlines)
-        Mrow = math.ceil(len(result)/nlines)
-        all_axes = []
-        for row in range(1, Mrow+1, 1):
-            ress = result[(row-1)*nlines:row*nlines]
-            lbls = labels[(row-1)*nlines:row*nlines]
-            ax_idx = 2*(row-1) + 1  # ax, 1, 3, ...
-            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
-            xylim_kws = {'xlim': xlim} if xlim else {}
-            if ylim:
-                xylim_kws['ylim'] = ylim
-            ax_wr = {
-                'layout': [
-                    (Mrow, 2, ax_idx), dict(
-                        xlabel=r'$r/a$', ylabel=r'$\omega_r(c_s/R_0)$',
-                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
-                'data': [
-                    *[[1+i, 'plot', (r[0], r[1], '-'), dict(
-                        color="C{}".format(i), label=l)]
-                      for i, (r, l) in enumerate(zip(ress, lbls))],
-                    [500, 'legend', (), {}],
-                ],
-            }
-            ax_idx = 2*(row-1) + 2
-            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
-            xylim_kws = {'xlim': xlim} if xlim else {}
-            if ylim:
-                xylim_kws['ylim'] = ylim
-            ax_gamma = {
-                'layout': [
-                    (Mrow, 2, ax_idx), dict(
-                        xlabel=r'$r/a$', ylabel=r'$\gamma(c_s/R_0)$',
-                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
-                'data': [
-                    *[[1+i, 'plot', (r[0], r[2], '-'), dict(
-                        color="C{}".format(i), label=l)]
-                      for i, (r, l) in enumerate(zip(ress, lbls))],
-                    [500, 'legend', (), {}],
-                ],
-            }
-            all_axes.extend([ax_wr, ax_gamma])
-        fig = self.plotter.create_figure(
-            fignum, *all_axes, add_style=add_style)
-        fig.suptitle(suptitle or fignum, y=title_y)
-        fig.savefig(savepath or './%s.jpg' % fignum)
+        xylabel1 = {'xlabel': r'$r/a$', 'ylabel': r'$\omega_r(c_s/R_0)$'}
+        xylabel2 = {'xlabel': r'$r/a$', 'ylabel': r'$\gamma(c_s/R_0)$'}
+
+        def datafun1(ress, lbls):
+            return [[1+i, 'plot', (r[0], r[1], '-'), dict(
+                color="C{}".format(i), label=l)]
+                for i, (r, l) in enumerate(zip(ress, lbls))]
+
+        def datafun2(ress, lbls):
+            return [[1+i, 'plot', (r[0], r[2], '-'), dict(
+                color="C{}".format(i), label=l)]
+                for i, (r, l) in enumerate(zip(ress, lbls))]
+        self._plot_mrows_chi_D_like(
+            xylabel1, xylabel2, datafun1, datafun2,
+            result, labels, nlines, fignum, xlims=xlims, ylims=ylims,
+            suptitle=suptitle, title_y=title_y, add_style=add_style,
+            savepath=savepath)
 
     def dig_phi_kparallel(self, ipsi=None, time_sample=0,
                           fallback_sat_time=(0.7, 1.0), **kwargs):
@@ -1355,81 +1311,44 @@ class CaseSeries(object):
                            np.mean(fitkgamma[idx0:idx1+1])))
         return result
 
+    @inherit_docstring((_plot_mrows_chi_D_like,), _copy_plot_mrows_doc,
+                       funckwargs=dict(XXX_like='phi_kparallel'))
     def plot_phi_kparallel(self, result, labels, nlines=2,
-                           xlims={}, ylims={}, fignum='fig-1-kparallel',
-                           add_style=[], suptitle=None, title_y=0.95,
+                           fignum='1-kparallel', xlims={}, ylims={},
+                           suptitle=None, title_y=None, add_style=[],
                            savepath=None):
         '''
         Plot phi-kparallel(t) figure.
 
         Parameters
-        ----------
-        result: list
-            result get by :meth:`dig_phi_kparallel`
-        labels: list
-            set line labels for result
-        nlines: int, >=2
-            number of lines in each Axes
-        xlims, ylims: dict, set xlim, ylim for some Axes
-            key is axes index
-        savepath: str
-            default f'./{fignum}.jpg'
+        {Parameters}
         '''
-        nlines = max(2, nlines)
-        Mrow = math.ceil(len(result)/nlines)
-        all_axes = []
-        for row in range(1, Mrow+1, 1):
-            ress = result[(row-1)*nlines:row*nlines]
-            lbls = labels[(row-1)*nlines:row*nlines]
-            ax_idx = 2*(row-1)+1
-            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
-            xylim_kws = {'xlim': xlim} if xlim else {}
-            if ylim:
-                xylim_kws['ylim'] = ylim
-            ax_mean = {
-                'layout': [
-                    (Mrow, 2, ax_idx), dict(
-                        xlabel=r'$t(R_0/c_s)$',
-                        ylabel=r'$\langle k_{\parallel}R_0\rangle$',
-                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
-                'data': [
-                    *[[1+i, 'plot', (r[0], r[1], '-'), dict(
-                        color="C{}".format(i),
-                        label=r'%s, saturation=%.2f' % (l, r[4]))]
-                      for i, (r, l) in enumerate(zip(ress, lbls))],
-                    *[[200+i, 'plot', (r[3], [r[4], r[4]], 'o'), dict(
-                        color="C{}".format(i))]
-                      for i, r in enumerate(ress)],
-                    [500, 'legend', (), {}],
-                ],
-            }
-            ax_idx = 2*(row-1)+2
-            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
-            xylim_kws = {'xlim': xlim} if xlim else {}
-            if ylim:
-                xylim_kws['ylim'] = ylim
-            ax_gamma = {
-                'layout': [
-                    (Mrow, 2, ax_idx), dict(
-                        xlabel=r'$t(R_0/c_s)$',
-                        ylabel=r'$k_{\parallel}R_0$, half width',
-                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
-                'data': [
-                    *[[1+i, 'plot', (r[0], r[2], '-'), dict(
-                        color="C{}".format(i),
-                        label=r'%s, saturation=%.2f' % (l, r[5]))]
-                      for i, (r, l) in enumerate(zip(ress, lbls))],
-                    *[[200+i, 'plot', (r[3], [r[5], r[5]], 'o'), dict(
-                        color="C{}".format(i))]
-                      for i, r in enumerate(ress)],
-                    [500, 'legend', (), {}],
-                ],
-            }
-            all_axes.extend([ax_mean, ax_gamma])
-        fig = self.plotter.create_figure(
-            fignum, *all_axes, add_style=add_style)
-        fig.suptitle(suptitle or fignum, y=title_y)
-        fig.savefig(savepath or './%s.jpg' % fignum)
+        xylabel1 = {'xlabel': r'$t(R_0/c_s)$',
+                    'ylabel': r'$\langle k_{\parallel}R_0\rangle$'}
+        xylabel2 = {'xlabel': r'$t(R_0/c_s)$',
+                    'ylabel': r'$k_{\parallel}R_0$, half width'}
+
+        def datafun1(ress, lbls):
+            return [[1+i, 'plot', (r[0], r[1], '-'), dict(
+                color="C{}".format(i),
+                label=r'%s, saturation=%.2f' % (l, r[4]))]
+                for i, (r, l) in enumerate(zip(ress, lbls))
+            ] + [[200+i, 'plot', (r[3], [r[4], r[4]], 'o'), dict(
+                color="C{}".format(i))]
+                for i, r in enumerate(ress)]
+
+        def datafun2(ress, lbls):
+            return [[1+i, 'plot', (r[0], r[2], '-'), dict(
+                color="C{}".format(i),
+                label=r'%s, saturation=%.2f' % (l, r[5]))]
+                for i, (r, l) in enumerate(zip(ress, lbls))
+            ] + [[200+i, 'plot', (r[3], [r[5], r[5]], 'o'), dict(
+                color="C{}".format(i))] for i, r in enumerate(ress)]
+        self._plot_mrows_chi_D_like(
+            xylabel1, xylabel2, datafun1, datafun2,
+            result, labels, nlines, fignum, xlims=xlims, ylims=ylims,
+            suptitle=suptitle, title_y=title_y, add_style=add_style,
+            savepath=savepath)
 
     def dig_phi00(self, residual=False, norm=False,
                   fallback_sat_time='auto', fallback_auto_limit=5e-4,
@@ -1514,19 +1433,20 @@ class CaseSeries(object):
                            sat_time, sat_phi00rms, sat_phi00, residual_info))
         return result
 
-    def plot_phi00(self, phi00result, labels, nlines=2,
-                   xlims={}, ylims={}, fignum='fig-1-phi00', add_style=[],
-                   suptitle=None, title_y=0.95, savepath=None):
+    @inherit_docstring((_plot_mrows_chi_D_like,), _copy_plot_mrows_doc,
+                       funckwargs=dict(XXX_like='phi00'))
+    def plot_phi00(self, result, labels, nlines=2,
+                   fignum='1-phi00', xlims={}, ylims={},
+                   suptitle=None, title_y=None, add_style=[], savepath=None):
         '''
-        Plot chi(t), D(t) figure of particle(like ion or electron).
+        Plot phi00rms(t), phi00(t) figure.
 
         Parameters
-        ----------
-        phi00result: list
-            result get by :meth:`dig_phi00`
-        labels: list
-            set line labels for result
+        {Parameters}
         '''
+        xylabel1 = {'xlabel': r'$t(R_0/c_s)$', 'ylabel': r'$\phi_{00}RMS$'}
+        xylabel2 = {'xlabel': r'$t(R_0/c_s)$', 'ylabel': r'$\phi_{00}$'}
+
         def residual_info(res):
             info = r'\phi_{00}=%s' % tools.round_str(res[4], 2)
             if res[5]:
@@ -1535,57 +1455,25 @@ class CaseSeries(object):
                     tools.round_str(res[5]['rzf'], 2),
                     tools.round_str(res[5]['rmse'], 2))
             return r'$%s$' % info
-        nlines = max(2, nlines)
-        Mrow = math.ceil(len(phi00result)/nlines)
-        all_axes = []
-        for row in range(1, Mrow+1, 1):
-            ress = phi00result[(row-1)*nlines:row*nlines]
-            lbls = labels[(row-1)*nlines:row*nlines]
-            ax_idx = 2*(row-1)+1
-            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
-            xylim_kws = {'xlim': xlim} if xlim else {}
-            if ylim:
-                xylim_kws['ylim'] = ylim
-            ax1 = {
-                'layout': [
-                    (Mrow, 2, ax_idx), dict(
-                        xlabel=r'$t(R_0/c_s)$', ylabel=r'$\phi_{00}RMS$',
-                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
-                'data': [
-                    *[[1+i, 'plot', r[0], dict(
-                        color="C{}".format(i), linestyle='-',
-                        label=r'%s, $\phi_{00}RMS=%s$' % (
-                            l, tools.round_str(r[3], 2)))]
-                      for i, (r, l) in enumerate(zip(ress, lbls))],
-                    *[[200+i, 'plot', (r[2], [r[3], r[3]], 'o'), dict(
-                        color="C{}".format(i))]
-                      for i, r in enumerate(ress)],
-                    [500, 'legend', (), {}],
-                ],
-            }
-            ax_idx = 2*(row-1)+2
-            xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
-            xylim_kws = {'xlim': xlim} if xlim else {}
-            if ylim:
-                xylim_kws['ylim'] = ylim
-            ax2 = {
-                'layout': [
-                    (Mrow, 2, ax_idx), dict(
-                        xlabel=r'$t(R_0/c_s)$', ylabel=r'$\phi_{00}$',
-                        title='%d/%s' % (ax_idx, Mrow*2), **xylim_kws)],
-                'data': [
-                    *[[1+i, 'plot', r[1], dict(
-                        color="C{}".format(i), ls='-',
-                        label=r'%s, %s' % (l, residual_info(r)))]
-                      for i, (r, l) in enumerate(zip(ress, lbls))],
-                    *[[200+i, 'plot', (r[2], [r[4], r[4]], 'o'), dict(
-                        color="C{}".format(i))]
-                      for i, r in enumerate(ress)],
-                    [500, 'legend', (), {}],
-                ],
-            }
-            all_axes.extend([ax1, ax2])
-        fig = self.plotter.create_figure(
-            fignum, *all_axes, add_style=add_style)
-        fig.suptitle(suptitle or fignum, y=title_y)
-        fig.savefig(savepath or './%s.jpg' % fignum)
+
+        def datafun1(ress, lbls):
+            return [[1+i, 'plot', r[0], dict(
+                color="C{}".format(i), linestyle='-',
+                label=r'%s, $\phi_{00}RMS=%s$' % (
+                    l, tools.round_str(r[3], 2)))]
+                    for i, (r, l) in enumerate(zip(ress, lbls))
+                    ] + [[200+i, 'plot', (r[2], [r[3], r[3]], 'o'), dict(
+                        color="C{}".format(i))] for i, r in enumerate(ress)]
+
+        def datafun2(ress, lbls):
+            return [[1+i, 'plot', r[1], dict(
+                color="C{}".format(i), ls='-',
+                label=r'%s, %s' % (l, residual_info(r)))]
+                for i, (r, l) in enumerate(zip(ress, lbls))
+            ] + [[200+i, 'plot', (r[2], [r[4], r[4]], 'o'), dict(
+                color="C{}".format(i))] for i, r in enumerate(ress)]
+        self._plot_mrows_chi_D_like(
+            xylabel1, xylabel2, datafun1, datafun2,
+            result, labels, nlines, fignum, xlims=xlims, ylims=ylims,
+            suptitle=suptitle, title_y=title_y, add_style=add_style,
+            savepath=savepath)
