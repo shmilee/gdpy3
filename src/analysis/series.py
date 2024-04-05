@@ -558,7 +558,7 @@ class CaseSeries(object):
             result, labels, nlines, fignum, xlims={}, ylims={},
             suptitle=None, title_y=None, add_style=[], savepath=None):
         '''
-        Plot by 2 columns for 2 quantity data array.
+        Plot 2 quantity data array by 2 columns.
 
         TO-Imp-Parameters
         -----------------
@@ -587,7 +587,7 @@ class CaseSeries(object):
         savepath: str
             default savepath is f'./{fignum}.png'
         '''
-        nlines = max(2, nlines)
+        nlines = max(2, int(nlines))
         Mrow = math.ceil(len(result)/nlines)
         all_axes = []
         for row in range(1, Mrow+1, 1):
@@ -828,65 +828,76 @@ class CaseSeries(object):
                 time, logphirms, growth_time, growth_logphi, growth))
         return gammaresult
 
-    def _plot_mrows_gamma_phi_like(self, result, labels):
-        pass
-
-    def plot_gamma_phi(self, gammaresult, labels, nlines=2, ncols=1,
-                       xlims={}, ylims={}, fignum='fig-2-phi', add_style=[],
-                       suptitle=None, title_y=0.95, savepath=None):
+    @inherit_docstring((_plot_mrows_chi_D_like,), _copy_plot_mrows_doc,
+                       funckwargs={})
+    def _plot_mrows_gamma_phi_like(
+            self, xylabel, datafun,
+            result, labels, nlines, ncols, fignum, xlims={}, ylims={},
+            suptitle=None, title_y=None, add_style=[], savepath=None):
         '''
-        Plot figure of phi-RMS and its growth range.
+        Plot one quantity data array by any columns.
+
+        TO-Imp-Parameters
+        -----------------
+        xylabel: dict(xlabel=x, ylabel=x) for Axes layout
+            set xlabel, ylabel for the quantity
+        datafun: function
+            Input: partial result and labels for this Axes
+            Return: Axes data list
 
         Parameters
-        ----------
-        gammaresult: list
-            phi-RMS gammaresult get by :meth:`dig_gamma_phi`
-        labels: list
-            set line labels for gammaresult
-        nlines: int, >=2
-            number of lines in each Axes
+        {Parameters}
         ncols: int, >=1
             number of columns in this figure
-        xlims, ylims: dict, set xlim, ylim for some Axes
-            key is axes index
-        savepath: str
-            default savepath is f'./{fignum}.jpg'
         '''
-        nlines = max(2, nlines)
+        nlines, ncols = max(2, int(nlines)), max(1, int(ncols))
         Mrow = math.ceil(len(gammaresult)/nlines/ncols)
         all_axes = []
         for row in range(1, Mrow+1, 1):
             for col in range(1, ncols+1, 1):
                 ax_idx = ncols*(row-1) + col  # ax, 1, 2, ...
-                ress = gammaresult[(ax_idx-1)*nlines:ax_idx*nlines]
+                ress = result[(ax_idx-1)*nlines:ax_idx*nlines]
                 lbls = labels[(ax_idx-1)*nlines:ax_idx*nlines]
                 xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
                 xylim_kws = {'xlim': xlim} if xlim else {}
                 if ylim:
                     xylim_kws['ylim'] = ylim
-                ax_logphi = {
+                all_axes.append({
                     'layout': [
                         (Mrow, ncols, ax_idx), dict(
-                            xlabel=r'$t(R_0/c_s)$',
-                            ylabel=r'$log(\phi_{RMS})$',
                             title='%d/%s' % (ax_idx, Mrow*ncols),
-                            **xylim_kws)],
-                    'data': [
-                        *[[1+i, 'plot', (r[0], r[1], '-'), dict(
-                            color="C{}".format(i),
-                            label=r'%s, $\gamma_{\phi}=%.2f$' % (l, r[4]))]
-                          for i, (r, l) in enumerate(zip(ress, lbls))],
-                        *[[200+i, 'plot', (r[2], r[3], 'o'), dict(
-                            color="C{}".format(i))]
-                          for i, r in enumerate(ress)],
-                        [500, 'legend', (), {}],
-                    ],
-                }
-                all_axes.append(ax_logphi)
+                            **xylabel, **xylim_kws)],
+                    'data': [*datafun(ress, lbls), [900, 'legend', (), {}]],
+                })
         fig = self.plotter.create_figure(
             fignum, *all_axes, add_style=add_style)
         fig.suptitle(suptitle or fignum, y=title_y)
-        fig.savefig(savepath or './%s.jpg' % fignum)
+        fig.savefig(savepath or ('./%s.png' % fignum))
+
+    @inherit_docstring((_plot_mrows_gamma_phi_like,), _copy_plot_mrows_doc,
+                       funckwargs=dict(XXX_like='gamma_phi'))
+    def plot_gamma_phi(self, result, labels, nlines=2, ncols=1,
+                       fignum='1-phi', xlims={}, ylims={}, add_style=[],
+                       suptitle=None, title_y=None, savepath=None):
+        '''
+        Plot figure of phi-RMS and its growth range.
+
+        Parameters
+        {Parameters}
+        '''
+        xylabel = dict(xlabel=r'$t(R_0/c_s)$', ylabel=r'$log(\phi_{RMS})$')
+
+        def datafun(ress, lbls):
+            return [[1+i, 'plot', (r[0], r[1], '-'), dict(
+                color="C{}".format(i),
+                label=r'%s, $\gamma_{\phi}=%.2f$' % (l, r[4]))]
+                for i, (r, l) in enumerate(zip(ress, lbls))
+            ] + [[200+i, 'plot', (r[2], r[3], 'o'), dict(
+                color="C{}".format(i))] for i, r in enumerate(ress)]
+        self._plot_mrows_gamma_phi_like(
+            xylabel, datafun, result, labels, nlines, ncols, fignum,
+            xlims=xlims, ylims=ylims, suptitle=suptitle, title_y=title_y,
+            add_style=add_style, savepath=savepath)
 
     def dig_phirms_r(self, fallback_sat_time=(0.7, 1.0), **kwargs):
         '''
@@ -916,58 +927,27 @@ class CaseSeries(object):
             phiresult.append((r, phirms))
         return phiresult
 
-    def plot_phirms_r(self, phirmsresult, labels, nlines=2, ncols=1,
-                      xlims={}, ylims={}, fignum='fig-1-phirms(r)', add_style=[],
-                      suptitle=None, title_y=0.95, savepath=None):
+    @inherit_docstring((_plot_mrows_gamma_phi_like,), _copy_plot_mrows_doc,
+                       funckwargs=dict(XXX_like='phirms_r'))
+    def plot_phirms_r(self, result, labels, nlines=2, ncols=1,
+                      fignum='1-phirms(r)', xlims={}, ylims={}, add_style=[],
+                      suptitle=None, title_y=None, savepath=None):
         '''
         Plot phi-RMS(r) figure.
 
         Parameters
-        ----------
-        phirmsresult: list
-            phi-RMS result get by :meth:`dig_phirms_r`
-        labels: list
-            set line labels for phirmsresult
-        nlines: int, >=2
-            number of lines in each Axes
-        ncols: int, >=1
-            number of columns in this figure
-        xlims, ylims: dict, set xlim, ylim for some Axes
-            key is axes index
-        savepath: str
-            default savepath is f'./{fignum}.jpg'
+        {Parameters}
         '''
-        nlines = max(2, nlines)
-        Mrow = math.ceil(len(phirmsresult)/nlines/ncols)
-        all_axes = []
-        for row in range(1, Mrow+1, 1):
-            for col in range(1, ncols+1, 1):
-                ax_idx = ncols*(row-1) + col  # ax, 1, 2, ...
-                ress = phirmsresult[(ax_idx-1)*nlines:ax_idx*nlines]
-                lbls = labels[(ax_idx-1)*nlines:ax_idx*nlines]
-                xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
-                xylim_kws = {'xlim': xlim} if xlim else {}
-                if ylim:
-                    xylim_kws['ylim'] = ylim
-                ax_phi = {
-                    'layout': [
-                        (Mrow, ncols, ax_idx), dict(
-                            xlabel=r'$r/a$',
-                            ylabel=r'$\phi_{RMS}$',
-                            title='%d/%s' % (ax_idx, Mrow*ncols),
-                            **xylim_kws)],
-                    'data': [
-                        *[[1+i, 'plot', (r[0], r[1], '-'), dict(
-                            color="C{}".format(i), label=l)]
-                          for i, (r, l) in enumerate(zip(ress, lbls))],
-                        [500, 'legend', (), {}],
-                    ],
-                }
-                all_axes.append(ax_phi)
-        fig = self.plotter.create_figure(
-            fignum, *all_axes, add_style=add_style)
-        fig.suptitle(suptitle or fignum, y=title_y)
-        fig.savefig(savepath or './%s.jpg' % fignum)
+        xylabel = dict(xlabel=r'$r/a$', ylabel=r'$\phi_{RMS}$')
+
+        def datafun(ress, lbls):
+            return [[1+i, 'plot', (r[0], r[1], '-'), dict(
+                color="C{}".format(i), label=l)]
+                for i, (r, l) in enumerate(zip(ress, lbls))]
+        self._plot_mrows_gamma_phi_like(
+            xylabel, datafun, result, labels, nlines, ncols, fignum,
+            xlims=xlims, ylims=ylims, suptitle=suptitle, title_y=title_y,
+            add_style=add_style, savepath=savepath)
 
     def dig_phiktheta_r(self, stage='saturation', fallback_time=(0.7, 1.0),
                         **kwargs):
@@ -1014,59 +994,29 @@ class CaseSeries(object):
             result.append((r, ktheta_r))
         return result
 
+    @inherit_docstring((_plot_mrows_gamma_phi_like,), _copy_plot_mrows_doc,
+                       funckwargs=dict(XXX_like='phiktheta_r'))
     def plot_phiktheta_r(self, result, labels, nlines=2, ncols=1,
-                         xlims={}, ylims={}, fignum='fig-1-phiktheta(r)',
-                         add_style=[], suptitle=None, title_y=0.95,
-                         savepath=None):
+                         fignum='1-phiktheta(r)', xlims={}, ylims={},
+                         suptitle=None, title_y=None,
+                         add_style=[], savepath=None):
         '''
         Plot phi-ktheta(r) figure.
 
         Parameters
-        ----------
-        result: list
-            phi-ktheta result get by :meth:`dig_phiktheta_r`
-        labels: list
-            set line labels for phi-ktheta result
-        nlines: int, >=2
-            number of lines in each Axes
-        ncols: int, >=1
-            number of columns in this figure
-        xlims, ylims: dict, set xlim, ylim for some Axes
-            key is axes index
-        savepath: str
-            default savepath is f'./{fignum}.jpg'
+        {Parameters}
         '''
-        nlines = max(2, nlines)
-        Mrow = math.ceil(len(result)/nlines/ncols)
-        all_axes = []
-        for row in range(1, Mrow+1, 1):
-            for col in range(1, ncols+1, 1):
-                ax_idx = ncols*(row-1) + col  # ax, 1, 2, ...
-                ress = result[(ax_idx-1)*nlines:ax_idx*nlines]
-                lbls = labels[(ax_idx-1)*nlines:ax_idx*nlines]
-                xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
-                xylim_kws = {'xlim': xlim} if xlim else {}
-                if ylim:
-                    xylim_kws['ylim'] = ylim
-                ax_phi = {
-                    'layout': [
-                        (Mrow, ncols, ax_idx), dict(
-                            xlabel=r'$r/a$',
-                            ylabel=r'$k_{\theta}\rho_0$',
-                            title='%d/%s' % (ax_idx, Mrow*ncols),
-                            **xylim_kws)],
-                    'data': [
-                        *[[1+i, 'plot', (r[0], r[1], '-'), dict(
-                            color="C{}".format(i), label=l)]
-                          for i, (r, l) in enumerate(zip(ress, lbls))],
-                        [500, 'legend', (), {}],
-                    ],
-                }
-                all_axes.append(ax_phi)
-        fig = self.plotter.create_figure(
-            fignum, *all_axes, add_style=add_style)
-        fig.suptitle(suptitle or fignum, y=title_y)
-        fig.savefig(savepath or './%s.jpg' % fignum)
+        xylabel = dict(xlabel=r'$r/a$',
+                       ylabel=r'$k_{\theta}\rho_0$')
+
+        def datafun(ress, lbls):
+            return [[1+i, 'plot', (r[0], r[1], '-'), dict(
+                color="C{}".format(i), label=l)]
+                for i, (r, l) in enumerate(zip(ress, lbls))]
+        self._plot_mrows_gamma_phi_like(
+            xylabel, datafun, result, labels, nlines, ncols, fignum,
+            xlims=xlims, ylims=ylims, suptitle=suptitle, title_y=title_y,
+            add_style=add_style, savepath=savepath)
 
     def dig_phi_spectrum(self, stage='saturation', fallback_time=(0.7, 1.0),
                          **kwargs):
@@ -1103,63 +1053,32 @@ class CaseSeries(object):
                            b['Cauchy_mu1'], b['Cauchy_gamma1']))
         return result
 
+    @inherit_docstring((_plot_mrows_gamma_phi_like,), _copy_plot_mrows_doc,
+                       funckwargs=dict(XXX_like='phi_spectrum'))
     def plot_phi_spectrum(self, result, labels, nlines=2, ncols=1,
-                          xlims={}, ylims={}, fignum='fig-1-phiomega',
-                          add_style=[], suptitle=None, title_y=0.95,
-                          savepath=None):
+                          fignum='1-phiomega', xlims={}, ylims={},
+                          suptitle=None, title_y=None,
+                          add_style=[], savepath=None):
         '''
         Plot phi-spectrum figure.
 
         Parameters
-        ----------
-        result: list
-            phi-spectrum result get by :meth:`dig_phi_spectrum`
-        labels: list
-            set line labels for phi-spectrum result
-        nlines: int, >=2
-            number of lines in each Axes
-        ncols: int, >=1
-            number of columns in this figure
-        xlims, ylims: dict, set xlim, ylim for some Axes
-            key is axes index
-        savepath: str
-            default savepath is f'./{fignum}.jpg'
+        {Parameters}
         '''
-        nlines = max(2, nlines)
-        Mrow = math.ceil(len(result)/nlines/ncols)
-        all_axes = []
-        for row in range(1, Mrow+1, 1):
-            for col in range(1, ncols+1, 1):
-                ax_idx = ncols*(row-1) + col  # ax, 1, 2, ...
-                ress = result[(ax_idx-1)*nlines:ax_idx*nlines]
-                lbls = labels[(ax_idx-1)*nlines:ax_idx*nlines]
-                xlim, ylim = xlims.get(ax_idx, None), ylims.get(ax_idx, None)
-                xylim_kws = {'xlim': xlim} if xlim else {}
-                if ylim:
-                    xylim_kws['ylim'] = ylim
-                ax_phi = {
-                    'layout': [
-                        (Mrow, ncols, ax_idx), dict(
-                            xlabel=r'$\omega(c_s/R_0)$', ylabel=r'power',
-                            title='%d/%s' % (ax_idx, Mrow*ncols),
-                            **xylim_kws)],
-                    'data': [
-                        *[[1+i, 'plot', (r[0], r[1], '-'), dict(
-                            color="C{}".format(i),
-                            label=r'%s, $\omega_{rn}=%.4f, \gamma_n=%.4f$'
-                                  % (l, r[3], r[4]))]
-                          for i, (r, l) in enumerate(zip(ress, lbls))],
-                        *[[200+i, 'plot', (r[0], r[2], '--'), dict(
-                            color="C{}".format(i))]
-                          for i, r in enumerate(ress)],
-                        [500, 'legend', (), {}],
-                    ],
-                }
-                all_axes.append(ax_phi)
-        fig = self.plotter.create_figure(
-            fignum, *all_axes, add_style=add_style)
-        fig.suptitle(suptitle or fignum, y=title_y)
-        fig.savefig(savepath or './%s.jpg' % fignum)
+        xylabel = dict(xlabel=r'$\omega(c_s/R_0)$', ylabel=r'power')
+
+        def datafun(ress, lbls):
+            return [[1+i, 'plot', (r[0], r[1], '-'), dict(
+                color="C{}".format(i),
+                label=r'%s, $\omega_{rn}=%.4f, \gamma_n=%.4f$'
+                % (l, r[3], r[4]))]
+                for i, (r, l) in enumerate(zip(ress, lbls))
+            ] + [[200+i, 'plot', (r[0], r[2], '--'), dict(
+                color="C{}".format(i))] for i, r in enumerate(ress)]
+        self._plot_mrows_gamma_phi_like(
+            xylabel, datafun, result, labels, nlines, ncols, fignum,
+            xlims=xlims, ylims=ylims, suptitle=suptitle, title_y=title_y,
+            add_style=add_style, savepath=savepath)
 
     def dig_phi_spectrum_r(self, stage='saturation', select_psi=None,
                            fallback_time=(0.7, 1.0), **kwargs):
