@@ -36,7 +36,7 @@ def is_dict_like(obj):
         return True
 
 
-def inherit_docstring(parents, func, template=None):
+def inherit_docstring(parents, func, funckwargs=None, template=None):
     '''
     Get parents' __doc__ and format template with them.
 
@@ -45,13 +45,19 @@ def inherit_docstring(parents, func, template=None):
     parents: tuple
         (parent objects, ...), like class, function etc.
     func: function to deal with their __doc__
-        input is a list of (name, doc), return args(tuple), kwargs(dict)
+        input is a list of (name, doc) and optional funckwargs,
+        return args(tuple), kwargs(dict)
+    funckwargs: dict
+        some kwargs for function *fun*
     template: str
         template.format(*args, **kwargs), args, kwargs are get by func
         if no template, use object.__doc__
     '''
     parents_docstr = [(base.__name__, base.__doc__) for base in parents]
-    args, kwargs = func(parents_docstr)
+    if funckwargs is None:
+        args, kwargs = func(parents_docstr)
+    else:
+        args, kwargs = func(parents_docstr, funckwargs)
 
     def decorator(obj):
         if template:
@@ -167,7 +173,7 @@ def run_child_cmd(args, input=None, **kwargs):
     if isinstance(input, bytes):
         d_kwargs['stdin'] = subprocess.PIPE
         d_kwargs['universal_newlines'] = False
-        #d_kwargs['text'] = False
+        # d_kwargs['text'] = False
     d_kwargs.update(kwargs)
     try:
         proc = subprocess.Popen(args, **d_kwargs)
@@ -187,14 +193,14 @@ def find_available_module(*candidates):
     '''
     for c in candidates:
         if type(c) is types.ModuleType:
-            #print('[Pass] module type %s, found!' % c)
+            # print('[Pass] module type %s, found!' % c)
             return c
         try:
             module = importlib.import_module(c)
-            #print('[Pass] module %s, found!' % c)
+            # print('[Pass] module %s, found!' % c)
             return module
         except Exception:
-            #print('[Pass] module %s, not available!' % c)
+            # print('[Pass] module %s, not available!' % c)
             pass
     return None
 
