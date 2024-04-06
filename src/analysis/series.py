@@ -1347,7 +1347,7 @@ class CaseSeries(object):
                 if norm:
                     phi00 = phi00/phi00.max()
                 sat_phi00 = phi00[start:end].mean()
-            residual_info['maxphi00'] = phi00.max()
+            residual_info['absmaxphi00'] = phi00[abs(phi00).argmax()]
             result.append(((time1, phi00rms), (time2, phi00),
                            sat_time, sat_phi00rms, sat_phi00, residual_info))
         return result
