@@ -1279,7 +1279,7 @@ class CaseSeries(object):
             1) (time, phi00rms(t) array), 2) (time, phi00(t) array),
             3) saturation time (start-time, end-time),
             4) saturation phi00rms, 5) saturation phi00,
-            6) residual info {krrho0=?, smooth residual level, level rmse}.
+            6) residual info {krrho0, max, smooth residual level, level rmse}.
 
         Parameters
         ----------
@@ -1343,11 +1343,11 @@ class CaseSeries(object):
                     ['krrho0', 'ipsi', 'ir', 's1dresflt', 'Yd1dresrmse'],
                     ['krrho0', 'ipsi', 'ir', 'rzf', 'rmse'])}  # if k in b2}
             else:
-                time2, phi00 = time1, b1['field00']
+                time2, phi00, residual_info = time1, b1['field00'], {}
                 if norm:
                     phi00 = phi00/phi00.max()
                 sat_phi00 = phi00[start:end].mean()
-                residual_info = None
+            residual_info['maxphi00'] = phi00.max()
             result.append(((time1, phi00rms), (time2, phi00),
                            sat_time, sat_phi00rms, sat_phi00, residual_info))
         return result
@@ -1368,7 +1368,7 @@ class CaseSeries(object):
 
         def residual_info(res):
             info = r'\phi_{00}=%s' % tools.round_str(res[4], 2)
-            if res[5]:
+            if 'rmse' in res[5]:
                 info += r', R_{ZF}(r=%.1fa)=%s\pm%s' % (
                     res[5]['ir'],
                     tools.round_str(res[5]['rzf'], 2),
