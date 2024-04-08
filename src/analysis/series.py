@@ -9,7 +9,6 @@ Function, class to compare different cases.
 import os
 import re
 import time
-import shutil
 import json
 import math
 import random
@@ -65,7 +64,7 @@ def get_selected_converted_data(pathsmap, parallel='off',
     1. Use :meth:`utils.GetPasswd.set` to set password of sftp.
     '''
     for k in list(kwargs.keys()):
-        if k in ('path', 'parallel', 'filenames_exclude', 'Sid'):
+        if k in ('path', 'parallel', 'filenames_exclude', 'savedir', 'Sid'):
             remove = kwargs.pop(k)
     if 'name' in kwargs:
         gdpcls = get_processor(name=kwargs.get('name'), parallel='off')
@@ -80,6 +79,7 @@ def get_selected_converted_data(pathsmap, parallel='off',
             print('', flush=True)
             print('-'*16, '%d/%d' % (i, N), '-'*16, flush=True)
             path, dest, exclude = pmap
+            log.info('Raw data directory: %s' % path)
             done = False
             if os.path.exists(dest):
                 test = get_rawloader(dest)
@@ -95,14 +95,8 @@ def get_selected_converted_data(pathsmap, parallel='off',
                 os.makedirs(dest, exist_ok=True)
                 start = time.time()
                 gdp = get_processor(
-                    path, parallel=parallel, filenames_exclude=exclude, Sid=True,
-                    **kwargs)
-                converted = gdp.pcksaver.path
-                idx = converted.rfind(gdp.name.lower() + '-')
-                file = os.path.join(dest, converted[idx:])
-                log.info('Move converted data: %s -> %s' % (converted, file))
-                shutil.move(converted, file)
-                # copy gtc.out, gtc-input.lua
+                    path, parallel=parallel, filenames_exclude=exclude,
+                    savedir=dest, Sid=True, **kwargs)
                 todo = [gdp.saltname]
                 todo.extend(gdp.rawloader.refind('gtc-\d+\.out'))
                 todo.extend(gdp.rawloader.refind('gtc-input.*\.lua'))
@@ -117,7 +111,7 @@ def get_selected_converted_data(pathsmap, parallel='off',
                             f2.write(f1.read())
                 end = time.time()
                 timecost.append(end-start)
-                filesize.append(os.path.getsize(file))
+                filesize.append(os.path.getsize(gdp.pcksaver.path))
             ETA = 0
             size, sumsize = filesize[-1], sum(filesize)
             if printETAweights:
