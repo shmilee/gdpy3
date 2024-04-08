@@ -1285,12 +1285,12 @@ class CaseSeries(object):
         fallback_sat_time: tuple of float, or 'auto'
             If saturation time not found in :attr:`labelinfo`, use this
             to set saturation (start,end) time ratio. limit: 0.0 -> 1.0.
-            'auto', use :func:`tools.findflat` with phi00rms(t)
+            'auto', use :func:`tools.findflat` with normalized phi00rms(t)
             to find saturation time
         fallback_auto_limit: float or function
             set upperlimit for :func:`tools.findflat`, default 5e-4
-            float: upperlimit=fallback_auto_limit*max(phi00rms)
-            function: upperlimit=fallback_auto_limit(path, phi00rms)
+            float: upperlimit=fallback_auto_limit*1.0
+            function: upperlimit=fallback_auto_limit(path, normalized-phi00rms)
         kwargs: dict
             other kwargs for digging 'history/residual_zf', such as
             'ipsi'(default mpsi//2), 'nside'(default 1)
@@ -1308,11 +1308,12 @@ class CaseSeries(object):
                 phi00rms = phi00rms/phi00rms[argmax]
             fallback_time = fallback_sat_time
             if fallback_sat_time == 'auto':
+                normrms = phi00rms if norm else phi00rms/phi00rms[argmax]
                 if callable(fallback_auto_limit):
-                    upperlimit = fallback_auto_limit(path, phi00rms)
+                    upperlimit = fallback_auto_limit(path, normrms)
                 else:
-                    upperlimit = fallback_auto_limit*phi00rms[argmax]
-                start, length = tools.findflat(phi00rms[argmax:], upperlimit)
+                    upperlimit = fallback_auto_limit*1.0
+                start, length = tools.findflat(normrms[argmax:], upperlimit)
                 if length == 0:
                     start = (6*len(time1)+4*argmax)//10
                     end = (9*len(time1)+argmax)//10
