@@ -81,3 +81,7 @@ class Base_GTCv3(object):
                           % (pckloader.get('processor'), pckloader.path))
                 return True
         return False
+
+    @property
+    def _default_exclude_raw_dirs(self):
+        return ['restart_dir1', 'restart_dir2']

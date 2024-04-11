@@ -55,7 +55,7 @@ pckloader_types = ['.cache', '.npz', '.hdf5',
                    '.jsonl', '.jsonz']
 
 
-def get_rawloader(path, filenames_exclude=None):
+def get_rawloader(path, dirnames_exclude=None, filenames_exclude=None):
     '''
     Given a path, return a raw loader instance.
     Raises IOError if path not found, ValueError if path type not supported.
@@ -87,7 +87,8 @@ def get_rawloader(path, filenames_exclude=None):
                              % (path, ', '.join(rawloader_types[1:-1])))
     else:
         raise IOError("Can't find path '%s'!" % path)
-    return Loader(path, filenames_exclude=filenames_exclude)
+    return Loader(path, dirnames_exclude=dirnames_exclude,
+                  filenames_exclude=filenames_exclude)
 
 
 def is_rawloader(obj):

@@ -108,7 +108,8 @@ class Processor(object):
             _old_fe = rawloader.filenames_exclude
             _new_fe = [r'^%s.*$' % d for d in ignore_dirs]
             rawloader = get_rawloader(
-                rawloader.path, filenames_exclude=_old_fe + _new_fe)
+                rawloader.path, dirnames_exclude=rawloader.dirnames_exclude,
+                filenames_exclude=_old_fe + _new_fe)
         return rawloader
 
     def _get_rawloader(self):
@@ -743,7 +744,12 @@ class Processor(object):
         return '<\n {0}.{1} object at {2},\n{3}\n>'.format(
             self.__module__, type(self).__name__, hex(id(self)), i)
 
-    def __init__(self, path, add_desc=None, filenames_exclude=None,
+    @property
+    def _default_exclude_raw_dirs(self):
+        return []
+
+    def __init__(self, path, add_desc=None,
+                 dirnames_exclude=None, filenames_exclude=None,
                  savedir=None, savetype='.npz', overwrite=False, Sid=False,
                  datagroups_exclude=None, add_visplter='mpl::'):
         '''
@@ -756,8 +762,11 @@ class Processor(object):
             path of raw data or converted data to open
         add_desc: str
             additional description of raw data
+        dirnames_exclude: list
+            function or regular expression to exclude subdirectory names in
+            rawloader, like, 'restart_dir1', 'restart_dir2' in GTC results
         filenames_exclude: list
-            regular expressions to exclude filenames in rawloader
+            function or regular expressions to exclude filenames in rawloader
         savedir: str, default same as raw data
             directory path of converted data
         savetype: '.npz', '.hdf5' or '.jsonl', '.jsonz'
@@ -821,8 +830,11 @@ class Processor(object):
         else:
             # rawloader.path
             try:
+                dirnames_exclude = dirnames_exclude or []
+                dirnames_exclude.extend(self._default_exclude_raw_dirs)
                 self.rawloader = get_rawloader(
-                    path, filenames_exclude=filenames_exclude)
+                    path, dirnames_exclude=dirnames_exclude,
+                    filenames_exclude=filenames_exclude)
             except Exception:
                 plog.error("%s: Invalid rawloader path '%s'!"
                            % (self.name, path), exc_info=1)
