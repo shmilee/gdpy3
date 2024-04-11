@@ -305,10 +305,7 @@ class BasePckLoader(BaseLoader):
 
     def __init__(self, path, datagroups_exclude=None):
         super(BasePckLoader, self).__init__(path)
-        if isinstance(datagroups_exclude, (tuple, list)):
-            self.datagroups_exclude = datagroups_exclude
-        else:
-            self.datagroups_exclude = []
+        self.datagroups_exclude = self.gen_match_conditions(datagroups_exclude)
         self.update()
 
     def update(self):
@@ -325,12 +322,10 @@ class BasePckLoader(BaseLoader):
             all_datagroups = set(self._special_getgroups(pathobj))
             if '' in all_datagroups:
                 all_datagroups.remove('')
-            datagroups = list(all_datagroups)
-            for exc in self.datagroups_exclude:
-                excfun = exc if callable(exc) else re.compile(exc).match
-                datagroups = [k for k in datagroups if not excfun(k)]
-            self.datagroups = tuple(sorted(datagroups))
-            exc_datagroups = all_datagroups - set(datagroups)
+            exc_datagroups = set(
+                g for g in all_datagroups
+                if self.match_item(g, self.datagroups_exclude, logical='or'))
+            self.datagroups = tuple(sorted(all_datagroups - exc_datagroups))
             if exc_datagroups:
                 for grp in exc_datagroups:
                     self.datakeys = tuple(
