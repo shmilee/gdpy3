@@ -50,8 +50,9 @@ class ZipRawLoader(BaseRawLoader):
         pathobj.close()
 
     def _special_getkeys(self, pathobj):
-        return sorted(
-            [n for n in pathobj.namelist() if not pathobj.getinfo(n).is_dir()])
+        return sorted([
+            n for n in pathobj.namelist()
+            if not pathobj.getinfo(n).is_dir() and not self.exclude_match(n)])
 
     def _special_get(self, pathobj, key):
         # BufferedReader -> TextIOWrapper encoding='UTF-8'

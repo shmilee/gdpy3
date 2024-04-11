@@ -61,7 +61,11 @@ class DirRawLoader(BaseRawLoader):
             # _root.count(os.path.sep) == 1, maxdepth 3
             if len(_root) > 0:
                 _dirs[:] = []
-            filenames.extend([os.path.join(_root, f) for f in _files])
+            else:
+                _dirs[:] = [d for d in _dirs
+                            if not self.exclude_match(d, dirname=True)]
+            filenames.extend([os.path.join(_root, f) for f in _files
+                              if not self.exclude_match(f)])
         if os.name == 'nt':
             self._WinFilenames = {}
             # new dict, use key:filenames as_posix, val: WindowsPath instance

@@ -108,13 +108,16 @@ class SftpRawLoader(BaseRawLoader):
         filenames = []
         for p1 in pathobj.listdir_attr(self.rmt_path):
             if stat.S_ISDIR(p1.st_mode):
-                _dir = self._sep.join([self.rmt_path, p1.filename])
-                for p2 in pathobj.listdir_attr(_dir):
-                    if not stat.S_ISDIR(p2.st_mode):
-                        filenames.append(
-                            self._sep.join([p1.filename, p2.filename]))
+                if not self.exclude_match(p1.filename, dirname=True):
+                    _dir = self._sep.join([self.rmt_path, p1.filename])
+                    for p2 in pathobj.listdir_attr(_dir):
+                        if not stat.S_ISDIR(p2.st_mode):
+                            if not self.exclude_match(p2.filename):
+                                filenames.append(
+                                    self._sep.join([p1.filename, p2.filename]))
             else:
-                filenames.append(p1.filename)
+                if not self.exclude_match(p1.filename):
+                    filenames.append(p1.filename)
         return sorted(filenames)
 
     def _special_get(self, pathobj, key):

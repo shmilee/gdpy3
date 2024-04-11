@@ -93,24 +93,45 @@ class BaseLoader(object):
         '''Return loader keys.'''
         raise NotImplementedError()
 
-    def find(self, *items):
+    def gen_match_conditions(self, conditions):
         '''
-        Find the loader keys which contain *items*.
+        Generate & Return a functions tuple of match conditions.
+        conditions: list of function or regular expression.
         '''
-        result = self.keys()
-        for i in items:
-            i = str(i)
-            result = tuple(
-                filter(lambda k: True if i in k else False, result))
-        return tuple(result)
+        conds = conditions if isinstance(conditions, (tuple, list)) else []
+        return tuple(c if callable(c) else re.compile(c).match for c in conds)
 
-    def refind(self, pattern):
+    def match_item(self, item, conditions, logical='and'):
         '''
-        Find the loader keys which match the regular expression *pattern*.
+        Match *item* with *conditions* get by :meth:`gen_match_conditions`.
+        *logical*(and/or) is used to combine conditions.
         '''
-        pat = re.compile(pattern)
-        return tuple(filter(
-            lambda k: True if pat.match(k) else False, self.keys()))
+        if not conditions:
+            return False  # [] ()
+        for cond in conditions:
+            if cond(item):
+                if logical == 'or':
+                    return True
+            else:
+                if logical == 'and':
+                    return False
+        return False if logical == 'or' else True
+
+    def find(self, *strings, logical='and'):
+        '''
+        Find the loader keys which contain *strings*.
+        '''
+        conditions = tuple((lambda k: str(s) in k) for s in strings)
+        return tuple(k for k in self.keys()
+                     if self.match_item(k, conditions, logical=logical))
+
+    def refind(self, *patterns, logical='and'):
+        '''
+        Find the loader keys which match the regular expression *patterns*.
+        '''
+        matchs = self.gen_match_conditions(patterns)
+        return tuple(k for k in self.keys()
+                     if self.match_item(k, matchs, logical=logical))
 
     def __contains__(self, item):
         '''
@@ -126,6 +147,7 @@ class BaseLoader(object):
         result = True
         for i in items:
             if i not in loaderkeys:
+                # do not break, warning all lost keys!
                 log.warning("Key '%s' not in %s!" % (i, self.path))
                 result = False
         return result
@@ -172,8 +194,11 @@ class BaseRawLoader(BaseLoader):
     ----------
     path: str
         path of directory or archive file
+    dirnames_exclude: list
+        function or regular expression to exclude subdirectory names,
+        like, 'restart_dir1' for GTC. Only used by directory-like loader.
     filenames_exclude: list
-        a list of function or regular expression to exclude filenames,
+        function or regular expression to exclude filenames,
         example: [r'.*\.txt$', 'bigdata.out'] or [r'(?!^include\.out$)']
 
     Notes
@@ -182,15 +207,17 @@ class BaseRawLoader(BaseLoader):
     2. File-like object which returned by *get()* must has close method,
        and read, readline, or readlines.
     '''
-    __slots__ = ['filenames', 'filenames_exclude']
+    __slots__ = ['filenames', 'dirnames_exclude', 'filenames_exclude']
 
-    def __init__(self, path, filenames_exclude=None):
+    def __init__(self, path, dirnames_exclude=None, filenames_exclude=None):
         super(BaseRawLoader, self).__init__(path)
-        if isinstance(filenames_exclude, (tuple, list)):
-            self.filenames_exclude = filenames_exclude
-        else:
-            self.filenames_exclude = []
+        self.dirnames_exclude = self.gen_match_conditions(dirnames_exclude)
+        self.filenames_exclude = self.gen_match_conditions(filenames_exclude)
         self.update()
+
+    def exclude_match(self, name, dirname=False):
+        exclude = self.dirnames_exclude if dirname else self.filenames_exclude
+        return self.match_item(name, exclude, logical='or')
 
     def update(self):
         self.close()
@@ -200,9 +227,6 @@ class BaseRawLoader(BaseLoader):
             pathobj = self._special_open()
             log.debug("Getting filenames from %s ..." % self.path)
             filenames = self._special_getkeys(pathobj)
-            for exc in self.filenames_exclude:
-                excfun = exc if callable(exc) else re.compile(exc).match
-                filenames = [k for k in filenames if not excfun(k)]
             self.pathobj = pathobj
             self.filenames = tuple(sorted(filenames))
         except (IOError, ValueError):

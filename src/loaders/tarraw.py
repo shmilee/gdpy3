@@ -50,8 +50,9 @@ class TarRawLoader(BaseRawLoader):
         pathobj.close()
 
     def _special_getkeys(self, pathobj):
-        return sorted(
-            [n for n in pathobj.getnames() if pathobj.getmember(n).isfile()])
+        return sorted([
+            n for n in pathobj.getnames()
+            if pathobj.getmember(n).isfile() and not self.exclude_match(n)])
 
     def _special_get(self, pathobj, key):
         # bytes -> str
