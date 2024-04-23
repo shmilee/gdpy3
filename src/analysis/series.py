@@ -19,7 +19,7 @@ from ..visplters import get_visplter
 from .._json import dumps as json_dumps
 from ..glogger import getGLogger
 from .. import tools
-from ..utils import simple_parse_doc, inherit_docstring
+from ..utils import simple_parse_numpydoc, inherit_docstring
 
 __all__ = [
     'get_selected_converted_data', 'get_label_ts_data',
@@ -413,13 +413,12 @@ class LabelInfoSeries(object):
             jsonfile, savepath=savepath, result_modify=result_modify)
 
 
-def _copy_plot_mrows_doc(docs, kwargs):
+def _parse_pltmrow_doc(doc, **kwargs):
     ''' for _plot_mrows_chi_D_like, _plot_mrows_gamma_phi_like '''
-    name, doc = docs[0]
     XXX = kwargs.pop('XXX_like', None)
     if XXX:
         doc = doc.replace('{{XXX_like}}', XXX)
-    return (), simple_parse_doc(doc, ('TO-Imp-Parameters', 'Parameters'))
+    return simple_parse_numpydoc(doc)
 
 
 class CaseSeries(object):
@@ -606,8 +605,8 @@ class CaseSeries(object):
         fig.suptitle(suptitle or fignum, y=title_y)
         fig.savefig(savepath or ('./%s.png' % fignum))
 
-    @inherit_docstring((_plot_mrows_chi_D_like,), _copy_plot_mrows_doc,
-                       funckwargs=dict(XXX_like='chi_D'))
+    @inherit_docstring(_plot_mrows_chi_D_like, parse=_parse_pltmrow_doc,
+                       parsekwargs=dict(XXX_like='chi_D'))
     def plot_chi_D(self, particle, result, labels, nlines=2,
                    fignum='1-chi-D', xlims={}, ylims={},
                    suptitle=None, title_y=None, add_style=[], savepath=None):
@@ -615,6 +614,7 @@ class CaseSeries(object):
         Plot chi(t), D(t) figure of particle(like ion or electron).
 
         Parameters
+        ----------
         {Parameters}
         '''
         if particle not in ('ion', 'electron', 'fastion'):
@@ -712,8 +712,8 @@ class CaseSeries(object):
             chiDresult.append((r, chi, D, (br0, br1)))
         return chiDresult
 
-    @inherit_docstring((_plot_mrows_chi_D_like,), _copy_plot_mrows_doc,
-                       funckwargs=dict(XXX_like='chi_D_r'))
+    @inherit_docstring(_plot_mrows_chi_D_like, parse=_parse_pltmrow_doc,
+                       parsekwargs=dict(XXX_like='chi_D_r'))
     def plot_chi_D_r(self, particle, result, labels, nlines=2,
                      fignum='1-chi-D(r)', xlims={}, ylims={}, add_style=[],
                      suptitle=None, title_y=None, savepath=None):
@@ -721,6 +721,7 @@ class CaseSeries(object):
         Plot chi(r), D(r) figure of particle(like ion or electron).
 
         Parameters
+        ----------
         {Parameters}
         '''
         if particle not in ('ion', 'electron', 'fastion'):
@@ -822,8 +823,7 @@ class CaseSeries(object):
                 time, logphirms, growth_time, growth_logphi, growth))
         return gammaresult
 
-    @inherit_docstring((_plot_mrows_chi_D_like,), _copy_plot_mrows_doc,
-                       funckwargs={})
+    @inherit_docstring(_plot_mrows_chi_D_like, parse=_parse_pltmrow_doc)
     def _plot_mrows_gamma_phi_like(
             self, xylabel, datafun,
             result, labels, nlines, ncols, fignum, xlims={}, ylims={},
@@ -840,6 +840,7 @@ class CaseSeries(object):
             Return: Axes data list
 
         Parameters
+        ----------
         {Parameters}
         ncols: int, >=1
             number of columns in this figure
@@ -868,8 +869,8 @@ class CaseSeries(object):
         fig.suptitle(suptitle or fignum, y=title_y)
         fig.savefig(savepath or ('./%s.png' % fignum))
 
-    @inherit_docstring((_plot_mrows_gamma_phi_like,), _copy_plot_mrows_doc,
-                       funckwargs=dict(XXX_like='gamma_phi'))
+    @inherit_docstring(_plot_mrows_gamma_phi_like, parse=_parse_pltmrow_doc,
+                       parsekwargs=dict(XXX_like='gamma_phi'))
     def plot_gamma_phi(self, result, labels, nlines=2, ncols=1,
                        fignum='1-phi', xlims={}, ylims={}, add_style=[],
                        suptitle=None, title_y=None, savepath=None):
@@ -877,6 +878,7 @@ class CaseSeries(object):
         Plot figure of phi-RMS and its growth range.
 
         Parameters
+        ----------
         {Parameters}
         '''
         xylabel = dict(xlabel=r'$t(R_0/c_s)$', ylabel=r'$log(\phi_{RMS})$')
@@ -921,8 +923,8 @@ class CaseSeries(object):
             phiresult.append((r, phirms))
         return phiresult
 
-    @inherit_docstring((_plot_mrows_gamma_phi_like,), _copy_plot_mrows_doc,
-                       funckwargs=dict(XXX_like='phirms_r'))
+    @inherit_docstring(_plot_mrows_gamma_phi_like, parse=_parse_pltmrow_doc,
+                       parsekwargs=dict(XXX_like='phirms_r'))
     def plot_phirms_r(self, result, labels, nlines=2, ncols=1,
                       fignum='1-phirms(r)', xlims={}, ylims={}, add_style=[],
                       suptitle=None, title_y=None, savepath=None):
@@ -930,6 +932,7 @@ class CaseSeries(object):
         Plot phi-RMS(r) figure.
 
         Parameters
+        ----------
         {Parameters}
         '''
         xylabel = dict(xlabel=r'$r/a$', ylabel=r'$\phi_{RMS}$')
@@ -988,8 +991,8 @@ class CaseSeries(object):
             result.append((r, ktheta_r))
         return result
 
-    @inherit_docstring((_plot_mrows_gamma_phi_like,), _copy_plot_mrows_doc,
-                       funckwargs=dict(XXX_like='phiktheta_r'))
+    @inherit_docstring(_plot_mrows_gamma_phi_like, parse=_parse_pltmrow_doc,
+                       parsekwargs=dict(XXX_like='phiktheta_r'))
     def plot_phiktheta_r(self, result, labels, nlines=2, ncols=1,
                          fignum='1-phiktheta(r)', xlims={}, ylims={},
                          suptitle=None, title_y=None,
@@ -998,6 +1001,7 @@ class CaseSeries(object):
         Plot phi-ktheta(r) figure.
 
         Parameters
+        ----------
         {Parameters}
         '''
         xylabel = dict(xlabel=r'$r/a$',
@@ -1047,8 +1051,8 @@ class CaseSeries(object):
                            b['Cauchy_mu1'], b['Cauchy_gamma1']))
         return result
 
-    @inherit_docstring((_plot_mrows_gamma_phi_like,), _copy_plot_mrows_doc,
-                       funckwargs=dict(XXX_like='phi_spectrum'))
+    @inherit_docstring(_plot_mrows_gamma_phi_like, parse=_parse_pltmrow_doc,
+                       parsekwargs=dict(XXX_like='phi_spectrum'))
     def plot_phi_spectrum(self, result, labels, nlines=2, ncols=1,
                           fignum='1-phiomega', xlims={}, ylims={},
                           suptitle=None, title_y=None,
@@ -1057,6 +1061,7 @@ class CaseSeries(object):
         Plot phi-spectrum figure.
 
         Parameters
+        ----------
         {Parameters}
         '''
         xylabel = dict(xlabel=r'$\omega(c_s/R_0)$', ylabel=r'power')
@@ -1123,8 +1128,8 @@ class CaseSeries(object):
             result.append((np.array(r), np.array(wr), np.array(gamma)))
         return result
 
-    @inherit_docstring((_plot_mrows_chi_D_like,), _copy_plot_mrows_doc,
-                       funckwargs=dict(XXX_like='phi_spectrum_r'))
+    @inherit_docstring(_plot_mrows_chi_D_like, parse=_parse_pltmrow_doc,
+                       parsekwargs=dict(XXX_like='phi_spectrum_r'))
     def plot_phi_spectrum_r(self, result, labels, nlines=2,
                             fignum='1-phiomega(r)', xlims={}, ylims={},
                             suptitle=None, title_y=None, add_style=[],
@@ -1133,6 +1138,7 @@ class CaseSeries(object):
         Plot phi-spectrum(r) figure.
 
         Parameters
+        ----------
         {Parameters}
         '''
         xylabel1 = {'xlabel': r'$r/a$', 'ylabel': r'$\omega_r(c_s/R_0)$'}
@@ -1224,8 +1230,8 @@ class CaseSeries(object):
                            np.mean(fitkgamma[idx0:idx1+1])))
         return result
 
-    @inherit_docstring((_plot_mrows_chi_D_like,), _copy_plot_mrows_doc,
-                       funckwargs=dict(XXX_like='phi_kparallel'))
+    @inherit_docstring(_plot_mrows_chi_D_like, parse=_parse_pltmrow_doc,
+                       parsekwargs=dict(XXX_like='phi_kparallel'))
     def plot_phi_kparallel(self, result, labels, nlines=2,
                            fignum='1-kparallel', xlims={}, ylims={},
                            suptitle=None, title_y=None, add_style=[],
@@ -1234,6 +1240,7 @@ class CaseSeries(object):
         Plot phi-kparallel(t) figure.
 
         Parameters
+        ----------
         {Parameters}
         '''
         xylabel1 = {'xlabel': r'$t(R_0/c_s)$',
@@ -1347,8 +1354,8 @@ class CaseSeries(object):
                            sat_time, sat_phi00rms, sat_phi00, residual_info))
         return result
 
-    @inherit_docstring((_plot_mrows_chi_D_like,), _copy_plot_mrows_doc,
-                       funckwargs=dict(XXX_like='phi00'))
+    @inherit_docstring(_plot_mrows_chi_D_like, parse=_parse_pltmrow_doc,
+                       parsekwargs=dict(XXX_like='phi00'))
     def plot_phi00(self, result, labels, nlines=2,
                    fignum='1-phi00', xlims={}, ylims={},
                    suptitle=None, title_y=None, add_style=[], savepath=None):
@@ -1356,6 +1363,7 @@ class CaseSeries(object):
         Plot phi00rms(t), phi00(t) figure.
 
         Parameters
+        ----------
         {Parameters}
         '''
         xylabel1 = {'xlabel': r'$t(R_0/c_s)$', 'ylabel': r'$\phi_{00}RMS$'}
