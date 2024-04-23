@@ -22,7 +22,7 @@ from ..glogger import getGLogger
 from ..__about__ import __data_path__, __ENABLE_USERBASE__, __userbase__
 from ..utils import inherit_docstring
 from ..tools import round_ndigits
-from .base import BaseVisplter, _copydoc_func
+from .base import BaseVisplter
 from . import mpl_extending
 
 __all__ = ['MatplotlibVisplter']
@@ -63,15 +63,17 @@ def _get_mplstyle_library(dirname='mpl-stylelib'):
     return available, lib
 
 
-@inherit_docstring((BaseVisplter,), _copydoc_func, template=None)
+@inherit_docstring(BaseVisplter, parse=None, template=None)
 class MatplotlibVisplter(BaseVisplter):
     '''
     Use matplotlib to create figures.
 
     Attributes
+    ----------
     {Attributes}
 
     Notes
+    -----
     {Notes}
     2. User defined styles are in :attr:`style_ext_library`['_2_'],
        and visplter will use them first.
@@ -181,6 +183,32 @@ class MatplotlibVisplter(BaseVisplter):
                     except Exception:
                         vlog.error("Failed to add artist %s!"
                                    % index, exc_info=1)
+
+    @staticmethod
+    @inherit_docstring(
+        matplotlib.gridspec.GridSpec.__init__,
+        matplotlib.gridspec.GridSpecFromSubplotSpec.__init__,
+        parse=None, template=None)
+    def create_gridspec(nrows, ncols, **kwargs):
+        '''
+        Create a GridSpec or SubGridSpec.
+        If *subplot_spec* is in kwargs, then create a SubGridSpec.
+
+        Parameters for GridSpec
+        -----------------------
+        {0[Parameters]}
+
+        Parameters for SubGridSpec
+        --------------------------
+        {1[Parameters]}
+        '''
+        if 'subplot_spec' in kwargs:
+            kws = kwargs.copy()
+            subplot_spec = kws.pop('subplot_spec')
+            return matplotlib.gridspec.GridSpecFromSubplotSpec(
+                nrows, ncols, subplot_spec, **kws)
+        else:
+            return matplotlib.gridspec.GridSpec(nrows, ncols, **kwargs)
 
     preset_revisefuns = [
         'remove_spines', 'center_spines', 'arrow_spines',
@@ -773,7 +801,8 @@ class MatplotlibVisplter(BaseVisplter):
         for i, _results in enumerate(zip_results, 0):
             ax, pos = _results
             vlog.debug("Getting z111p Axes %s ..." % (pos,))
-            if isinstance(pos, (int, list, matplotlib.gridspec.SubplotSpec)):
+            if isinstance(pos, (int, tuple, list,
+                                matplotlib.gridspec.SubplotSpec)):
                 if pos not in axposres:
                     ax['layout'][0] = pos
                     AxStructs.append(ax)

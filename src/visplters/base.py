@@ -9,16 +9,9 @@ Contains visplters base class.
 import numpy
 
 from ..glogger import getGLogger
-from ..utils import simple_parse_doc
 
 __all__ = ['BaseVisplter']
 vlog = getGLogger('V')
-
-
-def _copydoc_func(docs):
-    name, doc = docs[0]
-    assert name == 'BaseVisplter'
-    return (), simple_parse_doc(doc, ('Attributes', 'Notes'), strip=None)
 
 
 class BaseVisplter(object):
