@@ -200,7 +200,8 @@ def _fit_raw_parse(raw, raw_cut):
         return XYs
 
 
-@inherit_docstring([], lambda p: ([_fit_raw_example, _fit_raw_cut_doc], {}))
+@inherit_docstring(None, parse=lambda p, **kws: dict(
+    example=_fit_raw_example, cutdoc=_fit_raw_cut_doc))
 def lines_fit_raw(raw, deg, raw_cut=None, fitX=None, info=None, **kwargs):
     '''
     Call :meth:`line_fit` for each X, Y get from `raw`.
@@ -210,7 +211,8 @@ def lines_fit_raw(raw, deg, raw_cut=None, fitX=None, info=None, **kwargs):
     ----------
     raw: str
         raw data in string type, format example:
-        """{0}"""{1}
+        """{example}"""
+    {cutdoc}
     other args, kwargs: passed to :meth:`line_fit`
     '''
     return [(
@@ -312,7 +314,8 @@ def curve_fit(f, X, Y, fitX=None, f_constant=None, info=None, **kwargs):
         return popt, pcov, fitY
 
 
-@inherit_docstring([], lambda p: ([_fit_raw_example, _fit_raw_cut_doc], {}))
+@inherit_docstring(None, parse=lambda p, **kws: dict(
+    example=_fit_raw_example, cutdoc=_fit_raw_cut_doc))
 def curves_fit_raw(f, raw, raw_cut=None, fitX=None,
                    f_constant=None, info=None, **kwargs):
     '''
@@ -323,7 +326,8 @@ def curves_fit_raw(f, raw, raw_cut=None, fitX=None,
     ----------
     raw: str
         raw data in string type, format example:
-        """{0}"""{1}
+        """{example}"""
+    {cutdoc}
     other args, kwargs: passed to :meth:`curve_fit`
     '''
     return [(

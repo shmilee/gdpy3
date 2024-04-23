@@ -6,6 +6,7 @@ Utils.
 '''
 
 import os
+import re
 import sys
 import types
 import shutil
@@ -14,7 +15,7 @@ import subprocess
 
 __all__ = [
     'is_dict_like',
-    'inherit_docstring', 'simple_parse_doc',
+    'simple_parse_doc', 'simple_parse_numpydoc', 'inherit_docstring',
     'which_cmds', 'run_child_cmd',
     'find_available_module',
     'GetPasswd',
@@ -36,40 +37,7 @@ def is_dict_like(obj):
         return True
 
 
-def inherit_docstring(parents, func, funckwargs=None, template=None):
-    '''
-    Get parents' __doc__ and format template with them.
-
-    Parameters
-    ----------
-    parents: tuple
-        (parent objects, ...), like class, function etc.
-    func: function to deal with their __doc__
-        input is a list of (name, doc) and optional funckwargs,
-        return args(tuple), kwargs(dict)
-    funckwargs: dict
-        some kwargs for function *fun*
-    template: str
-        template.format(*args, **kwargs), args, kwargs are get by func
-        if no template, use object.__doc__
-    '''
-    parents_docstr = [(base.__name__, base.__doc__) for base in parents]
-    if funckwargs is None:
-        args, kwargs = func(parents_docstr)
-    else:
-        args, kwargs = func(parents_docstr, funckwargs)
-
-    def decorator(obj):
-        if template:
-            obj.__doc__ = template.format(*args, **kwargs)
-        else:
-            obj.__doc__ = obj.__doc__.format(*args, **kwargs)
-        return obj
-
-    return decorator
-
-
-def simple_parse_doc(doc, sections, strip=None):
+def simple_parse_doc(doc, sections=(), strip=None, **kwargs):
     '''
     Extract the docstring text from the ordered sections.
     Return a dict of sections.
@@ -81,6 +49,7 @@ def simple_parse_doc(doc, sections, strip=None):
     strip: str or None.
         If strip is None, remove leading and trailing whitespace in sections.
         Else, remove characters in strip instead.
+    kwargs: other unexpected parameters
 
     Example
     -------
@@ -103,9 +72,9 @@ def simple_parse_doc(doc, sections, strip=None):
         else:
             start = idx + len(sect) + 1
             idxs.append((idx, start))
-    doc_sections = {}
     zip_sections = [(sections[i], *idxs[i])
                     for i in range(len(sections)) if idxs[i] is not None]
+    doc_sections = {}
     for i, zip_sect in enumerate(zip_sections):
         sect, idx, start = zip_sect
         if i == len(zip_sections) - 1:
@@ -115,6 +84,86 @@ def simple_parse_doc(doc, sections, strip=None):
             doc_sect = doc[start:idx_next]
         doc_sections[sect] = doc_sect.strip(strip)
     return doc_sections
+
+
+def simple_parse_numpydoc(doc, strip=None, **kwargs):
+    '''
+    Extract the numpy-like docstring text by sections.
+    Return a dict of sections.
+
+    Parameters
+    ----------
+    doc: str, numpy-like docstring
+    strip: str or None.
+        If strip is None, remove leading and trailing whitespace in sections.
+        Else, remove characters in strip instead.
+    kwargs: other unexpected parameters
+
+    References
+    ----------
+    [1] https://numpydoc.readthedocs.io/en/latest/format.html
+
+    Example
+    -------
+    >>> doc = simple_parse_numpydoc.__doc__
+    >>> simple_parse_numpydoc(doc)
+    {'Summary': 'Extract ...',
+     'Parameters': 'doc: str, ...',
+     'References': '.. [1] ...',
+     'Example': ">>> doc ..."}
+    '''
+    # search by section and ------
+    msections = list(re.finditer('^\s+([\w ]+)\n\s+[-]+\n', doc, re.M))
+    doc_sections, N = {}, len(msections)
+    for i in range(N):
+        start, end = msections[i].span()  # group=0, entire match
+        name = msections[i].group(1)  # group 1 for [\w ]+
+        if i == 0:  # summary section, before first found Section------
+            doc_sections['Summary'] = doc[:start].strip(strip)
+        if i < N-1:
+            nextstart, nextend = msections[i+1].span()
+            doc_sections[name] = doc[end:nextstart].strip(strip)
+        elif i == N-1:
+            doc_sections[name] = doc[end:].strip(strip)
+    return doc_sections
+
+
+def inherit_docstring(*parents, parse=None, parsekwargs=None, template=None):
+    '''
+    Get parents' __doc__ and format template with them.
+
+    Parameters
+    ----------
+    parents: tuple
+        (parent objects, ...), like class, function etc.
+    parse: function
+        parse their ``__doc__``, call ``parse(doc, name=name, **funckwargs)``,
+        return a dict. default :func:`simple_parse_numpydoc`.
+    funckwargs: dict
+        some kwargs passed to function *parse*
+    template: str
+        ``template.format(*args, **kwargs)``, args, kwargs are get by *parse*.
+        args is a tuple of parsed dict, kwargs is the first parsed dict.
+        If no template, use `object.__doc__`.
+    '''
+    parse = parse if callable(parse) else simple_parse_numpydoc
+    parsekwargs = parsekwargs if isinstance(parsekwargs, dict) else {}
+    args = tuple(
+        parse(
+            getattr(base, '__doc__', None) or '',
+            name=getattr(base, '__name__', None) or '',
+            **parsekwargs)
+        for base in parents)
+    kwargs = args[0] if len(args) > 0 else {}
+
+    def decorator(obj):
+        if template:
+            obj.__doc__ = template.format(*args, **kwargs)
+        else:
+            obj.__doc__ = obj.__doc__.format(*args, **kwargs)
+        return obj
+
+    return decorator
 
 
 def which_cmds(*candidates):
