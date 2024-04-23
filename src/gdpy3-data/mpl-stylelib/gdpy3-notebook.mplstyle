@@ -14,6 +14,7 @@ axes.titlesize: 12
 axes.grid: True
 axes.formatter.limits: -4, 4
 axes.formatter.use_mathtext: True
+axes.axisbelow : True
 
 legend.loc: best
 legend.fancybox: True

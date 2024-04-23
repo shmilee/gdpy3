@@ -18,6 +18,7 @@ axes.labelsize : 9
 #axes.titleweight : bold
 axes.formatter.limits : -4, 4
 axes.formatter.use_mathtext : True
+axes.axisbelow : True
 
 xtick.labelsize : 9
 ytick.labelsize : 9
