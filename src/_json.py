@@ -69,7 +69,7 @@ def dumps(obj, *, indent=None, indent_limit=None, cls=JsonEncoder, **kw):
 
 
 def dump(obj, fp, *, indent=None, indent_limit=None, cls=JsonEncoder, **kw):
-    ''' Call :fun:`dumps`, then save stream to ``fp`` (file-like object). '''
+    ''' Call :func:`dumps`, then save stream to ``fp`` (file-like object). '''
     res = dumps(obj, indent=indent, indent_limit=indent_limit, cls=cls, **kw)
     fp.write(res)
 
