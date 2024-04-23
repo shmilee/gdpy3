@@ -11,7 +11,6 @@ import re
 import contextlib
 
 from ..glogger import getGLogger
-from ..utils import simple_parse_doc
 
 __all__ = ['BaseLoader', 'BaseRawLoader', 'BasePckLoader']
 log = getGLogger('L')
@@ -172,13 +171,6 @@ class BaseLoader(object):
         self.pathobj = self._special_open()
 
 
-def _raw_copydoc_func(docs):
-    name, doc = docs[0]
-    assert name == 'BaseRawLoader'
-    return (), simple_parse_doc(
-        doc, ('Attributes', 'Parameters', 'Notes'), strip=None)
-
-
 class BaseRawLoader(BaseLoader):
     '''
     Load raw data from a directory or archive file.
@@ -260,12 +252,6 @@ class BaseRawLoader(BaseLoader):
     def beside_path(self, name):
         '''Get a path for *name*, join with :attr:`path`'''
         return os.path.join(self.path, name)
-
-
-def _pck_copydoc_func(docs):
-    name, doc = docs[0]
-    assert name == 'BasePckLoader'
-    return (), simple_parse_doc(doc, ('Attributes', 'Parameters'), strip=None)
 
 
 class BasePckLoader(BaseLoader):

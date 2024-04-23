@@ -9,25 +9,28 @@ Contains jsonlines & jsonzip saver class.
 
 from ..glogger import getGLogger
 from ..utils import inherit_docstring
-from .base import BasePckSaver, _copydoc_func
+from .base import BasePckSaver
 from .._json import JsonLines, JsonZip
 
 __all__ = ['JsonlPckSaver', 'JsonzPckSaver']
 log = getGLogger('S')
 
 
-@inherit_docstring((BasePckSaver,), _copydoc_func, template=None)
+@inherit_docstring(BasePckSaver, parse=None, template=None)
 class JsonlPckSaver(BasePckSaver):
     '''
     Save dict data with a group name to a jsonlines file.
 
     Attributes
+    ----------
     {Attributes}
 
     Parameters
+    ----------
     {Parameters}
 
     Notes
+    -----
     {Notes}
     '''
     __slots__ = []
@@ -53,18 +56,21 @@ class JsonlPckSaver(BasePckSaver):
         self._storeobj = None
 
 
-@inherit_docstring((BasePckSaver,), _copydoc_func, template=None)
+@inherit_docstring(BasePckSaver, parse=None, template=None)
 class JsonzPckSaver(JsonlPckSaver):
     '''
     Save dict data with a group name to a json zip file.
 
     Attributes
+    ----------
     {Attributes}
 
     Parameters
+    ----------
     {Parameters}
 
     Notes
+    -----
     {Notes}
     '''
     __slots__ = []

@@ -16,21 +16,23 @@ except ImportError as exc:
 
 from ..glogger import getGLogger
 from ..utils import inherit_docstring
-from .base import BasePckLoader, _pck_copydoc_func
+from .base import BasePckLoader
 
 __all__ = ['Hdf5PckLoader']
 log = getGLogger('L')
 
 
-@inherit_docstring((BasePckLoader,), _pck_copydoc_func, template=None)
+@inherit_docstring(BasePckLoader, parse=None, template=None)
 class Hdf5PckLoader(BasePckLoader):
     '''
     Load datasets from ``.hdf5`` file. Return a dictionary-like object.
 
     Attributes
+    ----------
     {Attributes}
 
     Parameters
+    ----------
     {Parameters}
 
     Notes

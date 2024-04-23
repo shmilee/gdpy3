@@ -19,25 +19,28 @@ except ImportError as exc:
 
 from ..glogger import getGLogger
 from ..utils import inherit_docstring, GetPasswd
-from .base import BaseRawLoader, _raw_copydoc_func
+from .base import BaseRawLoader
 
 __all__ = ['SftpRawLoader']
 log = getGLogger('L')
 
 
-@inherit_docstring((BaseRawLoader,), _raw_copydoc_func, template=None)
+@inherit_docstring(BaseRawLoader, parse=None, template=None)
 class SftpRawLoader(BaseRawLoader):
     '''
     Load raw data from a directory in remote SSH server.
     Return a dictionary-like object.
 
     Attributes
+    ----------
     {Attributes}
 
     Parameters
+    ----------
     {Parameters}
 
     Notes
+    -----
     {Notes}
     3. Directory tree maxdepth is 2.
     4. path format: 'sftp://username@host[:port]##remote/path'

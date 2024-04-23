@@ -11,24 +11,27 @@ import pathlib
 
 from ..glogger import getGLogger
 from ..utils import inherit_docstring
-from .base import BaseRawLoader, _raw_copydoc_func
+from .base import BaseRawLoader
 
 __all__ = ['DirRawLoader']
 log = getGLogger('L')
 
 
-@inherit_docstring((BaseRawLoader,), _raw_copydoc_func, template=None)
+@inherit_docstring(BaseRawLoader, parse=None, template=None)
 class DirRawLoader(BaseRawLoader):
     '''
     Load raw data from a directory. Return a dictionary-like object.
 
     Attributes
+    ----------
     {Attributes}
 
     Parameters
+    ----------
     {Parameters}
 
     Notes
+    -----
     {Notes}
     3. Directory tree maxdepth is 2.
     4. The representation of Windows's path also uses forward slashes (/)!

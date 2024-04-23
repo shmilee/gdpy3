@@ -10,25 +10,28 @@ except ImportError as exc:
 
 from ..glogger import getGLogger
 from ..utils import inherit_docstring
-from .base import BasePckSaver, _copydoc_func
+from .base import BasePckSaver
 
 __all__ = ['Hdf5PckSaver']
 log = getGLogger('S')
 
 
-@inherit_docstring((BasePckSaver,), _copydoc_func, template=None)
+@inherit_docstring(BasePckSaver, parse=None, template=None)
 class Hdf5PckSaver(BasePckSaver):
     # http://docs.h5py.org/en/latest/index.html
     '''
     Save dict data with a group name to a HDF5 file.
 
     Attributes
+    ----------
     {Attributes}
 
     Parameters
+    ----------
     {Parameters}
 
     Notes
+    -----
     {Notes}
     '''
     __slots__ = []

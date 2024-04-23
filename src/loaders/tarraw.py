@@ -12,25 +12,28 @@ import tarfile
 
 from ..glogger import getGLogger
 from ..utils import inherit_docstring
-from .base import BaseRawLoader, _raw_copydoc_func
+from .base import BaseRawLoader
 
 __all__ = ['TarRawLoader']
 log = getGLogger('L')
 
 
-@inherit_docstring((BaseRawLoader,), _raw_copydoc_func, template=None)
+@inherit_docstring(BaseRawLoader, parse=None, template=None)
 class TarRawLoader(BaseRawLoader):
     # https://docs.python.org/3/library/tarfile.html
     '''
     Load raw data from a tar archive. Return a dictionary-like object.
 
     Attributes
+    ----------
     {Attributes}
 
     Parameters
+    ----------
     {Parameters}
 
     Notes
+    -----
     {Notes}
     '''
     __slots__ = []

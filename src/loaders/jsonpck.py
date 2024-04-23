@@ -9,27 +9,26 @@ Contains jsonl pickled file loader class.
 import numpy
 from ..glogger import getGLogger
 from ..utils import inherit_docstring
-from .base import BasePckLoader, _pck_copydoc_func
+from .base import BasePckLoader
 from .._json import JsonLines, JsonZip
 
 __all__ = ['JsonlPckLoader', 'JsonzPckLoader']
 log = getGLogger('L')
 
 
-@inherit_docstring((BasePckLoader,), _pck_copydoc_func, template=None)
+@inherit_docstring(BasePckLoader, parse=None, template=None)
 class JsonlPckLoader(BasePckLoader):
     '''
     Load pickled data from `.jsonl` file.
     Return a dictionary-like object.
 
     Attributes
+    ----------
     {Attributes}
 
     Parameters
+    ----------
     {Parameters}
-
-    Notes
-    -----
     '''
     __slots__ = []
     loader_type = '.jsonl'
@@ -59,20 +58,19 @@ class JsonlPckLoader(BasePckLoader):
             return value
 
 
-@inherit_docstring((BasePckLoader,), _pck_copydoc_func, template=None)
+@inherit_docstring(BasePckLoader, parse=None, template=None)
 class JsonzPckLoader(JsonlPckLoader):
     '''
     Load pickled data from `.jsonz` zip file.
     Return a dictionary-like object.
 
     Attributes
+    ----------
     {Attributes}
 
     Parameters
+    ----------
     {Parameters}
-
-    Notes
-    -----
     '''
     __slots__ = []
     loader_type = '.jsonz'

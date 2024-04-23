@@ -13,7 +13,7 @@ import time
 
 from ..glogger import getGLogger
 from ..utils import inherit_docstring
-from .base import BasePckSaver, _copydoc_func
+from .base import BasePckSaver
 from .._zipfile import (
     Py_version_tuple, Compress_kwds,
     zipfile_factory, zipfile_delete
@@ -25,20 +25,23 @@ _np_write_array = np.lib.format.write_array
 Use_ZipFile_open_mode_w = True
 
 
-@inherit_docstring((BasePckSaver,), _copydoc_func, template=None)
+@inherit_docstring(BasePckSaver, parse=None, template=None)
 class NpzPckSaver(BasePckSaver):
     '''
     Save dict data with a group name to a NumPy compressed archive file.
 
     Attributes
+    ----------
     {Attributes}
 
     Parameters
+    ----------
     {Parameters}
     duplicate_name: bool
         allow "zipfile.py: UserWarning: Duplicate name ..." or not
 
     Notes
+    -----
     {Notes}
 
     References

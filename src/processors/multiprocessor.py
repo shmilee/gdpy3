@@ -20,18 +20,19 @@ from ..utils import inherit_docstring
 __all__ = ['MultiProcessor']
 
 
-def _copydoc_func(docs):
-    name, doc = docs[0]
-    assert name == 'Processor'
-    return (doc[doc.find('Attributes'):],), {}
-
-
-@inherit_docstring((Processor,), _copydoc_func, template=None)
+@inherit_docstring(Processor, parse=None, template=None)
 class MultiProcessor(Processor):
     '''
     Multiprocess Processor class.
 
-    {0}4. :attr:`multiproc` is the max number of worker processes,
+    Attributes
+    ----------
+    {Attributes}
+
+    Notes
+    -----
+    {Notes}
+    4. :attr:`multiproc` is the max number of worker processes,
        default multiprocessing.cpu_count().
     '''
     __slots__ = []
