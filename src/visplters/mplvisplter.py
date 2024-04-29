@@ -414,7 +414,7 @@ class MatplotlibVisplter(BaseVisplter):
                         handl = handl[:max_artists_per_handler]
                     label = [handleD.get(handl[-1], None)]
                 handles.append(tuple(handl))
-                labels.append(sep.join(map(str, label)))
+                labels.append(sep.join(map(str, filter(None, label))))
             # if pass in labels
             newlabels = grp.get('labels', None)
             if newlabels:
