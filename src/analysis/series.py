@@ -846,7 +846,7 @@ class CaseSeries(object):
             number of columns in this figure
         '''
         nlines, ncols = max(2, int(nlines)), max(1, int(ncols))
-        Mrow = math.ceil(len(gammaresult)/nlines/ncols)
+        Mrow = math.ceil(len(result)/nlines/ncols)
         all_axes = []
         for row in range(1, Mrow+1, 1):
             for col in range(1, ncols+1, 1):
