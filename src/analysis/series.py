@@ -12,6 +12,7 @@ import time
 import json
 import math
 import random
+import itertools
 import numpy as np
 from ..loaders import get_rawloader
 from ..processors import get_processor
@@ -488,7 +489,8 @@ class CaseSeries(object):
         idx0, idx1 = int(len(time)*start) - 1, int(len(time)*end) - 1
         return time[idx0], time[idx1], idx0, idx1
 
-    def dig_chi_D(self, particle, gyroBohm=True, Ln=None, cutbg=None,
+    def dig_chi_D(self, particle, gyroBohm=True, Ln=None,
+                  cutpsi=None, cutra=None,
                   fallback_sat_time=(0.7, 1.0)):
         '''
         Get particle chi(t) and D(t) of each case.
@@ -507,14 +509,17 @@ class CaseSeries(object):
         Ln: float
             Set R0/Ln for gyroBohm unit. Ln=1.0/2.22 when R0/Ln=2.22
             If Ln=None, use a_minor as default Ln.
-        cutbg: tuple of int, like (ipsi0, ipsi1)
-            use data1d and cut off the boundary grids to calculate chi, D
+        cutpsi: tuple of int or float, like (ipsi0, ipsi1), (0.1, 0.9)mpsi
+            use data1d and select the psi grids to calculate chi, D
+            for example, cut off boundary grids
+        cutra: tuple of float, like (0.3, 0.7)r/a
+            same as cutpsi, use r/a instead of psi grids to cut data1d
         fallback_sat_time: tuple
             If saturation time not found in :attr:`labelinfo`, use this
             to set saturation (start,end) time ratio. limit: 0.0 -> 1.0
         '''
         if particle in ('ion', 'electron', 'fastion'):
-            if cutbg:
+            if cutpsi or cutra:
                 figlabeld = 'data1d/%s_particle_flux' % particle
                 figlabele = 'data1d/%s_energy_flux' % particle
             else:
@@ -524,10 +529,26 @@ class CaseSeries(object):
         chiDresult = []
         for path, key in self.paths:
             gdp = self.cases[key]
-            if cutbg:
-                a, b, c = gdp.dig(figlabeld, pcutoff=cutbg, post=False)
+            if cutpsi or cutra:
+                arr2 = gdp.pckloader['gtc/arr2']
+                a_minor = gdp.pckloader['gtc/a_minor']
+                mpsi = gdp.pckloader['gtc/mpsi']
+                rr = arr2[:, 1] / a_minor  # [0, mpsi-2] -> psi [1, mpsi-1]
+                if cutra:
+                    idx = np.where((rr >= cutra[0]) & (rr <= cutra[1]))[0]
+                    p0, p1 = idx[0]+1, idx[-1]+1
+                else:
+                    if cutpsi[1] < 1.0:
+                        p0, p1 = [int(p*mpsi) for p in cutpsi]
+                    else:
+                        p0, p1 = cutpsi
+                    p0 = max(1, p0)
+                    p1 = min(mpsi-1, p1)
+                log.info("cut-psi: [%.2f, %.2f]%d=%s, cut-r/a: [%.2f, %.2f]"
+                         % (p0/mpsi, p1/mpsi, mpsi, (p0, p1), rr[p0-1], rr[p1-1]))
+                a, b, c = gdp.dig(figlabeld, pcutoff=(p0, p1), post=False)
                 time, D = b['X'], b['Z'].mean(axis=0)
-                a, b, c = gdp.dig(figlabele, pcutoff=cutbg, post=False)
+                a, b, c = gdp.dig(figlabele, pcutoff=(p0, p1), post=False)
                 chi = b['Z'].mean(axis=0)
             else:
                 a, b, c = gdp.dig(figlabel, post=False)
@@ -645,14 +666,15 @@ class CaseSeries(object):
             suptitle=suptitle, title_y=title_y, add_style=add_style,
             savepath=savepath)
 
-    def dig_chi_D_r(self, particle, gyroBohm=True, Ln=None, bg=None,
+    def dig_chi_D_r(self, particle, gyroBohm=True, Ln=None,
+                    bgpsis=None, bgras=None,
                     fallback_sat_time=(0.7, 1.0), **kwargs):
         '''
         Get particle chi(r) and D(r) of each case.
         Return a list of tuple in order of :attr:`paths`.
         The tuple has 4 elements:
             1) radial r array, 2) chi(r) array, 3) D(r) array,
-            4) boundary r tuple (br0, br1)
+            4) annotation r tuples {(br0, br1), (r00, r11), ...}
 
         Parameters
         ----------
@@ -663,8 +685,10 @@ class CaseSeries(object):
         Ln: float
             Set R0/Ln for gyroBohm unit. Ln=1.0/2.22 when R0/Ln=2.22
             If Ln=None, use a_minor as default Ln.
-        bg: tuple of int, like (bgpsi0, bgpsi1), 0-mpsi
-            annotate the boundary grids, default (0.1, 0.9)mpsi
+        bgpsis: list of int,float tuples, like (ipsi0, ipsi1), (0.1, 0.9)mpsi
+            annotate the boundary grids, or selected psi grids
+        bgras: list of float tuples, like (0.3, 0.7)r/a
+            same as bgpsis, use r/a instead of psi grids
         fallback_sat_time: tuple
             If saturation time not found in :attr:`labelinfo`, use this
             to set saturation (start,end) time ratio. limit: 0.0 -> 1.0
@@ -679,6 +703,8 @@ class CaseSeries(object):
         chiDresult = []
         if kwargs.pop('pcutoff', None):
             log.warning("Ignore 'pcutoff' kwargs!")
+        usera = kwargs.get('use_ra', False)
+        bgannotate = set()
         for path, key in self.paths:
             gdp = self.cases[key]
             a, b, c = gdp.dig('history/%s_flux' % particle, post=False)
@@ -695,21 +721,30 @@ class CaseSeries(object):
                 Ln = gdp.pckloader['gtc/a_minor'] if Ln is None else Ln
                 rho0 = gdp.pckloader['gtc/rho0']
                 chi, D = chi*Ln/rho0, D*Ln/rho0
+            bgp0p1 = set()
             mpsi = gdp.pckloader.get('gtc/mpsi')
-            if bg:
-                p0, p1 = bg
-            else:
-                p0, p1 = int(0.1*mpsi), int(0.9*mpsi)
-            if r.size == mpsi+1:
-                br0, br1 = r[p0], r[p1]
-            elif r.size == mpsi-1:  # use_ra=True
-                br0, br1 = r[p0-1], r[p1-1]
-            else:
-                log.warning("Unexcepted r size=%d, (mpsi=%d)!"
-                            % (r.size, mpsi))
-                p0, p1 = int(0.1*r.size), int(0.9*r.size)
-                br0, br1 = r[p0], r[p1]
-            chiDresult.append((r, chi, D, (br0, br1)))
+            if bgras:
+                arr2 = gdp.pckloader['gtc/arr2']
+                a_minor = gdp.pckloader['gtc/a_minor']
+                rr = arr2[:, 1] / a_minor  # [0, mpsi-2] -> psi [1, mpsi-1]
+                for bg in bgras:
+                    if rr[0] <= bg[0] and bg[1] <= rr[-1]:
+                        idx = np.where((rr >= bg[0]) & (rr <= bg[1]))[0]
+                        if len(idx) > 1:
+                            bgp0p1.add((idx[0]+1, idx[-1]+1))
+            if bgpsis:
+                for bg in bgpsis:
+                    if bg[1] < 1.0:
+                        bgp0p1.add(tuple(int(p*mpsi) for p in bg))
+                    else:
+                        bgp0p1.add(tuple(int(p) for p in bg))
+            # p0,p1 -> r(ipsi or r/a)
+            bgann = set((r[p0-1], r[p1-1]) if usera else (r[p0], r[p1])
+                        for p0, p1 in bgp0p1)
+            log.debug("Get bg grids: %s" % bgann)
+            # remove same bgann in bgannotate
+            chiDresult.append((r, chi, D, bgann.difference(bgannotate)))
+            bgannotate.update(bgann)
         return chiDresult
 
     @inherit_docstring(_plot_mrows_chi_D_like, parse=_parse_pltmrow_doc,
@@ -731,23 +766,19 @@ class CaseSeries(object):
         xylabel1 = {'xlabel': r'$r/a$', 'ylabel': r'$\chi_%s$' % ief}
         xylabel2 = {'xlabel': r'$r/a$', 'ylabel': r'$D_%s$' % ief}
 
-        def datafun1(ress, lbls):
-            return [[1+i, 'plot', (r[0], r[1], '-'), dict(
-                color="C{}".format(i), label=l)]
-                for i, (r, l) in enumerate(zip(ress, lbls))
-            ] + [[100+i, 'axvspan', r[3], dict(
-                color="C{}".format(i), ls='--', lw=1.0, fill=False)]
-                for i, r in enumerate(ress)]
-
-        def datafun2(ress, lbls):
-            return [[1+i, 'plot', (r[0], r[2], '-'), dict(
-                color="C{}".format(i), label=l)]
-                for i, (r, l) in enumerate(zip(ress, lbls))
-            ] + [[100+i, 'axvspan', r[3], dict(
-                color="C{}".format(i), ls='--', lw=1.0, fill=False)]
-                for i, r in enumerate(ress)]
+        def get_datafun(idx):  # idx=1 for chi, 2 for D
+            def datafun(ress, lbls):
+                ls = itertools.cycle(['--', '-.', ':'])
+                return [[1+i, 'plot', (r[0], r[idx], '-'), dict(
+                    color="C{}".format(i), label=l)]
+                    for i, (r, l) in enumerate(zip(ress, lbls))
+                ] + [[100+10*i+j, 'axvspan', r0r1, dict(
+                    color="C{}".format(i+j), ls=next(ls), lw=1, fill=False)]
+                    for i, r in enumerate(ress)
+                    for j, r0r1 in enumerate(r[3])]
+            return datafun
         self._plot_mrows_chi_D_like(
-            xylabel1, xylabel2, datafun1, datafun2,
+            xylabel1, xylabel2, get_datafun(1), get_datafun(2),
             result, labels, nlines, fignum, xlims=xlims, ylims=ylims,
             suptitle=suptitle, title_y=title_y, add_style=add_style,
             savepath=savepath)
