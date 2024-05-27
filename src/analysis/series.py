@@ -667,7 +667,7 @@ class CaseSeries(object):
             savepath=savepath)
 
     def dig_chi_D_r(self, particle, gyroBohm=True, Ln=None,
-                    bgpsis=None, bgras=None,
+                    bgpsi=None, bgra=None,
                     fallback_sat_time=(0.7, 1.0), **kwargs):
         '''
         Get particle chi(r) and D(r) of each case.
@@ -685,10 +685,10 @@ class CaseSeries(object):
         Ln: float
             Set R0/Ln for gyroBohm unit. Ln=1.0/2.22 when R0/Ln=2.22
             If Ln=None, use a_minor as default Ln.
-        bgpsis: list of int,float tuples, like (ipsi0, ipsi1), (0.1, 0.9)mpsi
+        bgpsi: tuple of int or float, like (ipsi0, ipsi1), (0.1, 0.9)mpsi
             annotate the boundary grids, or selected psi grids
-        bgras: list of float tuples, like (0.3, 0.7)r/a
-            same as bgpsis, use r/a instead of psi grids
+        bgra: tuple of float, like (0.3, 0.7)r/a
+            same as bgpsi, use r/a instead of psi grids
         fallback_sat_time: tuple
             If saturation time not found in :attr:`labelinfo`, use this
             to set saturation (start,end) time ratio. limit: 0.0 -> 1.0
@@ -704,7 +704,6 @@ class CaseSeries(object):
         if kwargs.pop('pcutoff', None):
             log.warning("Ignore 'pcutoff' kwargs!")
         usera = kwargs.get('use_ra', False)
-        bgannotate = set()
         for path, key in self.paths:
             gdp = self.cases[key]
             a, b, c = gdp.dig('history/%s_flux' % particle, post=False)
@@ -723,28 +722,25 @@ class CaseSeries(object):
                 chi, D = chi*Ln/rho0, D*Ln/rho0
             bgp0p1 = set()
             mpsi = gdp.pckloader.get('gtc/mpsi')
-            if bgras:
+            if bgra:
                 arr2 = gdp.pckloader['gtc/arr2']
                 a_minor = gdp.pckloader['gtc/a_minor']
                 rr = arr2[:, 1] / a_minor  # [0, mpsi-2] -> psi [1, mpsi-1]
-                for bg in bgras:
-                    if rr[0] <= bg[0] and bg[1] <= rr[-1]:
-                        idx = np.where((rr >= bg[0]) & (rr <= bg[1]))[0]
-                        if len(idx) > 1:
-                            bgp0p1.add((idx[0]+1, idx[-1]+1))
-            if bgpsis:
-                for bg in bgpsis:
-                    if bg[1] < 1.0:
-                        bgp0p1.add(tuple(int(p*mpsi) for p in bg))
-                    else:
-                        bgp0p1.add(tuple(int(p) for p in bg))
+                if rr[0] <= bgra[0] and bgra[1] <= rr[-1]:
+                    idx = np.where((rr >= bgra[0]) & (rr <= bgra[1]))[0]
+                    if len(idx) > 1:
+                        bgp0p1.add((idx[0]+1, idx[-1]+1))
+            if bgpsi:
+                if bgpsi[1] < 1.0:
+                    bgp0p1.add(tuple(int(p*mpsi) for p in bgpsi))
+                else:
+                    bgp0p1.add(tuple(int(p) for p in bgpsi))
             # p0,p1 -> r(ipsi or r/a)
             bgann = set((r[p0-1], r[p1-1]) if usera else (r[p0], r[p1])
                         for p0, p1 in bgp0p1)
-            log.debug("Get bg grids: %s" % bgann)
-            # remove same bgann in bgannotate
-            chiDresult.append((r, chi, D, bgann.difference(bgannotate)))
-            bgannotate.update(bgann)
+            if bgann:
+                log.debug("Get bg grids: %s" % bgann)
+            chiDresult.append((r, chi, D, bgann))
         return chiDresult
 
     @inherit_docstring(_plot_mrows_chi_D_like, parse=_parse_pltmrow_doc,
@@ -768,14 +764,22 @@ class CaseSeries(object):
 
         def get_datafun(idx):  # idx=1 for chi, 2 for D
             def datafun(ress, lbls):
-                ls = itertools.cycle(['--', '-.', ':'])
-                return [[1+i, 'plot', (r[0], r[idx], '-'), dict(
-                    color="C{}".format(i), label=l)]
+                data = [
+                    [1+i, 'plot', (r[0], r[idx], '-'), dict(
+                        color="C{}".format(i), label=l)]
                     for i, (r, l) in enumerate(zip(ress, lbls))
-                ] + [[100+10*i+j, 'axvspan', r0r1, dict(
-                    color="C{}".format(i+j), ls=next(ls), lw=1, fill=False)]
-                    for i, r in enumerate(ress)
-                    for j, r0r1 in enumerate(r[3])]
+                ]
+                ls = itertools.cycle(['--', '-.', ':'])
+                bgannotate = set()  # same bgann, just plot one in this axes
+                for i, r in enumerate(ress):
+                    for j, r0r1 in enumerate(r[3]):
+                        if r0r1 not in bgannotate:
+                            bgannotate.add(r0r1)
+                            data.append([
+                                100+10*i+j, 'axvspan', r0r1, dict(
+                                    color="C{}".format(i+j),
+                                    ls=next(ls), lw=1.0, fill=False)])
+                return data
             return datafun
         self._plot_mrows_chi_D_like(
             xylabel1, xylabel2, get_datafun(1), get_datafun(2),
