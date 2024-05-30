@@ -62,7 +62,8 @@ def dumps(obj, *, indent=None, indent_limit=None, cls=JsonEncoder, **kw):
     '''
     res = json.dumps(obj, indent=indent, cls=cls, **kw)
     if indent and indent_limit:
-        pat = re.compile(f'\n(\s){{{indent_limit}}}((\s)+|(?=(}}|])))')
+        # fr https://stackoverflow.com/questions/58302531
+        pat = re.compile(fr'\n(\s){{{indent_limit}}}((\s)+|(?=(}}|])))')
         return pat.sub('', res)
     else:
         return res
