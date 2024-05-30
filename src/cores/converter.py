@@ -63,7 +63,7 @@ class Converter(BaseCore, metaclass=AppendDocstringMeta):
             items = self.items
             for idx, sect in enumerate(self.section, 65):
                 items = [re.sub(sect, '#ST%s#' % chr(idx), i) for i in items]
-            items = list({re.sub('\d', '*', i) for i in items})
+            items = list({re.sub(r'\d', '*', i) for i in items})
             res = items
             for idx, sect in enumerate(self.section, 65):
                 res = [re.sub('#ST%s#' % chr(idx), sect, i) for i in res]

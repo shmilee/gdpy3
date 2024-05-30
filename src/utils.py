@@ -113,7 +113,7 @@ def simple_parse_numpydoc(doc, strip=None, **kwargs):
      'Example': ">>> doc ..."}
     '''
     # search by section and ------
-    msections = list(re.finditer('^\s+([\w ]+)\n\s+[-]+\n', doc, re.M))
+    msections = list(re.finditer(r'^\s+([\w ]+)\n\s+[-]+\n', doc, re.M))
     doc_sections, N = {}, len(msections)
     for i in range(N):
         start, end = msections[i].span()  # group=0, entire match

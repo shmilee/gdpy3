@@ -32,7 +32,7 @@ log = getGLogger('G.a')
 def get_selected_converted_data(pathsmap, parallel='off',
                                 printETA=None, printETAweights=None,
                                 **kwargs):
-    '''
+    r'''
     Get selected GTC raw data from original directory (like sftp://xxx),
     then convert and save to a new directory (like local path).
     Return a list of failed cases.
@@ -99,8 +99,8 @@ def get_selected_converted_data(pathsmap, parallel='off',
                     path, parallel=parallel, filenames_exclude=exclude,
                     savedir=dest, Sid=True, **kwargs)
                 todo = [gdp.saltname]
-                todo.extend(gdp.rawloader.refind('gtc-\d+\.out'))
-                todo.extend(gdp.rawloader.refind('gtc-input.*\.lua'))
+                todo.extend(gdp.rawloader.refind(r'gtc-\d+\.out'))
+                todo.extend(gdp.rawloader.refind(r'gtc-input.*\.lua'))
                 for file1 in todo:
                     file2 = os.path.join(dest, file1)
                     if os.path.exists(file2):

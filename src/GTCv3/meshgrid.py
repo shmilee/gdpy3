@@ -40,8 +40,8 @@ class MeshgridConverter(Converter):
     '''
     __slots__ = []
     nitems = '?'
-    itemspattern = ['^(?P<section>meshgrid)\.out$',
-                    '.*/(?P<section>meshgrid)\.out$']
+    itemspattern = [r'^(?P<section>meshgrid)\.out$',
+                    r'.*/(?P<section>meshgrid)\.out$']
     _datakeys = (
         'psimesh', 'sprpsi', 'qmesh',
         'kapatmti', 'kapatmte', 'kapatmni', 'kapatmne')

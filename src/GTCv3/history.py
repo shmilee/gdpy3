@@ -81,8 +81,8 @@ class HistoryConverter(Converter):
     '''
     __slots__ = []
     nitems = '?'
-    itemspattern = ['^(?P<section>history)\.out$',
-                    '.*/(?P<section>history)\.out$']
+    itemspattern = [r'^(?P<section>history)\.out$',
+                    r'.*/(?P<section>history)\.out$']
     _datakeys = (
         # 1. diagnosis.F90:opendiag():734-735
         'ndstep', 'nspecies', 'mpdiag', 'nfield', 'modes', 'mfdiag',

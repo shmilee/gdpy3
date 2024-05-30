@@ -172,7 +172,7 @@ class BaseLoader(object):
 
 
 class BaseRawLoader(BaseLoader):
-    '''
+    r'''
     Load raw data from a directory or archive file.
     Return a dictionary-like object.
 
@@ -255,7 +255,7 @@ class BaseRawLoader(BaseLoader):
 
 
 class BasePckLoader(BaseLoader):
-    '''
+    r'''
     Load arrays data from a pickled(packaged) data file or cache.
     Return a dictionary-like object.
 

@@ -41,8 +41,8 @@ class SnapEVphaseConverter(Converter):
     '''
     __slots__ = []
     nitems = '?'
-    itemspattern = ['^(?P<section>snap\d{5,7})_evphase\.out$',
-                    '.*/(?P<section>snap\d{5,7})_evphase\.out$']
+    itemspattern = [r'^(?P<section>snap\d{5,7})_evphase\.out$',
+                    r'.*/(?P<section>snap\d{5,7})_evphase\.out$']
     _datakeys = (
         # 1. parameters
         'nspecies', 'nhybrid', 'ev-negrid', 'nvgrid',

@@ -56,8 +56,8 @@ class ZetaPsi3DConverter(Converter):
     '''
     __slot__ = []
     nitems = '?'
-    itemspattern = ['^phi_dir/(?P<section>zetapsi3d\d{5})\.out$',
-                    '.*/phi_dir/(?P<section>zetapsi3d\d{5})\.out$']
+    itemspattern = [r'^phi_dir/(?P<section>zetapsi3d\d{5})\.out$',
+                    r'.*/phi_dir/(?P<section>zetapsi3d\d{5})\.out$']
     _datakeys = (
         # 1. parameters
         'mzeach', 'mpsi+1', 'nj', 'j_list', 'nfield', 'zp3d_fields',
@@ -152,9 +152,9 @@ def fix_zetapsi3d_fdata_flatten(path):
 class ZetaPsi3DoldConverter(ZetaPsi3DConverter):
     __slot__ = []
     nitems = '+'
-    itemspattern = ['^phi_dir/(?P<section>zetapsi3d\d{5})_tor\d{4}\.out$',
-                    '.*/phi_dir/(?P<section>zetapsi3d\d{5})_tor\d{4}\.out$']
-    _short_files_subs = (0, '^(.*\d{5}_tor)\d{4}\.out$', r'\1*.out')
+    itemspattern = [r'^phi_dir/(?P<section>zetapsi3d\d{5})_tor\d{4}\.out$',
+                    r'.*/phi_dir/(?P<section>zetapsi3d\d{5})_tor\d{4}\.out$']
+    _short_files_subs = (0, r'^(.*\d{5}_tor)\d{4}\.out$', r'\1*.out')
 
     def _convert(self):
         '''Read 'phi_dir/zetapsi3d%05d_tor%04d.out'.'''
@@ -212,10 +212,10 @@ class ZetaPsi3DDigger(Digger):
     '''field(zeta,psi) at theta=j/mtdiag*2pi'''
     __slots__ = ['field', '_deg', '_rad', 'thetastr', 'timestr']
     nitems = '+'
-    itemspattern = ['^(?P<section>zp3d\d{5})/(?P<field>(?:phi|apara|fluidne|densityi'
-                    + '|temperi|densitye|tempere|densityf|temperf))-(?P<j>\d+)']
+    itemspattern = [r'^(?P<section>zp3d\d{5})/(?P<field>(?:phi|apara|fluidne|densityi'
+                    + r'|temperi|densitye|tempere|densityf|temperf))-(?P<j>\d+)']
     commonpattern = ['gtc/tstep', 'gtc/arr2', 'gtc/a_minor', 'gtc/mtdiag',
-                     '^(?P<section>zp3d\d{5})/j_list']
+                     r'^(?P<section>zp3d\d{5})/j_list']
     post_template = 'tmpl_contourf'
 
     def _set_fignum(self, numseed=None):
@@ -248,7 +248,7 @@ class ZetaPsi3DDigger(Digger):
         ''' Return time, timestr '''
         cache_key = (self.pckloader, self.group, 'time&timestr')
         if cache_key not in self._deg_rad_thetastr_timestr_cache:
-            istep = int(re.match('.*zp3d(\d{5,7}).*', self.group).groups()[0])
+            istep = int(re.match(r'.*zp3d(\d{5,7}).*', self.group).groups()[0])
             tstep = self.pckloader.get('gtc/tstep')
             time = round(istep * tstep, Ndigits_tstep)
             s2 = r'istep=%d, time=%s$R_0/c_s$' % (istep, time)

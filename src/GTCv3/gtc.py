@@ -27,7 +27,7 @@ class GtcConverter(Converter):
     '''
     __slots__ = []
     nitems = '?'
-    itemspattern = ['^(?P<section>gtc)\.out$', '.*/(?P<section>gtc)\.out$']
+    itemspattern = [r'^(?P<section>gtc)\.out$', r'.*/(?P<section>gtc)\.out$']
 
     # http://stackoverflow.com/a/29581287
     numpat = r'[-+]?\d+[\.]?\d*[eE]?[-+]?\d*'
@@ -74,9 +74,9 @@ class GtcConverter(Converter):
             (r'\s*?mmodes=(?P<mmodes>(\s*?\d+)+)\s*$', 'int_arr'),
             (r'rzf bstep=\s*?(?P<rzf_bstep>' + self.numpat
                 + r'?), izonal=(?P<rzf_izonal>' + self.numpat
-                + '?), kr=\s*?(?P<rzf_kr>' + self.numpat
-                + '?), r1=\s*?(?P<rzf_r1>' + self.numpat
-                + '?), r2=\s*?(?P<rzf_r2>' + self.numpat
+                + r'?), kr=\s*?(?P<rzf_kr>' + self.numpat
+                + r'?), r1=\s*?(?P<rzf_r1>' + self.numpat
+                + r'?), r2=\s*?(?P<rzf_r2>' + self.numpat
                 + '?)'),  # commit f91ad696
             (r'me=\s*?(?P<me>' + self.numpat + r'?)\s*,\s+trapped fraction'
                 + r'\s+?(?P<trapped_frac>' + self.numpat + r'?)\s+?'),
@@ -138,7 +138,7 @@ class GtcConverter(Converter):
              + r'\s+routine\s+count\s+rank0.*$', 'float_2d_arr3'),
             (r'CPU TIME USAGE \(in SEC\):$'
              + '(?P<cputimeusage>.*)$'
-             + r'\s*?MPush/sec:\s+?' + self.numpat + '\s*?$', 'v4_cputime'),
+             + r'\s*?MPush/sec:\s+?' + self.numpat + r'\s*?$', 'v4_cputime'),
 
         ]
 
@@ -150,7 +150,7 @@ class GtcConverter(Converter):
 
         sd = {}
         pickpara = re.compile(r'^\s*?(?P<key>\w+?)\s*?=\s*?(?P<val>'
-                              + self.numpat + '?)\s*?,?\s*?$')
+                              + self.numpat + r'?)\s*?,?\s*?$')
         duplicate_d = {}
         for line in outdata:
             mline = pickpara.match(line)

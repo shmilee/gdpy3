@@ -27,8 +27,8 @@ class Data1dDensityConverter(Converter):
     '''
     __slots__ = []
     nitems = '?'
-    itemspattern = ['^(?P<section>data1d)_density\.out$',
-                    '.*/(?P<section>data1d)_density\.out$']
+    itemspattern = [r'^(?P<section>data1d)_density\.out$',
+                    r'.*/(?P<section>data1d)_density\.out$']
     _datakeys = (
         # 1. parameters
         'ndstep', 'mpsi+1', 'nspecies', 'nhybrid',

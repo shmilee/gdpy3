@@ -510,7 +510,7 @@ class BaseVisplter(object):
         raise NotImplementedError()
 
     def tmpl_line(self, results):
-        '''
+        r'''
         Template
         --------
         .. code::

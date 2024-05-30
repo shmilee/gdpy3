@@ -75,8 +75,8 @@ class SnapshotConverter(Converter):
     '''
     __slots__ = []
     nitems = '?'
-    itemspattern = ['^(?P<section>snap\d{5,7})\.out$',
-                    '.*/(?P<section>snap\d{5,7})\.out$']
+    itemspattern = [r'^(?P<section>snap\d{5,7})\.out$',
+                    r'.*/(?P<section>snap\d{5,7})\.out$']
     _datakeys = (
         # 1. parameters
         'nspecies', 'nfield', 'nvgrid', 'mpsi+1',
@@ -186,9 +186,9 @@ class SnapshotProfileDigger(Digger):
     '''ion, electron, fastion radial profiles.'''
     __slots__ = []
     nitems = '+'
-    itemspattern = ['^(?P<section>snap\d{5,7})'
+    itemspattern = [r'^(?P<section>snap\d{5,7})'
                     + '/(?P<particle>(?:ion|electron|fastion))-profile$',
-                    '^(?P<s>snap\d{5,7})/mpsi\+1']
+                    r'^(?P<s>snap\d{5,7})/mpsi\+1']
     commonpattern = ['gtc/tstep']
     post_template = 'tmpl_sharextwinx'
 
@@ -230,10 +230,10 @@ class SnapshotPdfDigger(Digger):
     '''ion, electron, fastion pdf in E or pitch angle.'''
     __slots__ = []
     nitems = '+'
-    itemspattern = ['^(?P<section>snap\d{5,7})'
+    itemspattern = [r'^(?P<section>snap\d{5,7})'
                     + '/(?P<particle>(?:ion|electron|fastion))-pdf$',
-                    '^(?P<s>snap\d{5,7})/nvgrid',
-                    '^(?P<s>snap\d{5,7})/T_up']
+                    r'^(?P<s>snap\d{5,7})/nvgrid',
+                    r'^(?P<s>snap\d{5,7})/T_up']
     commonpattern = ['gtc/tstep']
     post_template = ('tmpl_z111p', 'tmpl_sharextwinx')
 
@@ -287,7 +287,7 @@ class SnapshotFieldFluxAlphaDigger(Digger):
     __slots__ = ['ipsi']
     nitems = '?'
     itemspattern = [
-        '^(?P<section>snap\d{5,7})'
+        r'^(?P<section>snap\d{5,7})'
         + '/fluxdata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))$']
     commonpattern = ['gtc/tstep', 'gtc/mpsi']
     post_template = 'tmpl_contourf'
@@ -801,9 +801,9 @@ class SnapshotFieldPoloidalDigger(Digger):
     __slots__ = []
     nitems = '+'
     itemspattern = [
-        '^(?P<section>snap\d{5,7})'
+        r'^(?P<section>snap\d{5,7})'
         + '/poloidata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))',
-        '^(?P<s>snap\d{5,7})/poloidata-(?:x|z)']
+        r'^(?P<s>snap\d{5,7})/poloidata-(?:x|z)']
     commonpattern = ['gtc/tstep', 'gtc/mpsi', 'gtc/arr2', 'gtc/a_minor']
     neededpattern = itemspattern + commonpattern[:-2]
     post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
@@ -872,10 +872,10 @@ class SnapshotFieldSpectrumDigger(Digger):
     __slots__ = []
     nitems = '+'
     itemspattern = [
-        '^(?P<section>snap\d{5,7})'
+        r'^(?P<section>snap\d{5,7})'
         + '/fluxdata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))',
-        '^(?P<s>snap\d{5,7})/mtgrid\+1',
-        '^(?P<s>snap\d{5,7})/mtoroidal']
+        r'^(?P<s>snap\d{5,7})/mtgrid\+1',
+        r'^(?P<s>snap\d{5,7})/mtoroidal']
     commonpattern = ['gtc/tstep']
     post_template = ('tmpl_z111p', 'tmpl_line')
 
@@ -1031,10 +1031,10 @@ class SnapshotFieldSpectrumTimeDigger(SnapshotFieldSpectrumDigger):
     '''field or density poloidal and parallel spectra as time varied.'''
     __slots__ = []
     itemspattern = [
-        '^(?P<section>snap)\d{5,7}'
+        r'^(?P<section>snap)\d{5,7}'
         + '/fluxdata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))',
-        '^(?P<s>snap)\d{5,7}/mtgrid\+1',
-        '^(?P<s>snap)\d{5,7}/mtoroidal']
+        r'^(?P<s>snap)\d{5,7}/mtgrid\+1',
+        r'^(?P<s>snap)\d{5,7}/mtoroidal']
     post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
 
     def _dig(self, kwargs):
@@ -1102,7 +1102,7 @@ class SnapshotFieldFluxTimeDigger(Digger):
     __slots__ = ['ipsi']
     nitems = '+'
     itemspattern = [
-        '^(?P<section>snap)\d{5,7}'
+        r'^(?P<section>snap)\d{5,7}'
         + '/fluxdata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))$']
     commonpattern = ['gtc/mpsi', 'gtc/tstep', 'gtc/mtoroidal']
     post_template = 'tmpl_contourf'
@@ -1168,7 +1168,7 @@ class SnapshotFieldPoloidalTimeDigger(Digger):
     __slots__ = []
     nitems = '+'
     itemspattern = [
-        '^(?P<section>snap)\d{5,7}'
+        r'^(?P<section>snap)\d{5,7}'
         + '/poloidata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))']
     commonpattern = ['gtc/mpsi', 'gtc/tstep']
     post_template = 'tmpl_contourf'
@@ -1573,10 +1573,10 @@ class SnapshotFieldProfileDigger(Digger):
     __slots__ = []
     nitems = '+'
     itemspattern = [
-        '^(?P<section>snap\d{5,7})'
+        r'^(?P<section>snap\d{5,7})'
         + '/poloidata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))',
-        '^(?P<s>snap\d{5,7})/mpsi\+1',
-        '^(?P<s>snap\d{5,7})/mtgrid\+1']
+        r'^(?P<s>snap\d{5,7})/mpsi\+1',
+        r'^(?P<s>snap\d{5,7})/mtgrid\+1']
     commonpattern = ['gtc/tstep']
     post_template = ('tmpl_z111p', 'tmpl_sharextwinx')
 
@@ -1657,10 +1657,10 @@ class SnapshotFieldmDigger(Digger):
     __slots__ = []
     nitems = '+'
     itemspattern = [
-        '^(?P<section>snap\d{5,7})'
+        r'^(?P<section>snap\d{5,7})'
         + '/poloidata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))',
-        '^(?P<s>snap\d{5,7})/mpsi\+1',
-        '^(?P<s>snap\d{5,7})/mtgrid\+1']
+        r'^(?P<s>snap\d{5,7})/mpsi\+1',
+        r'^(?P<s>snap\d{5,7})/mtgrid\+1']
     commonpattern = ['gtc/tstep', 'gtc/arr2', 'gtc/a_minor']
     post_template = 'tmpl_line'
 

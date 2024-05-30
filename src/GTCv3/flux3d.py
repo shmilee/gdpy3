@@ -54,8 +54,8 @@ class Flux3DConverter(Converter):
     '''
     __slot__ = []
     nitems = '?'
-    itemspattern = ['^phi_dir/(?P<section>flux3da*\d{5})\.out$',
-                    '.*/phi_dir/(?P<section>flux3da*\d{5})\.out$']
+    itemspattern = [r'^phi_dir/(?P<section>flux3da*\d{5})\.out$',
+                    r'.*/phi_dir/(?P<section>flux3da*\d{5})\.out$']
     _datakeys = (
         # 1. parameters
         'iflux0', 'iflux1', 'digrid', 'mtoroidal', 'nfield',
@@ -67,7 +67,7 @@ class Flux3DConverter(Converter):
     )
 
     def _convert(self):
-        '''Read 'phi_dir/flux3da*\d{5}.out'. '''
+        r'''Read 'phi_dir/flux3da*\d{5}.out'. '''
         with self.rawloader.get(self.files) as f:
             clog.debug("Read file '%s'." % self.files)
             outdata = f.readlines()
@@ -117,11 +117,11 @@ class Flux3DAlphaDigger(SnapshotFieldFluxAlphaDigger):
     '''phi(alpha,zeta), a_para etc. on every flux surface.'''
     __slots__ = []
     itemspattern = [
-        '^(?P<section>flux3da*\d{5,7})/(?P<field>(?:phi|apara|fluidne|densityi'
-        + '|temperi|densitye|tempere|densityf|temperf))-(?P<ipsi>\d+)']
+        r'^(?P<section>flux3da*\d{5,7})/(?P<field>(?:phi|apara|fluidne|densityi'
+        + r'|temperi|densitye|tempere|densityf|temperf))-(?P<ipsi>\d+)']
 
     def _set_group(self):
-        '''Set :attr:`group`, 'flux3da(\d{5,7})' -> 'flux3d(\d{5,7})' .'''
+        r'''Set :attr:`group`, 'flux3da(\d{5,7})' -> 'flux3d(\d{5,7})' .'''
         if 'flux3da' in self.section[0]:
             self._group = self.section[0].replace('flux3da', 'flux3d')
         else:
@@ -191,14 +191,14 @@ def flux3d_interpolate_stack(loader, iM, iN, field, fielddir=0,
     from ..savers import get_pcksaver
     from .. import __gversion__
 
-    _pat = re.compile('^flux3da*\d{5,7}/%s-(?P<ipsi>\d+)' % field)
+    _pat = re.compile(r'^flux3da*\d{5,7}/%s-(?P<ipsi>\d+)' % field)
     keys = loader.refind(_pat)
     if not keys:
         dlog.error('Flux3d of %s: Not Found! Try phi, densityi etc.' % field)
         return
-    _pat = re.compile('^%s/%s-(?P<ipsi>\d+)' % (keys[0].split('/')[0], field))
+    _pat = re.compile(r'^%s/%s-(?P<ipsi>\d+)' % (keys[0].split('/')[0], field))
     psis = [k.split('-')[1] for k in loader.refind(_pat)]
-    _pat = re.compile('^flux3da*\d{5,7}/%s-%s' % (field, psis[0]))
+    _pat = re.compile(r'^flux3da*\d{5,7}/%s-%s' % (field, psis[0]))
     steps = [re.match(r'^flux3da*(\d{5,7})/.*', k).groups()[0]
              for k in loader.refind(_pat)]
     if len(steps)*len(psis) - len(keys) != 0:
@@ -327,12 +327,12 @@ class Flux3DAlphaTimeDigger(SnapshotFieldFluxTimeDigger):
     __slots__ = []
     nitems = '+'
     itemspattern = [
-        '^(?P<section>flux3da*)\d{5,7}/(?P<field>(?:phi|apara|fluidne|densityi'
-        + '|temperi|densitye|tempere|densityf|temperf))-(?P<ipsi>\d+)']
+        r'^(?P<section>flux3da*)\d{5,7}/(?P<field>(?:phi|apara|fluidne|densityi'
+        + r'|temperi|densitye|tempere|densityf|temperf))-(?P<ipsi>\d+)']
     _snap_time_pat = r'.*flux3da*(\d{5,7}).*'
 
     def _set_group(self):
-        '''Set :attr:`group`, 'flux3da(\d{5,7})' -> 'flux3d(\d{5,7})' .'''
+        r'''Set :attr:`group`, 'flux3da(\d{5,7})' -> 'flux3d(\d{5,7})' .'''
         if 'flux3da' in self.section[0]:
             self._group = self.section[0].replace('flux3da', 'flux3d')
         else:

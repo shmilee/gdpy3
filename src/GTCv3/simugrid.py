@@ -50,8 +50,8 @@ class SimugridConverter(Converter):
     '''
     __slots__ = []
     nitems = '?'
-    itemspattern = ['^(?P<section>simugrid)\.out$',
-                    '.*/(?P<section>simugrid)\.out$']
+    itemspattern = [r'^(?P<section>simugrid)\.out$',
+                    r'.*/(?P<section>simugrid)\.out$']
     _datakeys = ('psimesh', 'qmesh', 'tormesh', 'sprpsi', 'sprgpsi',
                  'meshti', 'kapati', 'meshni', 'kapani',
                  'meshte', 'kapate', 'meshne', 'kapane',

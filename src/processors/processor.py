@@ -194,7 +194,7 @@ class Processor(object):
             if 'saltstr' in self.pckloader:
                 return self.pckloader.get('saltstr')
             else:
-                m = re.match('.*-(.{6})\.converted\..*', self.pckloader.path)
+                m = re.match(r'.*-(.{6})\.converted\..*', self.pckloader.path)
                 if m:
                     return m.groups()[0]
         # fallback

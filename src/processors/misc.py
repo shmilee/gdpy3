@@ -84,7 +84,7 @@ def _get_info_of_pckdata(loader, ext2):
         if 'saltstr' in loader:
             info['saltstr'] = loader['saltstr']
         else:
-            m = re.match('.*-(.{6})\.(?:convert|digg)ed\..*', loader.path)
+            m = re.match(r'.*-(.{6})\.(?:convert|digg)ed\..*', loader.path)
             if m:
                 info['saltstr'] = m.groups()[0]
     return info
@@ -281,7 +281,7 @@ def slim_v060_digged_data(path):
 
 
 def remove_digged_data(path, by_groups=None, by_groups_pattern=None):
-    '''
+    r'''
     Remove data of some groups from the digged data, and make a backup.
 
     Parameters

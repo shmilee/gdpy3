@@ -113,11 +113,11 @@ def copy_processor_files(name):
             for li in f1:
                 if li.startswith('from . '):
                     li = li.replace('from . ', 'from gdpy3.%s ' % name)
-                elif re.match('^from .[a-zA-Z_]\w*', li):
+                elif re.match(r'^from .[a-zA-Z_]\w*', li):
                     li = li.replace('from .', 'from gdpy3.%s.' % name)
                 elif li.startswith('from .. '):
                     li = li.replace('from .. ', 'from gdpy3 ')
-                elif re.match('^from ..[a-zA-Z_]\w*', li):
+                elif re.match(r'^from ..[a-zA-Z_]\w*', li):
                     li = li.replace('from ..', 'from gdpy3.')
                 f2.write(li)
     dst = join(newloc, '_example.py')

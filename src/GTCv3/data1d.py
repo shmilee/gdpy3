@@ -83,8 +83,8 @@ class Data1dConverter(Converter):
     '''
     __slots__ = []
     nitems = '?'
-    itemspattern = ['^(?P<section>data1d)\.out$',
-                    '.*/(?P<section>data1d)\.out$']
+    itemspattern = [r'^(?P<section>data1d)\.out$',
+                    r'.*/(?P<section>data1d)\.out$']
     _datakeys = (
         # 1. diagnosis.F90:opendiag():739
         'ndstep', 'mpsi+1', 'nspecies', 'nhybrid',

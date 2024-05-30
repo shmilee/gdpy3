@@ -71,8 +71,8 @@ class EquilibriumConverter(Converter):
     '''
     __slots__ = []
     nitems = '?'
-    itemspattern = ['^(?P<section>equilibrium)\.out$',
-                    '.*/(?P<section>equilibrium)\.out$']
+    itemspattern = [r'^(?P<section>equilibrium)\.out$',
+                    r'.*/(?P<section>equilibrium)\.out$']
     _datakeys = (
         # 1. first part, 1D
         'nplot-1d', 'nrad', '1d-data',
@@ -291,7 +291,7 @@ class EquilibriumThetaDigger(Digger):
     itemspattern = [r'^(?P<section>equilibrium)/'
                     + '(?P<par>(?:b-field|Jacobian|icurrent|zeta2phi|delb'
                     + '|1d-data))$']  # for 'gq_plus_I/BB'
-    commonpattern = ['equilibrium/mpsi-over-mskip\+1', 'equilibrium/lst']
+    commonpattern = [r'equilibrium/mpsi-over-mskip\+1', 'equilibrium/lst']
     post_template = 'tmpl_line'
 
     def _set_fignum(self, numseed=None):

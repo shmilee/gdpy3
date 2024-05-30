@@ -51,9 +51,9 @@ class SnapPhiZetaPsiConverter(Converter):
     '''
     __slot__ = []
     nitems = '+'
-    itemspattern = ['^phi_dir/phi_zeta_psi_(?P<section>snap\d{5})_tor\d{4}\.out$',
-                    '.*/phi_dir/phi_zeta_psi_(?P<section>snap\d{5})_tor\d{4}\.out$']
-    _short_files_subs = (0, '^(.*psi_snap\d{5}_tor)\d{4}\.out$', r'\1*.out')
+    itemspattern = [r'^phi_dir/phi_zeta_psi_(?P<section>snap\d{5})_tor\d{4}\.out$',
+                    r'.*/phi_dir/phi_zeta_psi_(?P<section>snap\d{5})_tor\d{4}\.out$']
+    _short_files_subs = (0, r'^(.*psi_snap\d{5}_tor)\d{4}\.out$', r'\1*.out')
     _datakeys = (
         # 1. parameters
         'mzeach', 'msnap_nj', 'j_list',
@@ -102,8 +102,8 @@ class SnapPhiZetaPsiDigger(Digger):
     '''phi(zeta,psi) at theta=j/mtdiag*2pi'''
     __slots__ = ['_part', 'theta', 'timestr']
     nitems = '+'
-    itemspattern = ['^(?P<section>snap\d{5})/phi_zeta_psi_(?P<j>\d+)',
-                    '^(?P<section>snap\d{5})/j_list']
+    itemspattern = [r'^(?P<section>snap\d{5})/phi_zeta_psi_(?P<j>\d+)',
+                    r'^(?P<section>snap\d{5})/j_list']
     commonpattern = ['gtc/tstep', 'gtc/arr2', 'gtc/a_minor']
     post_template = 'tmpl_contourf'
 
@@ -348,11 +348,11 @@ class SnapPhiSpectrumDigger(BreakDigDoc, SnapPhiZetaPsiDigger,
     '''field phi toroidal or r spectra.'''
     __slots__ = []
     nitems = '+'
-    itemspattern = ['^(?P<section>snap\d{5})/phi_zeta_psi_(?P<j>\d+)',
-                    '^(?P<section>snap\d{5})/j_list',
-                    '^(?P<s>snap\d{5})/mtoroidal',
-                    '^(?P<s>snap\d{5})/mzeach',
-                    '^(?P<s>snap\d{5})/mpsi\+1']
+    itemspattern = [r'^(?P<section>snap\d{5})/phi_zeta_psi_(?P<j>\d+)',
+                    r'^(?P<section>snap\d{5})/j_list',
+                    r'^(?P<s>snap\d{5})/mtoroidal',
+                    r'^(?P<s>snap\d{5})/mzeach',
+                    r'^(?P<s>snap\d{5})/mpsi\+1']
     post_template = ('tmpl_z111p', 'tmpl_line')
 
     def _set_fignum(self, numseed=None):
@@ -415,11 +415,11 @@ class SnapPhiTimeSpectrumDigger(SnapPhiSpectrumDigger):
     '''field phi toroidal or r spectra as time varied.'''
     __slots__ = ['msnap']
     nitems = '+'
-    itemspattern = ['^(?P<section>snap)\d{5}/phi_zeta_psi_(?P<j>\d+)',
-                    '^(?P<section>snap)\d{5}/j_list',
-                    '^(?P<s>snap)\d{5}/mtoroidal',
-                    '^(?P<s>snap)\d{5}/mzeach',
-                    '^(?P<s>snap)\d{5}/mpsi\+1']
+    itemspattern = [r'^(?P<section>snap)\d{5}/phi_zeta_psi_(?P<j>\d+)',
+                    r'^(?P<section>snap)\d{5}/j_list',
+                    r'^(?P<s>snap)\d{5}/mtoroidal',
+                    r'^(?P<s>snap)\d{5}/mzeach',
+                    r'^(?P<s>snap)\d{5}/mpsi\+1']
 
     def _set_fignum(self, numseed=None):
         assert len(self.srckeys) % len(self.itemspattern) == 0
@@ -523,9 +523,9 @@ class SnapPhiFieldnDigger(SnapshotFieldmDigger):
     '''profile of field_n'''
     __slots__ = ['_part']
     nitems = '+'
-    itemspattern = ['^(?P<section>snap\d{5})/phi_zeta_psi_(?P<j>\d+)',
-                    '^(?P<section>snap\d{5})/j_list',
-                    '^(?P<s>snap\d{5})/mpsi\+1']
+    itemspattern = [r'^(?P<section>snap\d{5})/phi_zeta_psi_(?P<j>\d+)',
+                    r'^(?P<section>snap\d{5})/j_list',
+                    r'^(?P<s>snap\d{5})/mpsi\+1']
     commonpattern = ['gtc/tstep', 'gtc/arr2', 'gtc/a_minor']
     post_template = 'tmpl_line'
 
