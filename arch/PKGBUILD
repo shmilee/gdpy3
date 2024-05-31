@@ -7,7 +7,7 @@ pkgdesc="Gyrokinetic Toroidal Code Data Processing tools written in python3"
 url="https://github.com/shmilee/gdpy3.git"
 arch=('any')
 license=('MIT')
-depends=('python-setuptools' 'python-numpy' 'python-scipy' 'python-matplotlib')
+depends=('python-numpy' 'python-scipy' 'python-matplotlib')
 optdepends=('xz: for npz lzma compression method'
             'python-h5py: saving and loading hdf5 support'
             'python-paramiko: loading raw data through ssh'
@@ -18,7 +18,7 @@ optdepends=('xz: for npz lzma compression method'
             'python-pillow: display graphics in terminal support'
             'libsixel: display graphics in terminal support'
             'python-argcomplete: autocomplete in shell support')
-makedepends=()
+makedepends=('python-build' 'python-installer' 'python-wheel')
 source=("https://github.com/shmilee/$pkgname/archive/v$pkgver.tar.gz" "gdpy3.desktop" "gdpy3-data.xml")
 sha512sums=('SKIP'
             'cfcbbfe84da78d91b0e6bcc424fa8f24b68a49f036d510e4b308e9f22b746475e72a7e4c62f752a9f7aaeb30ff5553f602e81cd03f77772a9fb3dd1ad22d09e1'
@@ -30,7 +30,8 @@ build() {
   elif [ -d "${pkgname%-git}" ]; then
     cd ${pkgname%-git}
   fi
-  python setup.py build
+  # python setup.py build
+  python -m build --wheel --no-isolation
 }
 
 package() {
@@ -39,7 +40,8 @@ package() {
   elif [ -d "${pkgname%-git}" ]; then
     cd ${pkgname%-git}
   fi
-  python setup.py install --root="$pkgdir"
+  # python setup.py install --root="$pkgdir"
+  python -m installer --destdir="$pkgdir" dist/*.whl
   install -Dm644 LICENSE "$pkgdir"/usr/share/licenses/$pkgname/LICENSE.txt
   pycmd="import src.__about__;  print(src.__about__.__icon_path__)"
   icon_path=$(python -c "$pycmd")
