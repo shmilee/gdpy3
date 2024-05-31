@@ -16,6 +16,7 @@ Gdpy3's logger module.
 '''
 
 import os
+import sys
 import tempfile
 import getpass
 import time
@@ -148,12 +149,17 @@ def setConsoleLevel(level):
 
 logging.setLoggerClass(GLogger)
 logging.config.dictConfig(glogger_config_main)
+Pyver_tuple = sys.version_info[:3]
 
 
 class LogWorkInitializer(object):
     def __init__(self, manager):
         # listener in MainProcess
-        logqueue = manager.Queue(-1)
+        if (3, 12, 0) <= Pyver_tuple <= (3, 12, 3):
+            # https://github.com/python/cpython/issues/119819
+            logqueue = multiprocessing.Queue(-1)
+        else:
+            logqueue = manager.Queue(-1)
         logging.config.dictConfig(glogger_config_listen)
         global queue_listener
         queue_listener = logging.handlers.QueueListener(
