@@ -27,6 +27,7 @@ __all__ = ['nparray_default_bitsize',
 log = getGLogger('C')
 
 int_types = (int, np.int8, np.int16, np.int32, np.int64)
+np.float128 = np.longdouble  # No np 128b float in Windows, it's longdouble.
 float_types = (float, np.float16, np.float32, np.float64, np.float128)
 
 
