@@ -30,7 +30,7 @@ class TestBaseCore(unittest.TestCase):
         self.assertEqual(cores[0].items, ['eq.out'])
         self.assertEqual(cores[0].common, ['g.out'])
 
-        ImpBaseCore11.itemspattern = ['^(?P<section>s\d).out$']
+        ImpBaseCore11.itemspattern = [r'^(?P<section>s\d).out$']
         cores = ImpBaseCore11.generate_cores(self.raw, self.raw.filenames)
         self.assertEqual(len(cores), 3)
         self.assertEqual(cores[0].section, ('s0',))
@@ -39,7 +39,7 @@ class TestBaseCore(unittest.TestCase):
     def test_two_section_one_item_core(self):
         class ImpBaseCore21(BaseCore):
             nitems = '?'
-            itemspattern = ['^(?P<sect1>his)/(?P<sect2>(?:i|e))$']
+            itemspattern = [r'^(?P<sect1>his)/(?P<sect2>(?:i|e))$']
             commonpattern = ['g/c']
 
         cores = ImpBaseCore21.generate_cores(self.pck, self.pck.datakeys)
@@ -52,7 +52,7 @@ class TestBaseCore(unittest.TestCase):
     def test_one_section_multi_items_core(self):
         class ImpBaseCore12(BaseCore):
             nitems = '+'
-            itemspattern = ['^p/(?P<section>s\d)_t\d.out$']
+            itemspattern = [r'^p/(?P<section>s\d)_t\d.out$']
             commonpattern = ['g.out']
 
         cores = ImpBaseCore12.generate_cores(self.raw, self.raw.filenames)
@@ -66,7 +66,7 @@ class TestBaseCore(unittest.TestCase):
         class ImpBaseCore22(BaseCore):
             nitems = '+'
             itemspattern = [
-                '^(?P<sect1>his)/(?P<sect2>(?:i|e))$', '^(?P<sect1>his)/n']
+                r'^(?P<sect1>his)/(?P<sect2>(?:i|e))$', r'^(?P<sect1>his)/n']
             commonpattern = ['g/c']
 
         cores = ImpBaseCore22.generate_cores(self.pck, self.pck.datakeys)
@@ -79,8 +79,8 @@ class TestBaseCore(unittest.TestCase):
         self.assertEqual(cores[1].items, ['his/e', 'his/n'])
         self.assertEqual(cores[1].common, ['g/c'])
 
-        ImpBaseCore22.itemspattern = ['^(?P<sect1>s\d)/(?P<sect2>(?:p|a))$',
-                                      '^(?P<sect1>s\d)/(?:x|y)$']
+        ImpBaseCore22.itemspattern = [r'^(?P<sect1>s\d)/(?P<sect2>(?:p|a))$',
+                                      r'^(?P<sect1>s\d)/(?:x|y)$']
         cores = ImpBaseCore22.generate_cores(self.pck, self.pck.datakeys)
         self.assertEqual(len(cores), 4)
         self.assertEqual(cores[0].section, ('s0', 'p'))
@@ -88,7 +88,7 @@ class TestBaseCore(unittest.TestCase):
         self.assertEqual(cores[1].section, ('s0', 'a'))
         self.assertEqual(cores[1].items, ['s0/a', 's0/x', 's0/y'])
 
-        ImpBaseCore22.itemspattern = ['^(?P<sect1>tp)/(?P<sect2>(?:i|e))-\d$']
+        ImpBaseCore22.itemspattern = [r'^(?P<sect1>tp)/(?P<sect2>(?:i|e))-\d$']
         cores = ImpBaseCore22.generate_cores(self.pck, self.pck.datakeys)
         self.assertEqual(len(cores), 2)
         self.assertEqual(cores[0].section, ('tp', 'i'))

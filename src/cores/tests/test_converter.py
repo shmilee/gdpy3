@@ -19,7 +19,7 @@ class TestConverter(unittest.TestCase):
     def test_one2one_file(self):
         class ImpConverter1(Converter):
             nitems = '?'
-            itemspattern = ['^(?P<section>g).out$']
+            itemspattern = [r'^(?P<section>g).out$']
 
             def _convert(self):
                 return {'a': 1}
@@ -34,7 +34,7 @@ class TestConverter(unittest.TestCase):
     def test_multi2multi_file(self):
         class ImpConverter2(Converter):
             nitems = '?'
-            itemspattern = ['^(?P<section>s\d).out$']
+            itemspattern = [r'^(?P<section>s\d).out$']
 
         cores = ImpConverter2.generate_cores(self.raw)
         self.assertEqual(len(cores), 3)
@@ -47,7 +47,7 @@ class TestConverter(unittest.TestCase):
     def test_multi2one_file(self):
         class ImpConverter3(Converter):
             nitems = '+'
-            itemspattern = ['^p/(?P<section>s\d)_t\d.out$']
+            itemspattern = [r'^p/(?P<section>s\d)_t\d.out$']
 
             def _convert(self):
                 pass

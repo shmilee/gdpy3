@@ -53,11 +53,11 @@ class ImpDigger3(ImpDigger2):
     4. 's2/a', 's2/x', 's2/y'
     '''
     nitems = '+'
-    itemspattern = ['^(?P<sect>s\d)/(?P<fld>(?:p|a))$',
-                    '^(?P<sect>s\d)/(?:x|y)$']
+    itemspattern = [r'^(?P<sect>s\d)/(?P<fld>(?:p|a))$',
+                    r'^(?P<sect>s\d)/(?:x|y)$']
     commonpattern = ['g/c']
-    neededpattern = ['^(?P<sect>s\d)/(?P<fld>(?:p|a))$',
-                     '^(?P<sect>s\d)/x$', '^(?P<sect>s\d)/y$']
+    neededpattern = [r'^(?P<sect>s\d)/(?P<fld>(?:p|a))$',
+                     r'^(?P<sect>s\d)/x$', r'^(?P<sect>s\d)/y$']
 
 
 class ImpDigger4(ImpDigger2):

@@ -32,9 +32,9 @@ ax1 = {
     ],
     'data': [
         [1, 'plot', (fielddata[30, :], 'rs-'),
-         dict(label='time=30$\Delta t$', linewidth=1)],
+         dict(label=r'time=30$\Delta t$', linewidth=1)],
         [2, 'plot', (fielddata[60, :], 'go-'),
-         dict(label='time=60$\Delta t$')],
+         dict(label=r'time=60$\Delta t$')],
         [3, 'legend', (), dict()],
     ],
     'axstyle': ['ggplot', 'errortest', {'axes.grid': False}],
@@ -206,7 +206,7 @@ temp_lineresults = dict(
     LINE=[
         ([3, 6], [1.5, 1]),
         (np.linspace(0, 9, 31), np.sin(np.linspace(0, 9, 31)), 'sin'),
-        (range(100), fielddata[30, :], 'field, time=30$\Delta t$'),
+        (range(100), fielddata[30, :], r'field, time=30$\Delta t$'),
     ],
     title='test title', xlabel='X', ylabel='Y',
     xlim=[0, 30], ylabel_rotation=45, legend_kwargs=dict(loc=0),
@@ -214,19 +214,19 @@ temp_lineresults = dict(
 temp_sharextwinxresults = dict(
     X=range(100),
     YINFO=[{
-        'left': [(fielddata[20, :], 'time=20$\Delta t$'),
-                 (fielddata[5, :], 'time=5$\Delta t$')],
-        'right': [(fielddata[32, :], 'time=32$\Delta t$'),
+        'left': [(fielddata[20, :], r'time=20$\Delta t$'),
+                 (fielddata[5, :], r'time=5$\Delta t$')],
+        'right': [(fielddata[32, :], r'time=32$\Delta t$'),
                   (range(20, 81), fielddata[34, 20:81]),
-                  (range(30, 71), fielddata[36, 30:71], 'time=36$\Delta t$')],
+                  (range(30, 71), fielddata[36, 30:71], r'time=36$\Delta t$')],
         # 'rlegend': dict(loc='best'),
         'lylabel': r'$\phi$',
     }, {
-        'left': [(fielddata[40, :], 'time=40$\Delta t$')],
+        'left': [(fielddata[40, :], r'time=40$\Delta t$')],
         'right': [],
         'lylabel': r'$\phi$',
     }, {
-        'left': [(fielddata[60, :], 'time=60$\Delta t$')],
+        'left': [(fielddata[60, :], r'time=60$\Delta t$')],
         'right': [],
         'lylabel': r'$\phi$',
     },
