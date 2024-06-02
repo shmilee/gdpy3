@@ -105,11 +105,10 @@ class Processor(object):
             plog.warning(
                 "%s: Use '%s' as salt file, ignore other files in %s!"
                 % (self.name, saltfiles[idx], ignore_dirs))
-            _old_fe = rawloader.filenames_exclude
-            _new_fe = [r'^%s.*$' % d for d in ignore_dirs]
+            _old_de = rawloader.dirnames_exclude
             rawloader = get_rawloader(
-                rawloader.path, dirnames_exclude=rawloader.dirnames_exclude,
-                filenames_exclude=_old_fe + _new_fe)
+                rawloader.path, dirnames_exclude=_old_de+tuple(ignore_dirs),
+                filenames_exclude=rawloader.filenames_exclude)
         return rawloader
 
     def _get_rawloader(self):
