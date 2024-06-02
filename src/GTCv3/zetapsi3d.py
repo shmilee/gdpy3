@@ -214,7 +214,7 @@ class ZetaPsi3DDigger(Digger):
     nitems = '+'
     itemspattern = [r'^(?P<section>zp3d\d{5})/(?P<field>(?:phi|apara|fluidne|densityi'
                     + r'|temperi|densitye|tempere|densityf|temperf))-(?P<j>\d+)']
-    commonpattern = ['gtc/tstep', 'gtc/arr2', 'gtc/a_minor', 'gtc/mtdiag',
+    commonpattern = ['gtc/tstep', 'gtc/sprpsi', 'gtc/a_minor', 'gtc/mtdiag',
                      r'^(?P<section>zp3d\d{5})/j_list']
     post_template = 'tmpl_contourf'
 
@@ -270,15 +270,11 @@ class ZetaPsi3DDigger(Digger):
                             value=False,
                             description='X: r/a'))
         fstr = field_tex_str[self.field]
-        # use_ra, arr2 [1,mpsi-1], so y0>=1, y1<=mpsi
+        # use_ra, by gtc/sprpsi
         if kwargs.get('use_ra', False):
             try:
-                arr2, a = self.pckloader.get_many('gtc/arr2', 'gtc/a_minor')
-                rr = arr2[:, 1] / a  # index [0, mpsi-2]
-                x0 = 1
-                x1 = x - 1
-                X = rr[x0-1:x1-1]
-                Z = Z[:, x0:x1]
+                rpsi, a = self.pckloader.get_many('gtc/sprpsi', 'gtc/a_minor')
+                X = rpsi / a  # index [0, mpsi]
             except Exception:
                 dlog.warning("Cannot use r/a!", exc_info=1)
             else:
@@ -324,12 +320,11 @@ class ZetaPsi3DCorrLenDigger(BreakDigDoc, ZetaPsi3DDigger):
         '''
         Z = self.pckloader.get(self.srckeys[0])
         y, x = Z.shape
-        # use_ra, arr2 [1,mpsi-1], so y0>=1, y1<=mpsi
+        # use_ra, by sprpsi [0,mpsi]
         if kwargs.get('use_ra', True):
             try:
-                arr2, a = self.pckloader.get_many('gtc/arr2', 'gtc/a_minor')
-                rr = arr2[:, 1] / a  # index [0, mpsi-2]
-                Z = Z[:, 1:x-1]
+                rpsi, a = self.pckloader.get_many('gtc/sprpsi', 'gtc/a_minor')
+                rr = rpsi / a  # index [0, mpsi]
                 y, x = Z.shape
             except Exception:
                 dlog.warning("Cannot use r/a!", exc_info=1)
@@ -487,7 +482,7 @@ class ZetaPsi3DFieldnDigger(ZetaPsi3DDigger, SnapshotFieldmDigger):
     '''profile of field_n'''
     __slots__ = []
     nitems = '+'
-    commonpattern = ['gtc/tstep', 'gtc/arr2', 'gtc/a_minor', 'gtc/mpsi']
+    commonpattern = ['gtc/tstep', 'gtc/sprpsi', 'gtc/a_minor', 'gtc/mpsi']
     post_template = 'tmpl_line'
 
     def _set_fignum(self, numseed=None):
@@ -496,14 +491,14 @@ class ZetaPsi3DFieldnDigger(ZetaPsi3DDigger, SnapshotFieldmDigger):
         self.kwoptions = None
 
     def _dig(self, kwargs):
-        data, dt, arr2, a, mpsi = self.pckloader.get_many(
+        data, dt, rpsi, a, mpsi = self.pckloader.get_many(
             *self.srckeys, *self.common)
         mpsi1 = mpsi + 1
         Lz, Lr = data.shape
         if Lr != mpsi1:
             dlog.error("Invalid %s(zeta,psi) shape!" % self.field)
             return {}, {}
-        rr = arr2[:, 1] / a
+        rr = rpsi[1:-1] / a
         fieldn = []
         for ipsi in range(1, mpsi1 - 1):
             y = data[:, ipsi]

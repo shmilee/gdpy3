@@ -237,16 +237,12 @@ class _Data1dDigger(Digger):
             else:
                 dlog.warning('Cannot cutoff: %s <= ipsi <= %s!' % (p0, p1))
         ylabel = r'$\psi$(mpsi)'
-        # use_ra, arr2 [1,mpsi-1], so y0>=1, y1<=mpsi
+        # use_ra, by rpsi
         if kwargs.get('use_ra', False):
             try:
-                arr2, a = self.pckloader.get_many('gtc/arr2', 'gtc/a_minor')
-                rr = arr2[:, 1] / a  # index [0, mpsi-2]
-                if y0 < 1:
-                    y0 = 1
-                if y1 > y - 1:
-                    y1 = y - 1
-                Y = rr[y0-1:y1-1]
+                rpsi, a = self.pckloader.get_many('gtc/sprpsi', 'gtc/a_minor')
+                rr = rpsi / a
+                Y = rr[y0:y1]
             except Exception:
                 dlog.warning("Cannot use r/a!", exc_info=1)
             else:
@@ -473,13 +469,7 @@ class _Data1dFFTDigger(_Data1dDigger):
             s0, s1 = fft_pselect
             pY = numpy.arange(pcutoff[0], pcutoff[1]+1)
             if use_ra and pY.size != Y.size:
-                # arr2 lost 2 points
-                if pY.size - Y.size == 1:
-                    pY = pY[1:] if pcutoff[0] == 0 else pY[:-1]
-                elif pY.size - Y.size == 2:
-                    pY = pY[1:-1]
-                else:
-                    dlog.error("Wrong pY size: %d != %d" % (pY.size, Y.size))
+                dlog.error("Wrong pY size: %d != %d" % (pY.size, Y.size))
             index = numpy.where((pY >= s0) & (pY <= s1))[0]
             if index.size > 0:
                 ip0, ip1 = index[0], index[-1]+1
@@ -505,8 +495,8 @@ class _Data1dFFTDigger(_Data1dDigger):
             try:
                 a, rho0 = self.pckloader.get_many('gtc/a_minor', 'gtc/rho0')
                 if not use_ra:
-                    arr2 = self.pckloader.get('gtc/arr2')
-                    yf = yf/numpy.diff(arr2[:, 1]).mean() * a
+                    rpsi = self.pckloader['gtc/sprpsi']
+                    yf = yf/numpy.diff(rpsi).mean() * a
                 yf = yf*rho0/a
             except Exception:
                 dlog.warning("Cannot use unit rho0!", exc_info=1)

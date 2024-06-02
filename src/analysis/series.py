@@ -530,13 +530,13 @@ class CaseSeries(object):
         for path, key in self.paths:
             gdp = self.cases[key]
             if cutpsi or cutra:
-                arr2 = gdp.pckloader['gtc/arr2']
+                rpsi = gdp.pckloader['gtc/sprpsi']
                 a_minor = gdp.pckloader['gtc/a_minor']
                 mpsi = gdp.pckloader['gtc/mpsi']
-                rr = arr2[:, 1] / a_minor  # [0, mpsi-2] -> psi [1, mpsi-1]
+                rr = rpsi / a_minor  # [0, mpsi]
                 if cutra:
                     idx = np.where((rr >= cutra[0]) & (rr <= cutra[1]))[0]
-                    p0, p1 = idx[0]+1, idx[-1]+1
+                    p0, p1 = idx[0], idx[-1]
                 else:
                     if cutpsi[1] < 1.0:
                         p0, p1 = [int(p*mpsi) for p in cutpsi]
@@ -545,7 +545,7 @@ class CaseSeries(object):
                     p0 = max(1, p0)
                     p1 = min(mpsi-1, p1)
                 log.info("cut-psi: [%.2f, %.2f]%d=%s, cut-r/a: [%.2f, %.2f]"
-                         % (p0/mpsi, p1/mpsi, mpsi, (p0, p1), rr[p0-1], rr[p1-1]))
+                         % (p0/mpsi, p1/mpsi, mpsi, (p0, p1), rr[p0], rr[p1]))
                 a, b, c = gdp.dig(figlabeld, pcutoff=(p0, p1), post=False)
                 time, D = b['X'], b['Z'].mean(axis=0)
                 a, b, c = gdp.dig(figlabele, pcutoff=(p0, p1), post=False)
@@ -723,21 +723,20 @@ class CaseSeries(object):
             bgp0p1 = set()
             mpsi = gdp.pckloader.get('gtc/mpsi')
             if bgra:
-                arr2 = gdp.pckloader['gtc/arr2']
+                rpsi = gdp.pckloader['gtc/sprpsi']
                 a_minor = gdp.pckloader['gtc/a_minor']
-                rr = arr2[:, 1] / a_minor  # [0, mpsi-2] -> psi [1, mpsi-1]
+                rr = rpsi / a_minor  # [0, mpsi]
                 if rr[0] <= bgra[0] and bgra[1] <= rr[-1]:
                     idx = np.where((rr >= bgra[0]) & (rr <= bgra[1]))[0]
                     if len(idx) > 1:
-                        bgp0p1.add((idx[0]+1, idx[-1]+1))
+                        bgp0p1.add((idx[0], idx[-1]))
             if bgpsi:
                 if bgpsi[1] < 1.0:
                     bgp0p1.add(tuple(int(p*mpsi) for p in bgpsi))
                 else:
                     bgp0p1.add(tuple(int(p) for p in bgpsi))
             # p0,p1 -> r(ipsi or r/a)
-            bgann = set((r[p0-1], r[p1-1]) if usera else (r[p0], r[p1])
-                        for p0, p1 in bgp0p1)
+            bgann = set((r[p0], r[p1]) for p0, p1 in bgp0p1)
             if bgann:
                 log.debug("Get bg grids: %s" % bgann)
             chiDresult.append((r, chi, D, bgann))
@@ -1146,9 +1145,9 @@ class CaseSeries(object):
                 continue
             start, end, _, _ = self._get_start_end(
                 path, key, stage, fallback=fallback_time)
-            arr2, a_minor, mpsi = gdp.pckloader.get_many(
-                'gtc/arr2', 'gtc/a_minor', 'gtc/mpsi')
-            ra = arr2[:, 1] / a_minor  # ipsi-1: [0, mpsi-2]
+            rpsi, a_minor, mpsi = gdp.pckloader.get_many(
+                'gtc/sprpsi', 'gtc/a_minor', 'gtc/mpsi')
+            ra = rpsi / a_minor  # [0, mpsi]
             r, wr, gamma = [], [], []
             if select_psi is None:
                 select_psi = range(nearby*2, mpsi-nearby, nearby)

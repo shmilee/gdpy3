@@ -315,20 +315,18 @@ class HistoryRZFDigger(Digger):
             hiszf[maxidx:start], mx, hisres, hisgamma[0], hisgamma[1], 'history')
         s1dcosy, i3, i4, nT2, s1domega = self.__omega(
             s1dzf[maxidx:start], mx, s1dres, s1dgamma[0], s1dgamma[1], 'data1d')
-        # use_ra, arr2 [1,mpsi-1]
+        # use_ra, by gtc/sprpsi
         Y1, y1label, ir = np.array(range(0, mpsi+1)), r'mpsi', None
         if kwargs.get('use_ra', False):
             try:
-                arr2, a = self.pckloader.get_many('gtc/arr2', 'gtc/a_minor')
-                Y1 = arr2[:, 1] / a  # index [0, mpsi-2]
+                rpsi, a = self.pckloader.get_many('gtc/sprpsi', 'gtc/a_minor')
+                Y1 = rpsi / a  # index [0, mpsi]
             except Exception:
                 dlog.warning("Cannot use r/a!", exc_info=1)
             else:
                 y1label = r'$r/a$'
                 acckwargs['use_ra'] = True
-                ir = Y1[ipsi-1]
-                # update d1dzf
-                d1dzf = d1dzf[1:mpsi, :]
+                ir = Y1[ipsi]
         # 4. res vs Y1/ipsi
         idx = tools.argrelextrema(
             d1dzf[:, maxidx:maxidx+nside+1].mean(axis=1))

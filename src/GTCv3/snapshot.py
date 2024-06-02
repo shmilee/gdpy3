@@ -804,7 +804,7 @@ class SnapshotFieldPoloidalDigger(Digger):
         r'^(?P<section>snap\d{5,7})'
         + '/poloidata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))',
         r'^(?P<s>snap\d{5,7})/poloidata-(?:x|z)']
-    commonpattern = ['gtc/tstep', 'gtc/mpsi', 'gtc/arr2', 'gtc/a_minor']
+    commonpattern = ['gtc/tstep', 'gtc/mpsi', 'gtc/sprpsi', 'gtc/a_minor']
     neededpattern = itemspattern + commonpattern[:-2]
     post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
 
@@ -834,9 +834,9 @@ class SnapshotFieldPoloidalDigger(Digger):
         circle_r = 0
         if circle_iflux:
             try:
-                arr2, a = self.pckloader.get_many(*self.common[-2:])
-                rr = arr2[:, 1] / a  # arr2 [1,mpsi-1]
-                circle_r = np.round(rr[circle_iflux-1], decimals=3)
+                rpsi, a = self.pckloader.get_many(*self.common[-2:])
+                rr = rpsi / a  # [0, mpsi]
+                circle_r = np.round(rr[circle_iflux], decimals=3)
             except Exception:
                 pass
         if self.kwoptions is None:
@@ -1241,7 +1241,7 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
             use |field_k|^fft_mean_order as weight to average(|k|), default 2
     '''
     # data(theta, time), neardata(near-psi-or-zeta, theta, time) for FFT
-    # ipsi of *data* for k_theta, pckloader for arr2 rho0
+    # ipsi of *data* for k_theta, pckloader for sprpsi rho0
     difftime = np.diff(time)
     dt, stdt = np.mean(difftime), np.std(difftime)
     if stdt != 0:
@@ -1309,8 +1309,8 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
     yf_label = r'$k_{\theta}r$'
     if fft_unit_rho0:
         try:
-            arr2, rho0 = pckloader.get_many('gtc/arr2', 'gtc/rho0')
-            yf = yf/arr2[ipsi-1, 1]*rho0
+            rpsi, rho0 = pckloader.get_many('gtc/sprpsi', 'gtc/rho0')
+            yf = yf/rpsi[ipsi]*rho0
         except Exception:
             dlog.warning("Cannot use unit rho0!", exc_info=1)
         else:
@@ -1661,7 +1661,7 @@ class SnapshotFieldmDigger(Digger):
         + '/poloidata-(?P<field>(?:phi|apara|fluidne|densityi|densitye))',
         r'^(?P<s>snap\d{5,7})/mpsi\+1',
         r'^(?P<s>snap\d{5,7})/mtgrid\+1']
-    commonpattern = ['gtc/tstep', 'gtc/arr2', 'gtc/a_minor']
+    commonpattern = ['gtc/tstep', 'gtc/sprpsi', 'gtc/a_minor']
     post_template = 'tmpl_line'
 
     def _set_fignum(self, numseed=None):
@@ -1671,12 +1671,12 @@ class SnapshotFieldmDigger(Digger):
     def _dig(self, kwargs):
         timestr = _snap_get_timestr(self.group, self.pckloader)
         fstr = field_tex_str[self.section[1]]
-        pdata, mpsi1, mtgrid1, dt, arr2, a = self.pckloader.get_many(
+        pdata, mpsi1, mtgrid1, dt, rpsi, a = self.pckloader.get_many(
             *self.srckeys, *self.common)
         if pdata.shape != (mtgrid1, mpsi1):
             dlog.error("Invalid poloidata shape!")
             return {}, {}
-        rr = arr2[:, 1] / a
+        rr = rpsi[1:-1] / a
         fieldm = []
         for ipsi in range(1, mpsi1 - 1):
             y = pdata[:, ipsi]

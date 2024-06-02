@@ -142,7 +142,7 @@ class Flux3DAlphaDigger(SnapshotFieldFluxAlphaDigger):
 class Flux3DThetaDigger(Flux3DAlphaDigger, SnapshotFieldFluxThetaDigger):
     '''phi(theta,zeta), a_para etc. on every flux surface.'''
     __slots__ = []
-    commonpattern = ['gtc/tstep', 'gtc/arr2']
+    commonpattern = ['gtc/tstep', 'gtc/qmesh']
 
     def _set_fignum(self, numseed=None):
         self.ipsi = int(self.section[-1])
@@ -151,7 +151,7 @@ class Flux3DThetaDigger(Flux3DAlphaDigger, SnapshotFieldFluxThetaDigger):
 
     def _get_q_psi(self):
         '''Return q at ipsi.'''
-        return self.pckloader.get('gtc/arr2')[self.ipsi-1, 2]
+        return self.pckloader['gtc/qmesh'][self.ipsi, 2]
 
 
 def _flux3d_interpolate_worker(i, total, data, q, iM, iN, fielddir):
@@ -206,7 +206,7 @@ def flux3d_interpolate_stack(loader, iM, iN, field, fielddir=0,
                    (len(steps), len(psis), len(steps)*len(psis), len(keys)))
         return
     keys = np.array(keys).reshape((len(steps), len(psis)))
-    qs = [loader['gtc/arr2'][int(ipsi)-1, 2] for ipsi in psis]
+    qs = [loader['gtc/qmesh'][int(ipsi), 2] for ipsi in psis]
     tstep = loader.get('gtc/tstep')
     time = np.array([round(int(i) * tstep, Ndigits_tstep) for i in steps])
     ipsi = np.array([int(i) for i in psis])
@@ -278,7 +278,7 @@ class Flux3DAlphaTileDigger(Flux3DAlphaDigger,
                             SnapshotFieldFluxAlphaTileDigger):
     '''Tiled phi(alpha,zeta), a_para, etc. on every flux surface.'''
     __slots__ = []
-    commonpattern = ['gtc/tstep', 'gtc/arr2']
+    commonpattern = ['gtc/tstep', 'gtc/qmesh']
 
     def _set_fignum(self, numseed=None):
         self.ipsi = int(self.section[-1])
@@ -287,7 +287,7 @@ class Flux3DAlphaTileDigger(Flux3DAlphaDigger,
 
     def _get_q_psi(self):
         '''Return q at ipsi.'''
-        return self.pckloader.get('gtc/arr2')[self.ipsi-1, 2]
+        return self.pckloader['gtc/qmesh'][self.ipsi, 2]
 
 
 class Flux3DThetaTileDigger(Flux3DThetaDigger,

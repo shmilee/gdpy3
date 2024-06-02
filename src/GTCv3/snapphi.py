@@ -104,7 +104,7 @@ class SnapPhiZetaPsiDigger(Digger):
     nitems = '+'
     itemspattern = [r'^(?P<section>snap\d{5})/phi_zeta_psi_(?P<j>\d+)',
                     r'^(?P<section>snap\d{5})/j_list']
-    commonpattern = ['gtc/tstep', 'gtc/arr2', 'gtc/a_minor']
+    commonpattern = ['gtc/tstep', 'gtc/sprpsi', 'gtc/a_minor']
     post_template = 'tmpl_contourf'
 
     def _set_fignum(self, numseed=None):
@@ -133,15 +133,11 @@ class SnapPhiZetaPsiDigger(Digger):
                 use_ra=dict(widget='Checkbox',
                             value=False,
                             description='X: r/a'))
-        # use_ra, arr2 [1,mpsi-1], so y0>=1, y1<=mpsi
+        # use_ra
         if kwargs.get('use_ra', False):
             try:
-                arr2, a = self.pckloader.get_many('gtc/arr2', 'gtc/a_minor')
-                rr = arr2[:, 1] / a  # index [0, mpsi-2]
-                x0 = 1
-                x1 = x - 1
-                X = rr[x0-1:x1-1]
-                Z = Z[:, x0:x1]
+                rpsi, a = self.pckloader.get_many('gtc/sprpsi', 'gtc/a_minor')
+                X = rpsi / a  # index [0, mpsi]
             except Exception:
                 dlog.warning("Cannot use r/a!", exc_info=1)
             else:
@@ -185,13 +181,11 @@ class SnapPhiCorrLenDigger(BreakDigDoc, SnapPhiZetaPsiDigger):
         '''
         Z = self.pckloader.get(self.srckeys[0])
         y, x = Z.shape
-        # use_ra, arr2 [1,mpsi-1], so y0>=1, y1<=mpsi
+        # use_ra
         if kwargs.get('use_ra', True):
             try:
-                arr2, a = self.pckloader.get_many('gtc/arr2', 'gtc/a_minor')
-                rr = arr2[:, 1] / a  # index [0, mpsi-2]
-                Z = Z[:, 1:x-1]
-                y, x = Z.shape
+                rpsi, a = self.pckloader.get_many('gtc/sprpsi', 'gtc/a_minor')
+                rr = rpsi / a  # index [0, mpsi]
             except Exception:
                 dlog.warning("Cannot use r/a!", exc_info=1)
                 use_ra = False
@@ -526,7 +520,7 @@ class SnapPhiFieldnDigger(SnapshotFieldmDigger):
     itemspattern = [r'^(?P<section>snap\d{5})/phi_zeta_psi_(?P<j>\d+)',
                     r'^(?P<section>snap\d{5})/j_list',
                     r'^(?P<s>snap\d{5})/mpsi\+1']
-    commonpattern = ['gtc/tstep', 'gtc/arr2', 'gtc/a_minor']
+    commonpattern = ['gtc/tstep', 'gtc/sprpsi', 'gtc/a_minor']
     post_template = 'tmpl_line'
 
     def _set_fignum(self, numseed=None):
@@ -542,13 +536,13 @@ class SnapPhiFieldnDigger(SnapshotFieldmDigger):
         timestr = _snap_get_timestr(self.group, self.pckloader)
         theta = r'$\theta=%.2f=%g^\circ$' % (
             round(self._part*2*np.pi, ndigits=2), self._part*360)
-        data, j_list, mpsi1, dt, arr2, a = self.pckloader.get_many(
+        data, j_list, mpsi1, dt, rpsi, a = self.pckloader.get_many(
             *self.srckeys, *self.common)
         Lz, Lr = data.shape
         if Lr != mpsi1:
             dlog.error("Invalid phi(zeta,psi) shape!")
             return {}, {}
-        rr = arr2[:, 1] / a
+        rr = rpsi[1:-1] / a
         fieldn = []
         for ipsi in range(1, mpsi1 - 1):
             y = data[:, ipsi]
