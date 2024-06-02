@@ -25,6 +25,7 @@ It contains two kinds of loaders.
    :attr:`PckLoader.path`,
    :attr:`PckLoader.pathobj`,
    :attr:`PckLoader.datakeys`,
+   :attr:`PckLoader.virtualkeys`,
    :attr:`PckLoader.datagroups`,
    :attr:`PckLoader.datagroups_exclude`,
    :attr:`PckLoader.description`,
@@ -98,7 +99,7 @@ def is_rawloader(obj):
     return isinstance(obj, base.BaseRawLoader)
 
 
-def get_pckloader(path, datagroups_exclude=None):
+def get_pckloader(path, virtualdata=None, datagroups_exclude=None):
     '''
     Given a file path or dict cache, return a pickled loader instance.
     Raises IOError if path not found, ValueError if path type not supported.
@@ -135,7 +136,8 @@ def get_pckloader(path, datagroups_exclude=None):
             raise IOError("Can't find path '%s'!" % path)
     else:
         raise ValueError("Var *path* should be str or dict object!")
-    return Loader(path, datagroups_exclude=datagroups_exclude)
+    return Loader(
+        path, virtualdata=virtualdata, datagroups_exclude=datagroups_exclude)
 
 
 def is_pckloader(obj):

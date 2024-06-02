@@ -264,6 +264,10 @@ class BasePckLoader(BaseLoader):
     pathobj: opened path object
     datakeys: tuple
         keys in the loader, contain group name
+    virtualkeys: tuple
+        keys not directly stored in the loader, not exist.
+        But can be generate dynamically based on other keys in loader.
+        They can only use group names that are already in datagroups.
     datagroups: tuple
         groups of datakeys
     description: str or None
@@ -276,11 +280,15 @@ class BasePckLoader(BaseLoader):
     ----------
     path: str
         path of the file to open
+    virtualdata: dict
+        virtualkeys and callable values, like {'vkey': function}
+        the function only takes one input: the loader itself
     datagroups_exclude: list
         a list of function or regular expression to exclude datagroups,
         example: [r'sanp\d+$', 'bigdata']
     '''
     __slots__ = ['datakeys', 'datagroups', 'datagroups_exclude',
+                 'virtualdata', 'virtualkeys',
                  'desc', 'description', 'cache']
 
     def _special_getgroups(self, pathobj):
@@ -289,8 +297,9 @@ class BasePckLoader(BaseLoader):
         '''
         return set(os.path.dirname(k) for k in self.datakeys)
 
-    def __init__(self, path, datagroups_exclude=None):
+    def __init__(self, path, virtualdata=None, datagroups_exclude=None):
         super(BasePckLoader, self).__init__(path)
+        self.virtualdata = virtualdata or {}
         self.datagroups_exclude = self.gen_match_conditions(datagroups_exclude)
         self.update()
 
@@ -325,25 +334,33 @@ class BasePckLoader(BaseLoader):
         except (IOError, ValueError):
             log.error("Failed to read path %s." % self.path, exc_info=1)
             raise
+        self.virtualkeys = tuple(
+            k
+            for k, v in self.virtualdata.items()
+            if os.path.dirname(k) in self.datagroups and callable(v))
+        if self.virtualkeys:
+            log.debug("Setting virtualkeys: %s" % (self.virtualkeys,))
         self.cache = {}
 
     def keys(self):
-        return self.datakeys
+        return self.datakeys + self.virtualkeys
 
     def groups(self):
         return self.datagroups
 
-    def get(self, key):
-        '''
-        Get value by ``key`.
-        '''
-        if key not in self.datakeys:
-            raise KeyError("%s is not in '%s'" % (key, self.path))
+    def __getitem__(self, key, /):
         if key in self.cache:
             return self.cache[key]
         try:
-            log.debug("Getting key '%s' from %s ..." % (key, self.path))
-            value = self._special_get(self.pathobj, key)
+            if key in self.virtualkeys:
+                log.debug("Getting virtual key '%s' in %s ..."
+                          % (key, self.path))
+                value = self.virtualdata[key](self)
+            elif key in self.datakeys:
+                log.debug("Getting key '%s' from %s ..." % (key, self.path))
+                value = self._special_get(self.pathobj, key)
+            else:
+                raise KeyError("%s is not in '%s'" % (key, self.path))
             self.cache[key] = value
         except (IOError, ValueError):
             log.error("Failed to get '%s' from %s!" %
@@ -351,7 +368,14 @@ class BasePckLoader(BaseLoader):
             raise
         return value
 
-    __getitem__ = get
+    def get(self, key, default=None, /):
+        ''' Get value by ``key`. '''
+        if key in self.keys():
+            try:
+                return self.__getitem__(key)
+            except Exception:
+                pass
+        return default
 
     def get_many(self, *keys):
         '''
@@ -364,8 +388,14 @@ class BasePckLoader(BaseLoader):
         try:
             for i in idxtodo:
                 key = keys[i]
-                log.debug("Getting key '%s' from %s ..." % (key, self.path))
-                value = self._special_get(self.pathobj, key)
+                if key in self.virtualkeys:
+                    log.debug("Getting virtual key '%s' in %s ..."
+                              % (key, self.path))
+                    value = self.virtualdata[key](self)
+                else:
+                    log.debug("Getting key '%s' from %s ..." %
+                              (key, self.path))
+                    value = self._special_get(self.pathobj, key)
                 result[i] = value
                 self.cache[key] = value
         except (IOError, ValueError):

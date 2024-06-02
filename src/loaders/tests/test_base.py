@@ -155,8 +155,9 @@ class TestBasePckLoader(unittest.TestCase):
         self.assertEqual(loader.get('k1'), 1)
         self.assertEqual(loader['g2/k2'], 2)
         self.assertEqual(loader.get('g4/sg4/k4'), 4)
+        self.assertEqual(loader.get('lost-key', '?'), '?')
         with self.assertRaises(KeyError):
-            loader.get('lost-key')
+            loader['lost-key']
 
     def test_pckloader_get_many(self):
         loader = ImpBasePckLoader(self.tmpfile)
@@ -176,3 +177,19 @@ class TestBasePckLoader(unittest.TestCase):
         loader = ImpBasePckLoader(self.tmpfile)
         self.assertTrue(loader.all_in_loader('k1', 'g2/k2', 'g4/sg4/k4'))
         self.assertFalse(loader.all_in_loader('k1', 'g2/k2', 'lost-key'))
+
+    def test_pckloader_with_virtualkeys(self):
+        Virtual_data = {
+            'g2/k2+1': lambda loader: loader['g2/k2'] + loader['k1'],
+            'g3/max': lambda loader: max(loader['g3/k3'], loader['g3/k33']),
+        }
+        loader = ImpBasePckLoader(self.tmpfile, virtualdata=Virtual_data)
+        self.assertSetEqual(set(loader.virtualkeys), {'g2/k2+1', 'g3/max'})
+        self.assertEqual(loader['g2/k2+1'], 3)
+        self.assertTrue('g2/k2+1' in loader.cache)
+        self.assertEqual(loader.get_many('g2/k2+1', 'g3/max'), (3, 33))
+        loader = ImpBasePckLoader(
+            self.tmpfile, virtualdata=Virtual_data,
+            datagroups_exclude=[r'^g2$'])
+        self.assertEqual(loader['g3/max'], 33)
+        self.assertTrue('g2/k2+1' not in loader)
