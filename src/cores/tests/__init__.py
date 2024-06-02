@@ -23,3 +23,6 @@ class PckLoader(object):
         'tp/i-1', 'tp/i-2', 'tp/i-3',
         'tp/e-1', 'tp/e-2', 'tp/e-3',
     ]
+
+    def keys(self):
+        return self.datakeys

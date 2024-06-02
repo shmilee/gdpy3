@@ -748,6 +748,10 @@ class Processor(object):
     def _default_exclude_raw_dirs(self):
         return []
 
+    @property
+    def _default_pckloader_virtual_data(self):
+        return None
+
     def __init__(self, path, add_desc=None,
                  dirnames_exclude=None, filenames_exclude=None,
                  savedir=None, savetype='.npz', overwrite=False, Sid=False,
@@ -812,7 +816,8 @@ class Processor(object):
                 return
             try:
                 self.pckloader = get_pckloader(
-                    path, datagroups_exclude=datagroups_exclude)
+                    path, datagroups_exclude=datagroups_exclude,
+                    virtualdata=self._default_pckloader_virtual_data)
             except Exception:
                 plog.error("%s: Invalid pckloader path '%s'!"
                            % (self.name, path), exc_info=1)
@@ -861,7 +866,8 @@ class Processor(object):
                 return
             try:
                 self.pckloader = get_pckloader(
-                    self.pcksaver.get_store(), datagroups_exclude=datagroups_exclude)
+                    self.pcksaver.get_store(), datagroups_exclude=datagroups_exclude,
+                    virtualdata=self._default_pckloader_virtual_data)
             except Exception:
                 plog.error("%s: Invalid pckloader path '%s'!"
                            % (self.name, path), exc_info=1)

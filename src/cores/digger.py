@@ -82,7 +82,7 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         '''Return generated Core instances for *pckloader*.'''
         start = time.time()
         dcss = super(Digger, cls).generate_cores(
-            pckloader, pckloader.datakeys, duplicate=cls.numseeds)
+            pckloader, pckloader.keys(), duplicate=cls.numseeds)
         res = []
         figlabels = []
         if cls.numseeds:
