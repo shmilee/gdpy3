@@ -56,7 +56,7 @@ def _get_sprgpsi(loader):
     if sprgpsi is None:
         arr2 = loader.get('gtc/arr2', None)
         if arr2 is not None:
-            rg0 = loader['gtc/rg1']*loader['gtc/a_minor']
+            rg0 = loader['gtc/rg0']*loader['gtc/a_minor']
             rg1 = loader['gtc/rg1']*loader['gtc/a_minor']
             rgpsi = arr2[:, 1]  # set 1 to mpsi-1
             # insert 0 and mpsi
