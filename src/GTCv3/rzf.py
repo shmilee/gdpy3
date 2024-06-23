@@ -425,15 +425,22 @@ class HistoryRZFDigger(Digger):
     def __gamma(self, zf, t, res, info):
         try:
             def f(x, a, b):
-                return (zf[0]-res) * np.exp(-a*(x)**b)+res
+                return (zf[0]-res) * np.exp(-a*x-b)+res
+            i1 = tools.argrelextrema(zf, m='max')
+            i2 = tools.argrelextrema(zf, m='min')
             if zf[0]-res > 0:
-                i = tools.argrelextrema(zf, m='max')
+                _zf1 = zf[i1]
+                _zf2 = 2.0*res - zf[i2]
             else:
-                i = tools.argrelextrema(zf, m='min')
-            i = np.insert(i, 0, 0)
-            _t = t[i] - t[0]
-            _t[0] += 1e-25
-            gamma, pcov, fity = tools.curve_fit(f, _t, zf[i], fitX=t-t[0])
+                _zf1 = 2.0*res - zf[i1]
+                _zf2 = zf[i2]
+            i = np.concatenate([[0], i1, i2])
+            iindex = i.argsort()
+            _zf = np.concatenate([[zf[0]], _zf1, _zf2])
+            _t = t[i[iindex]] - t[0]
+            _t[0] += 1e-99
+            _zf = _zf[iindex]
+            gamma, pcov, fity = tools.curve_fit(f, _t, _zf, fitX=t-t[0])
         except Exception:
             dlog.warning("Failed to get fitting gamma!", exc_info=1)
             gamma = np.array([0.0, 0.0])
@@ -443,8 +450,8 @@ class HistoryRZFDigger(Digger):
 
     def __omega(self, zf, t, res, g0, g1, info):
         try:
-            cosy = (zf-res) * np.exp(g0*(t-t[0])**(g1))
-            # my = tools.savgolay_filter(cosy, info='smooth zonal flow') # mess data
+            cosy = (zf-res) * np.exp(g0*(t-t[0])-g1)
+            # tools.savgolay_filter(cosy, info='smooth zonal') # mess data
             index = tools.argrelextrema(cosy, m='both')
             if len(index) >= 2:
                 idx1, idx2, nT = index[0], index[-1], (len(index) - 1) / 2
@@ -478,9 +485,9 @@ class HistoryRZFDigger(Digger):
             (r['restime'], [r['s1dres'], r['s1dres']],
                 r'$Res(%d)=%.4f$' % (r['ipsi'], r['s1dres'])),
             (r['gammatime'], r['hisfity'],
-                r'history, $e^{-%.4f t^{%.4f}}$' % (g1, g2)),
+                r'history, $e^{-%.4f t {%+.4f}}$' % (g1, g2)),
             (r['gammatime'], r['s1dfity'],
-                r'i=%d, $e^{-%.4f t^{%.4f}}$' % (r['ipsi'], g3, g4))],
+                r'i=%d, $e^{-%.4f t {%+.4f}}$' % (r['ipsi'], g3, g4))],
             title=r'$%s$, residual $Res$, damping $\gamma$' % rzfstr,
             xlim=r['time'][[0, -1]], xlabel=r'time($R_0/c_s$)',
             legend_kwargs=dict(loc='upper right'),

@@ -484,7 +484,7 @@ class CaseSeries(object):
                 if index.size > 0:
                     return start, end, index[0], index[-1]
         start, end = fallback
-        log.info('Use fallback %s time ratio: %.1f, %.1f for %s'
+        log.info('Use fallback %s time ratio: %.3f, %.3f for %s'
                  % (stage, start, end, path))
         idx0, idx1 = int(len(time)*start) - 1, int(len(time)*end) - 1
         return time[idx0], time[idx1], idx0, idx1
@@ -1363,7 +1363,7 @@ class CaseSeries(object):
                     end = start + length
                 fallback_time = start/len(time1), min(1.0, end/len(time1))
                 log.info(
-                    "Auto-fallback-time: [%s,%s], ratio: [%.4f,%.4f], for %s"
+                    "Auto-fallback-time: [%s,%s], ratio: [%.3f,%.3f], for %s"
                     % (time1[start], time1[end-1], *fallback_time, path))
             t0, t1, start, end = self._get_start_end(
                 path, key, 'saturation', time=time1, fallback=fallback_time)
