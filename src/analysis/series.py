@@ -241,8 +241,10 @@ class LabelInfoSeries(object):
     Attributes
     ----------
     info: dict of annotations for each case
-        key is saltstr. value is dict(path=path, name=name, label=label).
-        label dict has time range for 'linear', 'nonlinear', 'saturation'.
+        key is saltstr. value is dict(path=path, name=name, label=dict(
+            stage=[(t0, t1), (t2, t3), ...])).
+        `stage` can be 'linear', 'nonlinear', 'saturation'.
+        each stage can have multi time ranges.
     search_paths: dict of path=[saltstr] pairs
     search_names: dict of name=[saltstr] pairs
         if has name collision, then name=[saltstr1, saltstr2, ...]
@@ -255,7 +257,7 @@ class LabelInfoSeries(object):
         ----------
         label_list: list of manually built label info
             dict(path, name, saltstr, label=label) for each case,
-            echo label dict has time (start, end) pairs for 'linear',
+            echo label dict has time (start, end) range list for 'linear',
             'nonlinear', 'saturation' stage, and unit is R0/cs.
         ls_json: str, path of Label Studio json results
         '''
@@ -294,6 +296,10 @@ class LabelInfoSeries(object):
             linear(default), nonlinear, or saturation
         by: str
             use name, path or saltstr(default) as key
+
+        Return
+        ------
+        A list of time range, like [(t0,t1),...]
         '''
         if stage not in self.stages:
             raise ValueError('Unsupported stage: %s' % stage)
@@ -312,7 +318,7 @@ class LabelInfoSeries(object):
                 log.error("Stage '%s' not labeled for '%s'!" % (stage, key))
         else:
             log.error("Key '%s' not found!" % key)
-        return None, None
+        return None
 
     def _get_from_label_list(self, label_list):
         info = {}
@@ -328,7 +334,12 @@ class LabelInfoSeries(object):
                 ln = ann['value']['timeserieslabels'][0]
                 if ln in self.stages:
                     start, end = ann['value']['start'], ann['value']['end']
-                    result[ln] = (start, end)
+                    if ln in result:
+                        result[ln].append((start, end))
+                    else:
+                        result[ln] = [(start, end)]
+        for ln in result:
+            result[ln] = sorted(result[ln])
         return result
 
     def _get_from_ls_json(self, ls_json):
@@ -430,6 +441,8 @@ class CaseSeries(object):
     ----------
     paths: list of (realpath, saltstr) pairs for each case
         same order as input real paths *casepaths*
+    keypath: dict
+        key is saltstr; value is case path
     cases: dict
         key is saltstr; value is gdpy3 processor for each case
     labelinfo: LabelInfoSeries instance
@@ -447,6 +460,7 @@ class CaseSeries(object):
         labelinfo: LabelInfoSeries instance
         '''
         self.paths = []
+        self.keypath = {}
         self.cases = {}
         for path in casepaths:
             if not os.path.exists(os.path.join(path, 'gtc.out')):
@@ -458,6 +472,7 @@ class CaseSeries(object):
             gdp = get_processor(path)
             key = gdp.saltstr
             self.paths.append((path, key))
+            self.keypath[key] = path
             if key in self.cases:
                 log.warning("key '%s' collision, path '%s'!" % (key, path))
             self.cases[key] = gdp
@@ -468,37 +483,61 @@ class CaseSeries(object):
         self.plotter = get_visplter('mpl::series')
         self.plotter.style = ['gdpy3-paper-aip']
 
-    def _get_start_end(self, path, key, stage, time=None, fallback=(0.7, 1.0)):
-        ''' Return t0, t1, index0, index1 '''
+    def _get_start_end(self, key, stage, time=None,
+                       select=0, fallback=None):
+        '''
+        Search in :attr:`labelinfo` with specified index `select`.
+        Use `fallback` when stage not found in :attr:`labelinfo`.
+        Return a list of time range `(t0, t1, index0, index1)`.
+
+        Parameters
+        ----------
+        select: int or list, like [0, 1]
+            time range index of the stage, starts from 0
+        fallback: tuple of float, (ratio0, ratio1)
+            time ratio, 0.0 -> 1.0
+        '''
+        path = self.keypath[key]
         if time is None:
             ndstep, tstep, ndiag = self.cases[key].pckloader.get_many(
                 'history/ndstep', 'gtc/tstep', 'gtc/ndiag')
             dt = tstep * ndiag
             time = np.around(np.arange(1, ndstep+1)*dt, 8)
         if self.labelinfo:
-            start, end = self.labelinfo.get(key, stage=stage)
-            if start is not None:
-                log.info('Get %s time: %6.2f, %6.2f for %s'
-                         % (stage, start, end, path))
-                index = np.where((time >= start) & (time <= end))[0]
-                if index.size > 0:
-                    return start, end, index[0], index[-1]
-        start, end = fallback
-        log.info('Use fallback %s time ratio: %.3f, %.3f for %s'
-                 % (stage, start, end, path))
-        idx0, idx1 = int(len(time)*start) - 1, int(len(time)*end) - 1
-        return time[idx0], time[idx1], idx0, idx1
+            trange = self.labelinfo.get(key, stage=stage)
+            select = [select] if isinstance(select, int) else select
+            if trange:
+                res, N = [], len(trange)
+                for i, (start, end) in enumerate(trange):
+                    if i in select:
+                        log.info('Get (%d/%d) %s time: %6.2f, %6.2f for %s'
+                                 % (i+1, N, stage, start, end, path))
+                        index = np.where((time >= start) & (time <= end))[0]
+                        if index.size > 0:
+                            res.append((start, end, index[0], index[-1]))
+                if res:
+                    return res
+        if isinstance(fallback, (tuple, list)) and len(fallback) == 2:
+            ratio0, ratio1 = fallback
+            idx0, idx1 = int(len(time)*start) - 1, int(len(time)*end) - 1
+            log.info(
+                'Use fallback %s time: %6.2f, %6.2f, ratio: %.3f, %.3f for %s'
+                % (stage, time[idx0], time[idx1], ratio0, ratio1, path))
+            return [(time[idx0], time[idx1], idx0, idx1)]
+        else:
+            return []
 
     def dig_chi_D(self, particle, gyroBohm=True, Ln=None,
-                  cutpsi=None, cutra=None,
+                  cutpsi=None, cutra=None, select=0,
                   fallback_sat_time=(0.7, 1.0)):
         '''
         Get particle chi(t) and D(t) of each case.
         Return a list of tuple in order of :attr:`paths`.
         The tuple has 6 elements:
             1) time t array, 2) chi(t) array, 3) D(t) array,
-            4) saturation time (start-time, end-time),
-            5) saturation chi, 6) saturation D.
+            4) list of saturation time range [(start-time, end-time),...],
+            5) list of saturation chi, 6) list of saturation D.
+        The saturation list elements are sorted by time range.
 
         Parameters
         ----------
@@ -514,6 +553,8 @@ class CaseSeries(object):
             for example, cut off boundary grids
         cutra: tuple of float, like (0.3, 0.7)r/a
             same as cutpsi, use r/a instead of psi grids to cut data1d
+        select: int or list, like [0, 1]
+            saturation time index, starts from 0
         fallback_sat_time: tuple
             If saturation time not found in :attr:`labelinfo`, use this
             to set saturation (start,end) time ratio. limit: 0.0 -> 1.0
@@ -558,12 +599,14 @@ class CaseSeries(object):
                 Ln = gdp.pckloader['gtc/a_minor'] if Ln is None else Ln
                 rho0 = gdp.pckloader['gtc/rho0']
                 chi, D = chi*Ln/rho0, D*Ln/rho0
-            _, _, start, end = self._get_start_end(
-                path, key, 'saturation', time=time, fallback=fallback_sat_time)
-            sat_t = np.linspace(time[start], time[end], 2)
-            sat_chi = np.mean(chi[start:end+1])
-            # sat_chi_std = np.std(chi[start:end])
-            sat_D = np.mean(D[start:end+1])
+            sat_t, sat_chi, sat_D = [], [], []
+            for t0, t1, start, end in self._get_start_end(
+                    key, 'saturation', time=time, select=select,
+                    fallback=fallback_sat_time):
+                sat_t.append(np.linspace(t0, t1, 2))
+                sat_chi.append(np.mean(chi[start:end+1]))
+                # sat_chi_std.append(np.std(chi[start:end]))
+                sat_D.append(np.mean(D[start:end+1]))
             chiDresult.append((time, chi, D, sat_t, sat_chi, sat_D))
         return chiDresult
 
@@ -644,22 +687,41 @@ class CaseSeries(object):
             'e' if 'electron' in particle else 'f')
         xylabel1 = {'xlabel': r'$t(R_0/c_s)$', 'ylabel': r'$\chi_%s$' % ief}
         xylabel2 = {'xlabel': r'$t(R_0/c_s)$', 'ylabel': r'$D_%s$' % ief}
+        markers = 'ovs<*^D>8X'
 
         def datafun1(ress, lbls):
-            return [[1+i, 'plot', (r[0], r[1], '-'), dict(
-                    color="C{}".format(i), label=r'%s, $\chi_%s=%s$' % (
-                        l, ief, tools.round_str(r[4], 2)))]
-                    for i, (r, l) in enumerate(zip(ress, lbls))
-                    ] + [[200+i, 'plot', (r[3], [r[4], r[4]], 'o'), dict(
-                        color="C{}".format(i))] for i, r in enumerate(ress)]
+            return [
+                [1+i, 'plot', (r[0], r[1], '-'), dict(
+                    color="C{}".format(i),
+                    label=r'%s, $\chi_%s=%s$' % (
+                        l, ief, ','.join(
+                            [tools.round_str(sc, 2) for sc in r[4]]))
+                )]
+                for i, (r, l) in enumerate(zip(ress, lbls))
+            ] + [
+                [200+10*i+j, 'plot', (st, [sc, sc], markers[j]), dict(
+                    color="C{}".format(i)
+                )]
+                for i, r in enumerate(ress)
+                for j, (st, sc) in enumerate(zip(r[3], r[4]))
+            ]
 
         def datafun2(ress, lbls):
             return [[1+i, 'plot', (r[0], r[2], '-'), dict(
-                color="C{}".format(i), label=r'%s, $D_%s=%s$' % (
-                    l, ief, tools.round_str(r[5], 2)))]
-                    for i, (r, l) in enumerate(zip(ress, lbls))
-                    ] + [[200+i, 'plot', (r[3], [r[5], r[5]], 'o'), dict(
-                        color="C{}".format(i))] for i, r in enumerate(ress)]
+                color="C{}".format(i),
+                label=r'%s, $D_%s=%s$' % (
+                    l, ief, ','.join(
+                        [tools.round_str(sd, 2) for sd in r[5]]))
+            )]
+                for i, (r, l) in enumerate(zip(ress, lbls))
+            ] + [
+                [200+10*i+j, 'plot', (st, [sd, sd], markers[j]), dict(
+                    color="C{}".format(i)
+                )]
+                for i, r in enumerate(ress)
+                for j, (st, sd) in enumerate(zip(r[3], r[5]))
+            ]
+
         self._plot_mrows_chi_D_like(
             xylabel1, xylabel2, datafun1, datafun2,
             result, labels, nlines, fignum, xlims=xlims, ylims=ylims,
@@ -667,7 +729,7 @@ class CaseSeries(object):
             savepath=savepath)
 
     def dig_chi_D_r(self, particle, gyroBohm=True, Ln=None,
-                    bgpsi=None, bgra=None,
+                    bgpsi=None, bgra=None, select=0,
                     fallback_sat_time=(0.7, 1.0), **kwargs):
         '''
         Get particle chi(r) and D(r) of each case.
@@ -689,6 +751,8 @@ class CaseSeries(object):
             annotate the boundary grids, or selected psi grids
         bgra: tuple of float, like (0.3, 0.7)r/a
             same as bgpsi, use r/a instead of psi grids
+        select: int, default 0
+            saturation time index, starts from 0
         fallback_sat_time: tuple
             If saturation time not found in :attr:`labelinfo`, use this
             to set saturation (start,end) time ratio. limit: 0.0 -> 1.0
@@ -709,7 +773,8 @@ class CaseSeries(object):
             a, b, c = gdp.dig('history/%s_flux' % particle, post=False)
             time = b['time']
             start, end, _, _ = self._get_start_end(
-                path, key, 'saturation', time=time, fallback=fallback_sat_time)
+                key, 'saturation', time=time, select=select,
+                fallback=fallback_sat_time)[0]
             a, b1, c = gdp.dig(figlabel % 'energy', post=False,
                                mean_time=[start, end], **kwargs)
             chi, r = b1['meanZ'], b1['Y']
@@ -786,73 +851,67 @@ class CaseSeries(object):
             suptitle=suptitle, title_y=title_y, add_style=add_style,
             savepath=savepath)
 
-    def dig_gamma_phi(self, R0Ln=None, fallback_growth_time='auto'):
+    def dig_gamma_phi(self, select=0, R0Ln=None, fallback_growth_time='auto'):
         '''
         Get phi-RMS linear growth rate of each case.
         Return a list of tuple in order of :attr:`paths`.
         The tuple has 5 elements:
             1) time t array, 2) log(phirms)(t) array,
-            3) linear growth time (start-time t0, end-time t1),
-            4) associated log(phirms) (log(phirms)(t0), log(phirms)(t1)),
-            5) linear growth rate.
+            3) list of linear growth time (start-time t0, end-time t1),
+            4) list of associated (log(phirms)(t0), log(phirms)(t1)),
+            5) list of linear growth rate.
 
         Parameters
         ----------
+        select: int or list, like [0, 1]
+            growth time index, starts from 0
         R0Ln: float
-            Set R0/Ln for normlization, use Cs/Ln as unit.
-            If R0Ln=None, use Cs/R0.
+            Set R0/Ln for normlization, use cs/Ln (=cs/R0*R0/Ln) as unit.
+            If R0Ln=None, use cs/R0.
         fallback_growth_time: tuple of float, or 'auto'
             If linear growth time not found in :attr:`labelinfo`, use this
             to set growth (start,end) time ratio. limit: 0.0 -> 1.0
             'auto', use :func:`tools.findgrowth` to find growth time
         '''
         gammaresult = []
-        removeNaN = True
         for path, key in self.paths:
             gdp = self.cases[key]
             a, b, c = gdp.dig('history/phi', post=False)
             time = b['time']
             logphirms = np.log(b['fieldrms'])
-            if removeNaN:
-                idx = len(time)
-                checkNaN = np.where(np.isnan(logphirms))[0]
-                if checkNaN.size > 0:
-                    idx = min(checkNaN[0], idx)
-                if idx < len(time):
-                    time = time[:idx]
-                    logphirms = logphirms[:idx]
-            start, end = None, None
-            if self.labelinfo:
-                start, end = self.labelinfo.get(key, stage='linear')
-            if start is not None:
-                log.info('Get growth time: %6.2f, %6.2f for %s'
-                         % (start, end, path))
-                start = np.where(time > start)[0][0]
-                end = np.where(time > end)[0]
-                end = end[0] if len(end) > 0 else len(time)
-            else:
-                if fallback_growth_time == 'auto':
-                    start, region_len = tools.findgrowth(logphirms, 1e-4)
-                    if region_len == 0:
-                        start, region_len = 0, max(len(time) // 4, 2)
-                    end = start + region_len
-                    log.info(
-                        "Find growth time: [%s,%s], index: [%s,%s], for %s"
-                        % (time[start], time[end-1], start, end-1, path))
-                else:
-                    start, end = fallback_growth_time
-                    log.info(
-                        'Use fallback growth time ratio: %.1f, %.1f for %s'
-                        % (start, end, path))
-                    start, end = int(len(time)*start), int(len(time)*end)
-            growth_time = np.linspace(time[start], time[end-1], 2)
-            growth_logphi = np.linspace(logphirms[start], logphirms[end-1], 2)
-            # polyfit growth line
-            resparm, fitya = tools.line_fit(
-                time[start:end], logphirms[start:end], 1,
-                info='%s growth rate' % path)
-            growth = resparm[0][0]
-            log.info("Get growth rate: %.6f for %s" % (growth, path))
+            # remove NaN
+            tidx = len(time)
+            checkNaN = np.where(np.isnan(logphirms))[0]
+            if checkNaN.size > 0:
+                tidx = min(checkNaN[0], tidx)
+            if tidx < len(time):
+                time = time[:tidx]
+                logphirms = logphirms[:tidx]
+            trange = self._get_start_end(
+                key, 'linear', time=time, select=select,
+                fallback=fallback_growth_time)
+            if not trange:  # fallback_growth_time == 'auto'
+                start, region_len = tools.findgrowth(logphirms, 1e-4)
+                if region_len == 0:
+                    start, region_len = 0, max(tidx // 4, 2)
+                end = start + region_len - 1
+                log.info(
+                    "Find growth time: [%s,%s], index: [%s,%s], for %s"
+                    % (time[start], time[end], start, end, path))
+                trange = [(time[start], time[end], start, end)]
+            growth_time, growth_logphi, growth = [], [], []
+            for t0, t1, start, end in trange:
+                growth_time.append((t0, t1))
+                growth_logphi.append((logphirms[start], logphirms[end]))
+                # polyfit growth line
+                resparm, fitya = tools.line_fit(
+                    time[start:end+1], logphirms[start:end+1], 1,
+                    info='%s growth rate' % path)
+                gamma = resparm[0][0]
+                if R0Ln:
+                    gamma = gamma / R0Ln
+                log.info("Get growth rate: %.6f for %s" % (gamma, path))
+                growth.append(gamma)
             gammaresult.append((
                 time, logphirms, growth_time, growth_logphi, growth))
         return gammaresult
@@ -916,14 +975,25 @@ class CaseSeries(object):
         {Parameters}
         '''
         xylabel = dict(xlabel=r'$t(R_0/c_s)$', ylabel=r'$log(\phi_{RMS})$')
+        markers = 'ovs<*^D>8X'
 
         def datafun(ress, lbls):
-            return [[1+i, 'plot', (r[0], r[1], '-'), dict(
-                color="C{}".format(i),
-                label=r'%s, $\gamma_{\phi}=%.2f$' % (l, r[4]))]
+            return [
+                [1+i, 'plot', (r[0], r[1], '-'), dict(
+                    color="C{}".format(i),
+                    label=r'%s, $\gamma_{\phi}=%s$' % (
+                        l, ','.join(
+                            [tools.round_str(g, 2) for g in r[4]]))
+                )]
                 for i, (r, l) in enumerate(zip(ress, lbls))
-            ] + [[200+i, 'plot', (r[2], r[3], 'o'), dict(
-                color="C{}".format(i))] for i, r in enumerate(ress)]
+            ] + [
+                [200+10*i+j, 'plot', (gt, gphi, markers[j]), dict(
+                    color="C{}".format(i)
+                )]
+                for i, r in enumerate(ress)
+                for j, (gt, gphi) in enumerate(zip(r[2], r[3]))
+            ]
+
         self._plot_mrows_gamma_phi_like(
             xylabel, datafun, result, labels, nlines, ncols, fignum,
             xlims=xlims, ylims=ylims, suptitle=suptitle, title_y=title_y,
