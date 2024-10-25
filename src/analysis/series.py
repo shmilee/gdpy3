@@ -519,7 +519,7 @@ class CaseSeries(object):
                     return res
         if isinstance(fallback, (tuple, list)) and len(fallback) == 2:
             ratio0, ratio1 = fallback
-            idx0, idx1 = int(len(time)*start) - 1, int(len(time)*end) - 1
+            idx0, idx1 = int(len(time)*ratio0) - 1, int(len(time)*ratio1) - 1
             log.info(
                 'Use fallback %s time: %6.2f, %6.2f, ratio: %.3f, %.3f for %s'
                 % (stage, time[idx0], time[idx1], ratio0, ratio1, path))
@@ -528,7 +528,7 @@ class CaseSeries(object):
             return []
 
     def dig_chi_D(self, particle, gyroBohm=True, Ln=None,
-                  cutpsi=None, cutra=None, select=0,
+                  cutpsi=None, cutra=None, selects=0,
                   fallback_sat_time=(0.7, 1.0)):
         '''
         Get particle chi(t) and D(t) of each case.
@@ -553,7 +553,7 @@ class CaseSeries(object):
             for example, cut off boundary grids
         cutra: tuple of float, like (0.3, 0.7)r/a
             same as cutpsi, use r/a instead of psi grids to cut data1d
-        select: int or list, like [0, 1]
+        selects: int or list, like [0, 1]
             saturation time index, starts from 0
         fallback_sat_time: tuple
             If saturation time not found in :attr:`labelinfo`, use this
@@ -601,7 +601,7 @@ class CaseSeries(object):
                 chi, D = chi*Ln/rho0, D*Ln/rho0
             sat_t, sat_chi, sat_D = [], [], []
             for t0, t1, start, end in self._get_start_end(
-                    key, 'saturation', time=time, select=select,
+                    key, 'saturation', time=time, select=selects,
                     fallback=fallback_sat_time):
                 sat_t.append(np.linspace(t0, t1, 2))
                 sat_chi.append(np.mean(chi[start:end+1]))
@@ -732,7 +732,7 @@ class CaseSeries(object):
                     bgpsi=None, bgra=None, select=0,
                     fallback_sat_time=(0.7, 1.0), **kwargs):
         '''
-        Get particle chi(r) and D(r) of each case.
+        Get particle averaged-saturation chi(r) and D(r) of each case.
         Return a list of tuple in order of :attr:`paths`.
         The tuple has 4 elements:
             1) radial r array, 2) chi(r) array, 3) D(r) array,
@@ -851,7 +851,7 @@ class CaseSeries(object):
             suptitle=suptitle, title_y=title_y, add_style=add_style,
             savepath=savepath)
 
-    def dig_gamma_phi(self, select=0, R0Ln=None, fallback_growth_time='auto'):
+    def dig_gamma_phi(self, selects=0, R0Ln=None, fallback_growth_time='auto'):
         '''
         Get phi-RMS linear growth rate of each case.
         Return a list of tuple in order of :attr:`paths`.
@@ -863,7 +863,7 @@ class CaseSeries(object):
 
         Parameters
         ----------
-        select: int or list, like [0, 1]
+        selects: int or list, like [0, 1]
             growth time index, starts from 0
         R0Ln: float
             Set R0/Ln for normlization, use cs/Ln (=cs/R0*R0/Ln) as unit.
@@ -888,7 +888,7 @@ class CaseSeries(object):
                 time = time[:tidx]
                 logphirms = logphirms[:tidx]
             trange = self._get_start_end(
-                key, 'linear', time=time, select=select,
+                key, 'linear', time=time, select=selects,
                 fallback=fallback_growth_time)
             if not trange:  # fallback_growth_time == 'auto'
                 start, region_len = tools.findgrowth(logphirms, 1e-4)
@@ -999,7 +999,7 @@ class CaseSeries(object):
             xlims=xlims, ylims=ylims, suptitle=suptitle, title_y=title_y,
             add_style=add_style, savepath=savepath)
 
-    def dig_phirms_r(self, fallback_sat_time=(0.7, 1.0), **kwargs):
+    def dig_phirms_r(self, select=0, fallback_sat_time=(0.7, 1.0), **kwargs):
         '''
         Get phi-RMS(r) of each case.
         Return a list of tuple in order of :attr:`paths`.
@@ -1008,6 +1008,8 @@ class CaseSeries(object):
 
         Parameters
         ----------
+        select: int, default 0
+            saturation time index, starts from 0
         fallback_sat_time: tuple
             If saturation time not found in :attr:`labelinfo`, use this
             to set saturation (start,end) time ratio. limit: 0.0 -> 1.0
@@ -1020,7 +1022,8 @@ class CaseSeries(object):
         for path, key in self.paths:
             gdp = self.cases[key]
             start, end, _, _ = self._get_start_end(
-                path, key, 'saturation', fallback=fallback_sat_time)
+                key, 'saturation', select=select,
+                fallback=fallback_sat_time)[0]
             a, b, c = gdp.dig(figlabel, post=False,
                               mean_time=[start, end], **kwargs)
             phirms, r = b['meanZ'], b['Y']
@@ -1050,10 +1053,11 @@ class CaseSeries(object):
             xlims=xlims, ylims=ylims, suptitle=suptitle, title_y=title_y,
             add_style=add_style, savepath=savepath)
 
-    def dig_phiktheta_r(self, stage='saturation', fallback_time=(0.7, 1.0),
-                        **kwargs):
+    def dig_phiktheta_r(self, stage='saturation', select=0,
+                        fallback_time=(0.7, 1.0), **kwargs):
         '''
-        Get phi-ktheta(r) in xxx stage time of each case. Need snapshots!
+        Get time-averaged phi-ktheta(r) in xxx stage of each case.
+        Need snapshots!
         Return a list of tuple in order of :attr:`paths`.
         The tuple has 2 elements:
             1) radial r array, 2) ktheta-rho0(r) array
@@ -1062,6 +1066,8 @@ class CaseSeries(object):
         ----------
         stage: str
             linear, nonlinear, or saturation(default)
+        select: int, default 0
+            index of time range of xxx stage, starts from 0
         fallback_time: tuple
             If xxx stage time not found in :attr:`labelinfo`, use this
             to set (start,end) time ratio. limit: 0.0 -> 1.0
@@ -1073,7 +1079,7 @@ class CaseSeries(object):
         for path, key in self.paths:
             gdp = self.cases[key]
             start, end, _, _ = self._get_start_end(
-                path, key, stage, fallback=fallback_time)
+                key, stage, select=select, fallback=fallback_time)[0]
             step = [int(fl[4:9]) for fl in gdp.refind('snap.*/phi_m')]
             tstep = gdp.pckloader['gtc/tstep']
             time = np.array([round(i*tstep, 3) for i in step])
@@ -1120,8 +1126,8 @@ class CaseSeries(object):
             xlims=xlims, ylims=ylims, suptitle=suptitle, title_y=title_y,
             add_style=add_style, savepath=savepath)
 
-    def dig_phi_spectrum(self, stage='saturation', fallback_time=(0.7, 1.0),
-                         **kwargs):
+    def dig_phi_spectrum(self, stage='saturation', select=0,
+                         fallback_time=(0.7, 1.0), **kwargs):
         '''
         Get phi-spectrum in xxx stage time of each case. Need snapshots!
         Return a list of tuple in order of :attr:`paths`.
@@ -1133,6 +1139,8 @@ class CaseSeries(object):
         ----------
         stage: str
             linear, nonlinear, or saturation(default)
+        select: int, default 0
+            index of time range of xxx stage, starts from 0
         fallback_time: tuple
             If xxx stage time not found in :attr:`labelinfo`, use this
             to set (start,end) time ratio. limit: 0.0 -> 1.0
@@ -1148,7 +1156,7 @@ class CaseSeries(object):
             if figlabel not in gdp.availablelabels:
                 continue
             start, end, _, _ = self._get_start_end(
-                path, key, stage, fallback=fallback_time)
+                key, stage, select=select, fallback=fallback_time)[0]
             a, b, c = gdp.dig(figlabel, fft_tselect=(start, end),
                               post=False, **kwargs)
             result.append((b['tf'], b['Pomega'], b['fitPomega'],
@@ -1184,7 +1192,7 @@ class CaseSeries(object):
             add_style=add_style, savepath=savepath)
 
     def dig_phi_spectrum_r(self, stage='saturation', select_psi=None,
-                           fallback_time=(0.7, 1.0), **kwargs):
+                           select=0, fallback_time=(0.7, 1.0), **kwargs):
         '''
         Get phi-spectrum(r) in xxx stage time of each case. Need snapshots!
         Return a list of tuple in order of :attr:`paths`.
@@ -1199,6 +1207,8 @@ class CaseSeries(object):
         select_psi: list of int
             only select some 'ipsi' for digging 'snap/phi_poloi_time_fft'
             default None -> range(nearby*2, mpsi-nearby, nearby)
+        select: int, default 0
+            index of time range of xxx stage, starts from 0
         fallback_time: tuple
             If xxx stage time not found in :attr:`labelinfo`, use this
             to set (start,end) time ratio. limit: 0.0 -> 1.0
@@ -1214,7 +1224,7 @@ class CaseSeries(object):
             if figlabel not in gdp.availablelabels:
                 continue
             start, end, _, _ = self._get_start_end(
-                path, key, stage, fallback=fallback_time)
+                key, stage, select=select, fallback=fallback_time)[0]
             rpsi, a_minor, mpsi = gdp.pckloader.get_many(
                 'gtc/sprpsi', 'gtc/a_minor', 'gtc/mpsi')
             ra = rpsi / a_minor  # [0, mpsi]
@@ -1222,6 +1232,7 @@ class CaseSeries(object):
             if select_psi is None:
                 select_psi = range(nearby*2, mpsi-nearby, nearby)
             for ipsi in select_psi:
+                log.info('-'*10 + ' r=%.3fa ' % ra[ipsi] + '-'*10)
                 a, b, c = gdp.dig(figlabel,
                                   fft_tselect=(start, end),
                                   ipsi=ipsi, nearby=nearby,
@@ -1263,17 +1274,17 @@ class CaseSeries(object):
             suptitle=suptitle, title_y=title_y, add_style=add_style,
             savepath=savepath)
 
-    def dig_phi_kparallel(self, ipsi=None, time_sample=0,
+    def dig_phi_kparallel(self, ipsi=None, time_sample=0, selects=0,
                           fallback_sat_time=(0.7, 1.0), **kwargs):
         '''
         Get phi-kparallel(t) of each case. Need snapshots or flux3d!
         Return a list of tuple in order of :attr:`paths`.
         The tuple has 5 elements:
-            1) time t array, 2) average kparallel array,
-            3) fitting kparallel-gamma array,
-            4) saturation time (start-time, end-time),
-            5) time averaged kparallel in saturation stage,
-            6) time averaged fitting kparallel-gamma in saturation stage
+            1) time t array, 2) phik^2 averaged kparallel array,
+            3) Cauchy fitting kparallel-gamma array,
+            4) list of saturation time (start-time, end-time),
+            5) list of time averaged kparallel in saturation stage,
+            6) list of time averaged kparallel-gamma in saturation stage
 
         Parameters
         ----------
@@ -1281,6 +1292,8 @@ class CaseSeries(object):
             select flux surfece at 'ipsi', default None -> mpsi//2
         time_sample: int
             select N random time points, <=0: select all. default 0
+        selects: int or list, like [0, 1], default 0
+            index of time range of saturation stage, starts from 0
         fallback_sat_time: tuple
             If saturation stage not found in :attr:`labelinfo`, use this
             to set (start,end) time ratio. limit: 0.0 -> 1.0
@@ -1312,26 +1325,27 @@ class CaseSeries(object):
                 log.info('Select %s of %s random time points!'
                          % (time_sample, len(step)))
                 step = sorted(random.sample(step, time_sample))
-            start, end, _, _ = self._get_start_end(
-                path, key, 'saturation', fallback=fallback_sat_time)
-            tstep = gdp.pckloader['gtc/tstep']
-            time = np.array([round(i*tstep, 3) for i in step])
-            index = np.where((time >= start) & (time <= end))[0]
-            if index.size > 0:
-                idx0, idx1 = index[0], index[-1]
-            else:
-                log.error('No snap(or 3d): %s <= time <= %s!' % (start, end))
-                idx0, idx1 = 0, time.size-1
-            sat_t = np.linspace(time[idx0], time[idx1], 2)
             meank, fitkgamma = [], []  # for average k//, k//-fitgamma
             for i in step:
                 a, b, c = gdp.dig(figlabel % i, post=False, **kwargs)
                 meank.append(b['mean_kpara'])
                 fitkgamma.append(b['Cauchy_gamma1'])
             meank, fitkgamma = np.array(meank), np.array(fitkgamma)
-            result.append((time, meank, fitkgamma, sat_t,
-                           np.mean(meank[idx0:idx1+1]),
-                           np.mean(fitkgamma[idx0:idx1+1])))
+            tstep = gdp.pckloader['gtc/tstep']
+            time = np.array([round(i*tstep, 3) for i in step])
+            trange = self._get_start_end(
+                key, 'saturation', time=time, select=selects,
+                fallback=fallback_sat_time)
+            if not trange:
+                log.error('No snap(or 3d) for selected saturation! Use all!')
+                trange = [(time[0], time[-1], 0, time.size-1)]
+            sat_t, sat_meank, sat_kgamma = [], [], []
+            for t0, t1, start, end in trange:
+                sat_t.append((t0, t1))
+                sat_meank.append(np.mean(meank[start:end]))
+                sat_kgamma.append(np.mean(fitkgamma[start:end]))
+            result.append((time, meank, fitkgamma,
+                           sat_t, sat_meank, sat_kgamma))
         return result
 
     @inherit_docstring(_plot_mrows_chi_D_like, parse=_parse_pltmrow_doc,
@@ -1351,30 +1365,45 @@ class CaseSeries(object):
                     'ylabel': r'$\langle k_{\parallel}R_0\rangle$'}
         xylabel2 = {'xlabel': r'$t(R_0/c_s)$',
                     'ylabel': r'$k_{\parallel}R_0$, half width'}
+        markers = 'ovs<*^D>8X'
 
         def datafun1(ress, lbls):
-            return [[1+i, 'plot', (r[0], r[1], '-'), dict(
-                color="C{}".format(i),
-                label=r'%s, saturation=%.2f' % (l, r[4]))]
+            return [
+                [1+i, 'plot', (r[0], r[1], '-'), dict(
+                    color="C{}".format(i),
+                    label=r'%s, sat=%s' % (
+                        l, ','.join([tools.round_str(k, 2) for k in r[4]]))
+                )]
                 for i, (r, l) in enumerate(zip(ress, lbls))
-            ] + [[200+i, 'plot', (r[3], [r[4], r[4]], 'o'), dict(
-                color="C{}".format(i))]
-                for i, r in enumerate(ress)]
+            ] + [
+                [200+i, 'plot', (st, [sk, sk], markers[j]), dict(
+                    color="C{}".format(i))]
+                for i, r in enumerate(ress)
+                for j, (st, sk) in enumerate(zip(r[3], r[4]))
+            ]
 
         def datafun2(ress, lbls):
-            return [[1+i, 'plot', (r[0], r[2], '-'), dict(
-                color="C{}".format(i),
-                label=r'%s, saturation=%.2f' % (l, r[5]))]
+            return [
+                [1+i, 'plot', (r[0], r[2], '-'), dict(
+                    color="C{}".format(i),
+                    label=r'%s, sat=%s' % (
+                        l, ','.join([tools.round_str(sg, 2) for sg in r[5]]))
+                )]
                 for i, (r, l) in enumerate(zip(ress, lbls))
-            ] + [[200+i, 'plot', (r[3], [r[5], r[5]], 'o'), dict(
-                color="C{}".format(i))] for i, r in enumerate(ress)]
+            ] + [
+                [200+i, 'plot', (st, [sg, sg], markers[j]), dict(
+                    color="C{}".format(i))]
+                for i, r in enumerate(ress)
+                for j, (st, sg) in enumerate(zip(r[3], r[5]))
+            ]
+
         self._plot_mrows_chi_D_like(
             xylabel1, xylabel2, datafun1, datafun2,
             result, labels, nlines, fignum, xlims=xlims, ylims=ylims,
             suptitle=suptitle, title_y=title_y, add_style=add_style,
             savepath=savepath)
 
-    def dig_phi00(self, residual=False, norm=False,
+    def dig_phi00(self, residual=False, norm=False, select=0,
                   fallback_sat_time='auto', fallback_auto_limit=5e-4,
                   **kwargs):
         '''
@@ -1393,6 +1422,8 @@ class CaseSeries(object):
             and return more residual level info. default False
         norm: bool
             normalize phi00rms, phi00 by the maximum or not, default False
+        select: int, default 0
+            index of time range of saturation stage, starts from 0
         fallback_sat_time: tuple of float, or 'auto'
             If saturation time not found in :attr:`labelinfo`, use this
             to set saturation (start,end) time ratio. limit: 0.0 -> 1.0.
@@ -1417,8 +1448,12 @@ class CaseSeries(object):
             argmax = phi00rms.argmax()
             if norm:
                 phi00rms = phi00rms/phi00rms[argmax]
-            fallback_time = fallback_sat_time
-            if fallback_sat_time == 'auto':
+            trange = self._get_start_end(
+                key, 'saturation', time=time1, select=select,
+                fallback=fallback_sat_time)
+            if trange:
+                t0, t1, start, end = trange[0]
+            else:  # fallback_sat_time == 'auto'
                 normrms = phi00rms if norm else phi00rms/phi00rms[argmax]
                 if callable(fallback_auto_limit):
                     upperlimit = fallback_auto_limit(path, normrms)
@@ -1430,13 +1465,11 @@ class CaseSeries(object):
                     end = (9*len(time1)+argmax)//10
                 else:
                     start += argmax
-                    end = start + length
-                fallback_time = start/len(time1), min(1.0, end/len(time1))
+                    end = start + length - 1
+                t0, t1 = time1[start], time1[end]
                 log.info(
-                    "Auto-fallback-time: [%s,%s], ratio: [%.3f,%.3f], for %s"
-                    % (time1[start], time1[end-1], *fallback_time, path))
-            t0, t1, start, end = self._get_start_end(
-                path, key, 'saturation', time=time1, fallback=fallback_time)
+                    "Auto-fallback-time: [%.3f,%.3f], index: [%d,%d], for %s"
+                    % (t0, t1, start, end, path))
             sat_time = (t0, t1)
             sat_phi00rms = phi00rms[start:end].mean()
             # rzf?
