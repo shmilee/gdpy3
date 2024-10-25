@@ -512,16 +512,24 @@ class MatplotlibVisplter(BaseVisplter):
                 'nbAgg',
                 'nbagg',
                 'notebook',
+                'inline',  # for %matplotlib inline, may more than 2 figs
+                'module://matplotlib_inline.backend_inline',
                 'module://ipykernel.pylab.backend_inline'):
-            vlog.debug('Show in notebook, just return figure object!')
-            return fig
+            if matplotlib.get_backend() == 'inline':
+                vlog.warning("With '%matplotlib inline', "
+                             "may display more than 2 figures!")
+            # https://stackoverflow.com/questions/58792264
+            msg = "The cell may end with a ';' if necessary!"
+            vlog.info('Display the figure object in notebook. ' + msg)
+            from IPython.display import display
+            return display(fig)
         elif kwargs.get('usecat', False) and self.imcat.attty:
-            vlog.debug('Show in terminal which supports display graphics!')
+            vlog.info('Show in terminal which supports display graphics.')
             kws = {k: kwargs[k]
                    for k in ['width', 'height', 'usemod'] if k in kwargs}
             self.imcat.display(fig, **kws)
         else:
-            vlog.debug('Show in GUI application or an IPython shell!')
+            vlog.info('Show in GUI application or an IPython shell.')
             return fig.show()
 
     def _close_figure(self, fig):
