@@ -244,7 +244,10 @@ class HistoryParticleDigger(_TimeCutoff):
             else:
                 R0Ln = float(R0Ln)
                 unit = r'$%.3f\rho_0$' % R0Ln
-            dlog.parm("R0/a=%.3f; R0/Ln=%.3f" % (1/a_minor, R0Ln))
+            if gyroBohm:
+                dlog.parm("R0/a=%.3f; R0/Ln=%.3f" % (1/a_minor, R0Ln))
+            else:
+                unit = r'Bohm'
             if 'gyroBohm' not in self.kwoptions:
                 self.kwoptions['gyroBohm'] = dict(
                     widget='Checkbox', value=False, description='gyroBohm:')
@@ -254,8 +257,6 @@ class HistoryParticleDigger(_TimeCutoff):
                     value=R0Ln, description='R0/Ln:')
             acckws['gyroBohm'] = bool(gyroBohm)
             acckws['R0Ln'] = R0Ln
-            if not gyroBohm:
-                unit = r'Bohm'
             return dict(
                 time=time,
                 particle=data[6]/rho0/R0Ln if gyroBohm else data[6],
