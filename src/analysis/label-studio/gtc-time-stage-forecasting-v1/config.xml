@@ -1,0 +1,95 @@
+<!-- annotation_templates/time-series-analysis/gtc-time-stage-forecasting -->
+
+<View>
+    <Header value="这次模拟结果如何？"/>
+    <Choices name="quality" toName="ts" choice="single">
+        <Choice alias="G" value="Good" hotkey="g"/>
+        <Choice alias="M" value="Mediocre" hotkey="m"/>
+        <Choice alias="B" value="Bad" hotkey="b"/>
+    </Choices>
+
+    <!-- Control tag for region labels -->
+    <Header value="请在该模拟输出序列上标注出其阶段"/>
+    <TimeSeriesLabels name="label" toName="ts">
+        <Label value="linear" background="#5a95e2" hotkey="l"/>
+        <Label value="nonlinear" background="#c27ee2" hotkey="n"/>
+        <Label value="saturation" background="#5bcc1e" hotkey="s"/>
+        <Label value="vanish" background="#d3380d"/>
+        <Label value="divergence" background="#3f3f3f"/>
+    </TimeSeriesLabels> 
+
+    <!-- Object tag for time series data source -->
+    <TimeSeries name="ts" valueType="json" value="$ts" timeColumn="time" overviewWidth="100%">
+        <Channel column="chi_i" legend="chi_i" displayFormat=".3~e"/>
+        <Channel column="d_i" legend="D_i" displayFormat=".3~e"/>
+        <Channel column="logphirms" legend="logphirms" displayFormat=".3~e"/>
+    </TimeSeries>
+</View>
+
+<!-- {"annotations": [{"result":
+[
+    {
+        "value": {
+            "choices": ["B"]
+        },
+        "id": "wYCzoPmXpY",
+        "from_name": "quality",
+        "to_name": "ts",
+        "type": "choices",
+        "origin": "manual"
+    },
+    {
+        "value": {
+            "start": 3.7,
+            "end": 19.9,
+            "instant": false,
+            "timeserieslabels": ["linear"]
+        },
+        "id": "_5XBll9yz-",
+        "from_name": "label",
+        "to_name": "ts",
+        "type": "timeserieslabels",
+        "origin": "manual"
+    },
+    {
+        "value": {
+            "start": 30,
+            "end": 38.3,
+            "instant": false,
+            "timeserieslabels": ["linear"]
+        },
+        "id": "drcVB4sUaT",
+        "from_name": "label",
+        "to_name": "ts",
+        "type": "timeserieslabels",
+        "origin": "manual"
+    },
+    {
+        "value": {
+            "start": 38.8,
+            "end": 84.4,
+            "instant": false,
+            "timeserieslabels": ["nonlinear"]
+        },
+        "id": "Q5j8VN3S7B",
+        "from_name": "label",
+        "to_name": "ts",
+        "type": "timeserieslabels",
+        "origin": "manual"
+    },
+    {
+        "value": {
+            "start": 47.1,
+            "end": 81.6,
+            "instant": false,
+            "timeserieslabels": ["saturation"]
+        },
+        "id": "q8MuWb-g6l",
+        "from_name": "label",
+        "to_name": "ts",
+        "type": "timeserieslabels",
+        "origin": "manual"
+    }
+]
+}]}
+-->
