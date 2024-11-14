@@ -151,7 +151,7 @@ class Flux3DThetaDigger(Flux3DAlphaDigger, SnapshotFieldFluxThetaDigger):
 
     def _get_q_psi(self):
         '''Return q at ipsi.'''
-        return self.pckloader['gtc/qmesh'][self.ipsi, 2]
+        return self.pckloader['gtc/qmesh'][self.ipsi]
 
 
 def _flux3d_interpolate_worker(i, total, data, q, iM, iN, fielddir):
@@ -206,7 +206,7 @@ def flux3d_interpolate_stack(loader, iM, iN, field, fielddir=0,
                    (len(steps), len(psis), len(steps)*len(psis), len(keys)))
         return
     keys = np.array(keys).reshape((len(steps), len(psis)))
-    qs = [loader['gtc/qmesh'][int(ipsi), 2] for ipsi in psis]
+    qs = [loader['gtc/qmesh'][int(ipsi)] for ipsi in psis]
     tstep = loader.get('gtc/tstep')
     time = np.array([round(int(i) * tstep, Ndigits_tstep) for i in steps])
     ipsi = np.array([int(i) for i in psis])
@@ -287,7 +287,7 @@ class Flux3DAlphaTileDigger(Flux3DAlphaDigger,
 
     def _get_q_psi(self):
         '''Return q at ipsi.'''
-        return self.pckloader['gtc/qmesh'][self.ipsi, 2]
+        return self.pckloader['gtc/qmesh'][self.ipsi]
 
 
 class Flux3DThetaTileDigger(Flux3DThetaDigger,
