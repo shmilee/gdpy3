@@ -251,33 +251,63 @@ class LabelInfoSeries(object):
     '''
     stages = ('linear', 'nonlinear', 'saturation')
 
-    def __init__(self, label_list=None, ls_json=None):
+    def __init__(self, ls_json=None, label_list=None):
         '''
         Parameters
         ----------
+        ls_json: str, path of Label Studio json results
         label_list: list of manually built label info
             dict(path, name, saltstr, label=label) for each case,
             echo label dict has time (start, end) range list for 'linear',
             'nonlinear', 'saturation' stage, and unit is R0/cs.
-        ls_json: str, path of Label Studio json results
         '''
-        if label_list:
-            self.info = self._get_from_label_list(label_list)
-        elif ls_json:
-            self.info = self._get_from_ls_json(ls_json)
-        else:
-            raise ValueError('Lost label info from json file or list!')
+        self.info = {}
         self.search_paths = {}
         self.search_names = {}
-        for s, v in self.info.items():
+        self.update(ls_json=ls_json, label_list=label_list)
+        if not self.info:
+            raise ValueError('Lost label info from json file or list!')
+
+    def update(self, info=None, label_list=None, ls_json=None):
+        '''
+        Parameters
+        ----------
+        info: LabelInfoSeries instance
+        ls_json: str, path of Label Studio json results
+        label_list: list of manually built label info
+        '''
+        D = {}
+        if info:
+            if isinstance(info, LabelInfoSeries):
+                D.update(info.info)
+            else:
+                log.warning("Invalid LabelInfoSeries object: '%r'!" % info)
+        if ls_json:
+            if os.path.exists(ls_json):
+                D.update(self._get_from_ls_json(ls_json))
+            else:
+                log.warning("Label Studio json not found: '%s'!" % ls_json)
+        if label_list:
+            if isinstance(label_list, list):
+                D.update(self._get_from_label_list(label_list))
+            else:
+                log.warning("Invalid label_list: '%r'!" % label_list)
+        self.info.update(D)
+        for s, v in D.items():
             p, n = v['path'], v['name']
             if p in self.search_paths:
+                if s in self.search_paths[p]:
+                    self.search_paths[p].remove(s)
+                else:
+                    log.warning("path '%s' collision: '%s'!" % (p, s))
                 self.search_paths[p].append(s)
-                log.warning("path '%s' collision: '%s'!" % (p, s))
             else:
                 self.search_paths[p] = [s]
             if n in self.search_names:
-                log.warning("name '%s' collision: '%s'!" % (n, s))
+                if s in self.search_names[n]:
+                    self.search_names[n].remove(s)
+                else:
+                    log.warning("name '%s' collision: '%s'!" % (n, s))
                 self.search_names[n].append(s)
             else:
                 self.search_names[n] = [s]
@@ -285,6 +315,44 @@ class LabelInfoSeries(object):
     def __contains__(self, saltstr):
         ''' Return True if saltstr is in :attr:`info` '''
         return saltstr in self.info
+
+    def __get_labeled_time_range(self, annresult):
+        result = {}
+        for ann in annresult:
+            if 'timeserieslabels' in ann['value']:
+                ln = ann['value']['timeserieslabels'][0]
+                if ln in self.stages:
+                    start, end = ann['value']['start'], ann['value']['end']
+                    if ln in result:
+                        result[ln].append((start, end))
+                    else:
+                        result[ln] = [(start, end)]
+        for ln in result:
+            result[ln] = sorted(result[ln])
+        return result
+
+    def _get_from_ls_json(self, ls_json):
+        info = {}
+        with open(ls_json, 'r') as f1:
+            reslist = json.loads(f1.read())
+        for res in reslist:
+            path, name = res['data']['path'], res['data']['name']
+            saltstr = res['data']['saltstr']
+            try:
+                labeltime = self.__get_labeled_time_range(
+                    res['annotations'][0]['result'])  # first one
+                log.info('Get labeled %s for %s' % (labeltime.keys(), path))
+                info[saltstr] = dict(path=path, name=name, label=labeltime)
+            except Exception as e:
+                log.warning('For %s: ' % name, e)
+        return info
+
+    def _get_from_label_list(self, label_list):
+        info = {}
+        for res in label_list:
+            path, name, saltstr = res['path'], res['name'], res['saltstr']
+            info[saltstr] = dict(path=path, name=name, label=res['label'])
+        return info
 
     def get(self, key, stage='linear', by='saltstr'):
         '''
@@ -319,44 +387,6 @@ class LabelInfoSeries(object):
         else:
             log.error("Key '%s' not found!" % key)
         return None
-
-    def _get_from_label_list(self, label_list):
-        info = {}
-        for res in label_list:
-            path, name, saltstr = res['path'], res['name'], res['saltstr']
-            info[saltstr] = dict(path=path, name=name, label=res['label'])
-        return info
-
-    def __get_labeled_time_range(self, annresult):
-        result = {}
-        for ann in annresult:
-            if 'timeserieslabels' in ann['value']:
-                ln = ann['value']['timeserieslabels'][0]
-                if ln in self.stages:
-                    start, end = ann['value']['start'], ann['value']['end']
-                    if ln in result:
-                        result[ln].append((start, end))
-                    else:
-                        result[ln] = [(start, end)]
-        for ln in result:
-            result[ln] = sorted(result[ln])
-        return result
-
-    def _get_from_ls_json(self, ls_json):
-        info = {}
-        with open(ls_json, 'r') as f1:
-            reslist = json.loads(f1.read())
-        for res in reslist:
-            path, name = res['data']['path'], res['data']['name']
-            saltstr = res['data']['saltstr']
-            try:
-                labeltime = self.__get_labeled_time_range(
-                    res['annotations'][0]['result'])  # first one
-                log.info('Get labeled %s for %s' % (labeltime.keys(), path))
-                info[saltstr] = dict(path=path, name=name, label=labeltime)
-            except Exception as e:
-                log.warning('For %s: ' % name, e)
-        return info
 
     @staticmethod
     def merge_ls_jsons(*jsonfiles, savepath=None,
