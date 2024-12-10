@@ -20,9 +20,10 @@
 
     <!-- Object tag for time series data source -->
     <TimeSeries name="ts" valueType="json" value="$ts" timeColumn="time" overviewWidth="100%">
-        <Channel column="chi_i" legend="chi_i" displayFormat=".3~e"/>
-        <Channel column="d_i" legend="D_i" displayFormat=".3~e"/>
-        <Channel column="logphirms" legend="logphirms" displayFormat=".3~e"/>
+        <!-- default-height=200, ref: https://app.heartex.ai/docs/tags/timeseries.html#Channel -->
+        <Channel column="chi_i" legend="chi_i" displayFormat=".3~e" height="300" strokeWidth="1.5"/>
+        <Channel column="d_i" legend="D_i" displayFormat=".3~e" strokeWidth="1.5"/>
+        <Channel column="logphirms" legend="logphirms" displayFormat=".3~e" height="300" strokeWidth="1.5"/>
     </TimeSeries>
 </View>
 
