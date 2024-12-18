@@ -27,6 +27,7 @@ from . import (
     rzf,
     zetapsi3d,
     flux3d,
+    phase2d,
     snapevphase,
     snapphi,
 )
@@ -46,6 +47,7 @@ _load_modules = (
     rzf,
     zetapsi3d,
     flux3d,
+    phase2d,
     snapevphase,
     snapphi,
 )
