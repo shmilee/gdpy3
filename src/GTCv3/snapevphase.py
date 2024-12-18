@@ -23,6 +23,9 @@ import numpy as np
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
 from .snapshot import _snap_get_timestr
+from ..deprecation import warn_deprecated
+
+warn_deprecated((0, 9, 5), (1, 0, 0), __name__, obj_type='module')
 
 _all_Converters = ['SnapEVphaseConverter']
 _all_Diggers = ['SnapEVphaseDigger']
