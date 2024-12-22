@@ -33,7 +33,7 @@ class GTkApp(object):
         tempfile.gettempdir(), 'gdpy3-%s-recent' % getpass.getuser())
 
     def __init__(self, path=None, ask_sftp=False, parallel='multiprocess',
-                 scaling=None):
+                 scaling=None, width=None):
         '''
         Parameters
         ----------
@@ -45,6 +45,8 @@ class GTkApp(object):
             'off', 'multiprocess' or 'mpi4py', default 'multiprocess'
         scaling: float
             scaling factor used by Tk, default 1.25
+        width: int
+            ttk frame width, default 28
         '''
         root = tkinter.Tk(className='gdpy3-gui')
         try:
@@ -67,7 +69,7 @@ class GTkApp(object):
         root.protocol("WM_DELETE_WINDOW", self.close_app)
         style = ttk.Style()
         font = ('Microsoft YaHei', 10)
-        width = 0
+        width = width or 28
         style.configure('.', font=font)
         main = ttk.Frame(root, relief=RIDGE, borderwidth=2)
         main.pack(fill=BOTH, expand=1)
@@ -77,7 +79,8 @@ class GTkApp(object):
         w_str_path = tkinter.StringVar(value='')  # default pathlabel ''
         w_str_path.trace("w", self.save_case_path)
         w_entry_path = ttk.Entry(
-            w_frame_proc, font=font, textvariable=w_str_path)
+            w_frame_proc, font=font, textvariable=w_str_path,
+            width=int(0.8*width))
         w_entry_path.grid(in_=w_frame_proc, row=0, column=0, padx=5, pady=5,
                           sticky=W+E)
         w_entry_path.config(state='disabled')
@@ -87,7 +90,7 @@ class GTkApp(object):
         w_str_proc = tkinter.StringVar()
         names = ['%s%s' % (Processor_Lib[n][1][0], n) for n in Processor_Names]
         w_select_proc = ttk.Combobox(
-            w_frame_proc, values=names, font=font,
+            w_frame_proc, values=names, font=font, width=int(0.8*width),
             textvariable=w_str_proc, state='readonly')
         w_str_proc.set(names[0])
         w_select_proc.grid(in_=w_frame_proc, row=1, column=0, padx=5, pady=5)
@@ -99,7 +102,8 @@ class GTkApp(object):
         w_frame_fig = ttk.Labelframe(main, text='2. Figure:', width=width)
         w_str_filter = tkinter.StringVar(value='^.*/.*$')
         w_entry_filter = ttk.Entry(
-            w_frame_fig, font=font, textvariable=w_str_filter)
+            w_frame_fig, font=font, textvariable=w_str_filter,
+            width=int(0.8*width))
         w_entry_filter.grid(in_=w_frame_fig, row=0, column=0, padx=5, pady=5)
         w_filter = ttk.Button(
             w_frame_fig, text='Filter', width=0, command=self.after_filter)
@@ -107,7 +111,7 @@ class GTkApp(object):
         w_list_fig = tkinter.Variable(value=[])
         w_listbox_fig = tkinter.Listbox(
             w_frame_fig, selectmode=SINGLE, exportselection=0, font=font,
-            listvariable=w_list_fig, state='normal')
+            listvariable=w_list_fig, state='normal', width=width)
         w_scrollbar_fig = ttk.Scrollbar(
             w_frame_fig, orient="vertical", command=w_listbox_fig.yview)
         w_listbox_fig.config(yscrollcommand=w_scrollbar_fig.set)

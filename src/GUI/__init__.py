@@ -44,6 +44,8 @@ def gui_script():
                         "(default: %(default)s)")
     optgrp.add_argument('--tk_scaling', nargs='?', type=float, metavar='float',
                         help='Set scaling factor used by Tk')
+    optgrp.add_argument('--tk_width', nargs='?', type=int, metavar='int',
+                        help='Set Tk ttk frame width')
     optgrp.add_argument('-h', '--help', action='store_true',
                         help='Show this help message and exit')
 
@@ -66,6 +68,6 @@ def gui_script():
         from .tk import GTkApp
         GTkApp(path=args.casepath,
                ask_sftp=args.ask_sftp, parallel=args.parallel,
-               scaling=args.tk_scaling)
+               scaling=args.tk_scaling, width=args.tk_width)
     else:
         pass
