@@ -13,10 +13,11 @@ shmilee.F90, subroutine phase2d_diagnosis
     write(iophase2d,101) nspecies, nhybrid, p2d_nfield, xgrid, ygrid, p2d_niflux
     write(iophase2d,101) p2d_fields ! for p2d_nfield
     write(iophase2d,101) coordx, coordy ! for xgrid, ygrid
-    write(iophase2d,102) 1.0_wp/xmax_inv, 1.0_wp/ymax_inv ! for xymax_inv(3) of coordx, coordy
+    ! for xymax_inv(3) of coordx, coordy
+    write(iophase2d,102) xmax, ymax, xmax_inv, ymax_inv
     write(iophase2d,101) p2d_ifluxes ! for p2d_niflux
-    write(iophase2d,102) pdf2d ! data
-    ! shape: pdf2d(p2d_nfield, xgrid, ygrid, p2d_niflux, nspecies)
+    write(iophase2d,102) p2d_pdf ! data
+    ! shape: p2d_pdf(p2d_nfield, xgrid, ygrid, p2d_niflux, nspecies)
 
 '''
 
@@ -36,8 +37,10 @@ class Phase2dConverter(Converter):
 
     1) ion, electron, EP profiles in pdf(coordx,coordy) phase space.
        coordx,y can be: 1, vpara; 2, vperp; 3, energy; 4, lambda; 5, mu 
-    2) pdf can be: 1, fullf; 2, deltaf; 3, deltaf^2;
-                   4, radial drift; 5, diffusion; and 6 energy loss
+    2) pdf can be: 1, fullf; 2, deltaf; 3, deltaf^2; 4, angular momentum;
+                   5, energy; 6, heat; 7, ExB drift; 8, particle flux;
+                   9, momentum flux; 10, energy flux; 11, heat flux;
+                   12, radial drift; 13, diffusion, and 14 energy loss
     3) data 5d array is pdf2d(p2d_nfield, xgrid, ygrid, p2d_niflux, nspecies)
        pdf2d(1, ...) is always for fullf.
     '''
@@ -48,14 +51,19 @@ class Phase2dConverter(Converter):
     _datakeys = (
         # 1. parameters
         'nspecies', 'nhybrid', 'p2d_nfield', 'xgrid', 'ygrid', 'p2d_niflux',
-        'p2d_fields', 'coordx', 'coordy', 'xmax', 'ymax', 'p2d_ifluxes',
+        'p2d_fields', 'coordx', 'coordy',
+        'xmax', 'ymax', 'xmax_inv', 'ymax_inv', 'p2d_ifluxes',
         # 2. Data pdf2d(p2d_nfield, xgrid, ygrid, p2d_niflux, nspecies)
         #    split to pdf(xgrid, ygrid, p2d_niflux)
-        r'(?:ion|electron|fastion)-(?:fullf|deltaf|deltaf2)',
-        r'(?:ion|electron|fastion)-(?:drift|diffusion|Eloss)',
+        r'(?:ion|electron|fastion)-(?:fullf|deltaf|deltaf2|momentum)',
+        r'(?:ion|electron|fastion)-(?:energy|heat|vdr)',
+        r'(?:ion|electron|fastion)-(?:particle|momentum|energy|heat)-flux',
+        r'(?:ion|electron|fastion)-(?:r-drift|diffusion|Eloss)',
     )
-    _pdf_index = {1: 'fullf', 2: 'deltaf', 3: 'deltaf2',
-                  4: 'drift', 5: 'diffusion', 6: 'Eloss'}
+    _pdf_index = {1: 'fullf', 2: 'deltaf', 3: 'deltaf2', 4: 'momentum',
+                  5: 'energy', 6: 'heat', 7: 'vdr', 8: 'particle-flux',
+                  9: 'momentum-flux', 10: 'energy-flux', 11: 'heat-flux',
+                  12: 'r-drift', 13: 'diffusion', 14: 'Eloss'}
 
     def _convert(self):
         '''Read 'phase2d%05d.out' % istep.'''
@@ -70,14 +78,16 @@ class Phase2dConverter(Converter):
             sd.update({key: int(outdata[i].strip())})
         nfield = sd['p2d_nfield']
         niflux = sd['p2d_niflux']
-        clog.debug("Filling datakeys: %s ..." % str(self._datakeys[6:12]))
+        clog.debug("Filling datakeys: %s ..." % str(self._datakeys[6:14]))
         sd['p2d_fields'] = [int(l.strip()) for l in outdata[6:6+nfield]]
         idx0 = 6 + nfield
         sd['coordx'] = int(outdata[idx0].strip())
         sd['coordy'] = int(outdata[idx0+1].strip())
-        sd['xmax'] = [float(l.strip()) for l in outdata[idx0+2:idx0+5]]
-        sd['ymax'] = [float(l.strip()) for l in outdata[idx0+5:idx0+8]]
-        idx1 = idx0 + 8
+        sd['xmax'] = float(outdata[idx0+2].strip())
+        sd['ymax'] = float(outdata[idx0+3].strip())
+        sd['xmax_inv'] = [float(l.strip()) for l in outdata[idx0+4:idx0+7]]
+        sd['ymax_inv'] = [float(l.strip()) for l in outdata[idx0+7:idx0+10]]
+        idx1 = idx0 + 10
         idx2 = idx1 + niflux
         sd['p2d_ifluxes'] = [int(l.strip()) for l in outdata[idx1:idx2]]
         # 2. data
@@ -109,15 +119,20 @@ class Phase2dDigger(Digger):
     nitems = '+'
     itemspattern = [
         r'^(?P<section>phase2d\d{5,7})'
-        + '/(?P<particle>(?:ion|electron|fastion))-'
-        + '(?P<pdf>(?:fullf|deltaf|deltaf2|drift|diffusion|Eloss))$'
+        + r'/(?P<particle>(?:ion|electron|fastion))-'
+        + r'(?P<pdf>(?:fullf|deltaf|deltaf2|momentum|energy|heat|vdr'
+        + r'|particle-flux|momentum-flux|energy-flux|heat-flux'
+        + r'|r-drift|diffusion|Eloss))$'
     ] + [r'^(?P<s>phase2d\d{5,7})/%s$' % k for k in (
         'coordx', 'coordy', 'xmax', 'ymax', 'p2d_ifluxes')]
     commonpattern = ['gtc/tstep', 'gtc/sprpsi', 'gtc/a_minor']
     _pdf_tex = {
         'fullf': 'full f', 'deltaf': r'$\delta f$',
-        'deltaf2': r'$\delta f^2$',
-        'drift': r'$\langle \Delta r \rangle$',
+        'deltaf2': r'$\delta f^2$', 'momentum': 'angular momentum',
+        'energy': 'E', 'heat': 'heat', 'vdr': 'ExB drift',
+        'particle-flux': 'particle flux', 'momentum-flux': 'momentum flux',
+        'energy-flux': 'energy flux', 'heat-flux': 'heat flux',
+        'r-drift': r'$\langle \Delta r \rangle$',
         'diffusion': r'$\langle \Delta r^2 \rangle$',
         'Eloss': r'$-\mathrm{d}E/\mathrm{d}t$',
     }
@@ -142,12 +157,6 @@ class Phase2dDigger(Digger):
             self.pckloader.get_many(*self.srckeys)
         # assert data.shape == (xgrid, ygrid, p2d_niflux)
         xgrid, ygrid, p2d_niflux = data.shape
-        if self.particle == 'ion':
-            xmax, ymax = xmax[0], ymax[0]
-        elif self.particle == 'electron':
-            xmax, ymax = xmax[1], ymax[1]
-        elif self.particle == 'fastion':
-            xmax, ymax = xmax[2], ymax[2]
         if self.kwoptions is None:
             self.kwoptions = dict(
                 sflux=dict(
@@ -176,19 +185,22 @@ class Phase2dDigger(Digger):
             title += ', r=%ga' % ra
         except Exception:
             pass
-        return dict(X=X, Y=Y, Z=Z, title=title, time=time, ra=ra,
-                    xlabel=xlabel, ylabel=ylabel,), acckwargs
+        results = dict(X=X, Y=Y, Z=Z, title=title, time=time, ra=ra,
+                       xlabel=xlabel, ylabel=ylabel,)
+        if coordx in (1, 2) and coordy in (1, 2):
+            results['aspect'] = 'equal'
+        return results, acckwargs
 
     def _get_X_xlabel(self, coordx, xgrid, xmax):
-        if coordx == 1 or coordx == 2:
+        if coordx == 1:
             X = np.linspace(-xmax, xmax, xgrid)
-            if coordx == 1:
-                xlabel = r'$v_{\parallel}(v_{th})$'
-            else:
-                xlabel = r'$v_{\perp}(v_{th})$'
+            xlabel = r'$v_{\parallel}(v_{th})$'
+        elif coordx == 2:
+            X = np.linspace(0, xmax, xgrid)
+            xlabel = r'$v_{\perp}(v_{th})$'
         elif coordx == 3 or coordx == 4:
             X = np.linspace(0, xmax, xgrid)
-            xlabel = r'$E(T_{e0})$' if coordx == 1 else r'$\lambda$'
+            xlabel = r'$E(T_{e0})$' if coordx == 3 else r'$\lambda$'
         elif coordx == 5:
             X = np.linspace(0, xmax, xgrid)
             xlabel = r'$\mu$'
@@ -196,5 +208,5 @@ class Phase2dDigger(Digger):
 
     def _post_dig(self, results):
         d = {k: v for k, v in results.items() if k in [
-            'X', 'Y', 'Z', 'title', 'xlabel', 'ylabel']}
+            'X', 'Y', 'Z', 'title', 'xlabel', 'ylabel', 'aspect']}
         return d
