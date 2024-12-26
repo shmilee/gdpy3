@@ -5,7 +5,8 @@
 '''
 Source fortran code:
 
-setup.F90, subroutine fieldinitial
+* setup.F90, subroutine fieldinitial
+```
   i=17
   write(911,*)i
   write(911,*)mpsi+1
@@ -29,6 +30,17 @@ setup.F90, subroutine fieldinitial
      write(911,*)kapanf(i)
      !!! write(911,*)dtndpsi(i)
   enddo
+```
+
+* v20241225
+```
+  i=18
+    .....
+    write(911,*)kapanf(i)
+    write(911,*)gpsi200(i)
+    !!! write(911,*)dtndpsi(i)
+    .....
+```
 '''
 
 import numpy as np
@@ -55,7 +67,8 @@ class SimugridConverter(Converter):
     _datakeys = ('psimesh', 'qmesh', 'tormesh', 'sprpsi', 'sprgpsi',
                  'meshti', 'kapati', 'meshni', 'kapani',
                  'meshte', 'kapate', 'meshne', 'kapane',
-                 'meshtf', 'kapatf', 'meshnf', 'kapanf')
+                 'meshtf', 'kapatf', 'meshnf', 'kapanf',  # 17
+                 'gpsi200')
 
     def _convert(self):
         '''Read 'simugrid.out'.'''
@@ -64,7 +77,7 @@ class SimugridConverter(Converter):
             outdata = f.readlines()
         sd = {}
         N, mpsi1 = int(outdata[0]), int(outdata[1])
-        assert N == 17
+        assert N in (17, 18)
         outdata = outdata[2:]
         shape = (N, len(outdata) // N)
         if len(outdata) % N != 0:
