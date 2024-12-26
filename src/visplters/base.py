@@ -413,6 +413,12 @@ class BaseVisplter(object):
         results['clabel_levels']: list, optional
             draw contour lines and add labels or not.
             The values will be sorted in increasing order.
+        results['clabel_X']: 1 or 2 dimension numpy.ndarray, optional
+            For drawing contour lines and add labels.
+        results['clabel_Y']: 1 or 2 dimension numpy.ndarray, optional
+            For drawing contour lines and add labels.
+        results['clabel_Z']: 2 dimension numpy.ndarray, optional
+            For drawing contour lines and add labels.
         results['center_norm']: bool, optional
             Normalize symmetrical data around center_norm_zero=0.0,
             default False
@@ -465,6 +471,7 @@ class BaseVisplter(object):
         title, xlabel, ylabel, \
             plot_method, plot_method_args, plot_method_kwargs, \
             contourf_levels, clabel_levels, \
+            clabel_X, clabel_Y, clabel_Z, \
             center_norm, center_norm_zero, \
             center_norm_half_ratio, center_norm_half, \
             colorbar, aspect, grid_alpha, plot_surface_shadow = \
@@ -474,6 +481,9 @@ class BaseVisplter(object):
                 ('plot_method_args', list, []),
                 ('plot_method_kwargs', dict, {}),
                 ('contourf_levels', int, 100), ('clabel_levels', list, []),
+                ('clabel_X', numpy.ndarray, None),
+                ('clabel_Y', numpy.ndarray, None),
+                ('clabel_Z', numpy.ndarray, None),
                 ('center_norm', bool, False),
                 ('center_norm_zero', float, 0.0),
                 ('center_norm_half_ratio', float, 1.0),
@@ -490,6 +500,21 @@ class BaseVisplter(object):
             plot_method = 'pcolormesh'
         if clabel_levels:
             clabel_levels = sorted(clabel_levels)
+            cX = X if clabel_X is None else clabel_X
+            cY = Y if clabel_Y is None else clabel_Y
+            cZ = Z if clabel_Z is None else clabel_Z
+            if len(cX.shape) == 1 and len(cY.shape) == 1:  # 1d
+                if (len(cY), len(cX)) != cZ.shape:
+                    vlog.error("Invalid `cX`, `cY`, `cZ` shape! (%d,%d)!=%s"
+                               % (len(cY), len(cX), cZ.shape))
+                    clabel_levels = []  # disable contour lines & labels
+                cX, cY = numpy.meshgrid(cX, cY)
+            elif not (len(cX.shape) == 2 and cX.shape == cY.shape == cZ.shape):
+                vlog.error("Invalid `cX`, `cY`, `cZ` shape! %s, %s, %s"
+                           % (cX.shape, cY.shape, cZ.shape))
+                clabel_levels = []
+            if clabel_levels:
+                clabel_X, clabel_Y, clabel_Z = cX, cY, cZ
         if center_norm_half_ratio <= 0.0 or center_norm_half_ratio > 1.0:
             center_norm_half_ratio = 1.0
         plot_surface_shadow = list(filter(
@@ -501,6 +526,7 @@ class BaseVisplter(object):
             X, Y, Z, title, xlabel, ylabel, xlim, ylim,
             plot_method, plot_method_args, plot_method_kwargs,
             contourf_levels, clabel_levels,
+            clabel_X, clabel_Y, clabel_Z,
             center_norm, center_norm_zero,
             center_norm_half_ratio, center_norm_half,
             colorbar, aspect, grid_alpha, plot_surface_shadow)

@@ -574,6 +574,7 @@ class MatplotlibVisplter(BaseVisplter):
             self, X, Y, Z, title, xlabel, ylabel, xlim, ylim,
             plot_method, plot_method_args, plot_method_kwargs,
             contourf_levels, clabel_levels,
+            clabel_X, clabel_Y, clabel_Z,
             center_norm, center_norm_zero,
             center_norm_half_ratio, center_norm_half,
             colorbar, aspect, grid_alpha, plot_surface_shadow):
@@ -637,7 +638,8 @@ class MatplotlibVisplter(BaseVisplter):
                 plot_method_kwargs['shading'] = 'auto'
         if clabel_levels:
             # order 2
-            data.append([2, 'contour', (X, Y, Z, clabel_levels), {}])
+            data.append([2, 'contour',
+                         (clabel_X, clabel_Y, clabel_Z, clabel_levels), {}])
             order += 1
             data.append([order, 'revise',
                          lambda fig, ax, art: ax[0].clabel(art[2]), {}])
