@@ -15,7 +15,7 @@ import scipy.interpolate as sp_interpolate
 from .glogger import getGLogger
 from .utils import inherit_docstring
 
-__all__ = ['nparray_default_bitsize',
+__all__ = ['nparray_default_bitsize', 'np_printoptions',
            'round_ndigits', 'round_str',
            'line_fit', 'lines_fit_raw', 'curve_fit', 'curves_fit_raw',
            'argrelextrema', 'intersection_4points',
@@ -89,6 +89,26 @@ def nparray_default_bitsize(size=None, isize=None, fsize=None):
         np.array = _oldarray
     else:
         yield
+
+
+@contextlib.contextmanager
+def np_printoptions(*args, **kwargs):
+    '''
+    Context manager for setting numpy print options.
+    See `np.set_printoptions` for the full description of available options.
+    Set default legacy="1.25", when numpy version >= '2.0.0'.
+    Do not print type information `np.float64(...)` for numpy float.
+
+    Ref:
+    1) https://numpy.org/devdocs/release/2.0.0-notes.html#representation-of-numpy-scalars-changed
+    2) https://stackoverflow.com/questions/78630047/
+    '''
+    nv = int(np.__version__.split('.')[0])
+    if nv >= 2:
+        if 'legacy' not in kwargs:
+            kwargs['legacy'] = '1.25'
+    with np.printoptions(*args, **kwargs):
+        yield np.get_printoptions()
 
 
 def round_ndigits(x, default=2):
