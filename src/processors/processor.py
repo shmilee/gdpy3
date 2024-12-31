@@ -375,25 +375,33 @@ class Processor(object):
         self.ressaver = ressaver
         self.resloader = get_pckloader(ressaver.get_store())
         plog.debug("Default %s data cache is %s." % (ext2, respath))
+        self.resfilesaver = None
+        self.resfileloader = None
         if ext != '.cache':
             try:
                 respath = '%s%s' % (saverstr, ext)
                 resfilesaver = get_pcksaver(respath)
-                if overwrite and os.path.isfile(respath):
-                    plog.warning("Remove old %s data file: %s!"
-                                 % (ext2, respath))
-                    os.remove(respath)
-                if not os.path.isfile(respath):
-                    # new file
-                    with resfilesaver:
-                        resfilesaver.write('/', {'processor': self.name})
                 self.resfilesaver = resfilesaver
-                self.resfileloader = get_pckloader(resfilesaver.get_store())
-                plog.info("Default %s data path is %s." % (ext2, respath))
+                if os.path.isfile(respath):
+                    if overwrite:
+                        plog.warning("Remove old %s data file: %s!"
+                                     % (ext2, respath))
+                        os.remove(respath)
+                    else:
+                        resfileloader = get_pckloader(respath)
+                        if resfileloader.groups() == ():  # is empty
+                            plog.info("Clear empty %s data file: %s."
+                                      % (ext2, respath))
+                            resfileloader.close()
+                            os.remove(respath)
+                        else:
+                            self.resfileloader = resfileloader
+                # lazy write new resfilesaver file
             except Exception:
                 plog.error("%s: Failed to set results file pcksaver, '%s'!"
                            % (self.name, respath), exc_info=1)
-                self.resfilesaver = None
+            else:
+                plog.info("Default %s data path is %s." % (ext2, respath))
 
     def _before_new_dig(self, figlabel, redig, kwargs):
         '''Get digcore, try old dig results'''
@@ -461,6 +469,12 @@ class Processor(object):
         '''Save dig results in file, link DEFAULT to accfiglabel.'''
         # also save kwoptions
         kwopts = dict(kwoptions=pickle.dumps(digcore.kwoptions))
+        # prepare resfilesaver info in new file
+        if not os.path.isfile(self.resfilesaver.get_store()):
+            with self.resfilesaver:
+                self.resfilesaver.write('/', {
+                    'saltstr': self.saltstr,
+                    'processor': self.name})
         with self.resfilesaver:
             shortpath = os.path.basename(self.resfilesaver.path)
             plog.info('Save %s digged results in %s.' % (

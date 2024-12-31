@@ -172,7 +172,9 @@ class MultiProcessor(Processor):
         try:
             rwlock.reader_lock.acquire()
             # after reopen resfileloader, then try to find old results
-            self.resfileloader = get_pckloader(self.resfilesaver.get_store())
+            resfile = self.resfilesaver.get_store()
+            if os.path.isfile(resfile):
+                self.resfileloader = get_pckloader(resfile)
             data = self._before_new_dig(figlabel, redig, kwargs)
         finally:
             rwlock.reader_lock.release()
@@ -334,8 +336,9 @@ class MultiProcessor(Processor):
                                 core.kwoptions = data[3]
                         self.resloader = get_pckloader(
                             self.ressaver.get_store())
-                        self.resfileloader = get_pckloader(
-                            self.resfilesaver.get_store())
+                        resfile = self.resfilesaver.get_store()
+                        if os.path.isfile(resfile):
+                            self.resfileloader = get_pckloader(resfile)
             else:
                 # with 'read-write' lock
                 nworkers = min(self.multiproc, len(couple_figlabels))
@@ -368,8 +371,9 @@ class MultiProcessor(Processor):
                             if core.kwoptions is None:
                                 core.kwoptions = data[5]
                 # reset resfileloader in mainprocess
-                self.resfileloader = get_pckloader(
-                    self.resfilesaver.get_store())
+                resfile = self.resfilesaver.get_store()
+                if os.path.isfile(resfile):
+                    self.resfileloader = get_pckloader(resfile)
                 if update > 0:
                     self.resloader = get_pckloader(self.ressaver.get_store())
         else:
