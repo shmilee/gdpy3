@@ -1004,7 +1004,7 @@ def _snaptime_fluxdata_tcutoff(
     if 'tcutoff' not in kwoptions:
         kwoptions['tcutoff'] = dict(
             widget='FloatRangeSlider',
-            rangee=[time[0], time[-1], dt],
+            rangee=[time[0], time[-1], np.around(dt*7, 8)],
             value=[time[0], time[-1]],
             description='time cutoff:')
     acckwargs['tcutoff'] = [time[0], time[-1]]

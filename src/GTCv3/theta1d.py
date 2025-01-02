@@ -147,7 +147,7 @@ class Theta1dDigger(Digger):
         if self.kwoptions is None:
             self.kwoptions = dict(tcutoff=dict(
                 widget='FloatRangeSlider',
-                rangee=[time[0], time[-1], dt],
+                rangee=[time[0], time[-1], np.around(dt*7, 8)],
                 value=[time[0], time[-1]],
                 description='time cutoff:'),
             )

@@ -272,7 +272,7 @@ class HistoryRZFDigger(Digger):
                           value=True,
                           description='normalize phi_p00:'),
                 res_time=dict(widget='FloatRangeSlider',
-                              rangee=[time[0], time[-1], dt],
+                              rangee=[time[0], time[-1], np.around(dt*7, 8)],
                               value=[time[start], time[end]],
                               description='residual time:'),
                 use_ra=dict(widget='Checkbox',
