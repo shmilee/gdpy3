@@ -136,7 +136,8 @@ class SimugridQshearDigger(Digger):
             *self.srckeys, *self.extrakeys)
         shear = np.gradient(np.log(q))/np.gradient(np.log(r))
         epsi, eq, er, erg = e1d[0], e1d[19], e1d[23], e1d[25]
-        eshear = np.gradient(np.log(eq[1:]))/np.gradient(np.log(er[1:]))
+        # eshear = np.gradient(np.log(eq[1:]))/np.gradient(np.log(er[1:]))
+        eshear = np.gradient(eq)/np.gradient(er)*er/eq
         r, er, acckwargs, xlabel = self._check_use_ra(kwargs, r, er)
         return dict(psi=psi, q=q, r=r, rg=rg, shear=shear,
                     epsi=epsi, eq=eq, er=er, erg=erg, eshear=eshear,
@@ -148,7 +149,8 @@ class SimugridQshearDigger(Digger):
         r = results
         ax_calc = {}
         for pv in ['psi', 'rg', 'q', 'shear']:
-            er = r['er'][1:] if pv == 'shear' else r['er']
+            # er = r['er'][1:] if pv == 'shear' else r['er']
+            er = r['er']
             title = r'$\%s(r)$' if pv == 'psi' else r'%s(r)'
             ax_calc[pv] = dict(
                 LINE=[(er, r['e%s' % pv], 'equilibrium'),
