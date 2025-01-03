@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2018-2023 shmilee
+# Copyright (c) 2018-2025 shmilee
 
 import os
 import sys
 
-VERSION = (0, 8, 3)
+VERSION = (0, 8, 4)
 
 __description__ = "Gyrokinetic Toroidal Code Data Processing tools written in python3"
 __url__ = "https://github.com/shmilee/gdpy3.git"
@@ -14,7 +14,7 @@ __status__ = "4 - Beta"
 __author__ = "shmilee"
 __email__ = "shmilee.zju@gmail.com"
 __license__ = "MIT"
-__copyright__ = 'Copyright (c) 2017-2022 shmilee'
+__copyright__ = 'Copyright (c) 2017-2025 shmilee'
 
 
 def _get_beside_path(name):
