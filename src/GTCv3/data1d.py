@@ -57,7 +57,7 @@ diagnosis.F90:194-203, ::
 7. fieldrms(0:mpsi,nfield), diagnosis.F90:83-136
 '''
 
-import numpy
+import numpy as np
 from .. import tools
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
@@ -66,7 +66,8 @@ from .gtc import Ndigits_tstep
 _all_Converters = ['Data1dConverter']
 _all_Diggers = ['Data1dFluxDigger', 'Data1dFieldDigger',
                 'Data1dMeanFluxDigger', 'Data1dMeanFieldDigger',
-                'Data1dFFTFieldDigger']
+                'Data1dFFTFieldDigger',
+                'Data1dZFshearDigger', 'Data1dZFshearVSDigger']
 __all__ = _all_Converters + _all_Diggers
 
 
@@ -113,7 +114,7 @@ class Data1dConverter(Converter):
             sd.update({key: int(outdata[i].strip())})
 
         # 2. diagnosis.F90:opendiag():790
-        outdata = numpy.array([float(n.strip()) for n in outdata[7:]])
+        outdata = np.array([float(n.strip()) for n in outdata[7:]])
         ndata = sd['mpsi+1'] * (sd['nspecies'] * sd['mpdata1d'] +
                                 sd['nfield'] * sd['mfdata1d'])
         if len(outdata) // ndata != sd['ndstep']:
@@ -199,12 +200,12 @@ class _Data1dDigger(Digger):
         tstep = round(tstep, Ndigits_tstep)
         y, x = data.shape
         dt = tstep * ndiag
-        X, Y = numpy.arange(1, x + 1) * dt, numpy.arange(0, y)
-        X = numpy.around(X, 8)
+        X, Y = np.arange(1, x + 1) * dt, np.arange(0, y)
+        X = np.around(X, 8)
         if self.kwoptions is None:
             self.kwoptions = dict(
                 tcutoff=dict(widget='FloatRangeSlider',
-                             rangee=[X[0], X[-1], numpy.around(dt*7, 8)],
+                             rangee=[X[0], X[-1], np.around(dt*7, 8)],
                              value=[X[0], X[-1]],
                              description='time cutoff:'),
                 pcutoff=dict(widget='IntRangeSlider',
@@ -219,7 +220,7 @@ class _Data1dDigger(Digger):
         x0, x1 = 0, X.size
         if 'tcutoff' in kwargs:
             t0, t1 = kwargs['tcutoff']
-            index = numpy.where((X >= t0) & (X < t1 + dt))[0]
+            index = np.where((X >= t0) & (X < t1 + dt))[0]
             if index.size > 0:
                 x0, x1 = index[0], index[-1]+1
                 acckwargs['tcutoff'] = [X[x0], X[x1-1]]
@@ -229,7 +230,7 @@ class _Data1dDigger(Digger):
         y0, y1 = 0, Y.size
         if 'pcutoff' in kwargs:
             p0, p1 = kwargs['pcutoff']
-            index = numpy.where((Y >= p0) & (Y < p1+1))[0]
+            index = np.where((Y >= p0) & (Y < p1+1))[0]
             if index.size > 0:
                 y0, y1 = index[0], index[-1]+1
                 acckwargs['pcutoff'] = [Y[y0], Y[y1-1]]
@@ -333,7 +334,7 @@ class _Data1dMeanDigger(_Data1dDigger):
         use_ra = acckwargs['use_ra']
         mt0, mt1 = kwargs.get('mean_time', [X[-1]*0.7, X[-1]])
         smooth = bool(kwargs.get('mean_smooth', False))
-        index = numpy.where((X >= mt0) & (X <= mt1))[0]
+        index = np.where((X >= mt0) & (X <= mt1))[0]
         if index.size > 0:
             start, end = index[0], index[-1]
         else:
@@ -343,7 +344,7 @@ class _Data1dMeanDigger(_Data1dDigger):
         dlog.parm("Set mean time: [%s,%s], index: [%s,%s]."
                   % (X[start], X[end], start, end))
         selectZ = Z[:, start:end]
-        meanZ = numpy.average(selectZ, axis=1)
+        meanZ = np.average(selectZ, axis=1)
         if smooth:
             meanZ = tools.savgolay_filter(meanZ, info='Z mean')
         if 'mean_time' not in self.kwoptions:
@@ -454,7 +455,7 @@ class _Data1dFFTDigger(_Data1dDigger):
                 and (fft_tselect[0] >= tcutoff[0]
                      or fft_tselect[1] <= tcutoff[1])):
             s0, s1 = fft_tselect
-            index = numpy.where((X >= s0) & (X <= s1))[0]
+            index = np.where((X >= s0) & (X <= s1))[0]
             if index.size > 0:
                 it0, it1 = index[0], index[-1]+1
                 acckwargs['fft_tselect'] = [X[it0], X[it1-1]]
@@ -467,10 +468,10 @@ class _Data1dFFTDigger(_Data1dDigger):
                 and fft_pselect[0] >= pcutoff[0]
                 and fft_pselect[1] <= pcutoff[1]):
             s0, s1 = fft_pselect
-            pY = numpy.arange(pcutoff[0], pcutoff[1]+1)
+            pY = np.arange(pcutoff[0], pcutoff[1]+1)
             if use_ra and pY.size != Y.size:
                 dlog.error("Wrong pY size: %d != %d" % (pY.size, Y.size))
-            index = numpy.where((pY >= s0) & (pY <= s1))[0]
+            index = np.where((pY >= s0) & (pY <= s1))[0]
             if index.size > 0:
                 ip0, ip1 = index[0], index[-1]+1
                 acckwargs['fft_pselect'] = [pY[ip0], pY[ip1-1]]
@@ -484,7 +485,7 @@ class _Data1dFFTDigger(_Data1dDigger):
             select_Z = Z[ip0:ip1, it0:it1]
             select_X = X[[it0, it1-1, it1-1, it0, it0]]
             select_Y = Y[[ip0, ip0, ip1-1, ip1-1, ip0]]
-        dy = numpy.diff(Y).mean() if use_ra else 1.0
+        dy = np.diff(Y).mean() if use_ra else 1.0
         tf, yf, af, pf = tools.fft2(dt, dy, select_Z)
         M, N = select_Z.shape
         pf = pf / M / N * 2.0
@@ -496,7 +497,7 @@ class _Data1dFFTDigger(_Data1dDigger):
                 a, rho0 = self.pckloader.get_many('gtc/a_minor', 'gtc/rho0')
                 if not use_ra:
                     rpsi = self.pckloader['gtc/sprpsi']
-                    yf = yf/numpy.diff(rpsi).mean() * a
+                    yf = yf/np.diff(rpsi).mean() * a
                 yf = yf*rho0/a
             except Exception:
                 dlog.warning("Cannot use unit rho0!", exc_info=1)
@@ -511,8 +512,8 @@ class _Data1dFFTDigger(_Data1dDigger):
         if fft_autoxlimit:
             acckwargs['fft_autoxlimit'] = True
             minlimit = pf_max * 5.0e-2
-            idx_t = numpy.where(pf_tmax >= minlimit)[0][-1]
-            idx_y = numpy.where(pf_ymax >= minlimit)[0][-1]
+            idx_t = np.where(pf_tmax >= minlimit)[0][-1]
+            idx_y = np.where(pf_ymax >= minlimit)[0][-1]
             tf_xlimit, yf_xlimit = round(tf[idx_t], 3),  round(yf[idx_y], 3)
         else:
             acckwargs['fft_autoxlimit'] = False
@@ -523,10 +524,10 @@ class _Data1dFFTDigger(_Data1dDigger):
         mean_kr = 0.0
         krlim0, krlim1 = round(mean_krlimit[0], 2), round(mean_krlimit[1], 2)
         mean_krlimit = krlim0, krlim1
-        i0, i1 = numpy.where((krlim0 <= yf) & (yf <= krlim1))[0][[0, -1]]
+        i0, i1 = np.where((krlim0 <= yf) & (yf <= krlim1))[0][[0, -1]]
         weights = abs(pf_ymax[i0:i1+1])**mean_order
         if sum(weights) != 0:
-            mean_kr = numpy.average(abs(yf[i0:i1+1]), weights=weights)
+            mean_kr = np.average(abs(yf[i0:i1+1]), weights=weights)
         acckwargs.update(
             fft_mean_krlimit=mean_krlimit, fft_mean_order=mean_order)
         if 'fft_mean_krlimit' not in self.kwoptions:
@@ -600,3 +601,173 @@ class Data1dFFTFieldDigger(_Data1dFFTDigger, Data1dFieldDigger):
     def _set_fignum(self, numseed=None):
         super(Data1dFFTFieldDigger, self)._set_fignum(numseed=numseed)
         self._fignum = '%s_fft' % self._fignum
+
+
+class Data1dZFshearDigger(_Data1dDigger):
+    '''Zonal flow shear rate by phi00.'''
+    __slots__ = []
+    itemspattern = ['^(?P<s>data1d)/field00-phi']
+    commonpattern = ['gtc/tstep', 'gtc/ndiag', 'gtc/sprpsi', 'gtc/rho0']
+    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
+
+    def _set_fignum(self, numseed=None):
+        self._fignum = 'zonal_shear'
+        self.kwoptions = None
+
+    def _get_title(self):
+        return 'zonal flow'
+
+    def _dig(self, kwargs):
+        '''*meanpsi*: [p0,p1], p0 int
+            RMS of shearZF[y0:y1,:] where p0<=ipsi[y0:y1]<=p1
+        '''
+        results, acckwargs = super(Data1dZFshearDigger, self)._dig(kwargs)
+        time, Y, ZF = results['X'], results['Y'], results['Z']
+        rpsi, rho0 = self.pckloader.get_many(*self.extrakeys[-2:])
+        EZF = np.divide(np.gradient(ZF, axis=0).T, np.gradient(rpsi)).T
+        shearZF = np.divide(np.gradient(EZF, axis=0).T, np.gradient(rpsi)).T
+        shearZF = rho0 * shearZF
+        shearZFrms = None
+        pcut0, pcut1 = acckwargs['pcutoff']
+        meanYcut = None
+        if 'meanpsi' in kwargs:
+            p0, p1 = kwargs['meanpsi']
+            prange = np.arange(pcut0, pcut1, 1)
+            index = np.where((prange >= p0) & (prange < p1+1))[0]
+            if index.size > 0:
+                pi0, pi1 = index[0], index[-1]+1
+                shearZFrms = np.sqrt(np.mean(shearZF[pi0:pi1, :]**2, axis=0))
+                acckwargs['meanpsi'] = [prange[pi0], prange[pi1-1]]
+                meanYcut = [Y[pi0], Y[pi1-1]]
+                dlog.info('shear RMS mean between: %s<Y<%s' % (*meanYcut,))
+            else:
+                dlog.warning('Invalid meanpsi: %s <= ipsi <= %s!' % (p0, p1))
+        if shearZFrms is None:
+            shearZFrms = np.sqrt(np.mean(shearZF**2, axis=0))
+            acckwargs['meanpsi'] = [pcut0, pcut1]
+        if 'meanpsi' not in self.kwoptions:
+            self.kwoptions['meanpsi'] = dict(
+                widget='IntRangeSlider',
+                rangee=[pcut0, pcut1, 1],
+                value=[pcut0, pcut1],
+                description='shear RMS meanpsi:')
+        xlabel, ylabel = r'time($R_0/c_s$)', results['ylabel']
+        return dict(time=time, Y=Y, ZF=ZF, ylabel=ylabel, xlabel=xlabel,
+                    EZF=EZF, shearZF=shearZF, shearZFrms=shearZFrms,
+                    meanYcut=meanYcut), acckwargs
+
+    def _post_dig(self, results):
+        r = results
+        ax1 = dict(
+            X=r['time'], Y=r['Y'], Z=r['ZF'], title=r'$\phi_{00}$',
+            xlabel=r['xlabel'], ylabel=r['ylabel'])
+        ax2 = dict(
+            X=r['time'], Y=r['Y'], Z=r['EZF'], title=r'$E_{r,00}$',
+            xlabel=r['xlabel'], ylabel=r['ylabel'])
+        ax3 = dict(
+            X=r['time'], Y=r['Y'], Z=r['shearZF'], title=r'$ZF_{shear}$',
+            xlabel=r['xlabel'], ylabel=r['ylabel'])
+        ax4 = dict(
+            LINE=[(r['time'], r['shearZFrms'], 'shear RMS')],
+            title='RMS of zonal shear rate', xlabel=r['xlabel'])
+        zip_results = [
+            ('tmpl_contourf', 221, ax1), ('tmpl_contourf', 222, ax2),
+            ('tmpl_contourf', 223, ax3), ('tmpl_line', 224, ax4)]
+        if r['meanYcut'] is not None:
+            t0, t1 = r['time'][0], r['time'][-1]
+            Y0, Y1 = r['meanYcut']
+            zip_results.append(
+                ('tmpl_line', 223, dict(LINE=[
+                    ([t0, t1, t1, t0, t0], [Y0, Y0, Y1, Y1, Y0], r'RMS'),
+                ])))
+        return dict(zip_results=zip_results)
+
+
+class Data1dZFshearVSDigger(Data1dZFshearDigger):
+    '''Zonal flow shear rate vs gamma of phirms, particle chi.'''
+    __slots__ = []
+    nitems = '+'
+    itemspattern = ['^(?P<s>data1d)/field00-phi',
+                    '^(?P<s>data1d)/fieldrms-phi',
+                    '^(?P<s>data1d)/i-energy-flux']
+
+    def _set_fignum(self, numseed=None):
+        self._fignum = 'zonal_shear_vs'
+        self.kwoptions = None
+
+    def _dig(self, kwargs):
+        '''*particle*: str, default 'i'
+            chi_rms of 'i':ion, 'e':electron or 'f':fastion
+        '''
+        results, acckwargs = super(Data1dZFshearVSDigger, self)._dig(kwargs)
+        time, Y = results['time'], results['Y']
+        shearZF, shearZFrms = results['shearZF'], results['shearZFrms']
+        pcut0, pcut1 = acckwargs['pcutoff']
+        mp0, mp1 = acckwargs['meanpsi']
+        particle = None
+        if 'particle' in kwargs and kwargs['particle'] in ('i', 'e', 'f'):
+            if 'data1d/%s-energy-flux' % kwargs['particle'] in self.pckloader:
+                particle = kwargs['particle']
+            else:
+                dlog.warning('particle %s not found!' % kwargs['particle'])
+        if particle:
+            key = 'data1d/%s-energy-flux' % particle
+        else:
+            particle, key = 'i', 'data1d/i-energy-flux'
+        dlog.warning('Use chi rms of particle %s.' % particle)
+        acckwargs['particle'] = particle
+        if 'particle' not in self.kwoptions:
+            self.kwoptions['particle'] = dict(
+                widget='Dropdown',
+                options=['i', 'e', 'f'],
+                value='i',
+                description='particle:')
+        phirms = self.pckloader.get('data1d/fieldrms-phi')
+        chi = self.pckloader.get(key)
+        meanphirms = np.sqrt(np.mean(phirms[mp0:mp1, :]**2, axis=0))
+        meanchi = np.sqrt(np.mean(chi[mp0:mp1, :]**2, axis=0))
+        gammaphirms = np.gradient(np.log(meanphirms)) / np.gradient(time)
+        gammachi = np.gradient(np.log(meanchi)) / np.gradient(time)
+        return dict(time=time, Y=Y, particle=particle,
+                    ylabel=results['ylabel'], xlabel=results['xlabel'],
+                    shearZF=shearZF, shearZFrms=shearZFrms,
+                    phirms=phirms, gammaphirms=gammaphirms,
+                    chi=chi, gammachi=gammachi,
+                    meanYcut=results['meanYcut']), acckwargs
+
+    def _post_dig(self, results):
+        r = results
+        ax1 = dict(
+            X=r['time'], Y=r['Y'], Z=r['shearZF'], title=r'$ZF_{shear}$',
+            xlabel=r['xlabel'], ylabel=r['ylabel'])
+        ax2 = dict(
+            X=r['time'], Y=r['Y'], Z=r['phirms'], title=r'$\phi_{RMS}$',
+            xlabel=r['xlabel'], ylabel=r['ylabel'])
+        ax3 = dict(
+            X=r['time'], Y=r['Y'], Z=r['chi'],
+            title=r'$\chi_{%s}$' % r['particle'],
+            xlabel=r['xlabel'], ylabel=r['ylabel'])
+        tex = r'$ZF_{shear}$ vs $\gamma_{\phi}, \chi_{%s}$' % r['particle']
+        ax4 = dict(
+            LINE=[
+                (r['time'], r['shearZFrms'], 'ZF shear'),
+                (r['time'], r['gammaphirms'], r'$\gamma_{\phi}$'),
+                (r['time'], r['gammachi'], r'$dln\chi/dt$'),
+            ],
+            title=r'RMS: %s' % tex,
+            xlabel=r['xlabel'])
+        zip_results = [
+            ('tmpl_contourf', 221, ax1), ('tmpl_contourf', 222, ax2),
+            ('tmpl_contourf', 223, ax3), ('tmpl_line', 224, ax4)]
+        if r['meanYcut'] is not None:
+            t0, t1 = r['time'][0], r['time'][-1]
+            Y0, Y1 = r['meanYcut']
+            ax99 = dict(LINE=[
+                ([t0, t1, t1, t0, t0], [Y0, Y0, Y1, Y1, Y0], r'RMS mean')
+            ])
+            zip_results.extend([
+                ('tmpl_line', 221, ax99),
+                ('tmpl_line', 222, ax99),
+                ('tmpl_line', 223, ax99),
+            ])
+        return dict(zip_results=zip_results)
