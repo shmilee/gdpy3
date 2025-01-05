@@ -238,6 +238,7 @@ class _Data1dDigger(Digger):
             else:
                 dlog.warning('Cannot cutoff: %s <= ipsi <= %s!' % (p0, p1))
         ylabel = r'$\psi$(mpsi)'
+        cutoff_idx = [y0, y1, x0, x1]
         # use_ra, by rpsi
         if kwargs.get('use_ra', False):
             try:
@@ -251,11 +252,11 @@ class _Data1dDigger(Digger):
                 acckwargs['use_ra'] = True
         # update
         data = data[y0:y1, x0:x1]
-        return dict(X=X, Y=Y, Z=data, ylabel=ylabel,
-                    title=self._get_title()), acckwargs
+        return dict(X=X, Y=Y, Z=data, cutoff_idx=cutoff_idx,
+                    title=self._get_title(),
+                    ylabel=ylabel, xlabel=r'time($R_0/c_s$)'), acckwargs
 
     def _post_dig(self, results):
-        results.update(xlabel=r'time($R_0/c_s$)')
         return results
 
     def _get_title(self):
@@ -615,14 +616,14 @@ class Data1dZFshearDigger(_Data1dDigger):
         self.kwoptions = None
 
     def _get_title(self):
-        return 'zonal flow'
+        return self._fignum
 
     def _dig(self, kwargs):
         '''*meanpsi*: [p0,p1], p0 int
             RMS of shearZF[y0:y1,:] where p0<=ipsi[y0:y1]<=p1
         '''
         results, acckwargs = super(Data1dZFshearDigger, self)._dig(kwargs)
-        time, Y, ZF = results['X'], results['Y'], results['Z']
+        time, Y, ZF = results.pop('X'), results.pop('Y'), results.pop('Z')
         rpsi, rho0 = self.pckloader.get_many(*self.extrakeys[-2:])
         EZF = np.divide(np.gradient(ZF, axis=0).T, np.gradient(rpsi)).T
         shearZF = np.divide(np.gradient(EZF, axis=0).T, np.gradient(rpsi)).T
@@ -651,10 +652,9 @@ class Data1dZFshearDigger(_Data1dDigger):
                 rangee=[pcut0, pcut1, 1],
                 value=[pcut0, pcut1],
                 description='shear RMS meanpsi:')
-        xlabel, ylabel = r'time($R_0/c_s$)', results['ylabel']
-        return dict(time=time, Y=Y, ZF=ZF, ylabel=ylabel, xlabel=xlabel,
-                    EZF=EZF, shearZF=shearZF, shearZFrms=shearZFrms,
-                    meanYcut=meanYcut), acckwargs
+        results.update(time=time, Y=Y, ZF=ZF, EZF=EZF, shearZF=shearZF,
+                       shearZFrms=shearZFrms, meanYcut=meanYcut)
+        return results, acckwargs
 
     def _post_dig(self, results):
         r = results
@@ -702,7 +702,7 @@ class Data1dZFshearVSDigger(Data1dZFshearDigger):
         results, acckwargs = super(Data1dZFshearVSDigger, self)._dig(kwargs)
         time, Y = results['time'], results['Y']
         shearZF, shearZFrms = results['shearZF'], results['shearZFrms']
-        pcut0, pcut1 = acckwargs['pcutoff']
+        cutoff_idx = results['cutoff_idx']
         mp0, mp1 = acckwargs['meanpsi']
         particle = None
         if 'particle' in kwargs and kwargs['particle'] in ('i', 'e', 'f'):
@@ -724,16 +724,16 @@ class Data1dZFshearVSDigger(Data1dZFshearDigger):
                 description='particle:')
         phirms = self.pckloader.get('data1d/fieldrms-phi')
         chi = self.pckloader.get(key)
+        _, _, x0, x1 = cutoff_idx
+        phirms = phirms[:, x0:x1]
+        chi = chi[:, x0:x1]
         meanphirms = np.sqrt(np.mean(phirms[mp0:mp1, :]**2, axis=0))
         meanchi = np.sqrt(np.mean(chi[mp0:mp1, :]**2, axis=0))
         gammaphirms = np.gradient(np.log(meanphirms)) / np.gradient(time)
         gammachi = np.gradient(np.log(meanchi)) / np.gradient(time)
-        return dict(time=time, Y=Y, particle=particle,
-                    ylabel=results['ylabel'], xlabel=results['xlabel'],
-                    shearZF=shearZF, shearZFrms=shearZFrms,
-                    phirms=phirms, gammaphirms=gammaphirms,
-                    chi=chi, gammachi=gammachi,
-                    meanYcut=results['meanYcut']), acckwargs
+        results.update(particle=particle, phirms=phirms, chi=chi,
+                       gammaphirms=gammaphirms, gammachi=gammachi)
+        return results, acckwargs
 
     def _post_dig(self, results):
         r = results
