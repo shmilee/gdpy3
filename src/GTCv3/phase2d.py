@@ -278,7 +278,7 @@ class Phase2dDigger(Digger):
             select one flux from range(1, p2d_niflux+1)
         *scoord*: int, default 1
             select the coordinates, from range(1, p2d_ncoord+1)
-        *norm*: int, default 0
+        *norm*: int, default 1
             normalize Z value by fullf, <1: off.
             1: by sum(fullf). >1: by fullf per grid.
         '''
@@ -303,11 +303,11 @@ class Phase2dDigger(Digger):
                 norm=dict(
                     widget='IntSlider',
                     rangee=(0, 2, 1),
-                    value=0,
+                    value=1,
                     description='norm:'))
         sflux = kwargs.get('sflux', 1)
         scoord = kwargs.get('scoord', 1)
-        norm = kwargs.get('norm', 0)
+        norm = kwargs.get('norm', 1)
         if not isinstance(sflux, int) or sflux < 1 or sflux > p2d_niflux:
             dlog.warning("Invalid selected flux index: %s! range: %d-%d"
                          % (sflux, 1, p2d_niflux))
@@ -318,7 +318,7 @@ class Phase2dDigger(Digger):
             scoord = 1
         if not isinstance(norm, int):
             dlog.warning("Invalid norm: %s! Please set as int!" % norm)
-            norm = 0
+            norm = 1
         acckwargs = {'sflux': sflux, 'scoord': scoord, 'norm': norm}
         ipsi = p2d_ifluxes[sflux-1]
         pidx = self._particle_ins[self.particle] - 1
