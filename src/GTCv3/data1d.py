@@ -625,6 +625,8 @@ class Data1dZFshearDigger(_Data1dDigger):
         results, acckwargs = super(Data1dZFshearDigger, self)._dig(kwargs)
         time, Y, ZF = results.pop('X'), results.pop('Y'), results.pop('Z')
         rpsi, rho0 = self.pckloader.get_many(*self.extrakeys[-2:])
+        y0, y1, _, _ = results['cutoff_idx']
+        rpsi = rpsi[y0:y1]
         EZF = np.divide(np.gradient(ZF, axis=0).T, np.gradient(rpsi)).T
         shearZF = np.divide(np.gradient(EZF, axis=0).T, np.gradient(rpsi)).T
         shearZF = rho0 * shearZF
@@ -724,14 +726,14 @@ class Data1dZFshearVSDigger(Data1dZFshearDigger):
                 description='particle:')
         phirms = self.pckloader.get('data1d/fieldrms-phi')
         chi = self.pckloader.get(key)
-        _, _, x0, x1 = cutoff_idx
-        phirms = phirms[:, x0:x1]
-        chi = chi[:, x0:x1]
-        meanphirms = np.sqrt(np.mean(phirms[mp0:mp1, :]**2, axis=0))
-        meanchi = np.sqrt(np.mean(chi[mp0:mp1, :]**2, axis=0))
+        y0, y1, x0, x1 = cutoff_idx
+        cutphirms = phirms[y0:y1, x0:x1]
+        cutchi = chi[y0:y1, x0:x1]
+        meanphirms = np.sqrt(np.mean(phirms[mp0:mp1, x0:x1]**2, axis=0))
+        meanchi = np.sqrt(np.mean(chi[mp0:mp1, x0:x1]**2, axis=0))
         gammaphirms = np.gradient(np.log(meanphirms)) / np.gradient(time)
         gammachi = np.gradient(np.log(meanchi)) / np.gradient(time)
-        results.update(particle=particle, phirms=phirms, chi=chi,
+        results.update(particle=particle, phirms=cutphirms, chi=cutchi,
                        gammaphirms=gammaphirms, gammachi=gammachi)
         return results, acckwargs
 
