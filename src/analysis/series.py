@@ -513,8 +513,8 @@ class CaseSeries(object):
         self.plotter = get_visplter('mpl::series')
         self.plotter.style = ['gdpy3-paper-aip']
 
-    def _get_start_end(self, key, stage, time=None,
-                       select=0, fallback=None):
+    def get_time_start_end(self, key, stage, time=None,
+                           select=0, fallback=None):
         '''
         Search in :attr:`labelinfo` with specified index `select`.
         Use `fallback` when stage not found in :attr:`labelinfo`.
@@ -529,8 +529,13 @@ class CaseSeries(object):
         '''
         path = self.keypath[key]
         if time is None:
-            ndstep, tstep, ndiag = self.cases[key].pckloader.get_many(
-                'history/ndstep', 'gtc/tstep', 'gtc/ndiag')
+            tstep, ndiag = self.cases[key].pckloader.get_many(
+                'gtc/tstep', 'gtc/ndiag')
+            if 'history/ndstep' in self.cases[key].pckloader:
+                ndstep = self.cases[key].pckloader.get('history/ndstep')
+            else:
+                mstep = self.cases[key].pckloader.get('gtc/mstep')
+                ndstep = mstep//ndiag
             dt = tstep * ndiag
             time = np.around(np.arange(1, ndstep+1)*dt, 8)
         if self.labelinfo:
@@ -630,7 +635,7 @@ class CaseSeries(object):
                 rho0 = gdp.pckloader['gtc/rho0']
                 chi, D = chi*Ln/rho0, D*Ln/rho0
             sat_t, sat_chi, sat_D = [], [], []
-            for t0, t1, start, end in self._get_start_end(
+            for t0, t1, start, end in self.get_time_start_end(
                     key, 'saturation', time=time, select=selects,
                     fallback=fallback_sat_time):
                 sat_t.append(np.linspace(t0, t1, 2))
@@ -802,7 +807,7 @@ class CaseSeries(object):
             gdp = self.cases[key]
             a, b, c = gdp.dig('history/%s_flux' % particle, post=False)
             time = b['time']
-            start, end, _, _ = self._get_start_end(
+            start, end, _, _ = self.get_time_start_end(
                 key, 'saturation', time=time, select=select,
                 fallback=fallback_sat_time)[0]
             a, b1, c = gdp.dig(figlabel % 'energy', post=False,
@@ -917,7 +922,7 @@ class CaseSeries(object):
             if tidx < len(time):
                 time = time[:tidx]
                 logphirms = logphirms[:tidx]
-            trange = self._get_start_end(
+            trange = self.get_time_start_end(
                 key, 'linear', time=time, select=selects,
                 fallback=fallback_growth_time)
             if not trange:  # fallback_growth_time == 'auto'
@@ -1051,7 +1056,7 @@ class CaseSeries(object):
         phiresult = []
         for path, key in self.paths:
             gdp = self.cases[key]
-            start, end, _, _ = self._get_start_end(
+            start, end, _, _ = self.get_time_start_end(
                 key, 'saturation', select=select,
                 fallback=fallback_sat_time)[0]
             a, b, c = gdp.dig(figlabel, post=False,
@@ -1108,7 +1113,7 @@ class CaseSeries(object):
         result = []
         for path, key in self.paths:
             gdp = self.cases[key]
-            start, end, _, _ = self._get_start_end(
+            start, end, _, _ = self.get_time_start_end(
                 key, stage, select=select, fallback=fallback_time)[0]
             step = [int(fl[4:9]) for fl in gdp.refind('snap.*/phi_m')]
             tstep = gdp.pckloader['gtc/tstep']
@@ -1185,7 +1190,7 @@ class CaseSeries(object):
             figlabel = 'snap/phi_poloi_time_fft'
             if figlabel not in gdp.availablelabels:
                 continue
-            start, end, _, _ = self._get_start_end(
+            start, end, _, _ = self.get_time_start_end(
                 key, stage, select=select, fallback=fallback_time)[0]
             a, b, c = gdp.dig(figlabel, fft_tselect=(start, end),
                               post=False, **kwargs)
@@ -1253,7 +1258,7 @@ class CaseSeries(object):
             figlabel = 'snap/phi_poloi_time_fft'
             if figlabel not in gdp.availablelabels:
                 continue
-            start, end, _, _ = self._get_start_end(
+            start, end, _, _ = self.get_time_start_end(
                 key, stage, select=select, fallback=fallback_time)[0]
             rpsi, a_minor, mpsi = gdp.pckloader.get_many(
                 'gtc/sprpsi', 'gtc/a_minor', 'gtc/mpsi')
@@ -1363,7 +1368,7 @@ class CaseSeries(object):
             meank, fitkgamma = np.array(meank), np.array(fitkgamma)
             tstep = gdp.pckloader['gtc/tstep']
             time = np.array([round(i*tstep, 3) for i in step])
-            trange = self._get_start_end(
+            trange = self.get_time_start_end(
                 key, 'saturation', time=time, select=selects,
                 fallback=fallback_sat_time)
             if not trange:
@@ -1478,7 +1483,7 @@ class CaseSeries(object):
             argmax = phi00rms.argmax()
             if norm:
                 phi00rms = phi00rms/phi00rms[argmax]
-            trange = self._get_start_end(
+            trange = self.get_time_start_end(
                 key, 'saturation', time=time1, select=select,
                 fallback=fallback_sat_time)
             if trange:
