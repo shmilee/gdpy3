@@ -1323,8 +1323,9 @@ class CaseSeries(object):
 
         Parameters
         ----------
-        ipsi: int
+        ipsi: int or list of int
             select flux surfece at 'ipsi', default None -> mpsi//2
+            If list is given, its length must be same as :attr:`paths`.
         time_sample: int
             select N random time points, <=0: select all. default 0
         selects: int or list, like [0, 1], default 0
@@ -1338,24 +1339,33 @@ class CaseSeries(object):
             'fft_mean_order'(default 2).
         '''
         result = []
-        for path, key in self.paths:
+        for n, (path, key) in enumerate(self.paths):
             gdp = self.cases[key]
             mpsi = gdp.pckloader['gtc/mpsi']
-            ipsi = mpsi//2 if ipsi is None else ipsi
+            if ipsi is None:
+                ii = mpsi//2
+            else:
+                if isinstance(ipsi, (list, tuple)):
+                    assert len(ipsi) == len(self.paths)
+                    ii = ipsi[n]
+                else:
+                    ii = ipsi
             figlabel = None
-            if ipsi == mpsi//2:  # try snapshot first
+            if ii == mpsi//2:  # try snapshot first
                 step = [int(k[4:9]) for k in gdp.refind('snap.*/phi_fluxa$')]
                 if step:
                     figlabel = 'snap%05d/phi_fluxa_tile_fft'
             if figlabel is None:  # fallback flux3d
                 step = [int(k[6:11]) for k in gdp.refind(
-                    'flux3d.*/phi_%03da$' % ipsi)]
+                    'flux3d.*/phi_%03da$' % ii)]
                 if step:
-                    figlabel = 'flux3d%%05d/phi_%03da_tile_fft' % ipsi
+                    figlabel = 'flux3d%%05d/phi_%03da_tile_fft' % ii
             if figlabel is None:
-                log.error('No snap(or 3d) fluxdata for ipsi=%s!' % ipsi)
+                log.error('No snap(or 3d) fluxdata for ipsi=%s!' % ii)
                 result.append(([], []))
                 continue
+            ra = gdp.pckloader['gtc/sprpsi'][ii]/gdp.pckloader['gtc/a_minor']
+            log.info("Select flux surfece: ipsi=%d, r/a=%.3f" % (ii, ra))
             if time_sample > 0 and len(step) > time_sample:
                 log.info('Select %s of %s random time points!'
                          % (time_sample, len(step)))
@@ -1407,7 +1417,7 @@ class CaseSeries(object):
                 [1+i, 'plot', (r[0], r[1], '-'), dict(
                     color="C{}".format(i),
                     label=r'%s, sat=%s' % (
-                        l, ','.join([tools.round_str(k, 2) for k in r[4]]))
+                        l, ','.join([tools.round_str(k, 3) for k in r[4]]))
                 )]
                 for i, (r, l) in enumerate(zip(ress, lbls))
             ] + [
@@ -1422,7 +1432,7 @@ class CaseSeries(object):
                 [1+i, 'plot', (r[0], r[2], '-'), dict(
                     color="C{}".format(i),
                     label=r'%s, sat=%s' % (
-                        l, ','.join([tools.round_str(sg, 2) for sg in r[5]]))
+                        l, ','.join([tools.round_str(sg, 3) for sg in r[5]]))
                 )]
                 for i, (r, l) in enumerate(zip(ress, lbls))
             ] + [
