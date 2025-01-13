@@ -465,12 +465,23 @@ class Phase2dResonanceDigger(Phase2dDigger):
         else:
             N = sum(Z.shape)
             LineX = np.linspace(resZ.min(), resZ.max(), N)
+            dx = (resZ.max() - resZ.min())/(N-1)
             LineY = np.zeros(N)
             ix, iy = resZ.shape
             for i in range(ix):
                 for j in range(iy):
-                    idx = np.nanargmin(np.abs(LineX-resZ[i, j]))
-                    LineY[idx] += Z[i, j]
+                    # idx = np.nanargmin(np.abs(LineX-resZ[i, j]))
+                    # LineY[idx] += Z[i, j]
+                    idx = np.where(LineX < resZ[i, j])[0]
+                    if idx.size == 0:
+                        LineY[0] += Z[i, j]
+                    elif idx.size == N:
+                        LineY[N-1] += Z[i, j]
+                    else:
+                        idx = idx[-1]
+                        dp = (resZ[i, j] - LineX[idx])/dx
+                        LineY[idx] += (1.0-dp)*Z[i, j]
+                        LineY[idx+1] += dp*Z[i, j]
             idx = np.where(abs(LineY) > abs(LineY).max()*1e-4)[0]
             xlim = sorted([LineX[0], LineX[idx[-1]]])
             # if idx.size > 0 and idx[-1] != N-1:  # cutoff
