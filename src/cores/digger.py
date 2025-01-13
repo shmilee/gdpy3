@@ -164,11 +164,13 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
         '''
         raise NotImplementedError()
 
-    def str_dig_kwargs(self, kwargs):
+    def str_dig_kwargs(self, kwargs, complete=True):
         '''
         Turn :meth:`dig` *kwargs* to str.
         Check if they in :attr:`kwoptions` or not, and sort by key.
         Return string like, "k1=1,k2=[2],k3='abc'".
+        complete: bool, default True
+            complete the str of kwargs by :attr:`kwoptions` for partial kwargs
         '''
         kwopts, doc = self.kwoptions, self.dig.__doc__
         with np_printoptions():
@@ -176,6 +178,9 @@ class Digger(BaseCore, metaclass=AppendDocstringMeta):
                      for k, v in kwargs.items()
                      if (kwopts and k in kwopts
                          or kwopts is None and doc.find('*%s*' % k) > 0)]
+            if complete and kwopts:
+                ckkws.extend(['%s=%r' % (k, kwopts[k]['value'])
+                              for k in kwopts if k not in kwargs])
         return ','.join(sorted(ckkws))
 
     def dig(self, **kwargs):
