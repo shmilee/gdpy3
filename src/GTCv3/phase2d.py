@@ -458,8 +458,10 @@ class Phase2dResonanceDigger(Phase2dDigger):
         # 2. resZ to LineX axis
         if resfun == 'Xline':
             LineX, LineY = oX, Z.sum(axis=0)
+            xlim = None
         elif resfun == 'Yline':
             LineX, LineY = oY, Z.sum(axis=1)
+            xlim = None
         else:
             N = sum(Z.shape)
             LineX = np.linspace(resZ.min(), resZ.max(), N)
@@ -470,9 +472,11 @@ class Phase2dResonanceDigger(Phase2dDigger):
                     idx = np.nanargmin(np.abs(LineX-resZ[i, j]))
                     LineY[idx] += Z[i, j]
             idx = np.where(abs(LineY) > abs(LineY).max()*1e-4)[0]
-            if idx.size > 0 and idx[-1] != N-1:  # cutoff
-                LineX, LineY = LineX[:idx[-1]], LineY[:idx[-1]]
-        results.update(LineX=LineX, LineY=LineY, LineXlabel=LineXlabel)
+            xlim = sorted([LineX[0], LineX[idx[-1]]])
+            # if idx.size > 0 and idx[-1] != N-1:  # cutoff
+            #    LineX, LineY = LineX[:idx[-1]], LineY[:idx[-1]]
+        results.update(LineX=LineX, LineY=LineY,
+                       LineXlabel=LineXlabel, LineXlim=xlim)
         return results, acckwargs
 
     def _post_dig(self, results):
@@ -485,5 +489,6 @@ class Phase2dResonanceDigger(Phase2dDigger):
             ('tmpl_line', 122, dict(
                 LINE=[(r['LineX'], r['LineY'])],
                 xlabel=r['LineXlabel'], aspect=None,
+                xlim=r['LineXlim'],
             )),
         ])
