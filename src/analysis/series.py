@@ -504,7 +504,9 @@ class CaseSeries(object):
             self.paths.append((path, key))
             self.keypath[key] = path
             if key in self.cases:
-                log.warning("key '%s' collision, path '%s'!" % (key, path))
+                desc = self.cases[key].pckloader.description
+                if desc != gdp.pckloader.description:
+                    log.warning("key '%s' collision, path '%s'!" % (key, path))
             self.cases[key] = gdp
         if isinstance(labelinfo, LabelInfoSeries):
             self.labelinfo = labelinfo
