@@ -1244,7 +1244,7 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
     # ipsi of *data* for k_theta, pckloader for sprpsi rho0
     difftime = np.diff(time)
     dt, stdt = np.mean(difftime), np.std(difftime)
-    if stdt != 0:
+    if stdt/dt > 1.0e-6:
         dlog.warn("The step time (%f, +-%f) isn't a constant!" % (dt, stdt))
     dy = np.mean(np.diff(theta))
     # fft_tselect
