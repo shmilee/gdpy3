@@ -396,6 +396,7 @@ class HistoryFieldModeDigger(_TimeCutoff):
         if ktr:
             title2 += r', $k_{\theta}\rho_0$=%.6f' % ktr
         ya = np.sqrt(yreal**2 + yimag**2)
+        omega_start = None
         if ya.any():
             if savsmooth:
                 logya = tools.savgolay_filter(np.log(ya), info='log(Amp)')
@@ -419,6 +420,7 @@ class HistoryFieldModeDigger(_TimeCutoff):
                     start, region_len = 0, max(ndstep // 4, 2)
                 end = start + region_len - 1
                 # dlog.debug('growth_time_end(2): %s ' % time[end])
+                omega_start = 0.85*start + 0.15 * end
             acckwargs['growth_time'] = [time[start], time[end]]
             dlog.parm("Find growth time: [%s,%s], index: [%s,%s]."
                       % (time[start], time[end], start, end))
@@ -438,7 +440,7 @@ class HistoryFieldModeDigger(_TimeCutoff):
             fixend = (time.size - 1) if end > time.size - 1 else end
             self.kwoptions['growth_time'] = dict(
                 widget='FloatRangeSlider',
-                rangee=(time[0], time[-1], dt),
+                rangee=[time[0], time[-1], np.around(dt*7, 8)],
                 value=[time[start], time[fixend]],
                 description='growth time:')
         results.update(
@@ -451,9 +453,9 @@ class HistoryFieldModeDigger(_TimeCutoff):
         # 3 amplitude normalized by growth rate, real frequency
         if ya.any():
             normyreal, reg3, reg4, nT1, omega1 = self.__get_omega(
-                yreal, time, growth, start, end, savsmooth)
+                yreal, time, growth, omega_start or start, end, savsmooth)
             normyimag, reg5, reg6, nT2, omega2 = self.__get_omega(
-                yimag, time, growth, start, end, savsmooth)
+                yimag, time, growth, omega_start or start, end, savsmooth)
             dlog.parm("Get frequency: %.6f (r), %.6f (i)" % (omega1, omega2))
         else:
             normyreal, reg3, reg4, nT1, omega1 = yreal, 0, 1, 0, 0
@@ -495,7 +497,7 @@ class HistoryFieldModeDigger(_TimeCutoff):
         else:
             normy = np.divide(y, np.exp(growth * time))
         index = [i for i in tools.argrelextrema(normy, m='both')
-                 if 0.9*start + 0.1 * end <= i < 0.1*start + 0.9 * end]
+                 if start <= i <= end]
         if len(index) >= 2:
             idx1, idx2, nT = index[0], index[-1], (len(index) - 1) / 2
             omega = 2 * np.pi * nT / (time[idx2] - time[idx1])
