@@ -1338,7 +1338,7 @@ def _snap_fieldtime_fft(data, neardata, theta, time, ipsi, pckloader,
             description='Fit omega cutoff:'))
     acckwargs['fit_wlimit'] = fit_wlimit
     idx = int(np.ceil(pf.shape[0]/2))  # pf.shape[0]//2 for k>0
-    Pomega = pf[:idx].max(axis=0)
+    Pomega = np.power(pf[:idx].max(axis=0), 2)  # |phi_|^2 for cauchy fitting
     if fit_wlimit[0] != 0 and fit_wlimit[1] != 0:
         dlog.parm("Fitting with omega cutoff= %s" % (fit_wlimit,))
         index = np.where((tf >= fit_wlimit[0]) & (tf <= fit_wlimit[1]))[0]
@@ -1437,10 +1437,10 @@ def _snap_fieldtime_fft__post_dig(results):
     zip_results.extend([
         ('tmpl_line', 223, dict(
             LINE=LINEt, xlabel=r['tf_label'], xlim=[-tf_xlimit, tf_xlimit],
-            title=r'$\omega$ | max(axis=k), k<0 part')),
+            title=r'$\omega$ | $\phi_{\omega}^2$ max(axis=k), k<0 part')),
         ('tmpl_line', 224, dict(
             LINE=LINEy, xlabel=r['yf_label'], xlim=[-yf_xlimit, yf_xlimit],
-            title=r'$k_{\theta}$ | max(axis=$\omega$)')),
+            title=r'$k_{\theta}$ | $\phi_{k}$ max(axis=$\omega$)')),
     ])
     return dict(zip_results=zip_results)
 
