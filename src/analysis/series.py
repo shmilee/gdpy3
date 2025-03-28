@@ -1583,3 +1583,80 @@ class CaseSeries(object):
             result, labels, nlines, fignum, xlims=xlims, ylims=ylims,
             suptitle=suptitle, title_y=title_y, add_style=add_style,
             savepath=savepath)
+
+    def dig_zf_shear(self, select=0, R0Ln=None,
+                     fallback_sat_time=(0.7, 1.0), **kwargs):
+        '''
+        Get phi00 zfshear(t) and dln/dt of phirms(t) of each case.
+        Return a list of tuple in order of :attr:`paths`.
+        The tuple has 4 elements:
+            1) (time, zfshear(t) array), 2) (time, dln/dt  phirms(t) array),
+            3) saturation time (start-time, end-time), 4) saturation zfshear.
+
+        Parameters
+        ----------
+        select: int, default 0
+            index of time range of saturation stage, starts from 0
+        R0Ln: float
+            Set R0/Ln for normlization, use c_sH/Ln (=c_sH/R0*R0/Ln) as unit.
+            If R0Ln=None, use c_sH/R0.
+        fallback_sat_time: tuple of float
+            If saturation time not found in :attr:`labelinfo`, use this
+            to set saturation (start,end) time ratio. limit: 0.0 -> 1.0.
+        kwargs: dict
+            other kwargs for digging 'data1d/zonal_shear_vs', such as
+            'meanpsi'(default all)
+        '''
+        result = []
+        for path, key in self.paths:
+            gdp = self.cases[key]
+            a, b1, c = gdp.dig('data1d/zonal_shear_vs', post=False, **kwargs)
+            time1, shearrms = b1['time'], b1['shearZFrms']
+            gammarms = b1['gammaphirms']
+            t0, t1, start, end = self.get_time_start_end(
+                key, 'saturation', time=time1, select=select,
+                fallback=fallback_sat_time)[0]
+            sat_time = (t0, t1)
+            sat_shearrms = shearrms[start:end].mean()
+            if R0Ln:
+                shearrms = shearrms/R0Ln
+                gammarms = gammarms/R0Ln
+                sat_shearrms = sat_shearrms/R0Ln
+            result.append(((time1, shearrms), (time1, gammarms),
+                           sat_time, sat_shearrms))
+        return result
+
+    @inherit_docstring(_plot_mrows_chi_D_like, parse=_parse_pltmrow_doc,
+                       parsekwargs=dict(XXX_like='ZF shear'))
+    def plot_zf_shear(self, result, labels, nlines=2,
+                      fignum='1-zfshear', xlims={}, ylims={},
+                      suptitle=None, title_y=None, add_style=[], savepath=None):
+        '''
+        Plot ZF shear(t), dln/dt phirms(t) figure.
+
+        Parameters
+        ----------
+        {Parameters}
+        '''
+        xyl1 = {'xlabel': r'$t(R_0/c_s)$', 'ylabel': r'$\omega_{ExB}$'}
+        xyl2 = {'xlabel': r'$t(R_0/c_s)$', 'ylabel': r'$\gamma_{\phi,RMS}$'}
+
+        def datafun1(ress, lbls):
+            return [[1+i, 'plot', r[0], dict(
+                color="C{}".format(i), linestyle='-',
+                label=r'%s, $\omega_{ExB}=%s$' % (
+                    l, tools.round_str(r[3], 2)))]
+                    for i, (r, l) in enumerate(zip(ress, lbls))
+                    ] + [[200+i, 'plot', (r[2], [r[3], r[3]], 'o'), dict(
+                        color="C{}".format(i))] for i, r in enumerate(ress)]
+
+        def datafun2(ress, lbls):
+            return [[1+i, 'plot', r[1], dict(
+                color="C{}".format(i), ls='-', label=l)]
+                for i, (r, l) in enumerate(zip(ress, lbls))
+            ]
+        self._plot_mrows_chi_D_like(
+            xyl1, xyl2, datafun1, datafun2,
+            result, labels, nlines, fignum, xlims=xlims, ylims=ylims,
+            suptitle=suptitle, title_y=title_y, add_style=add_style,
+            savepath=savepath)

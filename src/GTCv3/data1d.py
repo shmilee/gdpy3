@@ -605,7 +605,7 @@ class Data1dFFTFieldDigger(_Data1dFFTDigger, Data1dFieldDigger):
 
 
 class Data1dZFshearDigger(_Data1dDigger):
-    '''Zonal flow shear rate by phi00.'''
+    '''Zonal flow shear rate by phi00, normalized by c_sH/R_0.'''
     __slots__ = []
     itemspattern = ['^(?P<s>data1d)/field00-phi']
     commonpattern = ['gtc/tstep', 'gtc/ndiag', 'gtc/sprpsi', 'gtc/rho0']
@@ -629,7 +629,7 @@ class Data1dZFshearDigger(_Data1dDigger):
         rpsi = rpsi[y0:y1]
         EZF = np.divide(np.gradient(ZF, axis=0).T, np.gradient(rpsi)).T
         shearZF = np.divide(np.gradient(EZF, axis=0).T, np.gradient(rpsi)).T
-        shearZF = rho0 * shearZF
+        shearZF = rho0 * shearZF  # c_sH/R_0
         shearZFrms = None
         pcut0, pcut1 = acckwargs['pcutoff']
         meanYcut = None
