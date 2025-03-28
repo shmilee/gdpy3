@@ -395,7 +395,11 @@ class Phase2dResonanceDigger(Phase2dDigger):
             1) 'Circle', Z=X^2/2+Y^2/2
             2) 'Xline', Z=X
             3) 'Yline', Z=Y
-            4) 'ITGomegad', Z=omega/omega_d=(vperp^2/4 + vpara^2/2)/vth^2
+            4) 'ITGomegad', omega ~ <omega_d> = 2*epsilon_n*omega_*i,
+                Z=omega/epsilon_n/omega_*i=(vperp^2/2 + vpara^2)/vth^2
+                with vth=sqrt(Ti/mi)
+        *shiftvpara*: float, default 0
+            add kpara-vpara effect for preset resfun 'ITGomegad'
         *reslevels*: list of float, default [1.0, 2.0]
             resonance lines in 2D space, like Z=1.0
         '''
@@ -406,41 +410,48 @@ class Phase2dResonanceDigger(Phase2dDigger):
         # coordx -> row -> contourY; coordy -> col -> contourX;
         # 1. add contour lines and labels
         resfun = kwargs.get('resfun', 'Circle')
+        shiftvpara = kwargs.get('shiftvpara', 0.0)
         xtex, ytex = self._coord_rawtex[coordy], self._coord_rawtex[coordx]
         if resfun == 'Circle':
             resZ = (X**2 + Y**2)/2
-            LineXlabel = r'$(%s^2+%s^2)/2$' % (xtex, ytex)
         elif resfun == 'Xline':
             resZ, LineXlabel = X, r'$%s$' % xtex
         elif resfun == 'Yline':
             resZ, LineXlabel = Y, r'$%s$' % ytex
         elif resfun == 'ITGomegad':
-            LineXlabel = r'$v_{\parallel}^2/2+v_{\perp}^2/4$'
+            if shiftvpara == 0:
+                LineXlabel = r'$v_{\parallel}^2+v_{\perp}^2/2$'
+            else:
+                LineXlabel = (r'$v_{\parallel}^2+v_{\perp}^2/2'
+                              + r'+%.2f v_{\parallel}$' % shiftvpara)
             if coordx == 1 and coordy == 2:  # coordy <-> X
-                resZ = X**2/4 + Y**2/2
+                resZ = X**2/2 + Y**2 + shiftvpara*Y
             elif coordx == 2 and coordy == 1:
-                resZ = X**2/2 + Y**2/4
+                resZ = X**2 + Y**2/2 + shiftvpara*X
             else:
                 dlog.warning('Invalid coordx,y for resonance function: %s!'
                              % resfun)
                 resfun, resZ = 'Circle', (X**2 + Y**2)/2
-                LineXlabel = r'$(%s^2+%s^2)/2$' % (xtex, ytex)
         elif callable(resfun):
             try:
                 resZ = resfun(X, Y)
             except Exception:
                 dlog.warning("Cannot call resonance function!", exc_info=1)
                 resfun, resZ = 'Circle', (X**2 + Y**2)/2
-                LineXlabel = r'$(%s^2+%s^2)/2$' % (xtex, ytex)
             else:
                 resfun = '%s.%s' % (resfun.__module__, resfun.__name__)
                 LineXlabel = r'%s$(%s,%s)$' % (resfun, xtex, ytex)
         else:
             dlog.warning('Invalid resonance function: %r!' % resfun)
             resfun, resZ = 'Circle', (X**2 + Y**2)/2
-            LineXlabel = r'$(%s^2+%s^2)/2$' % (xtex, ytex)
+        if resfun == 'Circle':  # fix Circle LineXlabel
+            if (coordx, coordy) in [(1, 2), (2, 1)]:
+                LineXlabel = r'$E=(%s^2+%s^2)/2$' % (xtex, ytex)
+            else:
+                LineXlabel = r'$(%s^2+%s^2)/2$' % (xtex, ytex)
         reslevels = kwargs.get('reslevels', [1.0, 2.0])
-        acckwargs.update(resfun=resfun, reslevels=reslevels)
+        acckwargs.update(
+            resfun=resfun, shiftvpara=shiftvpara, reslevels=reslevels)
         if 'resfun' not in self.kwoptions:
             self.kwoptions.update(
                 resfun=dict(
@@ -448,13 +459,19 @@ class Phase2dResonanceDigger(Phase2dDigger):
                     options=['Circle', 'Xline', 'Yline', 'ITGomegad'],
                     value='Circle',
                     description='resonance function:'),
+                shiftvpara=dict(
+                    widget='FloatSlider',
+                    rangee=(-2.0, 2.0, 0.1),
+                    value=0.0,
+                    description='shift vpara:'),
                 reslevels=dict(
                     widget='FloatRangeSlider',
-                    rangee=(-10.0, 10.0, 0.5),
+                    rangee=(-6.0, 6.0, 0.2),
                     value=[1.0, 2.0],
                     description='resonance levels:'))
         results = results.copy()
-        results.update(resfun=resfun, reslevels=reslevels, resZ=resZ)
+        results.update(resfun=resfun, shiftvpara=shiftvpara,
+                       reslevels=reslevels, resZ=resZ)
         # 2. resZ to LineX axis
         if resfun == 'Xline':
             LineX, LineY = oX, Z.sum(axis=0)
