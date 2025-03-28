@@ -434,7 +434,7 @@ class Phase2dResonanceDigger(Phase2dDigger):
                 LineXlabel = r'$(%s^2+%s^2)/2$' % (xtex, ytex)
             else:
                 resfun = '%s.%s' % (resfun.__module__, resfun.__name__)
-                LineXlabel = r'$%s(%s,%s)$' % (resfun, xtex, ytex)
+                LineXlabel = r'%s$(%s,%s)$' % (resfun, xtex, ytex)
         else:
             dlog.warning('Invalid resonance function: %r!' % resfun)
             resfun, resZ = 'Circle', (X**2 + Y**2)/2
