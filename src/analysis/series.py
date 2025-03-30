@@ -1450,7 +1450,7 @@ class CaseSeries(object):
             suptitle=suptitle, title_y=title_y, add_style=add_style,
             savepath=savepath)
 
-    def dig_phi00(self, residual=False, norm=False, select=0,
+    def dig_phi00(self, residual=False, norm=False, select=0, cutra=None,
                   fallback_sat_time='auto', fallback_auto_limit=5e-4,
                   **kwargs):
         '''
@@ -1471,6 +1471,9 @@ class CaseSeries(object):
             normalize phi00rms, phi00 by the maximum or not, default False
         select: int, default 0
             index of time range of saturation stage, starts from 0
+        cutra: tuple of float, like (0.3, 0.7)r/a
+            use phi00rms from 'data1d/zonal_flow' instead of 'history/phi'
+            then cut r/a grids of phi00rms(r)
         fallback_sat_time: tuple of float, or 'auto'
             If saturation time not found in :attr:`labelinfo`, use this
             to set saturation (start,end) time ratio. limit: 0.0 -> 1.0.
@@ -1489,12 +1492,28 @@ class CaseSeries(object):
         kwargs.update(post=False, use_ra=True, p00rms=False, norm=norm)
         for path, key in self.paths:
             gdp = self.cases[key]
-            # history phi00rms
-            a, b1, c = gdp.dig('history/phi', post=False)
-            time1, phi00rms = b1['time'], b1['field00rms']
+            if cutra:
+                a, b1, c = gdp.dig('data1d/zonal_flow',
+                                   post=False, use_ra=True)
+                time1, ZF = b1['X'], b1['Z']
+                rr = b1['Y']
+                idx = np.where((rr >= cutra[0]) & (rr <= cutra[1]))[0]
+                if idx.size > 0:
+                    p0, p1 = idx[0], idx[-1]
+                    log.info("cut r/a: [%.2f, %.2f]" % (rr[p0], rr[p1]))
+                    phi00rms = np.sqrt(np.mean(ZF[p0:p1, :]**2, axis=0))
+                else:
+                    phi00rms = np.sqrt(np.mean(ZF**2, axis=0))
+                phi00 = b1['Z'][ZF.shape[0]//2, :]
+            else:
+                # history phi00rms
+                a, b1, c = gdp.dig('history/phi', post=False)
+                time1, phi00rms = b1['time'], b1['field00rms']
+                phi00 = b1['field00']
             argmax = phi00rms.argmax()
             if norm:
                 phi00rms = phi00rms/phi00rms[argmax]
+                phi00 = phi00/phi00.max()
             trange = self.get_time_start_end(
                 key, 'saturation', time=time1, select=select,
                 fallback=fallback_sat_time)
@@ -1529,9 +1548,7 @@ class CaseSeries(object):
                     ['krrho0', 'ipsi', 'ir', 's1dresflt', 'Yd1dresrmse'],
                     ['krrho0', 'ipsi', 'ir', 'rzf', 'rmse'])}  # if k in b2}
             else:
-                time2, phi00, residual_info = time1, b1['field00'], {}
-                if norm:
-                    phi00 = phi00/phi00.max()
+                time2, residual_info = time1, {}
                 sat_phi00 = phi00[start:end].mean()
             residual_info['absmaxphi00'] = phi00[abs(phi00).argmax()]
             result.append(((time1, phi00rms), (time2, phi00),
@@ -1605,7 +1622,7 @@ class CaseSeries(object):
             to set saturation (start,end) time ratio. limit: 0.0 -> 1.0.
         kwargs: dict
             other kwargs for digging 'data1d/zonal_shear_vs', such as
-            'meanpsi'(default all)
+            'use_ra'(default False), 'meanra'(default all)
         '''
         result = []
         for path, key in self.paths:

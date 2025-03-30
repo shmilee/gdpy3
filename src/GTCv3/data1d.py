@@ -619,8 +619,8 @@ class Data1dZFshearDigger(_Data1dDigger):
         return self._fignum
 
     def _dig(self, kwargs):
-        '''*meanpsi*: [p0,p1], p0 int
-            RMS of shearZF[y0:y1,:] where p0<=ipsi[y0:y1]<=p1
+        '''*meanra*: [r0,r1], float
+            When use_ra=True, RMS shearZF[y0:y1,:] where r0<=rr[y0:y1]/a<=r1
         '''
         results, acckwargs = super(Data1dZFshearDigger, self)._dig(kwargs)
         time, Y, ZF = results.pop('X'), results.pop('Y'), results.pop('Z')
@@ -633,29 +633,34 @@ class Data1dZFshearDigger(_Data1dDigger):
         shearZFrms = None
         pcut0, pcut1 = acckwargs['pcutoff']
         meanYcut = None
-        if 'meanpsi' in kwargs:
-            p0, p1 = kwargs['meanpsi']
-            prange = np.arange(pcut0, pcut1, 1)
-            index = np.where((prange >= p0) & (prange < p1+1))[0]
+        meanYindex = 0, Y.size
+        if 'meanra' in kwargs and kwargs.get('use_ra', False):
+            rr = Y
+            r0, r1 = kwargs['meanra']
+            index = np.where((rr >= r0) & (rr < r1))[0]
             if index.size > 0:
                 pi0, pi1 = index[0], index[-1]+1
                 shearZFrms = np.sqrt(np.mean(shearZF[pi0:pi1, :]**2, axis=0))
-                acckwargs['meanpsi'] = [prange[pi0], prange[pi1-1]]
+                acckwargs['meanra'] = [rr[pi0], rr[pi1-1]]
                 meanYcut = [Y[pi0], Y[pi1-1]]
-                dlog.info('shear RMS mean between: %s<Y<%s' % (*meanYcut,))
+                meanYindex = (pi0, pi1)
+                dlog.info('shear RMS mean between: %s<r/a<%s' % (*meanYcut,))
             else:
-                dlog.warning('Invalid meanpsi: %s <= ipsi <= %s!' % (p0, p1))
+                dlog.warning('Invalid meanra: %s <= r/a <= %s!' % (r0, r1))
+        else:
+            dlog.warning("Not use meanra or use_ra=False!")
         if shearZFrms is None:
             shearZFrms = np.sqrt(np.mean(shearZF**2, axis=0))
-            acckwargs['meanpsi'] = [pcut0, pcut1]
-        if 'meanpsi' not in self.kwoptions:
-            self.kwoptions['meanpsi'] = dict(
-                widget='IntRangeSlider',
-                rangee=[pcut0, pcut1, 1],
-                value=[pcut0, pcut1],
-                description='shear RMS meanpsi:')
-        results.update(time=time, Y=Y, ZF=ZF, EZF=EZF, shearZF=shearZF,
-                       shearZFrms=shearZFrms, meanYcut=meanYcut)
+            acckwargs['meanra'] = [0, 1]
+        if 'meanra' not in self.kwoptions:
+            self.kwoptions['meanra'] = dict(
+                widget='FloatRangeSlider',
+                rangee=[0.0, 1.0, 0.05],
+                value=[0.0, 1.0],
+                description='shear meanra:')
+        results.update(
+            time=time, Y=Y, ZF=ZF, EZF=EZF, shearZF=shearZF,
+            shearZFrms=shearZFrms, meanYcut=meanYcut, meanYindex=meanYindex)
         return results, acckwargs
 
     def _post_dig(self, results):
@@ -705,7 +710,7 @@ class Data1dZFshearVSDigger(Data1dZFshearDigger):
         time, Y = results['time'], results['Y']
         shearZF, shearZFrms = results['shearZF'], results['shearZFrms']
         cutoff_idx = results['cutoff_idx']
-        mp0, mp1 = acckwargs['meanpsi']
+        mp0, mp1 = results['meanYindex']
         particle = None
         if 'particle' in kwargs and kwargs['particle'] in ('i', 'e', 'f'):
             if 'data1d/%s-energy-flux' % kwargs['particle'] in self.pckloader:
