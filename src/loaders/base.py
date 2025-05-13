@@ -374,7 +374,7 @@ class BasePckLoader(BaseLoader):
             try:
                 return self.__getitem__(key)
             except Exception:
-                pass
+                pass  # TODO get kwargs['default'], raise ValueError
         return default
 
     def get_many(self, *keys):
