@@ -7,6 +7,25 @@
 Source fortran code:
 
 shmilee.F90, subroutine phase2d_diagnosis
+
+* old format. No `format=`
+```
+    write(cdum,'(i5.5,".out")') (mstepall+istep)
+    cdum='phase2d'//trim(cdum)
+    open(iophase2d, file=cdum, status='replace')
+    ! parameters: # of species and grids
+    write(iophase2d,'(8i4)') nspecies, nhybrid, p2d_nfield, xgrid, ygrid, p2d_niflux, coordx, coordy
+    ! diag info: number of particles near each iflux
+    write(iophase2d,'(3i12)') pcount, mptmp
+    write(iophase2d,'(*(i5))') p2d_ifluxes ! for p2d_niflux
+     write(iophase2d,'(*(i5))') delta_fluxes
+    write(iophase2d,'(*(i3))') p2d_fields ! for p2d_nfield
+    ! for xymax_inv(3) of coordx, coordy
+    write(iophase2d,'(f6.3,3e16.8)') xmax, xmax_inv, ymax, ymax_inv
+    write(iophase2d,'(e16.8)') p2d_pdf ! data
+    ! 5D shape: p2d_pdf(p2d_nfield, xgrid, ygrid, p2d_niflux, nspecies)
+```
+
 * second pdf(x,y) support, `format=2`
 ```
     write(cdum,'(i5.5,".out")') (mstepall+istep)
@@ -28,22 +47,14 @@ shmilee.F90, subroutine phase2d_diagnosis
     ! 6D shape: p2d_pdf(p2d_nfield, xgrid, ygrid, p2d_ncoord, p2d_niflux, nspecies)
 ```
 
-* old format. No `format=`
+* xymin support, `format=3`
 ```
-    write(cdum,'(i5.5,".out")') (mstepall+istep)
-    cdum='phase2d'//trim(cdum)
-    open(iophase2d, file=cdum, status='replace')
-    ! parameters: # of species and grids
-    write(iophase2d,'(8i4)') nspecies, nhybrid, p2d_nfield, xgrid, ygrid, p2d_niflux, coordx, coordy
-    ! diag info: number of particles near each iflux
-    write(iophase2d,'(3i12)') pcount, mptmp
-    write(iophase2d,'(*(i5))') p2d_ifluxes ! for p2d_niflux
-     write(iophase2d,'(*(i5))') delta_fluxes
-    write(iophase2d,'(*(i3))') p2d_fields ! for p2d_nfield
-    ! for xymax_inv(3) of coordx, coordy
-    write(iophase2d,'(f6.3,3e16.8)') xmax, xmax_inv, ymax, ymax_inv
-    write(iophase2d,'(e16.8)') p2d_pdf ! data
-    ! 5D shape: p2d_pdf(p2d_nfield, xgrid, ygrid, p2d_niflux, nspecies)
+-   ! for xymax_inv(3) of coordx, coordy
+-   write(iophase2d,'(5f6.3)') xymax
+-   write(iophase2d,'(5e16.8)') xymax_inv
++   ! for xymax(5), xymin(5), xyrange_inv(5,3), xymin(5,3) of coordx, coordy
++   write(iophase2d,'(5f6.3)') xymax_norm, xymin_norm
++   write(iophase2d,'(5e16.8)') xyrange_inv, xymin
 ```
 '''
 
@@ -53,7 +64,7 @@ from ..cores.digger import Digger, dlog
 from .snapshot import _snap_get_time
 
 _all_Converters = ['Phase2dConverter']
-_all_Diggers = ['Phase2dDigger', 'Phase2dResonanceDigger']
+_all_Diggers = ['Phase2dDigger', 'Phase2dResonanceDigger', 'Phase2dTimeDigger']
 __all__ = _all_Converters + _all_Diggers
 
 
@@ -66,7 +77,7 @@ class Phase2dConverter(Converter):
     2) pdf can be: 1, fullf; 2, deltaf; 3, deltaf^2; 4, angular momentum;
                    5, energy; 6, heat; 7, ExB drift; 8, particle flux;
                    9, momentum flux; 10, energy flux; 11, heat flux;
-                   12, radial drift; 13, diffusion, and 14 energy loss
+                   12, radial drift; 13, diffusion; 14, energy loss; 15, fullf+deltaf
     3) data 6d array is pdf2d(p2d_nfield, xgrid, ygrid, p2d_ncoord, p2d_niflux, nspecies)
        pdf2d(1, ...) is always for fullf.
     '''
@@ -80,18 +91,20 @@ class Phase2dConverter(Converter):
         'xgrid', 'ygrid', 'p2d_ncoord', 'p2d_niflux',
         'pcount', 'mpcount',  # 7,8
         'p2d_fields', 'coordxy', 'p2d_ifluxes', 'delta_fluxes',
-        'xymax', 'xymax_inv',  # 13,14
+        'xymax', 'xymin',  # 13,14 for xymax_norm, xymin_norm
+        # 15,16,17 for xymax_inv, xyrange_inv, xymin: useless
+        'xymax_inv', 'xyrange_inv', 'xymin_org',
         # 2. Data pdf2d(p2d_nfield, xgrid, ygrid, p2d_ncoord, p2d_niflux, nspecies)
         #    split to pdf(xgrid, ygrid, p2d_ncoord, p2d_niflux)
         r'(?:ion|electron|fastion)-(?:fullf|deltaf|deltaf2|momentum)',
         r'(?:ion|electron|fastion)-(?:energy|heat|vdr)',
         r'(?:ion|electron|fastion)-(?:particle|momentum|energy|heat)-flux',
-        r'(?:ion|electron|fastion)-(?:r-drift|diffusion|Eloss)',
+        r'(?:ion|electron|fastion)-(?:r-drift|diffusion|Eloss|full+delf)',
     )
     _pdf_index = {1: 'fullf', 2: 'deltaf', 3: 'deltaf2', 4: 'momentum',
                   5: 'energy', 6: 'heat', 7: 'vdr', 8: 'particle-flux',
                   9: 'momentum-flux', 10: 'energy-flux', 11: 'heat-flux',
-                  12: 'r-drift', 13: 'diffusion', 14: 'Eloss'}
+                  12: 'r-drift', 13: 'diffusion', 14: 'Eloss', 15: 'full+delf'}
 
     def _convert(self):
         '''Read 'phase2d%05d.out' % istep.'''
@@ -100,10 +113,15 @@ class Phase2dConverter(Converter):
             outdata = f.readlines()
         if 'format=' not in outdata[0]:
             return self._read_old_format(outdata)
-        assert 'format=2' in outdata[0]
+        elif 'format=2' in outdata[0]:
+            fmt = 2
+        elif 'format=3' in outdata[0]:
+            fmt = 3
+        else:
+            raise ValueError('Wrong phase2d format: ' + outdata[0])
+        sd = {'format': fmt}
         outdata = outdata[1:]
 
-        sd = {'format': 2}
         # 1. parameters
         clog.debug("Filling datakeys: %s ..." % str(self._datakeys[:7]))
         for key, val in zip(self._datakeys[:7], outdata[0].split()):
@@ -127,17 +145,36 @@ class Phase2dConverter(Converter):
         sd['delta_fluxes'] = [int(i.strip()) for i in outdata[idx+3].split()]
         assert len(sd['delta_fluxes']) == niflux
         idx = idx + 4
-        clog.debug("Filling datakeys: %s ..." % str(self._datakeys[13:15]))
-        sd['xymax'] = [float(i.strip()) for i in outdata[idx].split()]
-        assert len(sd['xymax']) == 5
-        sd['xymax_inv'] = np.array([
-            [float(i.strip()) for i in outdata[idx+1].split()],
-            [float(i.strip()) for i in outdata[idx+2].split()],
-            [float(i.strip()) for i in outdata[idx+3].split()],
-        ]).T
-        assert sd['xymax_inv'].shape == (5, 3)
+        if fmt == 2:
+            clog.debug("Filling datakeys: %s ..." % 'xymax, xymax_inv')
+            sd['xymax'] = [float(i.strip()) for i in outdata[idx].split()]
+            assert len(sd['xymax']) == 5
+            sd['xymax_inv'] = np.array([
+                [float(i.strip()) for i in outdata[idx+1].split()],
+                [float(i.strip()) for i in outdata[idx+2].split()],
+                [float(i.strip()) for i in outdata[idx+3].split()],
+            ]).T
+            assert sd['xymax_inv'].shape == (5, 3)
+            idx = idx + 4  # xymax ... 4 lines
+        elif fmt == 3:
+            clog.debug("Filling datakeys: %s ..." % 'xymax, xymin, xyrange')
+            sd['xymax'] = [float(i.strip()) for i in outdata[idx].split()]
+            sd['xymin'] = [float(i.strip()) for i in outdata[idx+1].split()]
+            assert len(sd['xymax']) == len(sd['xymin']) == 5
+            sd['xyrange_inv'] = np.array([
+                [float(i.strip()) for i in outdata[idx+2].split()],
+                [float(i.strip()) for i in outdata[idx+3].split()],
+                [float(i.strip()) for i in outdata[idx+4].split()],
+            ]).T
+            sd['xymin_org'] = np.array([
+                [float(i.strip()) for i in outdata[idx+5].split()],
+                [float(i.strip()) for i in outdata[idx+6].split()],
+                [float(i.strip()) for i in outdata[idx+7].split()],
+            ]).T
+            assert sd['xymin_org'].shape == (5, 3)
+            idx = idx + 8  # xymax ... 8 lines
+
         # 2. data
-        idx = idx + 4
         shape = (nfield, sd['xgrid'], sd['ygrid'], ncoord, niflux,
                  sd['nspecies'])
         outdata = np.array([float(n.strip()) for n in outdata[idx:]])
@@ -164,7 +201,7 @@ class Phase2dConverter(Converter):
         # 1. old parameters
         'nspecies', 'nhybrid', 'p2d_nfield', 'xgrid', 'ygrid', 'p2d_niflux',
         'coordx', 'coordy', 'pcount', 'mpcount', 'p2d_ifluxes', 'delta_fluxes',
-        'p2d_fields', 'xmax', 'ymax', 'xmax_inv', 'ymax_inv',
+        'p2d_fields', 'xmax', 'xmax_inv', 'ymax', 'ymax_inv',
         # 2. Data pdf2d(p2d_nfield, xgrid, ygrid, p2d_niflux, nspecies)
         #    split to pdf(xgrid, ygrid, p2d_niflux)
     )
@@ -232,7 +269,7 @@ class Phase2dDigger(Digger):
         + r'/(?P<particle>(?:ion|electron|fastion))-'
         + r'(?P<pdf>(?:fullf|deltaf|deltaf2|momentum|energy|heat|vdr'
         + r'|particle-flux|momentum-flux|energy-flux|heat-flux'
-        + r'|r-drift|diffusion|Eloss))$'
+        + r'|r-drift|diffusion|Eloss|full\+delf))$'
     ] + [
         r'^(?P<section>phase2d\d{5,7})'
         + r'/(?P<particle>(?:ion|electron|fastion))-fullf'
@@ -241,19 +278,24 @@ class Phase2dDigger(Digger):
         'pcount', 'mpcount')]
     commonpattern = ['gtc/tstep', 'gtc/sprpsi', 'gtc/a_minor']
     _particle_ins = {'ion': 1, 'electron': 2, 'fastion': 3}
+    _coord_rawtex = {
+        1: r'v_{\parallel}', 2: r'v_{\perp}',
+        3: r'E', 4: r'\lambda', 5: r'\mu',
+    }
     _coord_label = {
         1: r'$v_{\parallel}(v_{th})$', 2: r'$v_{\perp}(v_{th})$',
         3: r'$E(T_{e0})$', 4: r'$\lambda$', 5: r'$\mu$',
     }
     _pdf_tex = {
-        'fullf': 'full f', 'deltaf': r'$\delta f$',
+        'fullf': r'$f_0$', 'deltaf': r'$\delta f$',
         'deltaf2': r'$\delta f^2$', 'momentum': 'angular momentum',
         'energy': 'E', 'heat': 'heat', 'vdr': 'ExB drift',
         'particle-flux': 'particle flux', 'momentum-flux': 'momentum flux',
         'energy-flux': 'energy flux', 'heat-flux': 'heat flux',
         'r-drift': r'$\langle \Delta r \rangle$',
         'diffusion': r'$\langle \Delta r^2 \rangle$',
-        'Eloss': r'$-\mathrm{d}E/\mathrm{d}t$',
+        'Eloss': r'$\mathrm{d}E$',
+        'full+delf': r'$f_0 + \delta f$',
     }
     post_template = 'tmpl_contourf'
 
@@ -263,31 +305,23 @@ class Phase2dDigger(Digger):
         self.pdf = self.section[2]
         self.kwoptions = None
 
-    def _get_X_xlabel(self, coordx, xgrid, xmax):
+    def _get_X_xlabel(self, fmt, coordx, xgrid, xmax, group=None):
+        if fmt == 3:
+            try:
+                xymin = self.pckloader['%s/xymin' % (group or self.group)]
+            except Exception:
+                dlog.error('Cannot get key: phase2d/xymin!', exc_info=1)
+            else:
+                X = np.linspace(xymin[coordx-1], xmax, xgrid)
+                return X, self._coord_label[coordx]
+        # defualt
         if coordx == 1:
             X = np.linspace(-xmax, xmax, xgrid)
         elif coordx in (2, 3, 4, 5):
             X = np.linspace(0, xmax, xgrid)
         return X, self._coord_label[coordx]
 
-    def _dig(self, kwargs):
-        '''
-        kwargs
-        ------
-        *sflux*: int, default 1
-            select one flux from range(1, p2d_niflux+1)
-        *scoord*: int, default 1
-            select the coordinates, from range(1, p2d_ncoord+1)
-        *norm*: int, default 1
-            normalize Z value by fullf, <1: off.
-            1: by sum(fullf). >1: by fullf per grid.
-        '''
-        istep, time = _snap_get_time(self.group, self.pckloader,
-                                     pat=r'.*phase2d(\d{5,7}).*')
-        data, fullf, fmt, coordxy, xymax, p2d_ifluxes, \
-            pcount, mpcount = self.pckloader.get_many(*self.srckeys)
-        # assert data.shape == (xgrid, ygrid, p2d_ncoord, p2d_niflux)
-        xgrid, ygrid, p2d_ncoord, p2d_niflux = data.shape
+    def _check_kws(self, kwargs, p2d_ncoord, p2d_niflux):
         if self.kwoptions is None:
             self.kwoptions = dict(
                 sflux=dict(
@@ -302,7 +336,7 @@ class Phase2dDigger(Digger):
                     description='select coordinate:'),
                 norm=dict(
                     widget='IntSlider',
-                    rangee=(0, 2, 1),
+                    rangee=(-2, 2, 1),
                     value=1,
                     description='norm:'))
         sflux = kwargs.get('sflux', 1)
@@ -319,6 +353,28 @@ class Phase2dDigger(Digger):
         if not isinstance(norm, int):
             dlog.warning("Invalid norm: %s! Please set as int!" % norm)
             norm = 1
+        return sflux, scoord, norm
+
+    def _dig(self, kwargs):
+        '''
+        kwargs
+        ------
+        *sflux*: int, default 1
+            select one flux from range(1, p2d_niflux+1)
+        *scoord*: int, default 1
+            select the coordinates, from range(1, p2d_ncoord+1)
+        *norm*: int, default 1
+            normalize Z value by fullf.
+            0: off; 1: by sum(fullf); >1: by fullf per grid.
+            -1: times sum(fullf); <-1: times fullf per grid.
+        '''
+        istep, time = _snap_get_time(self.group, self.pckloader,
+                                     pat=r'.*phase2d(\d{5,7}).*')
+        data, fullf, fmt, coordxy, xymax, p2d_ifluxes, \
+            pcount, mpcount = self.pckloader.get_many(*self.srckeys)
+        # assert data.shape == (xgrid, ygrid, p2d_ncoord, p2d_niflux)
+        xgrid, ygrid, p2d_ncoord, p2d_niflux = data.shape
+        sflux, scoord, norm = self._check_kws(kwargs, p2d_ncoord, p2d_niflux)
         acckwargs = {'sflux': sflux, 'scoord': scoord, 'norm': norm}
         ipsi = p2d_ifluxes[sflux-1]
         pidx = self._particle_ins[self.particle] - 1
@@ -330,26 +386,25 @@ class Phase2dDigger(Digger):
         dlog.info('%d/%d=%.1f%% of %ss are counted near ipsi=%d.'
                   % (count, mcount, perc, self.particle, ipsi))
         Z = data[:, :, scoord-1, sflux-1]
-        if norm >= 1:  # normalize with fullf
-            if norm == 1:
+        if norm != 0:  # >0: normalize with fullf; or <0: times fullf
+            if abs(norm) == 1:
                 f0 = np.sum(fullf[:, :, scoord-1, sflux-1])
             else:
                 f0 = fullf[:, :, scoord-1, sflux-1]
                 f0[f0 == 0] = 1.0
             if self.pdf == 'deltaf2':
-                Z = Z/f0/f0
+                Z = Z/f0/f0 if norm > 0 else Z*f0*f0
             else:
-                Z = Z/f0
+                Z = Z/f0 if norm > 0 else Z*f0
         if scoord == 1:
             coordx, coordy = coordxy[:2]
         elif scoord == 2:
             coordx, coordy = coordxy[2:]
         else:
             raise ValueError('Invalid coordinate index!')
-        xmax, ymax = xymax[coordx-1], xymax[coordy-1]
         # coordx -> row -> contourY; coordy -> col -> contourX;
-        X, xlabel = self._get_X_xlabel(coordy, ygrid, ymax)
-        Y, ylabel = self._get_X_xlabel(coordx, xgrid, xmax)
+        X, xlabel = self._get_X_xlabel(fmt, coordy, ygrid, xymax[coordy-1])
+        Y, ylabel = self._get_X_xlabel(fmt, coordx, xgrid, xymax[coordx-1])
         sec = self.section
         title = r'%s %s, t=%g$R_0/c_s$, ipsi=%d' % (
                 sec[1], self._pdf_tex[sec[2]], time, ipsi)
@@ -359,7 +414,7 @@ class Phase2dDigger(Digger):
             ra = np.round(rpsi[ipsi]/a, decimals=3)
             title += ', r=%ga' % ra
         except Exception:
-            pass
+            ra = 0
         results = dict(X=X, Y=Y, Z=Z, title=title,
                        xlabel=xlabel, ylabel=ylabel,
                        time=time, ra=ra, coordx=coordx, coordy=coordy)
@@ -376,10 +431,6 @@ class Phase2dDigger(Digger):
 class Phase2dResonanceDigger(Phase2dDigger):
     '''ion, electron, fastion resonance lines in phase 2D space.'''
     __slots__ = []
-    _coord_rawtex = {
-        1: r'v_{\parallel}', 2: r'v_{\perp}',
-        3: r'E', 4: r'\lambda', 5: r'\mu',
-    }
     post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
 
     def _set_fignum(self, numseed=None):
@@ -518,5 +569,125 @@ class Phase2dResonanceDigger(Phase2dDigger):
                 LINE=[(r['LineX'], r['LineY'])],
                 xlabel=r['LineXlabel'], aspect=None,
                 xlim=r['LineXlim'],
+            )),
+        ])
+
+
+class Phase2dTimeDigger(Phase2dDigger):
+    '''ion, electron, fastion history per phase 2D space grid.'''
+    __slots__ = []
+    nitems = '+'
+    itemspattern = [
+        r'^(?P<section>phase2d)\d{5,7}'
+        + r'/(?P<particle>(?:ion|electron|fastion))-'
+        + r'(?P<pdf>(?:fullf|deltaf|deltaf2|momentum|energy|heat|vdr'
+        + r'|particle-flux|momentum-flux|energy-flux|heat-flux'
+        + r'|r-drift|diffusion|Eloss|full\+delf))$'
+    ] + [
+        r'^(?P<section>phase2d)\d{5,7}'
+        + r'/(?P<particle>(?:ion|electron|fastion))-fullf'
+    ] + [r'^(?P<s>phase2d)\d{5,7}/%s$' % k for k in (
+        'format', 'coordxy', 'xymax', 'p2d_ifluxes')]
+    post_template = ('tmpl_z111p', 'tmpl_contourf', 'tmpl_line')
+
+    def _set_fignum(self, numseed=None):
+        self._fignum = '%s_%s' % (self.section[1], self.section[2])
+        self.particle = self.section[1]
+        self.pdf = self.section[2]
+        self.kwoptions = None
+
+    def _dig(self, kwargs):
+        '''*sgridx*: int, default xgrid//2
+            select phase2d grid x-index
+        *sgridy*: int, default ygrid//2
+            select phase2d grid y-index
+        *stime*: int, default (t1-t0)/2
+            select a time index for phase2d contourf
+        '''
+        N = len(self.srckeys)
+        assert N % 6 == 0
+        N = N//6
+        datakeys = self.srckeys[:N]
+        fullfkeys = self.srckeys[N:2*N]
+        time = np.array([_snap_get_time(
+            k.split('/')[0], self.pckloader, pat=r'.*phase2d(\d{5,7}).*')[1]
+            for k in datakeys])
+        data0 = self.pckloader.get(datakeys[0])
+        fmt, coordxy, xymax, p2d_ifluxes = self.pckloader.get_many(*[
+            '%s/%s' % (datakeys[0].split('/')[0], k)
+            for k in ('format', 'coordxy', 'xymax', 'p2d_ifluxes')])
+        # assert data0.shape == (xgrid, ygrid, p2d_ncoord, p2d_niflux)
+        xgrid, ygrid, p2d_ncoord, p2d_niflux = data0.shape
+        sflux, scoord, norm = self._check_kws(kwargs, p2d_ncoord, p2d_niflux)
+        acckwargs = {'sflux': sflux, 'scoord': scoord, 'norm': norm}
+        # TODO x,row -> contourY; y,col -> contourX;
+        sgridx, sgridy, stime = ygrid//2, xgrid//2, len(time)//2
+        ipsi = p2d_ifluxes[sflux-1]
+        pidx = self._particle_ins[self.particle] - 1
+        if scoord == 1:
+            coordx, coordy = coordxy[:2]
+        elif scoord == 2:
+            coordx, coordy = coordxy[2:]
+        else:
+            raise ValueError('Invalid coordinate index!')
+        # coordx -> row -> contourY; coordy -> col -> contourX;
+        X, xlabel = self._get_X_xlabel(fmt, coordy, ygrid, xymax[coordy-1],
+                                       group=datakeys[0].split('/')[0])
+        Y, ylabel = self._get_X_xlabel(fmt, coordx, xgrid, xymax[coordx-1],
+                                       group=datakeys[0].split('/')[0])
+        sec = self.section
+        title = r'%s %s, t=%g$R_0/c_s$, ipsi=%d' % (
+                sec[1], self._pdf_tex[sec[2]], time[stime], ipsi)
+        try:
+            # rpsi [0, mpsi]
+            rpsi, a = self.pckloader.get_many(*self.common[-2:])
+            ra = np.round(rpsi[ipsi]/a, decimals=3)
+            title += ', r=%ga' % ra
+        except Exception:
+            ra = 0
+        allZ = []
+        Zhis = []
+        _idxlog = max(1, N // 7)
+        for idx, dkey, fkey in zip(range(1, N+1), datakeys, fullfkeys):
+            if idx % _idxlog == 0 or idx == N:
+                dlog.info('Collecting [%d/%d] %s' % (idx, N, dkey))
+            data, fullf = self.pckloader.get_many(dkey, fkey)
+            Z = data[:, :, scoord-1, sflux-1]
+            if norm != 0:  # >0: normalize with fullf; or <0: times fullf
+                if abs(norm) == 1:
+                    f0 = np.sum(fullf[:, :, scoord-1, sflux-1])
+                else:
+                    f0 = fullf[:, :, scoord-1, sflux-1]
+                    f0[f0 == 0] = 1.0
+                if self.pdf == 'deltaf2':
+                    Z = Z/f0/f0 if norm > 0 else Z*f0*f0
+                else:
+                    Z = Z/f0 if norm > 0 else Z*f0
+            allZ.append(Z)
+            Zhis.append(Z[sgridx, sgridy])
+        # point out selected grid
+        sX, sY = X[sgridx], Y[sgridy]
+        results = dict(X=X, Y=Y, Z=allZ[stime], Zhis=Zhis, title=title,
+                       xlabel=xlabel, ylabel=ylabel,
+                       sX=sX, sY=sY,
+                       time=time, ra=ra, coordx=coordx, coordy=coordy)
+        if coordx in (1, 2) and coordy in (1, 2):
+            results['aspect'] = 'equal'
+        return results, acckwargs
+
+    def _post_dig(self, results):
+        r = results
+        ax1 = {k: v for k, v in r.items() if k in [
+               'X', 'Y', 'Z', 'title', 'xlabel', 'ylabel', 'aspect']}
+        return dict(zip_results=[
+            ('tmpl_contourf', 121, ax1),
+            ('tmpl_line', 121, dict(LINE=[
+                ([r['sX'], r['sX']], r['Y'][[0, -1]]),
+                (r['X'][[0, -1]], [r['sY'], r['sY']]),
+            ])),
+            ('tmpl_line', 122, dict(
+                LINE=[(r['time'], r['Zhis'])],
+                xlabel=r'$R_0/c_s$', xlim=r['time'][[0, -1]],
+                ylabel=self._pdf_tex[self.section[2]], aspect=None,
             )),
         ])
