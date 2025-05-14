@@ -347,7 +347,7 @@ class Phase2dDigger(Digger):
                 Z = Z/f0 if norm > 0 else Z*f0
         return Z
 
-    def _get_X_Y_labels_ra(self, scoord, fmt, coordxy, xymax, xygrid, kgroup):
+    def _get_X_Y_labels(self, scoord, fmt, coordxy, xymax, xygrid, kgroup):
         if scoord == 1:
             coordx, coordy = coordxy[:2]
         elif scoord == 2:
@@ -367,12 +367,21 @@ class Phase2dDigger(Digger):
         X = np.linspace(xymin[coordy-1], xymax[coordy-1], ygrid)
         Y = np.linspace(xymin[coordx-1], xymax[coordx-1], xgrid)
         xlabel, ylabel = self._coord_label[coordy], self._coord_label[coordx]
+        return coordx, coordy, X, Y, xlabel, ylabel
+
+    def _get_title_ra(self, t, ipsi):
+        sec = self.section
+        title = r'%s %s, t=%g$R_0/c_s$, ipsi=%d' % (
+            sec[1], self._pdf_tex[sec[2]], t, ipsi)
         try:  # rpsi [0, mpsi]
             rpsi, a = self.pckloader.get_many(*self.common[-2:])
             ra = np.round(rpsi[ipsi]/a, decimals=3)
         except Exception:
+            dlog.warning("Cannot get r/a!", exc_info=1)
             ra = None
-        return coordx, coordy, X, Y, xlabel, ylabel, ra
+        else:
+            title += ', r=%ga' % ra
+        return title, ra
 
     def _dig(self, kwargs):
         '''
@@ -411,13 +420,9 @@ class Phase2dDigger(Digger):
         fullf = fullf[:, :, scoord-1, sflux-1]
         Z = self._normalize_Z(Z, fullf, norm)
         # coordx -> row -> contourY; coordy -> col -> contourX;
-        coordx, coordy, X, Y, xlabel, ylabel, ra = self._get_X_Y_labels_ra(
+        coordx, coordy, X, Y, xlabel, ylabel = self._get_X_Y_labels(
             scoord, fmt, coordxy, xymax, (xgrid, ygrid), self.group)
-        sec = self.section
-        title = r'%s %s, t=%g$R_0/c_s$, ipsi=%d' % (
-            sec[1], self._pdf_tex[sec[2]], time, ipsi)
-        if ra is not None:
-            title += ', r=%ga' % ra
+        title, ra = self._get_title_ra(time, ipsi)
         results = dict(X=X, Y=Y, Z=Z, title=title,
                        xlabel=xlabel, ylabel=ylabel,
                        time=time, ra=ra, coordx=coordx, coordy=coordy)
@@ -637,14 +642,10 @@ class Phase2dTimeDigger(Phase2dDigger):
         ipsi = p2d_ifluxes[sflux-1]
         pidx = self._particle_ins[self.particle] - 1
         # coordx -> row -> contourY; coordy -> col -> contourX;
-        coordx, coordy, X, Y, xlabel, ylabel, ra = self._get_X_Y_labels_ra(
+        coordx, coordy, X, Y, xlabel, ylabel = self._get_X_Y_labels(
             scoord, fmt, coordxy, xymax, (xgrid, ygrid),
             datakeys[0].split('/')[0])
-        sec = self.section
-        title = r'%s %s, t=%g$R_0/c_s$, ipsi=%d' % (
-            sec[1], self._pdf_tex[sec[2]], time[stime], ipsi)
-        if ra is not None:
-            title += ', r=%ga' % ra
+        title, ra = self._get_title_ra(time[stime], ipsi)
         allZ = []
         Zhis11, Zhis12, Zhis22, Zhis21, Zhisall = [], [], [], [], []
         _idxlog = max(1, N // 7)
@@ -672,6 +673,7 @@ class Phase2dTimeDigger(Phase2dDigger):
                        Zhis22=np.array(Zhis22), Zhis21=np.array(Zhis21),
                        Zhisall=np.array(Zhisall), sX=sX, sY=sY,
                        time=time, ra=ra, coordx=coordx, coordy=coordy)
+        # TODO d/dt allZ for r-drift etc. mean as vp in sat-time
         if coordx in (1, 2) and coordy in (1, 2):
             results['aspect'] = 'equal'
         return results, acckwargs
