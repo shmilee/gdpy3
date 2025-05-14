@@ -73,7 +73,7 @@ class Phase2dConverter(Converter):
     Phase 2D Data
 
     1) ion, electron, EP profiles in pdf(coordx,coordy) phase space.
-       coordx,y can be: 1, vpara; 2, vperp; 3, energy; 4, lambda; 5, mu 
+       coordx,y can be: 1, vpara; 2, vperp; 3, energy; 4, lambda; 5, mu
     2) pdf can be: 1, fullf; 2, deltaf; 3, deltaf^2; 4, angular momentum;
                    5, energy; 6, heat; 7, ExB drift; 8, particle flux;
                    9, momentum flux; 10, energy flux; 11, heat flux;
@@ -305,55 +305,74 @@ class Phase2dDigger(Digger):
         self.pdf = self.section[2]
         self.kwoptions = None
 
-    def _get_X_xlabel(self, fmt, coordx, xgrid, xmax, group=None):
-        if fmt == 3:
-            try:
-                xymin = self.pckloader['%s/xymin' % (group or self.group)]
-            except Exception:
-                dlog.error('Cannot get key: phase2d/xymin!', exc_info=1)
-            else:
-                X = np.linspace(xymin[coordx-1], xmax, xgrid)
-                return X, self._coord_label[coordx]
-        # defualt
-        if coordx == 1:
-            X = np.linspace(-xmax, xmax, xgrid)
-        elif coordx in (2, 3, 4, 5):
-            X = np.linspace(0, xmax, xgrid)
-        return X, self._coord_label[coordx]
-
-    def _check_kws(self, kwargs, p2d_ncoord, p2d_niflux):
+    def _get_selected_index(self, kwargs, key, default, vmin, vmax, desc):
+        idx = kwargs.get(key, default)
+        if not isinstance(idx, int) or idx < vmin or idx > vmax:
+            dlog.warning("Invalid selected %s index: %s! range: %d-%d"
+                         % (desc, idx, vmin, vmax))
+            idx = default
         if self.kwoptions is None:
-            self.kwoptions = dict(
-                sflux=dict(
-                    widget='IntSlider',
-                    rangee=(1, p2d_niflux, 1),
-                    value=1,
-                    description='select flux:'),
-                scoord=dict(
-                    widget='IntSlider',
-                    rangee=(1, p2d_ncoord, 1),
-                    value=1,
-                    description='select coordinate:'),
-                norm=dict(
-                    widget='IntSlider',
-                    rangee=(-2, 2, 1),
-                    value=1,
-                    description='norm:'))
-        sflux = kwargs.get('sflux', 1)
-        scoord = kwargs.get('scoord', 1)
-        norm = kwargs.get('norm', 1)
-        if not isinstance(sflux, int) or sflux < 1 or sflux > p2d_niflux:
-            dlog.warning("Invalid selected flux index: %s! range: %d-%d"
-                         % (sflux, 1, p2d_niflux))
-            sflux = 1
-        if not isinstance(scoord, int) or scoord < 1 or scoord > p2d_ncoord:
-            dlog.warning("Invalid selected coordinate index: %s! range: %d-%d"
-                         % (scoord, 1, p2d_ncoord))
-            scoord = 1
+            self.kwoptions = dict()
+        if key not in self.kwoptions:
+            self.kwoptions[key] = dict(widget='IntSlider',
+                                       rangee=(vmin, vmax, 1),
+                                       value=default,
+                                       description='select %s:' % desc)
+        return idx
+
+    def _get_norm(self, kwargs):
+        default = 0 if self.pdf in ('r-drift', 'diffusion', 'Eloss') else 1
+        norm = kwargs.get('norm', default)
         if not isinstance(norm, int):
             dlog.warning("Invalid norm: %s! Please set as int!" % norm)
-            norm = 1
-        return sflux, scoord, norm
+            norm = default
+        if 'norm' not in self.kwoptions:
+            self.kwoptions['norm'] = dict(widget='IntSlider',
+                                          rangee=(-2, 2, 1),
+                                          value=default,
+                                          description='norm:')
+        return norm
+
+    def _normalize_Z(self, Z, fullf, norm):
+        if norm != 0:  # >0: normalize with fullf[:,:]; or <0: times fullf
+            if abs(norm) == 1:
+                f0 = np.sum(fullf)
+            else:
+                f0 = fullf[:, :]
+                if norm > 0:
+                    f0[f0 == 0] = 1.0
+            if self.pdf == 'deltaf2':
+                Z = Z/f0/f0 if norm > 0 else Z*f0*f0
+            else:
+                Z = Z/f0 if norm > 0 else Z*f0
+        return Z
+
+    def _get_X_Y_labels_ra(self, scoord, fmt, coordxy, xymax, xygrid, kgroup):
+        if scoord == 1:
+            coordx, coordy = coordxy[:2]
+        elif scoord == 2:
+            coordx, coordy = coordxy[2:]
+        else:
+            raise ValueError('Invalid coordinate index!')
+        if fmt == 3:
+            try:
+                xymin = self.pckloader['%s/xymin' % kgroup]
+            except Exception:
+                dlog.error('Cannot get key: phase2d/xymin!', exc_info=1)
+                xymin = [-xymax[0], 0.0, 0.0, 0.0, 0.0]
+        else:
+            xymin = [-xymax[0], 0.0, 0.0, 0.0, 0.0]
+        xgrid, ygrid = xygrid
+        # coordx -> row -> contourY; coordy -> col -> contourX;
+        X = np.linspace(xymin[coordy-1], xymax[coordy-1], ygrid)
+        Y = np.linspace(xymin[coordx-1], xymax[coordx-1], xgrid)
+        xlabel, ylabel = self._coord_label[coordy], self._coord_label[coordx]
+        try:  # rpsi [0, mpsi]
+            rpsi, a = self.pckloader.get_many(*self.common[-2:])
+            ra = np.round(rpsi[ipsi]/a, decimals=3)
+        except Exception:
+            ra = None
+        return coordx, coordy, X, Y, xlabel, ylabel, ra
 
     def _dig(self, kwargs):
         '''
@@ -363,7 +382,7 @@ class Phase2dDigger(Digger):
             select one flux from range(1, p2d_niflux+1)
         *scoord*: int, default 1
             select the coordinates, from range(1, p2d_ncoord+1)
-        *norm*: int, default 1
+        *norm*: int, default 1 or 0 for r-drift, diffusion, Eloss
             normalize Z value by fullf.
             0: off; 1: by sum(fullf); >1: by fullf per grid.
             -1: times sum(fullf); <-1: times fullf per grid.
@@ -374,7 +393,10 @@ class Phase2dDigger(Digger):
             pcount, mpcount = self.pckloader.get_many(*self.srckeys)
         # assert data.shape == (xgrid, ygrid, p2d_ncoord, p2d_niflux)
         xgrid, ygrid, p2d_ncoord, p2d_niflux = data.shape
-        sflux, scoord, norm = self._check_kws(kwargs, p2d_ncoord, p2d_niflux)
+        get_index = self._get_selected_index
+        sflux = get_index(kwargs, 'sflux', 1, 1, p2d_niflux, 'flux')
+        scoord = get_index(kwargs, 'scoord', 1, 1, p2d_ncoord, 'coordinate')
+        norm = self._get_norm(kwargs)
         acckwargs = {'sflux': sflux, 'scoord': scoord, 'norm': norm}
         ipsi = p2d_ifluxes[sflux-1]
         pidx = self._particle_ins[self.particle] - 1
@@ -386,35 +408,16 @@ class Phase2dDigger(Digger):
         dlog.info('%d/%d=%.1f%% of %ss are counted near ipsi=%d.'
                   % (count, mcount, perc, self.particle, ipsi))
         Z = data[:, :, scoord-1, sflux-1]
-        if norm != 0:  # >0: normalize with fullf; or <0: times fullf
-            if abs(norm) == 1:
-                f0 = np.sum(fullf[:, :, scoord-1, sflux-1])
-            else:
-                f0 = fullf[:, :, scoord-1, sflux-1]
-                f0[f0 == 0] = 1.0
-            if self.pdf == 'deltaf2':
-                Z = Z/f0/f0 if norm > 0 else Z*f0*f0
-            else:
-                Z = Z/f0 if norm > 0 else Z*f0
-        if scoord == 1:
-            coordx, coordy = coordxy[:2]
-        elif scoord == 2:
-            coordx, coordy = coordxy[2:]
-        else:
-            raise ValueError('Invalid coordinate index!')
+        fullf = fullf[:, :, scoord-1, sflux-1]
+        Z = self._normalize_Z(Z, fullf, norm)
         # coordx -> row -> contourY; coordy -> col -> contourX;
-        X, xlabel = self._get_X_xlabel(fmt, coordy, ygrid, xymax[coordy-1])
-        Y, ylabel = self._get_X_xlabel(fmt, coordx, xgrid, xymax[coordx-1])
+        coordx, coordy, X, Y, xlabel, ylabel, ra = self._get_X_Y_labels_ra(
+            scoord, fmt, coordxy, xymax, (xgrid, ygrid), self.group)
         sec = self.section
         title = r'%s %s, t=%g$R_0/c_s$, ipsi=%d' % (
-                sec[1], self._pdf_tex[sec[2]], time, ipsi)
-        try:
-            # rpsi [0, mpsi]
-            rpsi, a = self.pckloader.get_many(*self.common[-2:])
-            ra = np.round(rpsi[ipsi]/a, decimals=3)
+            sec[1], self._pdf_tex[sec[2]], time, ipsi)
+        if ra is not None:
             title += ', r=%ga' % ra
-        except Exception:
-            ra = 0
         results = dict(X=X, Y=Y, Z=Z, title=title,
                        xlabel=xlabel, ylabel=ylabel,
                        time=time, ra=ra, coordx=coordx, coordy=coordy)
@@ -561,7 +564,7 @@ class Phase2dResonanceDigger(Phase2dDigger):
     def _post_dig(self, results):
         r = results
         ax1 = {k: v for k, v in r.items() if k in [
-               'X', 'Y', 'Z', 'title', 'xlabel', 'ylabel', 'aspect']}
+            'X', 'Y', 'Z', 'title', 'xlabel', 'ylabel', 'aspect']}
         ax1.update(clabel_Z=r['resZ'], clabel_levels=r['reslevels'])
         return dict(zip_results=[
             ('tmpl_contourf', 121, ax1),
@@ -597,11 +600,11 @@ class Phase2dTimeDigger(Phase2dDigger):
         self.kwoptions = None
 
     def _dig(self, kwargs):
-        '''*sgridx*: int, default xgrid//2
+        '''*sgridx1*, *sgridx2*: int, default xgrid//3, xgrid//2
             select phase2d grid x-index
-        *sgridy*: int, default ygrid//2
+        *sgridy1*, *sgridy2*: int, default ygrid//3, ygrid//2
             select phase2d grid y-index
-        *stime*: int, default (t1-t0)/2
+        *stime*: int, default len(time)//2
             select a time index for phase2d contourf
         '''
         N = len(self.srckeys)
@@ -618,58 +621,56 @@ class Phase2dTimeDigger(Phase2dDigger):
             for k in ('format', 'coordxy', 'xymax', 'p2d_ifluxes')])
         # assert data0.shape == (xgrid, ygrid, p2d_ncoord, p2d_niflux)
         xgrid, ygrid, p2d_ncoord, p2d_niflux = data0.shape
-        sflux, scoord, norm = self._check_kws(kwargs, p2d_ncoord, p2d_niflux)
-        acckwargs = {'sflux': sflux, 'scoord': scoord, 'norm': norm}
-        # TODO x,row -> contourY; y,col -> contourX;
-        sgridx, sgridy, stime = ygrid//2, xgrid//2, len(time)//2
+        get_index = self._get_selected_index
+        sflux = get_index(kwargs, 'sflux', 1, 1, p2d_niflux, 'flux')
+        scoord = get_index(kwargs, 'scoord', 1, 1, p2d_ncoord, 'coordinate')
+        norm = self._get_norm(kwargs)
+        # x,row -> contourY; y,col -> contourX;
+        sgridx1 = get_index(kwargs, 'sgridx1', ygrid//3, 0, ygrid-1, 'gridX1')
+        sgridx2 = get_index(kwargs, 'sgridx2', ygrid//2, 0, ygrid-1, 'gridX2')
+        sgridy1 = get_index(kwargs, 'sgridy1', xgrid//3, 0, xgrid-1, 'gridY1')
+        sgridy2 = get_index(kwargs, 'sgridy2', xgrid//2, 0, xgrid-1, 'gridY2')
+        stime = get_index(kwargs, 'stime', N//2, 0, N-1, 'time')
+        acckwargs = {'sflux': sflux, 'scoord': scoord, 'norm': norm,
+                     'sgridx1': sgridx1, 'sgridx2': sgridx2,
+                     'sgridy1': sgridy1, 'sgridy2': sgridy2, 'stime': stime}
         ipsi = p2d_ifluxes[sflux-1]
         pidx = self._particle_ins[self.particle] - 1
-        if scoord == 1:
-            coordx, coordy = coordxy[:2]
-        elif scoord == 2:
-            coordx, coordy = coordxy[2:]
-        else:
-            raise ValueError('Invalid coordinate index!')
         # coordx -> row -> contourY; coordy -> col -> contourX;
-        X, xlabel = self._get_X_xlabel(fmt, coordy, ygrid, xymax[coordy-1],
-                                       group=datakeys[0].split('/')[0])
-        Y, ylabel = self._get_X_xlabel(fmt, coordx, xgrid, xymax[coordx-1],
-                                       group=datakeys[0].split('/')[0])
+        coordx, coordy, X, Y, xlabel, ylabel, ra = self._get_X_Y_labels_ra(
+            scoord, fmt, coordxy, xymax, (xgrid, ygrid),
+            datakeys[0].split('/')[0])
         sec = self.section
         title = r'%s %s, t=%g$R_0/c_s$, ipsi=%d' % (
-                sec[1], self._pdf_tex[sec[2]], time[stime], ipsi)
-        try:
-            # rpsi [0, mpsi]
-            rpsi, a = self.pckloader.get_many(*self.common[-2:])
-            ra = np.round(rpsi[ipsi]/a, decimals=3)
+            sec[1], self._pdf_tex[sec[2]], time[stime], ipsi)
+        if ra is not None:
             title += ', r=%ga' % ra
-        except Exception:
-            ra = 0
         allZ = []
-        Zhis = []
+        Zhis11, Zhis12, Zhis22, Zhis21, Zhisall = [], [], [], [], []
         _idxlog = max(1, N // 7)
         for idx, dkey, fkey in zip(range(1, N+1), datakeys, fullfkeys):
             if idx % _idxlog == 0 or idx == N:
                 dlog.info('Collecting [%d/%d] %s' % (idx, N, dkey))
             data, fullf = self.pckloader.get_many(dkey, fkey)
             Z = data[:, :, scoord-1, sflux-1]
-            if norm != 0:  # >0: normalize with fullf; or <0: times fullf
-                if abs(norm) == 1:
-                    f0 = np.sum(fullf[:, :, scoord-1, sflux-1])
-                else:
-                    f0 = fullf[:, :, scoord-1, sflux-1]
-                    f0[f0 == 0] = 1.0
-                if self.pdf == 'deltaf2':
-                    Z = Z/f0/f0 if norm > 0 else Z*f0*f0
-                else:
-                    Z = Z/f0 if norm > 0 else Z*f0
+            fullf = fullf[:, :, scoord-1, sflux-1]
+            Z = self._normalize_Z(Z, fullf, norm)
             allZ.append(Z)
-            Zhis.append(Z[sgridx, sgridy])
-        # point out selected grid
-        sX, sY = X[sgridx], Y[sgridy]
-        results = dict(X=X, Y=Y, Z=allZ[stime], Zhis=Zhis, title=title,
+            # x,row <-> sgridy;
+            Zhis11.append(Z[sgridy1, sgridx1])
+            Zhis12.append(Z[sgridy1, sgridx2])
+            Zhis22.append(Z[sgridy2, sgridx2])
+            Zhis21.append(Z[sgridy2, sgridx1])
+            zall = np.sum(Z*fullf)/np.sum(fullf)
+            Zhisall.append(zall)
+        # selected grid points
+        sX = X[[sgridx1, sgridx2, sgridx2, sgridx1]]
+        sY = Y[[sgridy1, sgridy1, sgridy2, sgridy2]]
+        results = dict(X=X, Y=Y, Z=allZ[stime], allZ=allZ, title=title,
                        xlabel=xlabel, ylabel=ylabel,
-                       sX=sX, sY=sY,
+                       Zhis11=np.array(Zhis11), Zhis12=np.array(Zhis12),
+                       Zhis22=np.array(Zhis22), Zhis21=np.array(Zhis21),
+                       Zhisall=np.array(Zhisall), sX=sX, sY=sY,
                        time=time, ra=ra, coordx=coordx, coordy=coordy)
         if coordx in (1, 2) and coordy in (1, 2):
             results['aspect'] = 'equal'
@@ -678,15 +679,13 @@ class Phase2dTimeDigger(Phase2dDigger):
     def _post_dig(self, results):
         r = results
         ax1 = {k: v for k, v in r.items() if k in [
-               'X', 'Y', 'Z', 'title', 'xlabel', 'ylabel', 'aspect']}
+            'X', 'Y', 'Z', 'title', 'xlabel', 'ylabel', 'aspect']}
         return dict(zip_results=[
             ('tmpl_contourf', 121, ax1),
-            ('tmpl_line', 121, dict(LINE=[
-                ([r['sX'], r['sX']], r['Y'][[0, -1]]),
-                (r['X'][[0, -1]], [r['sY'], r['sY']]),
-            ])),
+            ('tmpl_line', 121, dict(LINE=[(r['sX'], r['sY'])])),
             ('tmpl_line', 122, dict(
-                LINE=[(r['time'], r['Zhis'])],
+                LINE=[(r['time'], r['Zhis%s' % k], 'P-%s' % k)
+                      for k in ('all', '11', '12', '22', '21')],
                 xlabel=r'$R_0/c_s$', xlim=r['time'][[0, -1]],
                 ylabel=self._pdf_tex[self.section[2]], aspect=None,
             )),
