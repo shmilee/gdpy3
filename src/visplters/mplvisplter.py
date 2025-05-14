@@ -685,7 +685,7 @@ class MatplotlibVisplter(BaseVisplter):
             layoutkw['aspect'] = aspect
         return [{'data': data, 'layout': [111, layoutkw]}], []
 
-    def _tmpl_line(self, LINE, title, xlabel, ylabel, aspect,
+    def _tmpl_line(self, LINE, TEXT, title, xlabel, ylabel, aspect,
                    lin3d, zlabel, scale_xyz,
                    xlim, ylim, ylabel_rotation, legend_kwargs):
         '''For :meth:`tmpl_line`.'''
@@ -713,8 +713,17 @@ class MatplotlibVisplter(BaseVisplter):
                     addlegend = True
                 elif len(ln) == 2:
                     data.append([i, 'plot', (ln[0], ln[1]), {}])
+            if TEXT:
+                X, Y, T = TEXT
+                i += 1
+                data.append([i, 'plot', (X, Y, 'o:'), dict(
+                    ms=4, mec='k', mfc='none', mew=1.5)])
+                for j in range(len(X)):
+                    i += 1
+                    data.append([i, 'text', (X[j]*1.04, Y[j], T[j]),
+                                 dict(fontsize='medium')])
         if addlegend:
-            i = i + 1
+            i += 1
             data.append([i, 'legend', (), legend_kwargs])
         if title:
             layoutkw['title'] = title

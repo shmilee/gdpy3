@@ -682,7 +682,10 @@ class Phase2dTimeDigger(Phase2dDigger):
             'X', 'Y', 'Z', 'title', 'xlabel', 'ylabel', 'aspect']}
         return dict(zip_results=[
             ('tmpl_contourf', 121, ax1),
-            ('tmpl_line', 121, dict(LINE=[(r['sX'], r['sY'])])),
+            ('tmpl_line', 121, dict(
+                LINE=[([], [])],
+                TEXT_X=r['sX'], TEXT_Y=r['sY'],
+                TEXT_T=['11', '12', '22', '21'])),
             ('tmpl_line', 122, dict(
                 LINE=[(r['time'], r['Zhis%s' % k], 'P-%s' % k)
                       for k in ('all', '11', '12', '22', '21')],

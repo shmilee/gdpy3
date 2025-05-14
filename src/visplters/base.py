@@ -609,6 +609,7 @@ class BaseVisplter(object):
                            % (i, 2+d3, 3+d3))
                 return [], []
         LINE = results['LINE']
+        TEXT = self._text_2D(results) if not lin3d else None
         title, xlabel, ylabel, aspect = self._get_my_optional_vals(
             results, ('title', str, None), ('xlabel', str, None),
             ('ylabel', str, None), ('aspect', str, None))
@@ -619,13 +620,38 @@ class BaseVisplter(object):
             results, ('ylabel_rotation', (int, str), None),
             ('legend_kwargs', dict, {}))
         return self._tmpl_line(
-            LINE, title, xlabel, ylabel, aspect,
+            LINE, TEXT, title, xlabel, ylabel, aspect,
             lin3d, zlabel, scale_xyz,
             xlim, ylim, ylabel_rotation, legend_kwargs)
 
     def _tmpl_line(self, LINE, *args):
         '''For :meth:`tmpl_line`.'''
         raise NotImplementedError()
+
+    def _text_2D(self, results):
+        '''results['TEXT_X']: list or numpy.ndarray, optional for Line2D
+        results['TEXT_Y']: list or numpy.ndarray, optional for Line2D
+        results['TEXT_T']: list of text, optional for Line2D
+        '''
+        if 'TEXT_X' in results:
+            X, Y, T = self._get_my_optional_vals(
+                results, ('TEXT_X', (list, range, numpy.ndarray), None),
+                ('TEXT_Y', (list, range, numpy.ndarray), None),
+                ('TEXT_T', list, None))
+            if X is None:
+                vlog.error("TEXT_X must be array!")
+            if Y is None:
+                vlog.error("TEXT_Y must be array!")
+            if T is None:
+                vlog.error("TEXT_T must be array!")
+            if len(X) == len(Y) == len(T):
+                return (X, Y, T)
+            else:
+                vlog.error("Invalid length of TEXT_X,Y,T! (%d, %d, %d)"
+                           % (len(X), len(Y), len(T)))
+        return None
+
+    tmpl_line.__doc__ += _text_2D.__doc__
 
     def tmpl_sharextwinx(self, results):
         '''
