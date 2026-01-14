@@ -212,8 +212,8 @@ class MatplotlibVisplter(BaseVisplter):
 
     preset_revisefuns = [
         'remove_spines', 'center_spines', 'arrow_spines',
-        'multi_merge_legend', 'aspect_3d_equal',
-        'fix_Poly3dCollection_color',
+        'multi_merge_legend', 'scale_bar',
+        'aspect_3d_equal', 'fix_Poly3dCollection_color',
     ]
 
     # some revise functions
@@ -428,6 +428,27 @@ class MatplotlibVisplter(BaseVisplter):
             ax.add_artist(lg)
             lgs.append(lg)
         return lgs
+
+    @staticmethod
+    @inherit_docstring(mpl_extending.scale_bar, parse=None, template=None)
+    def scale_bar(fig, axesdict, artistdict, axindex=0,
+                  position=(), length=0, width=0, **kwargs):
+        '''
+        Add a simplified scale bar to the axes.
+
+        Parameters
+        ----------
+        {0[Parameters]}
+        '''
+        ax = axesdict[axindex]
+        if '3d' in ax.name:
+            vlog.warning("scale_bar is not for 3D Axes!")
+            return
+        if not position or not length or not width:
+            vlog.warning("scale_bar needs params: position, length, width!")
+            return
+        return mpl_extending.scale_bar(
+            ax, position, length, width, **kwargs)
 
     @staticmethod
     def aspect_3d_equal(fig, axesdict, artistdict, axindex=0,

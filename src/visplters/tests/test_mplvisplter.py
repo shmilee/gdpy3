@@ -194,6 +194,34 @@ ax10 = {
     ],
 
 }
+# scale_bar
+ax11_14s = [
+    {
+        'layout': [221 + i, dict(xlabel='X', ylabel='Y', title=title)],
+        'data': [
+            [1, 'plot', (x, y), dict()],
+            [2, 'revise', 'scale_bar', scale_bar_params],
+        ],
+    }
+    for i, title, scale_bar_params in zip(
+        range(4), ['Default', 'Label params', 'Tick params', 'Box params'],
+        [
+            {'position': (-2, 1), 'length': 2, 'width': 0.02},
+            {'position': (-2, 0), 'length': 1.2, 'width': 0.04,
+             'color': 'green', 'direction': 'vertical', 'box_color': None,
+             'label': 'm', 'label_pos': 'left', 'label_pad': 0.1},
+            {'position': (-2, 0), 'length': 4, 'width': 0.04,
+             'color': 'red', 'label': 'm', 'box_color': None,
+             'num_ticks': 5, 'tick_pos': 'bottom', 'tick_label_format': 0.1,
+             'tick_length': 0.1, 'tick_label_format': '{:.1f}'},
+            {'position': (0.5, -1), 'length': 2, 'width': 0.04,
+             'color': 'purple', 'label': 'm', 'box_color': 'lightblue',
+             'box_alpha': 0.6, 'box_style': 'roundtooth',
+             'box_padding': (0.35, 0.3), 'box_corner_radius': 0.03}
+        ]
+    )
+]
+
 temp_contourfresults = dict(
     X=fieldx, Y=fieldy, Z=fielddata, clabel_levels=[-0.5, 0, 0.5],
     plot_method='plot_surface',
@@ -320,6 +348,12 @@ class TestMatplotlibVisplter(unittest.TestCase):
         self.visplter.show_figure('test-rev1')
         input('[I]nterrupt, to see figure "%s".' % 'test-rev1')
         self.visplter.close_figure('all')
+
+    def test_mplvisplter_revise_scale_bar(self):
+        self.visplter.create_figure('test-scale-bar', *ax11_14s)
+        self.visplter.show_figure('test-scale-bar')
+        input('[I]nterrupt, to see scale bar tests.')
+        self.visplter.close_figure('test-scale-bar')
 
     def test_mplvisplter_tmpl_contourf(self):
         axstruct, sty = self.visplter.tmpl_contourf(
