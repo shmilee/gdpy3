@@ -78,7 +78,6 @@ setup(
         'Environment :: Plugins',
         'Environment :: X11 Applications',
         'Intended Audience :: Science/Research',
-        'License :: OSI Approved :: MIT License',
         'Operating System :: MacOS :: MacOS X',
         'Operating System :: Microsoft :: Windows',
         'Operating System :: OS Independent',
