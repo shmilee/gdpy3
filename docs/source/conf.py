@@ -22,7 +22,7 @@ import gdpy3
 # -- Project information -----------------------------------------------------
 
 project = 'gdpy3'
-copyright = '2017-2022 shmilee'
+copyright = '2017-2026 shmilee'
 author = 'shmilee'
 
 # The short X.Y version

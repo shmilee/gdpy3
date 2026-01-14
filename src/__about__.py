@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2018-2025 shmilee
+# Copyright (c) 2018-2026 shmilee
 
 import os
 import sys
@@ -14,7 +14,7 @@ __status__ = "4 - Beta"
 __author__ = "shmilee"
 __email__ = "shmilee.zju@gmail.com"
 __license__ = "MIT"
-__copyright__ = 'Copyright (c) 2017-2025 shmilee'
+__copyright__ = 'Copyright (c) 2017-2026 shmilee'
 
 
 def _get_beside_path(name):
