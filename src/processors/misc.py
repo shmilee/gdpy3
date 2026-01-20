@@ -336,3 +336,67 @@ def remove_digged_data(path, by_groups=None, by_groups_pattern=None):
     plog.info("Rename %s -> %s" % (tmppath, path))
     os.rename(tmppath, path)
     plog.info("Digged data in %s is updated." % path)
+
+
+def extract_converted_data(path, output,
+                           exclude_groups=None, filter_groups_func=None,
+                           exclude_keys=None, filter_keys_func=None):
+    '''
+    Extract data of some groups or keys from the converted data.
+
+    Parameters
+    ----------
+    path: path of converted data
+    output: output path of extracted & converted data
+    exclude_groups: list, data groups to remove
+        like 'snapXX', 'data1d'
+    filter_groups_func: function
+        input is groups list, output is the groups to extract
+    exclude_keys: list, data keys' basenames to remove
+        like 'poloidata-densityi', 'fluxdata-apara'
+    filter_keys_func: function
+        input is keys' basenames list, output is the keys to extract
+    '''
+    root, ext2, ext1 = _check_get_pckdata_ext(path)
+    if not root:
+        return
+    if ext2 != '.converted':
+        plog.error("This is not a converted data path %s!" % path)
+        return
+    if os.path.exists(output):
+        plog.warning("Output file %s exists! Nothing to do!" % output)
+        return
+    oldloader = get_pckloader(path)
+    groupstodo = oldloader.groups()
+    if exclude_groups and isinstance(exclude_groups, (tuple, list)):
+        groupstodo = [g for g in groupstodo if g not in exclude_groups]
+    if callable(filter_groups_func):
+        groupstodo = filter_groups_func(groupstodo)
+    if len(groupstodo) == 0:
+        plog.warning("No groups to extract!")
+        return
+    N = len(groupstodo)
+    plog.info("Get %d/%d groups to extract!" % (N, len(oldloader.groups())))
+    if not isinstance(exclude_keys, (tuple, list)):
+        exclude_keys = []
+    with get_pcksaver(output) as newsaver:
+        newsaver.write('/',  _get_info_of_pckdata(oldloader, ext2))
+        for count, grp in enumerate(groupstodo, 1):
+            allkeys = oldloader.refind('^%s/' % re.escape(grp))
+            basekeys = [os.path.basename(k) for k in allkeys]
+            n0 = len(basekeys)
+            n1 = n0
+            if exclude_keys:
+                basekeys = [k for k in basekeys if k not in exclude_keys]
+            if callable(filter_keys_func):
+                basekeys = filter_keys_func(basekeys)
+            if exclude_keys or callable(filter_keys_func):
+                n1 = len(basekeys)
+                allkeys = ['%s/%s' % (grp, k) for k in basekeys]
+            resultstuple = oldloader.get_many(*allkeys)
+            results = {k: v for k, v in zip(basekeys, resultstuple)}
+            plog.info("Copy group(%d/%d) %s: keys(%d/%d)"
+                      % (count, N, grp, n1, n0))
+            newsaver.write(grp, results)
+            oldloader.clear_cache()
+    plog.info("Done. %s -> %s." % (path, output))
