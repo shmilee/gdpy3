@@ -109,7 +109,7 @@ def get_pckloader(path, virtualdata=None, datagroups_exclude=None):
     *path* types:
     1. dict-like object
     2. '.npz' file
-    3. '.hdf5' file
+    3. '.hdf5' or '.h5' file
     4. '.jsonl' file
     5. '.jsonz' file
     '''
@@ -122,7 +122,7 @@ def get_pckloader(path, virtualdata=None, datagroups_exclude=None):
             ext = os.path.splitext(path)[1]
             if ext == '.npz':
                 from .npzpck import NpzPckLoader as Loader
-            elif ext == '.hdf5':
+            elif ext in ('.hdf5', '.h5'):
                 from .hdf5pck import Hdf5PckLoader as Loader
             elif ext == '.jsonl':
                 from .jsonpck import JsonlPckLoader as Loader
