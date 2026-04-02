@@ -22,13 +22,17 @@ and has methods
 
 import re
 import os
+import sys
 import inspect
+import multiprocessing
 
 from . import processor
 from .lib import Processor_Names, Processor_Alias, find_Processor
 from .lib import Processor_Lib, __userbase__
 
-__all__ = ['get_processor', 'is_processor', 'copy_processor_files']
+__all__ = ['get_processor', 'is_processor',
+           'copy_processor_files',
+           'set_multiprocessing_start_method_fork']
 _sys_Processor_Names = [
     n for n in Processor_Names if Processor_Lib[n][1] == '$sys']
 
@@ -135,3 +139,15 @@ def copy_processor_files(name):
                 '    pass\n\n\n'
                 'class ExampleDigger(Digger):\n'
                 '    pass\n')
+
+
+def set_multiprocessing_start_method_fork():
+    """Set multiprocessing start method to 'fork' on POSIX systems."""
+    if sys.platform != 'win32':
+        try:
+            multiprocessing.set_start_method('fork', force=True)
+            return True
+        except RuntimeError:
+            # Already set, check if it's 'fork'
+            return multiprocessing.get_start_method() == 'fork'
+    return False

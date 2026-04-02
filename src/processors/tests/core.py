@@ -13,8 +13,8 @@ __all__ = _all_Converters + _all_Diggers
 class TestConverter(Converter):
     __slots__ = []
     nitems = '?'
-    itemspattern = ['^(?P<section>test)\.out$',
-                    '.*/(?P<section>test)\.out$']
+    itemspattern = [r'^(?P<section>test)\.out$',
+                    r'.*/(?P<section>test)\.out$']
 
     def _convert(self):
         with self.rawloader.get(self.files) as f:

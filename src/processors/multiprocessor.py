@@ -16,7 +16,6 @@ from ..tools import nparray_default_bitsize
 from ..loaders import get_pckloader
 from ..utils import inherit_docstring
 
-
 __all__ = ['MultiProcessor']
 
 

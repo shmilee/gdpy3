@@ -8,7 +8,7 @@ import tempfile
 import shutil
 import multiprocessing
 
-from .. import get_processor
+from .. import get_processor, set_multiprocessing_start_method_fork
 from ..lib import *
 
 register_Processor('TDP', '.tests', 'T')
@@ -68,3 +68,9 @@ class TestMultiprocessProcessor(unittest.TestCase):
         self.assertListEqual(results['x'], X2[0][1])  # same result
         self.assertListEqual(results['x'], X2[1][1])  # same result
         self.assertNotEqual(X2[0][2], X2[1][2])  # different pid
+
+
+# not __name__ == '__main__'
+if __name__.endswith('tests.test_multiprocessor'):
+    if set_multiprocessing_start_method_fork():
+        print("Using multiprocessing start method: 'fork'")
