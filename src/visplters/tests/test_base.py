@@ -26,7 +26,7 @@ class ImpBaseVisplter(BaseVisplter):
     def _param_from_style(self, param):
         return 'param-%s' % param
 
-    def _add_axes(self, fig, data, layout, axstyle):
+    def _add_axes(self, fig, axindex, data, layout, axstyle):
         fig['datalist'].append(data)
         fig['layoutlist'].append(layout)
         fig['axstylelist'].append(axstyle)
@@ -35,8 +35,8 @@ class ImpBaseVisplter(BaseVisplter):
         # fake figure object: dict
         fig = {'num': num, 'figstyle': figstyle,
                'datalist': [], 'layoutlist': [], 'axstylelist': []}
-        for axstructure in axesstructures:
-            self.add_axes(fig, axstructure)
+        for axindex, axstructure in enumerate(axesstructures):
+            self.add_axes(fig, axindex, axstructure)
         return fig
 
     def _show_figure(self, fig):
@@ -108,9 +108,11 @@ class TestBaseVisplter(unittest.TestCase):
     def test_visplter_add_axes(self):
         fig = {'datalist': [], 'layoutlist': [], 'axstylelist': []}
         self.visplter.add_axes(
-            fig, dict(data=['data1'], layout=[1, 'layout1'], axstyle=['s1']))
+            fig, 0, dict(
+                data=['data1'], layout=[1, 'layout1'], axstyle=['s1']))
         self.visplter.add_axes(
-            fig, dict(data=['data2'], layout=[2, 'layout2'], axstyle=['s9']))
+            fig, 1, dict(
+                data=['data2'], layout=[2, 'layout2'], axstyle=['s9']))
         self.assertListEqual(fig['datalist'], [['data1'], ['data2']])
         self.assertListEqual(fig['layoutlist'],
                              [[1, 'layout1'], [2, 'layout2']])
