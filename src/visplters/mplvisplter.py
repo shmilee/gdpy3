@@ -40,6 +40,9 @@ _Mpl_Axes_Structure = '''
         [20, 'legend', (), dict(loc='upper right')],
         [50, 'twinx or twiny', (), dict(nextcolor='int')],
         # def revise_func(fig, axesdict, artistdict, **kw)
+        # 1) axesdict, artistdict of this axes: key is the int index
+        # 2) fig.all_axesdict, fig.all_artistdict of this figure:
+        #    key is f'{axindex}', f'{axindex}-{artindex}'
         [90, 'revise', revise_func, {'kw'}],
         [91, 'revise', str-preset_revisefuns, {'kw'}],
     ],
@@ -110,7 +113,7 @@ class MatplotlibVisplter(BaseVisplter):
             vlog.error("Invalid param '%s' for matplotlib.rcParams!" % param)
             return None
 
-    def _add_axes(self, fig, data, layout, axstyle):
+    def _add_axes(self, fig, axindex, data, layout, axstyle):
         '''
         Add axes to *fig*: `matplotlib.figure.Figure` instance
         '''
@@ -138,12 +141,18 @@ class MatplotlibVisplter(BaseVisplter):
             except Exception:
                 vlog.error("Failed to add axes %s!" % (axpos,), exc_info=1)
                 return
-            # use data
+            if getattr(fig, 'all_axesdict', None) is None:
+                fig.all_axesdict = {}
+            if getattr(fig, 'all_artistdict', None) is None:
+                fig.all_artistdict = {}
+            fig.all_axesdict[f'{axindex}'] = ax
             axesdict, artistdict = {0: ax}, {}
+            # use data
             for index, axfunc, fargs, fkwargs in data:
                 if index < 0:
                     vlog.debug("Ignore artist %s: %s ..." % (index, axfunc))
                     continue
+                key = f'{axindex}-{index}'  # for fig.all_xx
                 if axfunc in ('twinx', 'twiny'):
                     vlog.debug("Creating twin axes %s: %s ..."
                                % (index, axfunc))
@@ -152,6 +161,7 @@ class MatplotlibVisplter(BaseVisplter):
                         if index in axesdict:
                             vlog.warning("Duplicate index %s!" % index)
                         axesdict[index] = ax
+                        fig.all_axesdict[key] = ax
                         if 'nextcolor' in fkwargs:
                             for i in range(fkwargs['nextcolor']):
                                 # i=next(ax._get_lines.prop_cycler)
@@ -167,6 +177,7 @@ class MatplotlibVisplter(BaseVisplter):
                     try:
                         art = fargs(fig, axesdict, artistdict, **fkwargs)
                         artistdict[index] = art
+                        fig.all_artistdict[key] = art
                     except Exception:
                         vlog.error("Failed to revise axes %s!"
                                    % (axpos,), exc_info=1)
@@ -180,6 +191,7 @@ class MatplotlibVisplter(BaseVisplter):
                         if index in artistdict:
                             vlog.warning("Duplicate index %s!" % index)
                         artistdict[index] = art
+                        fig.all_artistdict[key] = art
                     except Exception:
                         vlog.error("Failed to add artist %s!"
                                    % index, exc_info=1)
@@ -522,9 +534,9 @@ class MatplotlibVisplter(BaseVisplter):
         '''Create object *fig*.'''
         with matplotlib.style.context(self.filter_style(figstyle)):
             fig = matplotlib.pyplot.figure(num='%s - %s' % (num, self.ruid))
-            for i, axstructure in enumerate(axesstructures, 1):
-                vlog.debug("Picking AxesStructure %d ..." % i)
-                self.add_axes(fig, axstructure)
+            for axindex, axstructure in enumerate(axesstructures, 1):
+                vlog.debug("Picking AxesStructure %d ..." % axindex)
+                self.add_axes(fig, axindex, axstructure)
         return fig
 
     def _show_figure(self, fig, **kwargs):

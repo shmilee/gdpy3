@@ -323,7 +323,7 @@ class TestMatplotlibVisplter(unittest.TestCase):
 
     def test_mplvisplter_figure(self):
         self.visplter.create_figure('test-f1', add_style=['ggplot'])
-        self.visplter.add_axes(self.visplter.get_figure('test-f1'), ax1)
+        self.visplter.add_axes(self.visplter.get_figure('test-f1'), 0, ax1)
         for ext in ['.jpg', '.png', '.pdf']:
             self.visplter.save_figure('test-f1', self.tmpfile + ext)
         input("[I]nterrupt, to see figure in %s." % self.tmpfile)

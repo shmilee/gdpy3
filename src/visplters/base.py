@@ -120,11 +120,11 @@ class BaseVisplter(object):
     def figures(self):
         return list(self._figureslib.keys())
 
-    def _add_axes(self, fig, data, layout, axstyle):
+    def _add_axes(self, fig, axindex, data, layout, axstyle):
         '''Add axes to figure.'''
         raise NotImplementedError()
 
-    def add_axes(self, fig, axstructure):
+    def add_axes(self, fig, axindex, axstructure):
         '''
         Add axes to figure *fig*.
 
@@ -164,7 +164,8 @@ class BaseVisplter(object):
                            % type(axstructure['axstyle'])
                            + "Ignore 'axstyle' setting!")
         vlog.debug("Axes Style: %s" % str(axstyle))
-        return self._add_axes(fig, axstructure['data'], layout, axstyle)
+        data = axstructure['data']
+        return self._add_axes(fig, axindex, data, layout, axstyle)
 
     def _create_figure(self, num, axesstructures, figstyle):
         '''Create a figure object.'''
