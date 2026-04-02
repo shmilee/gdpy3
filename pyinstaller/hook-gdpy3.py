@@ -2,7 +2,7 @@
 
 # Copyright (c) 2018-2020 shmilee
 
-from distutils.spawn import find_executable
+from shutil import which
 from PyInstaller.depend.bindepend import findSystemLibrary
 from PyInstaller.utils.hooks import collect_submodules, exec_statement
 
@@ -15,7 +15,7 @@ datas = [(data_dir, "gdpy3-data")]
 binaries = []
 
 # libsixel
-img2sixel = find_executable('img2sixel')
+img2sixel = which('img2sixel')
 libsixel_so = findSystemLibrary('libsixel.so')
 if img2sixel:
     binaries += [(img2sixel, '.')]

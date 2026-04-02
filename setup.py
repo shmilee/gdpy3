@@ -92,6 +92,7 @@ setup(
         'Topic :: Scientific/Engineering :: Visualization'
     ],
     install_requires=[
+        'packaging>=16.0',
         'numpy>=1.10.0',
         'scipy>=0.14.0',
         'matplotlib>=2.0.0',

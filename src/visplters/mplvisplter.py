@@ -14,8 +14,7 @@ import matplotlib.pyplot
 import matplotlib.colors
 import mpl_toolkits.mplot3d
 from matplotlib.legend_handler import HandlerTuple
-# setuptools._distutils.version.LooseVersion for py3.12
-from distutils.version import LooseVersion
+from packaging.version import Version
 from operator import attrgetter
 
 from ..glogger import getGLogger
@@ -482,7 +481,7 @@ class MatplotlibVisplter(BaseVisplter):
                             getattr(ax, f'get_{a}lim')() for a in 'xyz')]
         try:
             # ref: https://github.com/matplotlib/matplotlib/issues/17172/
-            # TODO LooseVersion(matplotlib.__version__) > LooseVersion('3.?')
+            # TODO Version(matplotlib.__version__) > Version('3.?')
             ax.set_box_aspect(aspect, zoom=zoom)
         except Exception:
             # ref: https://stackoverflow.com/questions/30223161/
@@ -590,7 +589,7 @@ class MatplotlibVisplter(BaseVisplter):
             vlog.warning("'%s' is a interactive mpl backend, "
                          "it may hang during plotting in subprocess!"
                          % backend)
-        if LooseVersion(matplotlib.__version__) <= LooseVersion('3.1.3'):
+        if Version(matplotlib.__version__) <= Version('3.1.3'):
             vlog.info("Trying to fix: matplotlib.use() "
                       "must be called *before* matplotlib.pyplot.")
             import sys
@@ -615,7 +614,7 @@ class MatplotlibVisplter(BaseVisplter):
         vlog.debug("Getting contourf Axes %s ..." % 111)
         Zmax, Zmin = Z.max(), Z.min()
         # color norm
-        if LooseVersion(matplotlib.__version__) < LooseVersion('3.4.0'):
+        if Version(matplotlib.__version__) < Version('3.4.0'):
             vlog.warning("'CenteredNorm' needs matplotlib >= 3.4.0!")
             center_norm = False
         if center_norm:
@@ -663,7 +662,7 @@ class MatplotlibVisplter(BaseVisplter):
                     data.append([
                         order, 'contourf', (X, Y, Z),
                         dict(zdir=x, offset=_offsetd[x], **contourf_kws)])
-        if LooseVersion(matplotlib.__version__) > LooseVersion('3.2.2'):
+        if Version(matplotlib.__version__) > Version('3.2.2'):
             if (plot_method in ('pcolor', 'pcolormesh')
                     and 'shading' not in plot_method_kwargs):
                 # shading='flat' deprecated since 3.3

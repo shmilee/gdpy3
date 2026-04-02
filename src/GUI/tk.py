@@ -10,7 +10,7 @@ import getpass
 import tkinter
 from tkinter import ttk, simpledialog, filedialog, messagebox
 from tkinter.constants import *
-from distutils.version import LooseVersion
+from packaging.version import Version
 
 from ..__about__ import __data_path__, __icon_name__, __gversion__
 from ..glogger import getGLogger
@@ -705,7 +705,7 @@ class MplFigWindow(tkinter.Toplevel):
         import matplotlib
         # matplotlib.use('TkAgg', warn=False, force=True)
         import matplotlib.backends.backend_tkagg as tkagg
-        if LooseVersion(matplotlib.__version__) <= LooseVersion('2.1.2'):
+        if Version(matplotlib.__version__) <= Version('2.1.2'):
             log.debug('Recommand matplotlib>=2.2.0')
             tkagg.NavigationToolbar2Tk = tkagg.NavigationToolbar2TkAgg
 
