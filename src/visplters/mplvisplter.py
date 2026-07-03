@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (c) 2019-2021 shmilee
+# Copyright (c) 2019-2026 shmilee
 
 '''
 Contains matplotlib visplter class. A simple wrapper for matplotlib.
@@ -39,9 +39,10 @@ _Mpl_Axes_Structure = '''
         [20, 'legend', (), dict(loc='upper right')],
         [50, 'twinx or twiny', (), dict(nextcolor='int')],
         # def revise_func(fig, axesdict, artistdict, **kw)
-        # 1) axesdict, artistdict of this axes: key is the int index
+        # 1) axesdict, artistdict of this axes:
+        #    key is the int index, starts from 0
         # 2) fig.all_axesdict, fig.all_artistdict of this figure:
-        #    key is f'{axindex}', f'{axindex}-{artindex}'
+        #    key is f'{axindex}', f'{axindex}-{artindex}', starts from '1-i'
         [90, 'revise', revise_func, {'kw'}],
         [91, 'revise', str-preset_revisefuns, {'kw'}],
     ],
@@ -52,7 +53,10 @@ _Mpl_Axes_Structure = '''
 
 def _get_mplstyle_library(dirname='mpl-stylelib'):
     available = matplotlib.style.available.copy()
-    read_style_dir = matplotlib.style.core.read_style_directory
+    if Version(matplotlib.__version__) < Version('3.11.0'):
+        read_style_dir = matplotlib.style.core.read_style_directory
+    else:
+        read_style_dir = matplotlib.style._read_style_directory
     _path1 = os.path.join(__data_path__, dirname)
     lib = {sty: '_1_' for sty in read_style_dir(_path1).keys()}
     if __ENABLE_USERBASE__:
