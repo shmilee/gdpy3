@@ -50,6 +50,17 @@ def _get_data_path(name):
         if os.path.isdir(path):
             return path
 
+    this_file = os.path.abspath(__file__)
+    # Check if loading from a zip package
+    if '.zip/gdpy3/__about__.py' in this_file:
+        # Extract the full path of the zip file
+        zip_end = this_file.find('.zip') + 4  # 4 = len('.zip')
+        zip_path = this_file[:zip_end]
+        zip_dir = os.path.dirname(zip_path)
+        data_path = os.path.join(zip_dir, name)
+        if os.path.isdir(data_path):
+            return data_path
+
     raise RuntimeError("Can't find the %s files!" % name)
 
 
