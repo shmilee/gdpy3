@@ -11,6 +11,7 @@ Source fortran code:
 ```
 '''
 
+import re
 import numpy as np
 from ..cores.converter import Converter, clog
 from ..cores.digger import Digger, dlog
@@ -30,9 +31,20 @@ class TraceConverter(Converter):
                     r'.*/(?P<section>trace)_surf(?P<surf>\d+)\.out$']
     _datakeys = (r'surf-%d', )
 
+    borken_numpat = re.compile(r'([-+]?\d+[\.]?\d*)[-+](\d+)')
+
     @property
     def group(self):
         return self.section[0]
+
+    def _e_float(self, n):
+        try:
+            return float(n)
+        except ValueError:
+            if self.borken_numpat.match(n):
+                return float(self.borken_numpat.sub(r'\1E-\2', n))
+            else:
+                raise
 
     def _convert(self):
         '''Read 'trace_surf%d.out'.'''
@@ -40,7 +52,8 @@ class TraceConverter(Converter):
         with self.rawloader.get(self.files) as f:
             clog.debug("Read file '%s'." % self.files)
             outdata = f.readlines()
-        outdata = np.array([[float(n) for n in l.split()] for l in outdata])
+        outdata = np.array([[self._e_float(n) for n in l.split()]
+                            for l in outdata])
         phirz_etc = outdata[:, 1:]  # phip, rp, zp, bval, cci
         sd = {f'surf-{surf}': phirz_etc.T}
         clog.debug("Filling datakey: %s ..." % sd.keys())
